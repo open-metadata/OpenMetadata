@@ -47,9 +47,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -72,7 +70,6 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
 
   static final String FIELDS = "pipelines,owner";
-  private final Fernet fernet;
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -84,7 +81,6 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
-    this.fernet = Fernet.getInstance();
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -356,19 +352,5 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
         .withOwner(create.getOwner())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
-  }
-
-  private void validateDatabaseConnection(
-      DatabaseConnection databaseConnection, CreateDatabaseService.DatabaseServiceType databaseServiceType) {
-    try {
-      Object connectionConfig = databaseConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.database." + databaseServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      JsonUtils.convertValue(connectionConfig, clazz);
-    } catch (Exception e) {
-      throw new RuntimeException(
-          String.format("Failed to construct connection instance of %s", databaseServiceType.value()));
-    }
   }
 }

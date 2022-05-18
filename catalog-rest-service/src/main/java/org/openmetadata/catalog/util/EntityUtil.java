@@ -36,9 +36,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
@@ -79,13 +81,14 @@ public final class EntityUtil {
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
+  public static final Comparator<CustomField> compareCustomField = Comparator.comparing(CustomField::getName);
 
   //
   // Matchers used for matching two items in a list
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
 
-  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
+  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
@@ -128,6 +131,9 @@ public final class EntityUtil {
 
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
+
+  public static final BiPredicate<CustomField, CustomField> customFieldMatch =
+      (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}
 
@@ -278,6 +284,11 @@ public final class EntityUtil {
   /** Entity version extension name prefix formed by `entityType.version`. Example - `table.version` */
   public static String getVersionExtensionPrefix(String entityType) {
     return String.format("%s.%s", entityType, "version");
+  }
+
+  /** Entity attribute extension name formed by `entityType.attributeName`. Example - `table.<customAttributeName>` */
+  public static String getAttributeExtensionPrefix(String entityType, String attributeName) {
+    return String.format("%s.%s", entityType, attributeName);
   }
 
   public static Double getVersion(String extension) {

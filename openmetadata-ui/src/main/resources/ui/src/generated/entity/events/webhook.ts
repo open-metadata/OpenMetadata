@@ -25,10 +25,6 @@ export interface Webhook {
    */
   changeDescription?: ChangeDescription;
   /**
-   * When `true` indicates the entity has been soft deleted.
-   */
-  deleted?: boolean;
-  /**
    * Description of the application.
    */
   description?: string;
@@ -53,6 +49,10 @@ export interface Webhook {
    * Failure details are set only when `status` is not `success`.
    */
   failureDetails?: FailureDetails;
+  /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
   /**
    * Link to this webhook resource.
    */

@@ -27,9 +27,17 @@ export interface Table {
    */
   columns: Column[];
   /**
+   * Custom attributes added to the entity
+   */
+  customAttributes?: Type[];
+  /**
    * Reference to Database that contains this table.
    */
   database?: EntityReference;
+  /**
+   * Reference to database schema that contains this table.
+   */
+  databaseSchema?: EntityReference;
   /**
    * This captures information about how the table is modeled. Currently only DBT model is
    * supported.
@@ -43,6 +51,7 @@ export interface Table {
    * Description of a table.
    */
   description?: string;
+  displayConfig?: any;
   /**
    * Display Name that identifies this table. It could be title or label from the source
    * services.
@@ -81,6 +90,11 @@ export interface Table {
    */
   owner?: EntityReference;
   /**
+   * Percentage of data we want to execute the profiler and tests on. Represented in the range
+   * (0, 100).
+   */
+  profileSample?: number;
+  /**
    * Sample data for a table.
    */
   sampleData?: TableData;
@@ -96,6 +110,7 @@ export interface Table {
    * Table constraints.
    */
   tableConstraints?: TableConstraint[];
+  tablePartition?: TablePartition;
   /**
    * Data profile for a table.
    */
@@ -104,6 +119,10 @@ export interface Table {
    * List of queries that ran against a table.
    */
   tableQueries?: SQLQuery[];
+  /**
+   * List of test cases that ran against a table.
+   */
+  tableTests?: TableTest[];
   tableType?: TableType;
   /**
    * Tags for this table.
@@ -130,8 +149,6 @@ export interface Table {
    * View Definition in SQL. Applies to TableType.View only.
    */
   viewDefinition?: string;
-
-  databaseSchema: EntityReference;
 }
 
 /**
@@ -189,9 +206,17 @@ export interface Column {
    */
   children?: Column[];
   /**
+   * List of column test cases that ran against a table column.
+   */
+  columnTests?: ColumnTest[];
+  /**
    * Column level constraint.
    */
   constraint?: Constraint;
+  /**
+   * List of Custom Metrics registered for a column.
+   */
+  customMetrics?: CustomMetric[];
   /**
    * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
    * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
@@ -224,6 +249,19 @@ export interface Column {
    * Ordinal position of the column.
    */
   ordinalPosition?: number;
+  /**
+   * The precision of a numeric is the total count of significant digits in the whole number,
+   * that is, the number of digits to both sides of the decimal point. Precision is applicable
+   * Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric
+   * types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+   */
+  precision?: number;
+  /**
+   * The scale of a numeric is the count of decimal digits in the fractional part, to the
+   * right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non
+   * Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
+   */
+  scale?: number;
   /**
    * Tags associated with the column.
    */
@@ -278,6 +316,239 @@ export enum DataType {
 }
 
 /**
+ * ColumnTest is a test definition to capture data quality tests against tables and columns.
+ */
+export interface ColumnTest {
+  /**
+   * Name of the column in a table.
+   */
+  columnName: string;
+  /**
+   * Description of the testcase.
+   */
+  description?: string;
+  executionFrequency?: TestCaseExecutionFrequency;
+  /**
+   * Unique identifier of this table instance.
+   */
+  id?: string;
+  /**
+   * Name that identifies this test case. Name passed by client will be  overridden by  auto
+   * generating based on table/column name and test name
+   */
+  name: string;
+  /**
+   * Owner of this Pipeline.
+   */
+  owner?: EntityReference;
+  /**
+   * List of results of the test case.
+   */
+  results?: TestCaseResult[];
+  testCase: ColumnTestCase;
+  /**
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+}
+
+/**
+ * How often the test case should run.
+ */
+export enum TestCaseExecutionFrequency {
+  Daily = 'Daily',
+  Hourly = 'Hourly',
+  Weekly = 'Weekly',
+}
+
+/**
+ * Owner of this Pipeline.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Owner of this Custom Metric.
+ *
+ * Reference to Database that contains this table.
+ *
+ * Reference to database schema that contains this table.
+ *
+ * Followers of this table.
+ *
+ * Reference to the Location that contains this table.
+ *
+ * Owner of this table.
+ *
+ * Link to Database service this table is hosted in.
+ *
+ * User who ran this query.
+ */
+export interface EntityReference {
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
+}
+
+/**
+ * Schema to capture test case result.
+ */
+export interface TestCaseResult {
+  /**
+   * Data one which profile is taken.
+   */
+  executionTime?: number;
+  /**
+   * Details of test case results.
+   */
+  result?: string;
+  /**
+   * sample data to capture rows/columns that didn't match the expressed testcase.
+   */
+  sampleData?: string;
+  /**
+   * Status of Test Case run.
+   */
+  testCaseStatus?: TestCaseStatus;
+}
+
+/**
+ * Status of Test Case run.
+ */
+export enum TestCaseStatus {
+  Aborted = 'Aborted',
+  Failed = 'Failed',
+  Success = 'Success',
+}
+
+/**
+ * Column Test Case.
+ */
+export interface ColumnTestCase {
+  columnTestType?: ColumnTestType;
+  config?: ColumnValuesToBeBetween;
+}
+
+export enum ColumnTestType {
+  ColumnValueLengthsToBeBetween = 'columnValueLengthsToBeBetween',
+  ColumnValuesMissingCountToBeEqual = 'columnValuesMissingCountToBeEqual',
+  ColumnValuesToBeBetween = 'columnValuesToBeBetween',
+  ColumnValuesToBeNotInSet = 'columnValuesToBeNotInSet',
+  ColumnValuesToBeNotNull = 'columnValuesToBeNotNull',
+  ColumnValuesToBeUnique = 'columnValuesToBeUnique',
+  ColumnValuesToMatchRegex = 'columnValuesToMatchRegex',
+}
+
+/**
+ * This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be
+ * unique.
+ *
+ * This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a
+ * column are null. Values must be explicitly null. Empty strings don't count as null.
+ *
+ * This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to
+ * match a given regular expression.
+ *
+ * This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be
+ * in the set.
+ *
+ * This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be
+ * between minimum and maximum value.
+ *
+ * This schema defines the test ColumnValuesMissingCount. Test the column values missing
+ * count to be equal to given number.
+ *
+ * This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a
+ * column to be between minimum and maximum value.
+ */
+export interface ColumnValuesToBeBetween {
+  columnValuesToBeUnique?: boolean;
+  columnValuesToBeNotNull?: boolean;
+  /**
+   * The regular expression the column entries should match.
+   */
+  regex?: string;
+  /**
+   * An Array of values.
+   */
+  forbiddenValues?: Array<number | string>;
+  /**
+   * The {maxValue} value for the column entry. if maxValue is not included, minValue is
+   * treated as lowerBound and there will eb no maximum number of rows
+   */
+  maxValue?: number;
+  /**
+   * The {minValue} value for the column entry. If minValue is not included, maxValue is
+   * treated as upperBound and there will be no minimum number of rows
+   */
+  minValue?: number;
+  /**
+   * No.of missing values to be equal to.
+   */
+  missingCountValue?: number;
+  /**
+   * By default match all null and empty values to be missing. This field allows us to
+   * configure additional strings such as N/A, NULL as missing strings as well.
+   */
+  missingValueMatch?:
+    | string[]
+    | boolean
+    | number
+    | number
+    | { [key: string]: any }
+    | null
+    | string;
+  /**
+   * The {maxLength} for the column length. if maxLength is not included, minLength is treated
+   * as lowerBound and there will eb no maximum number of rows
+   */
+  maxLength?: number;
+  /**
+   * The {minLength} for the column length. If minLength is not included, maxLength is treated
+   * as upperBound and there will be no minimum number of rows
+   */
+  minLength?: number;
+}
+
+/**
  * Column level constraint.
  *
  * This enum defines the type for column constraint.
@@ -287,6 +558,45 @@ export enum Constraint {
   Null = 'NULL',
   PrimaryKey = 'PRIMARY_KEY',
   Unique = 'UNIQUE',
+}
+
+/**
+ * Custom Metric definition that we will associate with a column.
+ */
+export interface CustomMetric {
+  /**
+   * Name of the column in a table.
+   */
+  columnName: string;
+  /**
+   * Description of the Metric.
+   */
+  description?: string;
+  /**
+   * SQL expression to compute the Metric. It should return a single numerical value.
+   */
+  expression: string;
+  /**
+   * Unique identifier of this Custom Metric instance.
+   */
+  id?: string;
+  /**
+   * Name that identifies this Custom Metric.
+   */
+  name: string;
+  /**
+   * Owner of this Custom Metric.
+   */
+  owner?: EntityReference;
+  /**
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
 }
 
 /**
@@ -353,6 +663,62 @@ export enum State {
 }
 
 /**
+ * This schema defines a type entity used for extending an entity with custom attributes.
+ */
+export interface Type {
+  /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
+   * Optional description of entity.
+   */
+  description: string;
+  /**
+   * Display Name that identifies this type.
+   */
+  displayName?: string;
+  /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to this table resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier of the type instance.
+   */
+  id?: string;
+  /**
+   * Unique name that identifies the type.
+   */
+  name: string;
+  /**
+   * Namespace or group to which this type belongs to.
+   */
+  nameSpace: string;
+  /**
+   * JSON schema encoded as string that defines the type. This will be used to validate the
+   * type values.
+   */
+  schema?: string;
+  /**
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
  * This captures information about how the table is modeled. Currently only DBT model is
  * supported.
  */
@@ -390,53 +756,6 @@ export interface DataModel {
 
 export enum ModelType {
   Dbt = 'DBT',
-}
-
-/**
- * Reference to Database that contains this table.
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Followers of this table.
- *
- * Reference to the Location that contains this table.
- *
- * Owner of this table.
- *
- * Link to Database service this table is hosted in.
- *
- * User who ran this query.
- */
-export interface EntityReference {
-  /**
-   * Optional description of entity.
-   */
-  description?: string;
-  /**
-   * Display Name that identifies this entity.
-   */
-  displayName?: string;
-  /**
-   * Link to the entity resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier that identifies an entity instance.
-   */
-  id: string;
-  /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
-   */
-  name?: string;
-  /**
-   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-   * `dashboardService`...
-   */
-  type: string;
 }
 
 /**
@@ -496,20 +815,25 @@ export enum DatabaseServiceType {
   Athena = 'Athena',
   AzureSQL = 'AzureSQL',
   BigQuery = 'BigQuery',
-  ClickHouse = 'ClickHouse',
+  Clickhouse = 'Clickhouse',
   Databricks = 'Databricks',
   Db2 = 'Db2',
+  DeltaLake = 'DeltaLake',
   Druid = 'Druid',
   DynamoDB = 'DynamoDB',
   Glue = 'Glue',
   Hive = 'Hive',
   MariaDB = 'MariaDB',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
+  Mssql = 'Mssql',
+  Mysql = 'Mysql',
   Oracle = 'Oracle',
+  PinotDB = 'PinotDB',
   Postgres = 'Postgres',
   Presto = 'Presto',
   Redshift = 'Redshift',
+  SQLite = 'SQLite',
+  Salesforce = 'Salesforce',
+  SampleData = 'SampleData',
   SingleStore = 'SingleStore',
   Snowflake = 'Snowflake',
   Trino = 'Trino',
@@ -534,6 +858,34 @@ export enum ConstraintType {
 }
 
 /**
+ * This schema defines the partition column of a table and format the partition is created.
+ */
+export interface TablePartition {
+  /**
+   * List of column names corresponding to the partition.
+   */
+  columns: string[];
+  /**
+   * partition interval , example hourly, daily, monthly.
+   */
+  interval: string;
+  /**
+   * type of partition interval, example time-unit, integer-range
+   */
+  intervalType: IntervalType;
+}
+
+/**
+ * type of partition interval, example time-unit, integer-range
+ */
+export enum IntervalType {
+  ColumnValue = 'COLUMN-VALUE',
+  IngestionTime = 'INGESTION-TIME',
+  IntegerRange = 'INTEGER-RANGE',
+  TimeUnit = 'TIME-UNIT',
+}
+
+/**
  * This schema defines the type to capture the table's data profile.
  */
 export interface TableProfile {
@@ -550,7 +902,12 @@ export interface TableProfile {
    */
   profileDate?: Date;
   /**
-   * No.of rows in the table.
+   * Percentage of data used to compute this profiler execution. Represented in the range (0,
+   * 100].
+   */
+  profileSample?: number;
+  /**
+   * No.of rows in the table. This is always executed on the whole table.
    */
   rowCount?: number;
 }
@@ -560,9 +917,17 @@ export interface TableProfile {
  */
 export interface ColumnProfile {
   /**
+   * Custom Metrics profile list bound to a column.
+   */
+  customMetricsProfile?: CustomMetricProfile[];
+  /**
    * Number of values that contain distinct values.
    */
   distinctCount?: number;
+  /**
+   * Proportion of distinct values in a column.
+   */
+  distinctProportion?: number;
   /**
    * No.of Rows that contain duplicates in a column.
    */
@@ -573,15 +938,19 @@ export interface ColumnProfile {
   histogram?:
     | any[]
     | boolean
+    | HistogramClass
     | number
     | number
     | null
-    | HistogramObject
     | string;
   /**
    * Maximum value in a column.
    */
-  max?: number;
+  max?: number | number | string;
+  /**
+   * Maximum string length in a column.
+   */
+  maxLength?: number;
   /**
    * Avg value in a column.
    */
@@ -589,7 +958,11 @@ export interface ColumnProfile {
   /**
    * Minimum value in a column.
    */
-  min?: number;
+  min?: number | number | string;
+  /**
+   * Minimum string length in a column.
+   */
+  minLength?: number;
   /**
    * Missing count is calculated by subtracting valuesCount - validCount.
    */
@@ -642,15 +1015,23 @@ export interface ColumnProfile {
    * Variance of a column.
    */
   variance?: number;
-
-  minLength?: number;
-
-  maxLength?: number;
-
-  distinctProportion?: number;
 }
 
-export interface HistogramObject {
+/**
+ * Profiling results of a Custom Metric.
+ */
+export interface CustomMetricProfile {
+  /**
+   * Custom metric name.
+   */
+  name?: string;
+  /**
+   * Profiling results for the metric.
+   */
+  value?: number;
+}
+
+export interface HistogramClass {
   /**
    * Boundaries of Histogram.
    */
@@ -692,10 +1073,93 @@ export interface SQLQuery {
 }
 
 /**
+ * TableTest is a test definition to capture data quality tests against tables and columns.
+ */
+export interface TableTest {
+  /**
+   * Description of the testcase.
+   */
+  description?: string;
+  executionFrequency?: TestCaseExecutionFrequency;
+  /**
+   * Unique identifier of this table instance.
+   */
+  id?: string;
+  /**
+   * Name that identifies this test case.
+   */
+  name: string;
+  /**
+   * Owner of this Pipeline.
+   */
+  owner?: EntityReference;
+  /**
+   * List of results of the test case.
+   */
+  results?: TestCaseResult[];
+  testCase: TableTestCase;
+  /**
+   * Last update time corresponding to the new version of the entity in Unix epoch time
+   * milliseconds.
+   */
+  updatedAt?: number;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+}
+
+/**
+ * Table Test Case.
+ */
+export interface TableTestCase {
+  config?: TableRowCountToBeBetween;
+  tableTestType?: TableTestType;
+}
+
+/**
+ * This schema defines the test TableRowCountToEqual. Test the number of rows equal to a
+ * value.
+ *
+ * This schema defines the test TableRowCountToBeBetween. Test the number of rows to between
+ * to two values.
+ *
+ * This schema defines the test TableColumnCountToEqual. Test the number of columns equal to
+ * a value.
+ */
+export interface TableRowCountToBeBetween {
+  /**
+   * Expected number of rows {value}
+   */
+  value?: number;
+  /**
+   * Expected number of rows should be lower than or equal to {maxValue}. if maxValue is not
+   * included, minValue is treated as lowerBound and there will eb no maximum number of rows
+   */
+  maxValue?: number;
+  /**
+   * Expected number of rows should be greater than or equal to {minValue}. If minValue is not
+   * included, maxValue is treated as upperBound and there will be no minimum number of rows
+   */
+  minValue?: number;
+  /**
+   * Expected number of columns to equal to a {value}
+   */
+  columnCount?: number;
+}
+
+export enum TableTestType {
+  TableColumnCountToEqual = 'tableColumnCountToEqual',
+  TableRowCountToBeBetween = 'tableRowCountToBeBetween',
+  TableRowCountToEqual = 'tableRowCountToEqual',
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
   External = 'External',
+  Iceberg = 'Iceberg',
   MaterializedView = 'MaterializedView',
   Regular = 'Regular',
   SecureView = 'SecureView',

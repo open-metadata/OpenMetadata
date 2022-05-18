@@ -38,7 +38,6 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -47,7 +46,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
 import org.openmetadata.catalog.type.topic.SchemaType;
 import org.openmetadata.catalog.type.topic.TopicSampleData;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -232,8 +230,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public EntityInterface<Topic> validateGetWithDifferentFields(Topic topic, boolean byName)
-      throws HttpResponseException {
+  public Topic validateGetWithDifferentFields(Topic topic, boolean byName) throws HttpResponseException {
     // .../topics?fields=owner
     String fields = "";
     topic =
@@ -249,7 +246,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(topic.getService(), topic.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(topic);
+    return topic;
   }
 
   public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
@@ -281,13 +278,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
+  public EntityReference getContainer(Topic entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(topic),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        topic, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
@@ -297,18 +296,10 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertReference(expected.getService(), expected.getService());
     // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());
-  }
-
-  @Override
-  public EntityInterface<Topic> getEntityInterface(Topic entity) {
-    return new TopicEntityInterface(entity);
   }
 
   @Override

@@ -84,8 +84,10 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Glossary;
@@ -99,7 +101,6 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
@@ -122,7 +123,6 @@ import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -130,7 +130,7 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
+public abstract class EntityResourceTest<T extends EntityInterface, K> extends CatalogApplicationTest {
   private static final Map<String, EntityResourceTest<?, ?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
   protected final Class<T> entityClass;
@@ -141,10 +141,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   protected boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
-  protected boolean supportsSoftDelete = true;
+  protected boolean supportsSoftDelete;
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
+  protected boolean supportsNameWithDot = true;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -229,6 +230,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
+    this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
   }
 
   @BeforeAll
@@ -293,6 +295,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     return null;
   }
 
+  // Get container entity based on create request that has CONTAINS relationship to the entity created with this
+  // request has . For table, it is database. For database, it is databaseService. See Relationship.CONTAINS for
+  // details.
+  public EntityReference getContainer(T e) {
+    return null;
+  }
+
   // Entity specific validate for entity create using POST
   public abstract void validateCreatedEntity(T createdEntity, K request, Map<String, String> authHeaders)
       throws HttpResponseException;
@@ -313,16 +322,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   public abstract void compareEntities(T expected, T updated, Map<String, String> authHeaders)
       throws HttpResponseException;
 
-  // Get interface to access all common entity attributes
-  public abstract EntityInterface<T> getEntityInterface(T entity);
-
   /**
    * GET by id and GET by name with different `fields` parameter and ensure the requested fields are returned. Common
    * fields for all entities - `owner`, `followers`, and `tags` need not be tested by implementations as it is done
    * already in the base class.
    */
-  public abstract EntityInterface<T> validateGetWithDifferentFields(T entity, boolean byName)
-      throws HttpResponseException;
+  public abstract T validateGetWithDifferentFields(T entity, boolean byName) throws HttpResponseException;
 
   // Assert field change in an entity recorded during PUT or POST operations
   public abstract void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException;
@@ -337,15 +342,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
 
     T entity = createEntity(createRequest(test, 0), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     String allFields = String.join(",", Entity.getAllowedFields(entityClass));
 
     // GET an entity by ID with all the field names of an entity should be successful
-    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+    getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
 
     // GET an entity by name with all the field names of an entity should be successful
-    getEntityByName(entityInterface.getFullyQualifiedName(), allFields, ADMIN_AUTH_HEADERS);
+    getEntityByName(entity.getFullyQualifiedName(), allFields, ADMIN_AUTH_HEADERS);
 
     // GET list of entities with all the field names of an entity should be successful
     Map<String, String> params = new HashMap<>();
@@ -355,11 +359,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Adding any parameter that is allowed should result in an error
     String invalidField = "invalidField";
     assertResponse(
-        () -> getEntity(entityInterface.getId(), invalidField, ADMIN_AUTH_HEADERS),
+        () -> getEntity(entity.getId(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid field name invalidField");
     assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), invalidField, ADMIN_AUTH_HEADERS),
+        () -> getEntityByName(entity.getFullyQualifiedName(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Invalid field name invalidField");
 
@@ -376,20 +380,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < maxEntities; i++) {
       createdUUIDs.add(
-          getEntityInterface(
-                  createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS))
-              .getId());
+          createEntity(createRequest(getEntityName(test, i + 1), "", null, null), ADMIN_AUTH_HEADERS).getId());
     }
 
     T entity = createEntity(createRequest(getEntityName(test, 0), "", null, null), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> deleted = getEntityInterface(entity);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
-    Predicate<T> matchDeleted =
-        e -> {
-          EntityInterface<T> entityInterface = getEntityInterface(e);
-          return entityInterface.getId().equals(deleted.getId());
-        };
+    Predicate<T> matchDeleted = e -> e.getId().equals(entity.getId());
 
     // Test listing entities that include deleted, non-deleted, and all the entities
     Random random = new Random();
@@ -466,10 +463,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
       // before running "deleted" delete all created entries otherwise the test doesn't work with just one element.
       if ("all".equals(include)) {
-        for (T e : allEntities.getData()) {
-          EntityInterface<T> toBeDeleted = getEntityInterface(e);
-          if (createdUUIDs.contains(toBeDeleted.getId()) && !toBeDeleted.isDeleted()) {
-            deleteAndCheckEntity(e, ADMIN_AUTH_HEADERS);
+        for (T toBeDeleted : allEntities.getData()) {
+          if (createdUUIDs.contains(toBeDeleted.getId()) && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
+            deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
           }
         }
       }
@@ -487,8 +483,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
 
       // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<Object, Object> containerTest =
-          (EntityResourceTest<Object, Object>) ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      EntityResourceTest<? extends EntityInterface, Object> containerTest =
+          (EntityResourceTest<? extends EntityInterface, Object>) ENTITY_RESOURCE_TEST_MAP.get(container.getType());
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -497,11 +493,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       // Now soft-delete the container with recursive flag on
       containerTest.deleteEntity(container.getId(), true, false, ADMIN_AUTH_HEADERS);
 
-      // Make sure entities that belonged to the container are deleted and the new list operation returns less entities
+      // Make sure entities that belonged to the container are deleted and the new list operation returns fewer entities
       ResultList<T> listAfterDeletion = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
-      listAfterDeletion
-          .getData()
-          .forEach(e -> assertNotEquals(getEntityInterface(e).getContainer().getId(), container.getId()));
+      listAfterDeletion.getData().forEach(e -> assertNotEquals(getContainer(e).getId(), container.getId()));
       assertTrue(listAfterDeletion.getData().size() < listBeforeDeletion.getData().size());
 
       // Restore the soft-deleted container by PUT operation and make sure it is restored
@@ -557,27 +551,26 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     K create = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
 
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
     if (supportsTags) {
       String origJson = JsonUtils.pojoToJson(entity);
-      entityInterface.setTags(new ArrayList<>());
-      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
-      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
-      entity = patchEntity(entityInterface.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
+      entity.setTags(new ArrayList<>());
+      entity.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      entity = patchEntity(entity.getId(), origJson, entity, ADMIN_AUTH_HEADERS);
     }
     if (supportsFollowers) {
       UserResourceTest userResourceTest = new UserResourceTest();
       User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
-      addFollower(entityInterface.getId(), user1.getId(), CREATED, TEST_AUTH_HEADERS);
+      addFollower(entity.getId(), user1.getId(), CREATED, TEST_AUTH_HEADERS);
     }
-    entityInterface = validateGetWithDifferentFields(entity, false);
-    validateGetCommonFields(entityInterface);
+    entity = validateGetWithDifferentFields(entity, false);
+    validateGetCommonFields(entity);
 
-    entityInterface = validateGetWithDifferentFields(entityInterface.getEntity(), true);
-    validateGetCommonFields(entityInterface);
+    entity = validateGetWithDifferentFields(entity, true);
+    validateGetCommonFields(entity);
   }
 
-  private void validateGetCommonFields(EntityInterface<T> entityInterface) {
+  private void validateGetCommonFields(EntityInterface entityInterface) {
     if (supportsOwner) {
       validateEntityReference(entityInterface.getOwner());
     }
@@ -595,13 +588,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       return;
     }
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+    getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    EntityHistory history = getVersionList(entityInterface.getId(), ADMIN_AUTH_HEADERS);
+    EntityHistory history = getVersionList(entity.getId(), ADMIN_AUTH_HEADERS);
     T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
-    entityInterface = getEntityInterface(latestVersion);
-    getVersion(entityInterface.getId(), entityInterface.getVersion(), ADMIN_AUTH_HEADERS);
+    getVersion(entity.getId(), entity.getVersion(), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -609,23 +600,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (!supportsSoftDelete) {
       return;
     }
+    // Create an entity using POST
     K create = createRequest(test);
-    // Create first time using POST
     T entity = beforeDeletion(test, createEntity(create, ADMIN_AUTH_HEADERS));
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    T entityBeforeDeletion = getEntity(entityInterface.getId(), allFields, ADMIN_AUTH_HEADERS);
+    T entityBeforeDeletion = getEntity(entity.getId(), allFields, ADMIN_AUTH_HEADERS);
 
-    // delete it
+    // Soft delete the entity
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
-    assertEntityDeleted(entityInterface, false);
+    assertEntityDeleted(entity, false);
 
+    // Ensure entity is returned in GET with include param set to deleted || all
     Map<String, String> queryParams = new HashMap<>();
     for (String include : List.of("deleted", "all")) {
       queryParams.put("include", include);
-      T entityAfterDeletion = getEntity(entityInterface.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
+      T entityAfterDeletion = getEntity(entity.getId(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
-      entityAfterDeletion =
-          getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
+      entityAfterDeletion = getEntityByName(entity.getFullyQualifiedName(), queryParams, allFields, ADMIN_AUTH_HEADERS);
       validateDeletedEntity(create, entityBeforeDeletion, entityAfterDeletion, ADMIN_AUTH_HEADERS);
     }
   }
@@ -634,14 +624,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void post_entityCreateWithInvalidName_400() {
+  protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    assertResponse(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponseContains(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
@@ -678,20 +668,19 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam = teamResourceTest.createRequest(test);
     Team team = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
-    EntityReference teamReference = new TeamEntityInterface(team).getEntityReference();
 
     // Entity with user as owner is created successfully
     createAndCheckEntity(createRequest(getEntityName(test, 1), "", "", USER_OWNER1), ADMIN_AUTH_HEADERS);
 
     // Entity with team as owner is created successfully
-    T entity = createAndCheckEntity(createRequest(getEntityName(test, 2), "", "", teamReference), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    T entity =
+        createAndCheckEntity(
+            createRequest(getEntityName(test, 2), "", "", team.getEntityReference()), ADMIN_AUTH_HEADERS);
 
     // Delete team and ensure the entity still exists but with owner as deleted
     teamResourceTest.deleteEntity(team.getId(), ADMIN_AUTH_HEADERS);
-    entity = getEntity(entityInterface.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
-    entityInterface = getEntityInterface(entity);
-    assertTrue(entityInterface.getOwner().getDeleted());
+    entity = getEntity(entity.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    assertTrue(entity.getOwner().getDeleted());
   }
 
   @Test
@@ -710,26 +699,27 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
+    if (!supportsNameWithDot) {
+      return;
+    }
     // Entity without "." should not have quoted fullyQualifiedName
     String name = format("%s_foo_bar", entityType);
     K request = createRequest(name, "", null, null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    assertFalse(entityInterface.getFullyQualifiedName().contains("\""));
+    assertFalse(entity.getFullyQualifiedName().contains("\""));
 
     // Now post entity name with dots. FullyQualifiedName must have " to escape dotted name
-    name = String.format("%s_foo.bar", entityType);
+    name = format("%s_foo.bar", entityType);
     request = createRequest(name, "", null, null);
     entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    entityInterface = getEntityInterface(entity);
 
     // The FQN has quote delimited parts if the FQN is hierarchical.
     // For entities where FQN is same as the entity name, (that is no hierarchical name for entities like user,
     // team, webhook and the entity names that are at the root for FQN like services, TagCategory, and Glossary etc.)
     // No delimiter is expected.
-    boolean noHierarchicalName = entityInterface.getFullyQualifiedName().equals(entityInterface.getName());
-    assertTrue(noHierarchicalName || entityInterface.getFullyQualifiedName().contains("\""));
-    assertEquals(name, entityInterface.getName());
+    boolean noHierarchicalName = entity.getFullyQualifiedName().equals(entity.getName());
+    assertTrue(noHierarchicalName || entity.getFullyQualifiedName().contains("\""));
+    assertEquals(name, entity.getName());
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -747,10 +737,9 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create a chart with POST
     K request = createRequest(getEntityName(test), "description", "display", USER_OWNER1);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update chart two times successfully with PUT requests
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    ChangeDescription change = getChangeDescription(entity.getVersion());
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
   }
@@ -763,13 +752,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create a new entity with PUT as admin user
     K request = createRequest(getEntityName(test), "", null, USER_OWNER1);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update the entity as USER_OWNER1
     request = createRequest(getEntityName(test), "newDescription", null, USER_OWNER1);
     FieldChange fieldChange = new FieldChange().withName("description").withOldValue("").withNewValue("newDescription");
     ChangeDescription change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+        getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
@@ -781,39 +769,34 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create an entity without owner
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
     FieldChange fieldChange = new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1);
     request = createRequest(getEntityName(test), "description", "displayName", TEAM_OWNER1);
     ChangeDescription change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInterface = getEntityInterface(entity);
-    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
     fieldChange = new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
-    change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
+    change = getChangeDescription(entity.getVersion()).withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInterface = getEntityInterface(entity);
-    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
-    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
     request = createRequest(getEntityName(test), "description", "displayName", USER_OWNER1);
-    change = getChangeDescription(entityInterface.getVersion());
+    change = getChangeDescription(entity.getVersion());
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
-    entityInterface = getEntityInterface(entity);
-    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
 
     // Remove ownership (from USER_OWNER1) using PUT request. Owner is expected to remain the same
     // and not removed.
     request = createRequest(getEntityName(test), "description", "displayName", null);
     updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+    checkOwnerOwns(USER_OWNER1, entity.getId(), true);
   }
 
   @Test
@@ -840,13 +823,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create entity with null description
     K request = createRequest(getEntityName(test), null, "displayName", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update null description with a new description
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     FieldChange fieldChange = new FieldChange().withName("description").withNewValue("updatedDescription");
     ChangeDescription change =
-        getChangeDescription(entityInterface.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
+        getChangeDescription(entity.getVersion()).withFieldsAdded(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -855,11 +837,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create entity with empty description
     K request = createRequest(getEntityName(test), "", "displayName", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update empty description with a new description
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    ChangeDescription change = getChangeDescription(entity.getVersion());
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("").withNewValue("updatedDescription"));
@@ -871,13 +852,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Create entity with non-empty description
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Update non-empty description with a new description
-    Double oldVersion = entityInterface.getVersion();
+    Double oldVersion = entity.getVersion();
     request = createRequest(getEntityName(test), "updatedDescription", "displayName", null);
     entity = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
-    entityInterface = getEntityInterface(entity);
     // For service resources, we allow update of non-empty description via PUT
     List<Class<?>> services =
         Arrays.asList(
@@ -886,13 +865,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             StorageService.class,
             DashboardService.class,
             MessagingService.class,
-            IngestionPipeline.class);
+            IngestionPipeline.class,
+            Type.class);
     if (services.contains(entity.getClass())) {
-      assertNotEquals(oldVersion, entityInterface.getVersion()); // Version did change
-      assertEquals("updatedDescription", entityInterface.getDescription()); // Description did change
+      assertNotEquals(oldVersion, entity.getVersion()); // Version did change
+      assertEquals("updatedDescription", entity.getDescription()); // Description did change
     } else {
-      assertEquals(oldVersion, entityInterface.getVersion()); // Version did not change
-      assertEquals("description", entityInterface.getDescription()); // Description did not change
+      assertEquals(oldVersion, entity.getVersion()); // Version did not change
+      assertEquals("description", entity.getDescription()); // Description did not change
     }
   }
 
@@ -903,7 +883,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    UUID entityId = getEntityInterface(entity).getId();
+    UUID entityId = entity.getId();
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
@@ -930,7 +910,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    UUID entityId = getEntityInterface(entity).getId();
+    UUID entityId = entity.getId();
 
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
@@ -941,9 +921,8 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", "deleted");
-    EntityInterface<T> entityInterface =
-        getEntityInterface(getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS));
-    TestUtils.existsInEntityReferenceList(entityInterface.getFollowers(), user1.getId(), true);
+    entity = getEntity(entityId, queryParams, FIELD_FOLLOWERS, ADMIN_AUTH_HEADERS);
+    TestUtils.existsInEntityReferenceList(entity.getFollowers(), user1.getId(), true);
   }
 
   @Test
@@ -953,7 +932,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    UUID entityId = getEntityInterface(entity).getId();
+    UUID entityId = entity.getId();
 
     // Add non-existent user as follower to the entity
     assertResponse(
@@ -980,13 +959,10 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     T entity = createEntity(createRequest(getEntityName(test), "description", null, null), ADMIN_AUTH_HEADERS);
 
     // Admins, Owner or a User with policy can update the entity
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    entity =
-        patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
-
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
 
     if (!supportsOwner) {
       return;
@@ -994,22 +970,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Set the owner for the table.
     String originalJson = JsonUtils.pojoToJson(entity);
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    ChangeDescription change = getChangeDescription(entity.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(USER_OWNER1));
-    entityInterface.setOwner(USER_OWNER1);
+    entity.setOwner(USER_OWNER1);
     entity =
         patchEntityAndCheck(
-            entityInterface.getEntity(),
-            originalJson,
-            authHeaders(USER1.getName() + "@open-metadata.org"),
-            MINOR_UPDATE,
-            change);
+            entity, originalJson, authHeaders(USER1.getName() + "@open-metadata.org"), MINOR_UPDATE, change);
 
     // Admin, owner (USER1) and user with DataSteward role can update description on entity owned by USER1.
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), TestUtils.ADMIN_USER_NAME, false);
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER1.getName(), false);
-    entity = patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    patchEntityAndCheckAuthorization(getEntityInterface(entity), USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, TestUtils.ADMIN_USER_NAME, false);
+    entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
+    patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
   }
 
   @Test
@@ -1019,15 +991,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     }
     // Create entity without description, owner
     T entity = createEntity(createRequest(getEntityName(test), "", null, null), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
     // user will always have the same user assigned as the owner
-    if (!entityInterface.getEntityType().equals(Entity.USER)) {
-      assertListNull(entityInterface.getOwner());
+    if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)) {
+      assertListNull(entity.getOwner());
     }
 
-    entity = getEntity(entityInterface.getId(), ADMIN_AUTH_HEADERS);
-    entityInterface = getEntityInterface(entity);
-    String oldDisplayName = entityInterface.getDisplayName();
+    entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    String oldDisplayName = entity.getDisplayName();
 
     //
     // Add displayName, description, owner, and tags when previously they were null
@@ -1035,24 +1005,24 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     String origJson = JsonUtils.pojoToJson(entity);
 
     // Update entity
-    entityInterface.setDescription("description");
-    entityInterface.setDisplayName("displayName");
+    entity.setDescription("description");
+    entity.setDisplayName("displayName");
 
     // Field changes
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    ChangeDescription change = getChangeDescription(entity.getVersion());
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("").withNewValue("description"));
     if (supportsOwner) {
-      entityInterface.setOwner(TEAM_OWNER1);
+      entity.setOwner(TEAM_OWNER1);
       change.getFieldsAdded().add(new FieldChange().withName(FIELD_OWNER).withNewValue(TEAM_OWNER1));
     }
     if (supportsTags) {
-      entityInterface.setTags(new ArrayList<>());
-      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
-      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
-      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL);
-      entityInterface.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
+      entity.setTags(new ArrayList<>());
+      entity.getTags().add(USER_ADDRESS_TAG_LABEL);
+      entity.getTags().add(USER_ADDRESS_TAG_LABEL); // Add duplicated tags and make sure only one tag is added
+      entity.getTags().add(GLOSSARY2_TERM1_LABEL);
+      entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       change
           .getFieldsAdded()
           .add(
@@ -1065,7 +1035,6 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         .add(new FieldChange().withName("displayName").withOldValue(oldDisplayName).withNewValue("displayName"));
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInterface = getEntityInterface(entity);
 
     //
     // Replace description, add tags tier, owner
@@ -1073,11 +1042,11 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     origJson = JsonUtils.pojoToJson(entity);
 
     // Change entity
-    entityInterface.setDescription("description1");
-    entityInterface.setDisplayName("displayName1");
+    entity.setDescription("description1");
+    entity.setDisplayName("displayName1");
 
     // Field changes
-    change = getChangeDescription(entityInterface.getVersion());
+    change = getChangeDescription(entity.getVersion());
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue("description").withNewValue("description1"));
@@ -1085,32 +1054,31 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
         .getFieldsUpdated()
         .add(new FieldChange().withName("displayName").withOldValue("displayName").withNewValue("displayName1"));
     if (supportsOwner) {
-      entityInterface.setOwner(USER_OWNER1);
+      entity.setOwner(USER_OWNER1);
       change
           .getFieldsUpdated()
           .add(new FieldChange().withName(FIELD_OWNER).withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
     }
 
     if (supportsTags) {
-      entityInterface.getTags().add(TIER1_TAG_LABEL);
+      entity.getTags().add(TIER1_TAG_LABEL);
       change.getFieldsAdded().add(new FieldChange().withName(FIELD_TAGS).withNewValue(List.of(TIER1_TAG_LABEL)));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInterface = getEntityInterface(entity);
 
     //
     // Remove description, tier, owner
     //
     origJson = JsonUtils.pojoToJson(entity);
-    List<TagLabel> removedTags = entityInterface.getTags();
+    List<TagLabel> removedTags = entity.getTags();
 
-    entityInterface.setDescription(null);
-    entityInterface.setOwner(null);
-    entityInterface.setTags(null);
+    entity.setDescription(null);
+    entity.setOwner(null);
+    entity.setTags(null);
 
     // Field changes
-    change = getChangeDescription(entityInterface.getVersion());
+    change = getChangeDescription(entity.getVersion());
     change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
     if (supportsOwner) {
       change.getFieldsDeleted().add(new FieldChange().withName(FIELD_OWNER).withOldValue(USER_OWNER1));
@@ -1124,16 +1092,15 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   @Test
   void patch_deleted_attribute_disallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    if (!supportsPatch) {
+    if (!supportsPatch || !supportsSoftDelete) {
       return;
     }
     // `deleted` attribute can't be set to true in PATCH operation & can only be done using DELETE operation
     T entity = createEntity(createRequest(getEntityName(test), "", "", null), ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
     String json = JsonUtils.pojoToJson(entity);
-    entityInterface.setDeleted(true);
+    entity.setDeleted(true);
     assertResponse(
-        () -> patchEntity(entityInterface.getId(), json, entity, ADMIN_AUTH_HEADERS),
+        () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         readOnlyAttribute(entityType, FIELD_DELETED));
   }
@@ -1168,20 +1135,19 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   void delete_put_entity_200(TestInfo test) throws IOException {
     K request = createRequest(getEntityName(test), "", "", null);
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
 
-    // Soft entry is soft deleted
+    // Entity is soft deleted
     if (supportsSoftDelete) {
-      Double version = EntityUtil.nextVersion(entityInterface.getVersion()); // Version changes during soft-delete
+      Double version = EntityUtil.nextVersion(entity.getVersion()); // Version changes during soft-delete
 
       // Send PUT request (with no changes) to restore the entity from soft deleted state
       ChangeDescription change = getChangeDescription(version);
       change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withNewValue(false).withOldValue(true));
       updateAndCheckEntity(request, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     } else {
-      assertEntityDeleted(entityInterface, true);
+      assertEntityDeleted(entity, true);
     }
   }
 
@@ -1292,15 +1258,14 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   public final void deleteAndCheckEntity(
       T entity, boolean recursive, boolean hardDelete, Map<String, String> authHeaders) throws IOException {
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
-    UUID id = entityInterface.getId();
+    UUID id = entity.getId();
 
     // Delete entity
     T deletedEntity = deleteEntity(id, recursive, hardDelete, authHeaders); // TODO fix this to include
-    long timestamp = getEntityInterface(deletedEntity).getUpdatedAt();
+    long timestamp = deletedEntity.getUpdatedAt();
 
     // Validate delete change event
-    Double expectedVersion = EntityUtil.nextVersion(entityInterface.getVersion());
+    Double expectedVersion = EntityUtil.nextVersion(entity.getVersion());
     if (supportsSoftDelete && !hardDelete) {
       validateDeletedEvent(id, timestamp, EventType.ENTITY_SOFT_DELETED, expectedVersion, authHeaders);
 
@@ -1309,13 +1274,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       queryParams.put("include", Include.DELETED.value());
 
       T getEntity = getEntity(id, queryParams, allFields, authHeaders);
-      EntityInterface<T> getEntityInterface = getEntityInterface(getEntity);
-      assertEquals(expectedVersion, getEntityInterface.getVersion());
-      ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+      assertEquals(expectedVersion, getEntity.getVersion());
+      ChangeDescription change = getChangeDescription(entity.getVersion());
       change.getFieldsUpdated().add(new FieldChange().withName(FIELD_DELETED).withOldValue(false).withNewValue(true));
-      assertEquals(change, getEntityInterface.getChangeDescription());
+      assertEquals(change, getEntity.getChangeDescription());
     } else { // Hard delete
-      validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entityInterface.getVersion(), authHeaders);
+      validateDeletedEvent(id, timestamp, EventType.ENTITY_DELETED, entity.getVersion(), authHeaders);
     }
   }
 
@@ -1342,21 +1306,20 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
-    EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    assertEquals(updatedBy, entityInterface.getUpdatedBy());
-    assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
+    assertEquals(updatedBy, entity.getUpdatedBy());
+    assertEquals(0.1, entity.getVersion()); // First version of the entity
     validateCreatedEntity(entity, created, authHeaders);
 
     // GET the entity created and ensure it has all the information set in create request
-    T getEntity = getEntity(entityInterface.getId(), authHeaders);
-    assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
+    T getEntity = getEntity(entity.getId(), authHeaders);
+    assertEquals(0.1, entity.getVersion()); // First version of the entity
     validateCreatedEntity(getEntity, created, authHeaders);
 
     // TODO GET the entity by name
 
     // Validate that change event was created
-    validateChangeEvents(entityInterface, entityInterface.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
+    validateChangeEvents(entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);
     return entity;
   }
 
@@ -1368,14 +1331,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       ChangeDescription changeDescription)
       throws IOException {
     T updated = updateEntity(request, status, authHeaders);
-    EntityInterface<T> entityInterface = getEntityInterface(updated);
     validateUpdatedEntity(updated, request, authHeaders);
     validateChangeDescription(updated, updateType, changeDescription);
-    validateEntityHistory(entityInterface.getId(), updateType, changeDescription, authHeaders);
-    validateLatestVersion(entityInterface, updateType, changeDescription, authHeaders);
+    validateEntityHistory(updated.getId(), updateType, changeDescription, authHeaders);
+    validateLatestVersion(updated, updateType, changeDescription, authHeaders);
 
     // GET the newly updated entity and validate
-    T getEntity = getEntity(entityInterface.getId(), authHeaders);
+    T getEntity = getEntity(updated.getId(), authHeaders);
     validateUpdatedEntity(getEntity, request, authHeaders);
     validateChangeDescription(getEntity, updateType, changeDescription);
 
@@ -1383,8 +1345,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE) {
       EventType expectedEventType =
           updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(
-          entityInterface, entityInterface.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
+      validateChangeEvents(updated, updated.getUpdatedAt(), expectedEventType, changeDescription, authHeaders);
     }
     return updated;
   }
@@ -1404,12 +1365,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     } else if (updateType != NO_CHANGE) {
       // Entity changed by PUT. Check the previous version exists
       T previousVersion = JsonUtils.readValue((String) history.getVersions().get(1), entityClass);
-      assertEquals(expectedChangeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
+      assertEquals(expectedChangeDescription.getPreviousVersion(), previousVersion.getVersion());
     }
   }
 
   private void validateLatestVersion(
-      EntityInterface<T> entityInterface,
+      EntityInterface entityInterface,
       UpdateType updateType,
       ChangeDescription expectedChangeDescription,
       Map<String, String> authHeaders)
@@ -1421,7 +1382,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE && updateType != UpdateType.CREATED) {
       // Get the previous version of the entity from the versions API and ensure it is correct
       T prevVersion = getVersion(entityInterface.getId(), expectedChangeDescription.getPreviousVersion(), authHeaders);
-      assertEquals(expectedChangeDescription.getPreviousVersion(), getEntityInterface(prevVersion).getVersion());
+      assertEquals(expectedChangeDescription.getPreviousVersion(), prevVersion.getVersion());
     }
   }
 
@@ -1433,19 +1394,17 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       UpdateType updateType,
       ChangeDescription expectedChange)
       throws IOException {
-    EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
-    T returned = patchEntity(entityInterface.getId(), originalJson, updated, authHeaders);
-    entityInterface = getEntityInterface(returned);
+    T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
 
     compareEntities(updated, returned, authHeaders);
     validateChangeDescription(returned, updateType, expectedChange);
-    validateEntityHistory(entityInterface.getId(), updateType, expectedChange, authHeaders);
-    validateLatestVersion(entityInterface, updateType, expectedChange, authHeaders);
+    validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
+    validateLatestVersion(returned, updateType, expectedChange, authHeaders);
 
     // GET the entity and Validate information returned
-    T getEntity = getEntity(entityInterface.getId(), authHeaders);
+    T getEntity = getEntity(returned.getId(), authHeaders);
     compareEntities(updated, getEntity, authHeaders);
     validateChangeDescription(getEntity, updateType, expectedChange);
 
@@ -1453,45 +1412,38 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE) {
       EventType expectedEventType =
           updateType == UpdateType.CREATED ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(
-          entityInterface, entityInterface.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
+      validateChangeEvents(returned, returned.getUpdatedAt(), expectedEventType, expectedChange, authHeaders);
     }
     return returned;
   }
 
-  T patchEntityAndCheckAuthorization(EntityInterface<T> entityInterface, String userName, boolean shouldThrowException)
-      throws IOException {
-    T entity = entityInterface.getEntity();
+  T patchEntityAndCheckAuthorization(T entity, String userName, boolean shouldThrowException) throws IOException {
     String originalJson = JsonUtils.pojoToJson(entity);
 
-    String originalDescription = entityInterface.getDescription();
+    String originalDescription = entity.getDescription();
     String newDescription = format("Description added by %s", userName);
-    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    ChangeDescription change = getChangeDescription(entity.getVersion());
     change
         .getFieldsUpdated()
         .add(new FieldChange().withName("description").withOldValue(originalDescription).withNewValue(newDescription));
 
-    entityInterface.setDescription(newDescription);
+    entity.setDescription(newDescription);
 
     if (shouldThrowException) {
       assertResponse(
-          () ->
-              patchEntity(entityInterface.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
+          () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
           noPermission(userName, "UpdateDescription"));
       // Revert to original.
-      entityInterface.setDescription(originalDescription);
-      return entityInterface.getEntity();
+      entity.setDescription(originalDescription);
+      return entity;
     }
     return patchEntityAndCheck(
         entity, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
   }
 
   protected final void validateCommonEntityFields(
-      EntityInterface<T> entity,
-      String expectedDescription,
-      String expectedUpdatedByUser,
-      EntityReference expectedOwner) {
+      T entity, String expectedDescription, String expectedUpdatedByUser, EntityReference expectedOwner) {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
     assertEquals(expectedDescription, entity.getDescription());
     assertEquals(expectedUpdatedByUser, entity.getUpdatedBy());
@@ -1500,14 +1452,13 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
   protected final void validateChangeDescription(T updated, UpdateType updateType, ChangeDescription expectedChange)
       throws IOException {
-    EntityInterface<T> updatedEntityInterface = getEntityInterface(updated);
     if (updateType == UpdateType.CREATED) {
       return; // PUT operation was used to create an entity. No change description expected.
     }
-    TestUtils.validateUpdate(expectedChange.getPreviousVersion(), updatedEntityInterface.getVersion(), updateType);
+    TestUtils.validateUpdate(expectedChange.getPreviousVersion(), updated.getVersion(), updateType);
 
     if (updateType != UpdateType.NO_CHANGE) {
-      assertChangeDescription(expectedChange, updatedEntityInterface.getChangeDescription());
+      assertChangeDescription(expectedChange, updated.getChangeDescription());
     }
   }
 
@@ -1523,7 +1474,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
    * entityUpdated, and entityDeleted change events are created in the system with valid date.
    */
   protected final void validateChangeEvents(
-      EntityInterface<T> entityInterface,
+      T entityInterface,
       long timestamp,
       EventType expectedEventType,
       ChangeDescription expectedChangeDescription,
@@ -1534,7 +1485,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   private void validateChangeEvents(
-      EntityInterface<T> entityInterface,
+      T entity,
       long timestamp,
       EventType expectedEventType,
       ChangeDescription expectedChangeDescription,
@@ -1581,12 +1532,12 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
             + " at "
             + timestamp
             + " was not found for entity "
-            + entityInterface.getId());
+            + entity.getId());
 
     assertEquals(expectedEventType, changeEvent.getEventType());
     assertEquals(entityType, changeEvent.getEntityType());
-    assertEquals(entityInterface.getId(), changeEvent.getEntityId());
-    assertEquals(entityInterface.getVersion(), changeEvent.getCurrentVersion());
+    assertEquals(entity.getId(), changeEvent.getEntityId());
+    assertEquals(entity.getVersion(), changeEvent.getCurrentVersion());
     assertEquals(TestUtils.getPrincipal(authHeaders), changeEvent.getUserName());
 
     //
@@ -1596,8 +1547,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
       assertEquals(EventType.ENTITY_CREATED, changeEvent.getEventType());
       assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
-      compareEntities(
-          entityInterface.getEntity(), JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);
+      compareEntities(entity, JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
@@ -1741,8 +1691,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // GET .../entity/{entityId} returns newly added follower
     T getEntity = getEntity(entityId, authHeaders);
-    EntityInterface<T> entityInterface = getEntityInterface(getEntity);
-    List<EntityReference> followers = entityInterface.getFollowers();
+    List<EntityReference> followers = getEntity.getFollowers();
 
     assertEquals(totalFollowerCount, followers.size());
     validateEntityReferences(followers);
@@ -1753,7 +1702,7 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Validate change events
     validateChangeEvents(
-        entityInterface, event.getTimestamp(), EventType.ENTITY_UPDATED, event.getChangeDescription(), authHeaders);
+        getEntity, event.getTimestamp(), EventType.ENTITY_UPDATED, event.getChangeDescription(), authHeaders);
   }
 
   public ChangeEvent addFollower(UUID entityId, UUID userId, Status status, Map<String, String> authHeaders)
@@ -1770,19 +1719,18 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
 
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = checkFollowerDeleted(entityId, userId, authHeaders);
-    EntityInterface<T> entityInterface = getEntityInterface(getEntity);
-    assertEquals(totalFollowerCount, getEntityInterface(getEntity).getFollowers().size());
+    assertEquals(totalFollowerCount, getEntity.getFollowers().size());
 
     // Validate change events
     validateChangeEvents(
-        entityInterface, change.getTimestamp(), EventType.ENTITY_UPDATED, change.getChangeDescription(), authHeaders);
+        getEntity, change.getTimestamp(), EventType.ENTITY_UPDATED, change.getChangeDescription(), authHeaders);
   }
 
   public T checkFollowerDeleted(UUID entityId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Get the entity and ensure the deleted follower is not in the followers list
     T getEntity = getEntity(entityId, authHeaders);
-    List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
+    List<EntityReference> followers = getEntity.getFollowers();
     validateEntityReferences(followers);
     TestUtils.existsInEntityReferenceList(followers, userId, false);
     return getEntity;
@@ -1808,22 +1756,22 @@ public abstract class EntityResourceTest<T, K> extends CatalogApplicationTest {
   }
 
   private void printEntities(ResultList<T> list) {
-    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, getEntityInterface(e).getFullyQualifiedName()));
+    list.getData().forEach(e -> LOG.debug("{} {}", entityClass, e.getFullyQualifiedName()));
     LOG.debug("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
-  public void assertEntityDeleted(EntityInterface<T> entityInterface, boolean hardDelete) {
+  public void assertEntityDeleted(T entity, boolean hardDelete) {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", hardDelete ? "all" : "non-deleted");
 
     // Make sure getting entity by ID get 404 not found response
-    assertEntityDeleted(entityInterface.getId(), hardDelete);
+    assertEntityDeleted(entity.getId(), hardDelete);
 
     // Make sure getting entity by name gets 404 not found response
     assertResponse(
-        () -> getEntityByName(entityInterface.getFullyQualifiedName(), queryParams, "", ADMIN_AUTH_HEADERS),
+        () -> getEntityByName(entity.getFullyQualifiedName(), queryParams, "", ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityNotFound(entityType, entityInterface.getFullyQualifiedName()));
+        entityNotFound(entityType, entity.getFullyQualifiedName()));
   }
 
   public void assertEntityDeleted(UUID id, boolean hardDelete) {

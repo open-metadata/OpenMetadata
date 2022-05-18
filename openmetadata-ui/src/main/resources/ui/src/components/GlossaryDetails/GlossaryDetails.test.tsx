@@ -55,6 +55,10 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
+});
+
 const mockProps = {
   glossary: mockedGlossaries[0],
   isHasAccess: true,

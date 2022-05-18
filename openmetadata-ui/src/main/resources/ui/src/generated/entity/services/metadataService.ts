@@ -34,6 +34,10 @@ export interface MetadataService {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to this database service.
    */
   href?: string;
@@ -124,13 +128,13 @@ export interface MetadataConnection {
 /**
  * Amundsen Connection Config
  *
- * Metadata to ElasticSeach Connection Config
+ * Metadata to ElasticSearch Connection Config
  *
  * OpenMetadata Connection Config
  */
 export interface Connection {
   /**
-   * Enable Encyption for the Amundsen Neo4j Connection.
+   * Enable encryption for the Amundsen Neo4j Connection.
    */
   encrypted?: boolean;
   /**
@@ -169,17 +173,37 @@ export interface Connection {
    */
   includeDashboards?: boolean;
   /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
    * Include Glossary Terms for Indexing
    */
   includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
   /**
    * Include Pipelines for Indexing
    */
   includePipelines?: boolean;
   /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
    * Include Tables for Indexing
    */
   includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
   /**
    * Include Teams for Indexing
    */
@@ -202,7 +226,7 @@ export interface Connection {
   apiVersion?: string;
   /**
    * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
-   * the one configured on OpenMetadaata server.
+   * the one configured on OpenMetadata server.
    */
   authProvider?: AuthProvider;
   /**
@@ -213,7 +237,7 @@ export interface Connection {
 
 /**
  * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
- * the one configured on OpenMetadaata server.
+ * the one configured on OpenMetadata server.
  */
 export enum AuthProvider {
   Auth0 = 'auth0',
@@ -308,7 +332,7 @@ export interface ClientConfig {
  *
  * Amundsen service type
  *
- * Metadata to Elastic Seach type
+ * Metadata to Elastic Search type
  *
  * OpenMetadata service type
  *

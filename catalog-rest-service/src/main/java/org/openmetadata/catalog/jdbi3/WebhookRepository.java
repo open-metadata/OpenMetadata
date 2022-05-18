@@ -21,7 +21,6 @@ import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventHandler;
 import com.lmax.disruptor.LifecycleAware;
 import java.io.IOException;
-import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,14 +43,12 @@ import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResource;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -66,17 +63,14 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public EntityInterface<Webhook> getEntityInterface(Webhook entity) {
-    return new WebhookEntityInterface(entity);
-  }
-
-  @Override
   public Webhook setFields(Webhook entity, Fields fields) throws IOException {
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(Webhook entity) throws IOException {}
+  public void prepare(Webhook entity) throws IOException {
+    setFullyQualifiedName(entity);
+  }
 
   @Override
   public void storeEntity(Webhook entity, boolean update) throws IOException {
@@ -95,7 +89,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public EntityRepository<Webhook>.EntityUpdater getUpdater(Webhook original, Webhook updated, Operation operation) {
+  public WebhookUpdater getUpdater(Webhook original, Webhook updated, Operation operation) {
     return new WebhookUpdater(original, updated, operation);
   }
 
@@ -155,114 +149,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   @Transaction
   public boolean delete(String id) {
     return daoCollection.webhookDAO().delete(id) > 0;
-  }
-
-  public static class WebhookEntityInterface extends EntityInterface<Webhook> {
-    public WebhookEntityInterface(Webhook entity) {
-      super(Entity.WEBHOOK, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public Webhook getEntity() {
-      return entity;
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Webhook withHref(URI href) {
-      return entity.withHref(href);
-    }
   }
 
   /**
@@ -473,40 +359,31 @@ public class WebhookRepository extends EntityRepository<Webhook> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Webhook origWebhook = original.getEntity();
-      Webhook updatedWebhook = updated.getEntity();
-
-      recordChange("enabled", origWebhook.getEnabled(), updatedWebhook.getEnabled());
-      recordChange("status", origWebhook.getStatus(), updatedWebhook.getStatus());
-      recordChange("endPoint", origWebhook.getEndpoint(), updatedWebhook.getEndpoint());
-      recordChange("batchSize", origWebhook.getBatchSize(), updatedWebhook.getBatchSize());
-      recordChange("timeout", origWebhook.getTimeout(), updatedWebhook.getTimeout());
+      recordChange("enabled", original.getEnabled(), updated.getEnabled());
+      recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("endPoint", original.getEndpoint(), updated.getEndpoint());
+      recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
+      recordChange("timeout", original.getTimeout(), updated.getTimeout());
       updateEventFilters();
       if (fieldsChanged()) {
         // If updating the other fields, opportunistically use it to capture failure details
-        WebhookPublisher publisher = WebhookRepository.this.getPublisher(origWebhook.getId());
-        if (publisher != null && updatedWebhook != publisher.getWebhook()) {
-          updatedWebhook
+        WebhookPublisher publisher = WebhookRepository.this.getPublisher(original.getId());
+        if (publisher != null && updated != publisher.getWebhook()) {
+          updated
               .withStatus(publisher.getWebhook().getStatus())
               .withFailureDetails(publisher.getWebhook().getFailureDetails());
-          if (Boolean.FALSE.equals(updatedWebhook.getEnabled())) {
-            updatedWebhook.setStatus(Status.DISABLED);
+          if (Boolean.FALSE.equals(updated.getEnabled())) {
+            updated.setStatus(Status.DISABLED);
           }
         }
         recordChange(
-            "failureDetails",
-            origWebhook.getFailureDetails(),
-            updatedWebhook.getFailureDetails(),
-            true,
-            failureDetailsMatch);
+            "failureDetails", original.getFailureDetails(), updated.getFailureDetails(), true, failureDetailsMatch);
       }
     }
 
     private void updateEventFilters() throws JsonProcessingException {
-      Webhook origWebhook = original.getEntity();
-      Webhook updatedWebhook = updated.getEntity();
-      List<EventFilter> origFilter = origWebhook.getEventFilters();
-      List<EventFilter> updatedFilter = updatedWebhook.getEventFilters();
+      List<EventFilter> origFilter = original.getEventFilters();
+      List<EventFilter> updatedFilter = updated.getEventFilters();
       List<EventFilter> added = new ArrayList<>();
       List<EventFilter> deleted = new ArrayList<>();
       recordListChange("eventFilters", origFilter, updatedFilter, added, deleted, eventFilterMatch);

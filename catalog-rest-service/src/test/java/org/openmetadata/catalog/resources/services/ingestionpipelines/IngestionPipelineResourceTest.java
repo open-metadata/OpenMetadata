@@ -49,8 +49,6 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -67,7 +65,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -139,14 +136,16 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
+  public EntityReference getContainer(IngestionPipeline entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(
       IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(ingestion),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        ingestion, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSource().getSourceConfig(), ingestion);
   }
@@ -155,18 +154,10 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSource().getSourceConfig(), updated.getSource().getSourceConfig());
-  }
-
-  @Override
-  public EntityInterface<IngestionPipeline> getEntityInterface(IngestionPipeline entity) {
-    return new IngestionPipelineRepository.IngestionPipelineEntityInterface(entity);
   }
 
   @Override
@@ -530,7 +521,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService snowflakeDatabaseService =
         databaseServiceResourceTest.createEntity(createSnowflakeService, ADMIN_AUTH_HEADERS);
-    EntityReference snowflakeRef = new DatabaseServiceEntityInterface(snowflakeDatabaseService).getEntityReference();
+    EntityReference snowflakeRef = snowflakeDatabaseService.getEntityReference();
 
     CreateDatabaseService createBigQueryService =
         new CreateDatabaseService()
@@ -539,7 +530,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(createBigQueryService, ADMIN_AUTH_HEADERS);
-    EntityReference bigqueryRef = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    EntityReference bigqueryRef = databaseService.getEntityReference();
 
     CreateIngestionPipeline requestPipeline_1 =
         createRequest(test)
@@ -604,7 +595,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
-  public EntityInterface<IngestionPipeline> validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
+  public IngestionPipeline validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
       throws HttpResponseException {
     String fields = "";
     ingestion =
@@ -620,7 +611,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(ingestion);
+    return ingestion;
   }
 
   private void validateSourceConfig(SourceConfig orig, SourceConfig updated, IngestionPipeline ingestionPipeline) {

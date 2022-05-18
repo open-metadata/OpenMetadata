@@ -34,6 +34,10 @@ export interface Glossary {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as name.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to this entity.
    */
   href?: string;

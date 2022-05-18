@@ -42,14 +42,14 @@ public class UsageRepository {
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id));
+    EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -57,13 +57,13 @@ public class UsageRepository {
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    Entity.getEntityReferenceById(entityType, UUID.fromString(id));
+    Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     addUsage(entityType, id, usage);
   }
 
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
-    EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }

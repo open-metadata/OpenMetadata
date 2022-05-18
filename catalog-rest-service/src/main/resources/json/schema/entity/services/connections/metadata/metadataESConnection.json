@@ -2,12 +2,12 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/metadataESConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MetadataESConnection",
-  "description": "Metadata to ElasticSeach Connection Config",
+  "description": "Metadata to ElasticSearch Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.catalog.services.connections.metadata.MetadataESConnection",
   "definitions": {
     "metadataESType": {
-      "description": "Metadata to Elastic Seach type",
+      "description": "Metadata to Elastic Search type",
       "type": "string",
       "enum": ["MetadataES"],
       "default": "MetadataES"

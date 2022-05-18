@@ -25,7 +25,7 @@
       "default": "http://localhost:8585/api"
     },
     "authProvider": {
-      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
+      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
       "type": "string",
       "enum": [
         "no-auth",

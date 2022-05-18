@@ -16,10 +16,8 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
@@ -27,14 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.RoleResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -75,17 +68,13 @@ public class RoleRepository extends EntityRepository<Role> {
     updated.withName(original.getName()).withId(original.getId());
   }
 
-  @Override
-  public EntityInterface<Role> getEntityInterface(Role entity) {
-    return new RoleEntityInterface(entity);
-  }
-
   /**
    * If policy does not exist for this role, create a new entity reference. The actual policy gets created within the
    * storeEntity method call.
    */
   @Override
   public void prepare(Role role) throws IOException {
+    setFullyQualifiedName(role);
     EntityUtil.populateEntityReferences(role.getPolicies());
   }
 
@@ -132,116 +121,8 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Role original, Role updated, Operation operation) {
+  public RoleUpdater getUpdater(Role original, Role updated, Operation operation) {
     return new RoleUpdater(original, updated, operation);
-  }
-
-  public static class RoleEntityInterface extends EntityInterface<Role> {
-    public RoleEntityInterface(Role entity) {
-      super(Entity.ROLE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public Role getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Role withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -252,7 +133,7 @@ public class RoleRepository extends EntityRepository<Role> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateDefault(original.getEntity(), updated.getEntity());
+      updateDefault(original, updated);
     }
 
     private void updateDefault(Role origRole, Role updatedRole) throws IOException {
@@ -293,19 +174,6 @@ public class RoleRepository extends EntityRepository<Role> {
       daoCollection
           .relationshipDAO()
           .deleteTo(role.getId().toString(), Entity.ROLE, Relationship.HAS.ordinal(), Entity.USER);
-    }
-
-    private List<User> getAllUsers() {
-      EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
-      try {
-        // Assumptions:
-        // - we will not have more than Integer.MAX_VALUE users in the system.
-        // - we do not need to update deleted user's roles.
-        ListFilter filter = new ListFilter();
-        return userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, Integer.MAX_VALUE - 1, null).getData();
-      } catch (IOException e) {
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entitiesNotFound(Entity.USER));
-      }
     }
   }
 }

@@ -100,13 +100,15 @@ export interface ServiceConnectionClass {
  *
  * Sample Data Connection Config
  *
+ * PinotDB Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Pulsar Connection Config
  *
  * Amundsen Connection Config
  *
- * Metadata to ElasticSeach Connection Config
+ * Metadata to ElasticSearch Connection Config
  *
  * OpenMetadata Connection Config
  */
@@ -166,11 +168,11 @@ export interface Connection {
    *
    * Host and port of the SingleStore service.
    *
-   * Host and port of the Snowflake service.
-   *
    * Host and port of the Trino service.
    *
    * Host and port of the Vertica service.
+   *
+   * Host and port of the PinotDB service.
    *
    * Host and port of the Amundsen Neo4j Connection.
    *
@@ -224,6 +226,8 @@ export interface Connection {
    *
    * Password to connect to Vertica.
    *
+   * password to connect  to the PinotDB.
+   *
    * password to connect to the Amundsen Neo4j Connection.
    */
   password?: string;
@@ -244,9 +248,6 @@ export interface Connection {
    * Username for Superset.
    *
    * Username for Tableau.
-   *
-   * Username to connect to Bigquery. This user should have privileges to read all the
-   * metadata in Bigquery.
    *
    * Username to connect to AzureSQL. This user should have privileges to read the metadata.
    *
@@ -302,6 +303,9 @@ export interface Connection {
    *
    * Username to connect to Vertica. This user should have privileges to read all the metadata
    * in Vertica.
+   *
+   * username to connect  to the PinotDB. This user should have privileges to read all the
+   * metadata in PinotDB.
    *
    * username to connect to the Amundsen Neo4j Connection.
    */
@@ -488,7 +492,8 @@ export interface Connection {
    */
   sobjectName?: string;
   /**
-   * Snowflake Account.
+   * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
+   * account is xyz1234.us-east-1.gcp
    */
   account?: string;
   /**
@@ -520,6 +525,10 @@ export interface Connection {
    */
   sampleDataFolder?: string;
   /**
+   * Pinot Broker Host and Port of the data source.
+   */
+  pinotControllerHost?: string;
+  /**
    * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
    */
   bootstrapServers?: string;
@@ -536,7 +545,7 @@ export interface Connection {
    */
   schemaRegistryURL?: string;
   /**
-   * Enable Encyption for the Amundsen Neo4j Connection.
+   * Enable encryption for the Amundsen Neo4j Connection.
    */
   encrypted?: boolean;
   /**
@@ -556,17 +565,37 @@ export interface Connection {
    */
   includeDashboards?: boolean;
   /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
    * Include Glossary Terms for Indexing
    */
   includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
   /**
    * Include Pipelines for Indexing
    */
   includePipelines?: boolean;
   /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
    * Include Tables for Indexing
    */
   includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
   /**
    * Include Teams for Indexing
    */
@@ -585,7 +614,7 @@ export interface Connection {
   limitRecords?: number;
   /**
    * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
-   * the one configured on OpenMetadaata server.
+   * the one configured on OpenMetadata server.
    */
   authProvider?: AuthProvider;
   /**
@@ -596,7 +625,7 @@ export interface Connection {
 
 /**
  * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
- * the one configured on OpenMetadaata server.
+ * the one configured on OpenMetadata server.
  */
 export enum AuthProvider {
   Auth0 = 'auth0',
@@ -708,6 +737,9 @@ export enum Scheme {
   MssqlPytds = 'mssql+pytds',
   MysqlPymysql = 'mysql+pymysql',
   OracleCxOracle = 'oracle+cx_oracle',
+  Pinot = 'pinot',
+  PinotHTTP = 'pinot+http',
+  PinotHTTPS = 'pinot+https',
   PostgresqlPsycopg2 = 'postgresql+psycopg2',
   Presto = 'presto',
   RedshiftPsycopg2 = 'redshift+psycopg2',
@@ -819,7 +851,7 @@ export interface ClientConfig {
  *
  * Amundsen service type
  *
- * Metadata to Elastic Seach type
+ * Metadata to Elastic Search type
  *
  * OpenMetadata service type
  */
@@ -845,6 +877,7 @@ export enum Type {
   Mysql = 'Mysql',
   OpenMetadata = 'OpenMetadata',
   Oracle = 'Oracle',
+  PinotDB = 'PinotDB',
   Postgres = 'Postgres',
   PowerBI = 'PowerBI',
   Presto = 'Presto',

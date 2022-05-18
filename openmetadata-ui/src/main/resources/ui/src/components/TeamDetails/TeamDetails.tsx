@@ -151,6 +151,10 @@ const TeamDetails = ({
       currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
     isLink: currentTeam?.owner?.type === 'team',
     openInNewTab: false,
+    profileName:
+      currentTeam?.owner?.type === OwnerType.USER
+        ? currentTeam?.owner?.name
+        : undefined,
   };
 
   const isActionAllowed = (operation = false) => {

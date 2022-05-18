@@ -81,7 +81,6 @@ import { DatabaseServiceType } from '../generated/entity/services/databaseServic
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
 import { ServiceResponse } from '../interface/service.interface';
 
 export const serviceTypeLogo = (type: string) => {
@@ -338,37 +337,6 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   });
 
   return entityCounts;
-};
-
-export const getAirflowPipelineTypes = (
-  serviceType: string,
-  onlyMetaData = false
-): Array<PipelineType> | undefined => {
-  switch (serviceType) {
-    case DatabaseServiceType.Redshift:
-    case DatabaseServiceType.BigQuery:
-    case DatabaseServiceType.Snowflake:
-    case DatabaseServiceType.Clickhouse:
-    case DatabaseServiceType.Mssql:
-      return onlyMetaData
-        ? [PipelineType.Metadata]
-        : [PipelineType.Metadata, PipelineType.QueryUsage];
-
-    // need to add additional config feild to support trino
-    // case DatabaseServiceType.Trino:
-    case DatabaseServiceType.Hive:
-    case DatabaseServiceType.Mysql:
-    case DatabaseServiceType.Postgres:
-    case DatabaseServiceType.Vertica:
-    case DatabaseServiceType.MariaDB:
-    case DatabaseServiceType.SingleStore:
-    case DatabaseServiceType.SQLite:
-    case DatabaseServiceType.AzureSQL:
-      return [PipelineType.Metadata];
-
-    default:
-      return;
-  }
 };
 
 export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {

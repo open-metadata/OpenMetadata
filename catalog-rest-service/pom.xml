@@ -306,6 +306,12 @@
       <version>20220320</version>
     </dependency>
 
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>1.0.69</version>
+    </dependency>
+
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
@@ -480,6 +486,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire.version}</version>
+        <configuration>
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
         <executions>
           <execution>
             <id>default-test</id>
@@ -494,6 +503,10 @@
             <id>unit-tests</id>
             <configuration>
               <excludes>**/*ResourceTest.java</excludes>
+              <systemPropertyVariables>
+                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                <jdbcContainerImage>mysql:8</jdbcContainerImage>
+              </systemPropertyVariables>
             </configuration>
           </execution>
           <execution>

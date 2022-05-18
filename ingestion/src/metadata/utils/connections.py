@@ -19,7 +19,7 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
@@ -65,6 +65,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
@@ -287,8 +288,8 @@ def test_connection(connection) -> None:
     :return: None or raise an exception if we cannot connect
     """
     try:
-        with connection.connect() as _:
-            pass
+        with connection.connect() as conn:
+            conn.execute(ConnTestFn())
     except OperationalError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."

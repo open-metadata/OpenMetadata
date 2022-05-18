@@ -42,6 +42,10 @@ export interface TagCategory {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to the tag category.
    */
   href?: string;
@@ -120,6 +124,10 @@ export interface FieldChange {
 
 export interface TagClass {
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Tags under this tag group or empty for tags at the leaf level.
    */
   children?: Array<
@@ -137,6 +145,10 @@ export interface TagClass {
    * Unique name of the tag category.
    */
   description: string;
+  /**
+   * Display Name that identifies this tag category.
+   */
+  displayName?: string;
   /**
    * Unique name of the tag of format Category.PrimaryTag.SecondaryTag.
    */

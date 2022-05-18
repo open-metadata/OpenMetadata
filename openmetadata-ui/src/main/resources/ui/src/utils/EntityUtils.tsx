@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
-import Avatar from '../components/common/avatar/Avatar';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -23,13 +23,12 @@ import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
-import { ColumnTestType } from '../enums/columnTest.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
+import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
@@ -382,9 +381,10 @@ export const getInfoElements = (data: ExtraInfo) => {
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
               <div className="tw-inline-block tw-mr-2">
-                <Avatar
-                  name={displayVal}
-                  textClass="tw-text-xs"
+                <ProfilePicture
+                  displayName={displayVal}
+                  id=""
+                  name={data.profileName || ''}
                   width={data.avatarWidth || '20'}
                 />
               </div>
@@ -499,19 +499,19 @@ export const filteredColumnTestOption = (dataType: string) => {
   switch (getDataTypeString(dataType)) {
     case 'numeric':
       return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.columnValueLengthsToBeBetween
+        (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
       );
 
     case 'varchar':
       return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.columnValuesToBeBetween
+        (test) => test !== ColumnTestType.ColumnValuesToBeBetween
       );
 
     case 'timestamp':
     case 'date': {
       const excluded = [
-        ColumnTestType.columnValuesToBeNotInSet,
-        ColumnTestType.columnValueLengthsToBeBetween,
+        ColumnTestType.ColumnValuesToBeNotInSet,
+        ColumnTestType.ColumnValueLengthsToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(
@@ -520,9 +520,9 @@ export const filteredColumnTestOption = (dataType: string) => {
     }
     case 'boolean': {
       const excluded = [
-        ColumnTestType.columnValuesToBeNotInSet,
-        ColumnTestType.columnValueLengthsToBeBetween,
-        ColumnTestType.columnValuesToBeBetween,
+        ColumnTestType.ColumnValuesToBeNotInSet,
+        ColumnTestType.ColumnValueLengthsToBeBetween,
+        ColumnTestType.ColumnValuesToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(

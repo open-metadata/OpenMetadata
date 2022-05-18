@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.events.CreateWebhook;
-import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.events.WebhookCallbackResource.EventDetails;
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
@@ -46,7 +45,6 @@ import org.openmetadata.catalog.type.FailureDetails;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -69,7 +67,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
     supportsAuthorizedMetadataOperations = false;
     supportsPatch = false;
     supportsFieldsQueryParam = false;
-    supportsSoftDelete = false;
   }
 
   @Test
@@ -237,8 +234,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   @Override
   public void validateCreatedEntity(Webhook webhook, CreateWebhook createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(webhook), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(webhook, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), webhook.getName());
     ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
     EntityUtil.addSoftDeleteFilter(filters);
@@ -252,14 +248,8 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Override
-  public EntityInterface<Webhook> getEntityInterface(Webhook entity) {
-    return new WebhookEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<Webhook> validateGetWithDifferentFields(Webhook entity, boolean byName)
-      throws HttpResponseException {
-    return getEntityInterface(entity); // Nothing to validate
+  public Webhook validateGetWithDifferentFields(Webhook entity, boolean byName) throws HttpResponseException {
+    return entity; // Nothing to validate
   }
 
   @Override
@@ -276,7 +266,7 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
       URI actualEndpoint = URI.create(actual.toString());
       assertEquals(expectedEndpoint, actualEndpoint);
     } else if (fieldName.equals("status")) {
-      assertEquals((Status) expected, Status.fromValue(actual.toString()));
+      assertEquals(expected, Status.fromValue(actual.toString()));
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -394,14 +384,14 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   public void assertWebhookStatusSuccess(String name) throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", ADMIN_AUTH_HEADERS);
+    Webhook webhook = getEntityByName(name, null, "", ADMIN_AUTH_HEADERS);
     assertEquals(Status.ACTIVE, webhook.getStatus());
     assertNull(webhook.getFailureDetails());
   }
 
   public void assertWebhookStatus(String name, Status status, Integer statusCode, String failedReason)
       throws HttpResponseException {
-    Webhook webhook = getEntityByName(name, "", ADMIN_AUTH_HEADERS);
+    Webhook webhook = getEntityByName(name, null, "", ADMIN_AUTH_HEADERS);
     assertEquals(status, webhook.getStatus());
     assertEquals(statusCode, webhook.getFailureDetails().getLastFailedStatusCode());
     assertEquals(failedReason, webhook.getFailureDetails().getLastFailedReason());
