@@ -8,51 +8,38 @@ We will be going through a series of steps on how to configure DBT in OpenMetada
 
 ### Adding DBT configuration in JSON Config
 
-Below is an example showing the json config of the Redshift connector. The below example shows how to fetch the DBT files from AWS s3 bucket.
+Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the DBT files from AWS s3 bucket.
 
 For more information on getting the DBT files from other sources like gcs, file server etc. please take a look [here](add-dbt-while-ingesting-from-cli.md#add-dbt-source).
 
 ```
-{
-  "source": {
-    "type": "redshift",
-    "serviceName": "aws_redshift",
-    "serviceConnection": {
-      "config": {
-        "type": "Redshift",
-        "hostPort": "cluster.name.region.redshift.amazonaws.com:5439",
-        "username": "username",
-        "password": "strong_password",
-        "database": "dev"
-      }
-    },
-    "sourceConfig": {
-      "config": {
-        "dbtConfigSource": {
-          "dbtSecurityConfig": {
-            "awsAccessKeyId": "<AWS Access Key Id>",
-            "awsSecretAccessKey": "<AWS Secret Access Key>",
-            "awsRegion": "AWS Region"
-          },
-          "dbtPrefixConfig": {
-            "dbtBucketName": "<Bucket Name>",
-            "dbtObjectPrefix": "<Path of the folder in which dbt files are stored>"
-          }
-        }
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
-    }
-  }
-}
+source:
+  type: redshift
+  serviceName: aws_redshift
+  serviceConnection:
+    config:
+      type: Redshift
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+  sourceConfig:
+    config:
+      dbtConfigSource:
+        dbtSecurityConfig:
+          awsAccessKeyId: <AWS Access Key Id>
+          awsSecretAccessKey: <AWS Secret Access Key>
+          awsRegion: AWS Region
+        dbtPrefixConfig:
+          dbtBucketName: <Bucket Name>
+          dbtObjectPrefix: <Path of the folder in which dbt files are stored>
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
 ```
 
 Add the details of the AWS s3 bucket in the above config
