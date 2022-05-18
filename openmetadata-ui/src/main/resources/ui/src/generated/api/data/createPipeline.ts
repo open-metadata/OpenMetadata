@@ -75,6 +75,10 @@ export interface CreatePipeline {
  */
 export interface EntityReference {
   /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
    * Optional description of entity.
    */
   description?: string;
@@ -82,6 +86,12 @@ export interface EntityReference {
    * Display Name that identifies this entity.
    */
   displayName?: string;
+  /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
   /**
    * Link to the entity resource.
    */
@@ -91,8 +101,7 @@ export interface EntityReference {
    */
   id: string;
   /**
-   * Name of the entity instance. For entities such as tables, databases where the name is not
-   * unique, fullyQualifiedName is returned in this field.
+   * Name of the entity instance.
    */
   name?: string;
   /**
@@ -123,6 +132,10 @@ export interface TagLabel {
    */
   labelType: LabelType;
   /**
+   * Label is from Tags or Glossary.
+   */
+  source: Source;
+  /**
    * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
    * entity must confirm the suggested labels before it is marked as 'Confirmed'.
    */
@@ -142,6 +155,14 @@ export enum LabelType {
   Derived = 'Derived',
   Manual = 'Manual',
   Propagated = 'Propagated',
+}
+
+/**
+ * Label is from Tags or Glossary.
+ */
+export enum Source {
+  Glossary = 'Glossary',
+  Tag = 'Tag',
 }
 
 /**
@@ -168,6 +189,10 @@ export interface Task {
    */
   downstreamTasks?: string[];
   /**
+   * end date for the task.
+   */
+  endDate?: string;
+  /**
    * A unique name that identifies a pipeline in the format
    * 'ServiceName.PipelineName.TaskName'.
    */
@@ -176,6 +201,10 @@ export interface Task {
    * Name that identifies this task instance uniquely.
    */
   name: string;
+  /**
+   * start date for the task.
+   */
+  startDate?: string;
   /**
    * Tags for this task.
    */
@@ -192,5 +221,4 @@ export interface Task {
    * Task URL to visit/manage. This URL points to respective pipeline service UI.
    */
   taskUrl?: string;
-  id: any;
 }

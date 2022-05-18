@@ -112,12 +112,6 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
     ));
 });
 
-jest.mock('../../components/Modals/AddServiceModal/AddServiceModal', () => ({
-  AddServiceModal: jest
-    .fn()
-    .mockReturnValue(<p data-testid="add-service-modal">AddServiceModal</p>),
-}));
-
 const mockGetAddServicePath = jest.fn();
 
 describe('Test Service page', () => {

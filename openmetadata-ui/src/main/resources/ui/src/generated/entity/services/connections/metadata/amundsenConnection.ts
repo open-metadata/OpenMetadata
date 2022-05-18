@@ -17,7 +17,7 @@
  */
 export interface AmundsenConnection {
   /**
-   * Enable Encyption for the Amundsen Neo4j Connection.
+   * Enable encryption for the Amundsen Neo4j Connection.
    */
   encrypted?: boolean;
   /**

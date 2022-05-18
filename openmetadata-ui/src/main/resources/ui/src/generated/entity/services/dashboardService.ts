@@ -34,6 +34,10 @@ export interface DashboardService {
    */
   displayName?: string;
   /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
    * Link to the resource corresponding to this dashboard service.
    */
   href?: string;

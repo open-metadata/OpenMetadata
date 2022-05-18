@@ -120,11 +120,6 @@
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": [
-    "name",
-    "nameSpace",
-    "description",
-    "schema"
-  ],
+  "required": ["name", "description"],
   "additionalProperties": false
 }
