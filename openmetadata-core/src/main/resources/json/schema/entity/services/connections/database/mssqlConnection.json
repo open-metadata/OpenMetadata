@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/mssqlConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MssqlConnection",
+  "description": "Mssql Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.MssqlConnection",
+  "definitions": {
+    "mssqlType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Mssql"],
+      "default": "Mssql"
+    },
+    "mssqlScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["mssql+pyodbc", "mssql+pytds", "mssql+pymssql"],
+      "default": "mssql+pytds"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/mssqlType",
+      "default": "Mssql"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/mssqlScheme",
+      "default": "mssql+pytds"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to MSSQL. This user should have privileges to read all the metadata in MsSQL.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to MSSQL.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the MSSQL service.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "uriString": {
+      "title": "URI String",
+      "description": "Connection URI In case of pyodbc",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username"]
+}

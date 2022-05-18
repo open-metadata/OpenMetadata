@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tags/createTagCategory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTagCategoryRequest",
+  "description": "Create tag category request",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.CreateTagCategory",
+  "properties": {
+    "name": {
+      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
+    },
+    "description": {
+      "description": "Description of the tag category",
+      "type": "string"
+    },
+    "categoryType": {
+      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagCategoryType"
+    }
+  },
+  "required": ["name", "description", "categoryType"],
+  "additionalProperties": false
+}

@@ -1,0 +1,78 @@
+{
+  "properties": {
+    "name": {
+      "type": "text"
+    },
+    "display_name": {
+      "type": "text"
+    },
+    "owner": {
+      "properties": {
+        "id": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 36
+            }
+          }
+        },
+        "type": {
+          "type": "text"
+        },
+        "name": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "fullyQualifiedName": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "href": {
+          "type": "text"
+        }
+      }
+    },
+    "fqdn": {
+      "type": "keyword"
+    },
+    "last_updated_timestamp": {
+      "type": "date",
+      "format": "epoch_second"
+    },
+    "description": {
+      "type": "text"
+    },
+    "glossary_name": {
+      "type": "keyword"
+    },
+    "glossary_id": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "tags": {
+      "type": "keyword"
+    },
+    "entity_type": {
+      "type": "keyword"
+    },
+    "suggest": {
+      "type": "completion"
+    },
+    "deleted": {
+      "type": "boolean"
+    }
+  }
+}

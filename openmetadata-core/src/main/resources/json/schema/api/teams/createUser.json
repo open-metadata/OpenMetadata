@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/api/teams/createUser.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateUserRequest",
+  "description": "Request to create User entity",
+  "type": "object",
+
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Used for user biography.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'",
+      "type": "string"
+    },
+    "email": {
+      "$ref": "../../type/basic.json#/definitions/email"
+    },
+    "timezone": {
+      "description": "Timezone of the user",
+      "type": "string",
+      "format": "timezone"
+    },
+    "isBot": {
+      "description": "When true indicates user is a bot with appropriate privileges",
+      "type": "boolean"
+    },
+    "isAdmin": {
+      "description": "When true indicates user is an administrator for the system with superuser privileges",
+      "type": "boolean",
+      "default": false
+    },
+    "profile": {
+      "$ref": "../../type/profile.json",
+      "default": null
+    },
+    "teams": {
+      "description": "Teams that the user belongs to",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "roles": {
+      "description": "Roles that the user has been assigned",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    }
+  },
+  "required": ["name", "email"],
+  "additionalProperties": false
+}

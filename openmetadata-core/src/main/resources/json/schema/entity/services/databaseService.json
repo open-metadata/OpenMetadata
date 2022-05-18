@@ -1,0 +1,276 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Database Service",
+  "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.DatabaseService",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "definitions": {
+    "databaseServiceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "type": "string",
+      "enum": [
+        "BigQuery",
+        "Mysql",
+        "Redshift",
+        "Snowflake",
+        "Postgres",
+        "Mssql",
+        "Hive",
+        "Oracle",
+        "Athena",
+        "Presto",
+        "Trino",
+        "Vertica",
+        "Glue",
+        "MariaDB",
+        "Druid",
+        "Db2",
+        "Clickhouse",
+        "Databricks",
+        "DynamoDB",
+        "AzureSQL",
+        "SingleStore",
+        "SQLite",
+        "DeltaLake",
+        "Salesforce",
+        "SampleData",
+        "PinotDB"
+      ],
+      "javaEnums": [
+        {
+          "name": "BigQuery"
+        },
+        {
+          "name": "Mysql"
+        },
+        {
+          "name": "Redshift"
+        },
+        {
+          "name": "Snowflake"
+        },
+        {
+          "name": "Postgres"
+        },
+        {
+          "name": "Mssql"
+        },
+        {
+          "name": "Oracle"
+        },
+        {
+          "name": "Athena"
+        },
+        {
+          "name": "Hive"
+        },
+        {
+          "name": "Presto"
+        },
+        {
+          "name": "Trino"
+        },
+        {
+          "name": "Vertica"
+        },
+        {
+          "name": "Glue"
+        },
+        {
+          "name": "MariaDB"
+        },
+        {
+          "name": "Druid"
+        },
+        {
+          "name": "Db2"
+        },
+        {
+          "name": "Clickhouse"
+        },
+        {
+          "name": "Databricks"
+        },
+        {
+          "name": "AzureSQL"
+        },
+        {
+          "name": "DynamoDB"
+        },
+        {
+          "name": "SingleStore"
+        },
+        {
+          "name": "SQLite"
+        },
+        {
+          "name": "DeltaLake"
+        },
+        {
+          "name": "Salesforce"
+        },
+        {
+          "name": "SampleData"
+        },
+        {
+          "name": "PinotDB"
+        }
+      ]
+    },
+    "databaseConnection": {
+      "type": "object",
+      "description": "Database Connection.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "connections/database/bigQueryConnection.json"
+            },
+            {
+              "$ref": "connections/database/athenaConnection.json"
+            },
+            {
+              "$ref": "connections/database/azureSQLConnection.json"
+            },
+            {
+              "$ref": "connections/database/clickhouseConnection.json"
+            },
+            {
+              "$ref": "connections/database/databricksConnection.json"
+            },
+            {
+              "$ref": "connections/database/db2Connection.json"
+            },
+            {
+              "$ref": "connections/database/deltaLakeConnection.json"
+            },
+            {
+              "$ref": "connections/database/druidConnection.json"
+            },
+            {
+              "$ref": "connections/database/dynamoDBConnection.json"
+            },
+            {
+              "$ref": "connections/database/glueConnection.json"
+            },
+            {
+              "$ref": "connections/database/hiveConnection.json"
+            },
+            {
+              "$ref": "connections/database/mariaDBConnection.json"
+            },
+            {
+              "$ref": "connections/database/mssqlConnection.json"
+            },
+            {
+              "$ref": "connections/database/mysqlConnection.json"
+            },
+            {
+              "$ref": "connections/database/sqliteConnection.json"
+            },
+            {
+              "$ref": "connections/database/oracleConnection.json"
+            },
+            {
+              "$ref": "connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "connections/database/prestoConnection.json"
+            },
+            {
+              "$ref": "connections/database/redshiftConnection.json"
+            },
+            {
+              "$ref": "connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "connections/database/singleStoreConnection.json"
+            },
+            {
+              "$ref": "connections/database/snowflakeConnection.json"
+            },
+            {
+              "$ref": "connections/database/trinoConnection.json"
+            },
+            {
+              "$ref": "connections/database/verticaConnection.json"
+            },
+            {
+              "$ref": "connections/database/sampleDataConnection.json"
+            },
+            {
+              "$ref": "connections/database/pinotDBConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this database service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this database service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this database service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "$ref": "#/definitions/databaseServiceType"
+    },
+    "description": {
+      "description": "Description of a database service instance.",
+      "type": "string"
+    },
+    "connection": {
+      "$ref": "#/definitions/databaseConnection"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this database service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this database service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "serviceType", "connection"],
+  "additionalProperties": false
+}

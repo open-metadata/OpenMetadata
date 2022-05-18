@@ -1,0 +1,744 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/table.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table",
+  "$comment" : "@om-entity-type",
+  "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Table",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "definitions": {
+    "tableType": {
+      "javaType": "org.openmetadata.catalog.type.TableType",
+      "description": "This schema defines the type used for describing different types of tables.",
+      "type": "string",
+      "enum": [
+        "Regular",
+        "External",
+        "View",
+        "SecureView",
+        "MaterializedView",
+        "Iceberg"
+      ],
+      "javaEnums": [
+        {
+          "name": "Regular"
+        },
+        {
+          "name": "External"
+        },
+        {
+          "name": "View"
+        },
+        {
+          "name": "SecureView"
+        },
+        {
+          "name": "MaterializedView"
+        },
+        {
+          "name": "Iceberg"
+        }
+      ]
+    },
+    "dataType": {
+      "javaType": "org.openmetadata.catalog.type.ColumnDataType",
+      "description": "This enum defines the type of data stored in a column.",
+      "type": "string",
+      "enum": [
+        "NUMBER",
+        "TINYINT",
+        "SMALLINT",
+        "INT",
+        "BIGINT",
+        "BYTEINT",
+        "BYTES",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "NUMERIC",
+        "TIMESTAMP",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "INTERVAL",
+        "STRING",
+        "MEDIUMTEXT",
+        "TEXT",
+        "CHAR",
+        "VARCHAR",
+        "BOOLEAN",
+        "BINARY",
+        "VARBINARY",
+        "ARRAY",
+        "BLOB",
+        "LONGBLOB",
+        "MEDIUMBLOB",
+        "MAP",
+        "STRUCT",
+        "UNION",
+        "SET",
+        "GEOGRAPHY",
+        "ENUM",
+        "JSON",
+        "UUID"
+      ]
+    },
+    "constraint": {
+      "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
+      "description": "This enum defines the type for column constraint.",
+      "type": "string",
+      "enum": ["NULL", "NOT_NULL", "UNIQUE", "PRIMARY_KEY"],
+      "default": null,
+      "additionalProperties": false
+    },
+    "tableConstraint": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableConstraint",
+      "title": "TableConstraint",
+      "description": "This enum defines the type for table constraint.",
+      "properties": {
+        "constraintType": {
+          "type": "string",
+          "enum": ["UNIQUE", "PRIMARY_KEY", "FOREIGN_KEY"]
+        },
+        "columns": {
+          "description": "List of column names corresponding to the constraint.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "columnName": {
+      "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "fullyQualifiedColumnName": {
+      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "tablePartition": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TablePartition",
+      "description": "This schema defines the partition column of a table and format the partition is created.",
+      "properties": {
+        "columns": {
+          "description": "List of column names corresponding to the partition.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "intervalType": {
+          "type": "string",
+          "description": "type of partition interval, example time-unit, integer-range",
+          "enum": [
+            "TIME-UNIT",
+            "INTEGER-RANGE",
+            "INGESTION-TIME",
+            "COLUMN-VALUE"
+          ]
+        },
+        "interval": {
+          "type": "string",
+          "description": "partition interval , example hourly, daily, monthly."
+        }
+      },
+      "required": ["columns", "intervalType", "interval"],
+      "additionalProperties": false
+    },
+    "column": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Column",
+      "description": "This schema defines the type for a column in a table.",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/columnName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this column name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of the column (int, date etc.).",
+          "$ref": "#/definitions/dataType"
+        },
+        "arrayDataType": {
+          "description": "Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.",
+          "$ref": "#/definitions/dataType"
+        },
+        "dataLength": {
+          "description": "Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.",
+          "type": "integer"
+        },
+        "precision": {
+          "description": "The precision of a numeric is the total count of significant digits in the whole number, that is, the number of digits to both sides of the decimal point. Precision is applicable Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.",
+          "type": "integer"
+        },
+        "scale": {
+          "description": "The scale of a numeric is the count of decimal digits in the fractional part, to the right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.",
+          "type": "integer"
+        },
+        "dataTypeDisplay": {
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the column.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "$ref": "#/definitions/fullyQualifiedColumnName"
+        },
+        "tags": {
+          "description": "Tags associated with the column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        },
+        "constraint": {
+          "description": "Column level constraint.",
+          "$ref": "#/definitions/constraint"
+        },
+        "ordinalPosition": {
+          "description": "Ordinal position of the column.",
+          "type": "integer"
+        },
+        "jsonSchema": {
+          "description": "Json schema only if the dataType is JSON else null.",
+          "type": "string"
+        },
+        "children": {
+          "description": "Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/column"
+          },
+          "default": null
+        },
+        "columnTests": {
+          "description": "List of column test cases that ran against a table column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../tests/columnTest.json"
+          },
+          "default": null
+        },
+        "customMetrics": {
+          "description": "List of Custom Metrics registered for a column.",
+          "type": "array",
+          "items": {
+            "$ref": "../../tests/customMetric.json"
+          },
+          "default": null
+        }
+      },
+      "required": ["name", "dataType"],
+      "additionalProperties": false
+    },
+    "columnJoins": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ColumnJoin",
+      "description": "This schema defines the type to capture how frequently a column is joined with columns in the other tables.",
+      "properties": {
+        "columnName": {
+          "$ref": "#/definitions/columnName"
+        },
+        "joinedWith": {
+          "description": "Fully qualified names of the columns that this column is joined with.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fullyQualifiedName": {
+                "$ref": "#/definitions/fullyQualifiedColumnName"
+              },
+              "joinCount": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableJoins": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableJoins",
+      "description": "This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.",
+      "properties": {
+        "startDate": {
+          "description": "Date can be only from today going back to last 29 days.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "dayCount": {
+          "type": "integer",
+          "default": 1
+        },
+        "columnJoins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnJoins"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableData": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableData",
+      "description": "This schema defines the type to capture rows of sample data for a table.",
+      "properties": {
+        "columns": {
+          "description": "List of local column names (not fully qualified column names) of the table.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnName"
+          }
+        },
+        "rows": {
+          "description": "Data for multiple rows of the table.",
+          "type": "array",
+          "items": {
+            "description": "Data for a single row of the table within the same order as columns fields.",
+            "type": "array"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "customMetricProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.CustomMetricProfile",
+      "description": "Profiling results of a Custom Metric.",
+      "properties": {
+        "name": {
+          "description": "Custom metric name.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Profiling results for the metric.",
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "columnProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ColumnProfile",
+      "description": "This schema defines the type to capture the table's column profile.",
+      "properties": {
+        "name": {
+          "description": "Column Name.",
+          "type": "string"
+        },
+        "valuesCount": {
+          "description": "Total count of the values in this column.",
+          "type": "number"
+        },
+        "valuesPercentage": {
+          "description": "Percentage of values in this column with respect to rowcount.",
+          "type": "number"
+        },
+        "validCount": {
+          "description": "Total count of valid values in this column.",
+          "type": "number"
+        },
+        "duplicateCount": {
+          "description": "No.of Rows that contain duplicates in a column.",
+          "type": "number"
+        },
+        "nullCount": {
+          "description": "No.of null values in a column.",
+          "type": "number"
+        },
+        "nullProportion": {
+          "description": "No.of null value proportion in columns.",
+          "type": "number"
+        },
+        "missingPercentage": {
+          "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
+          "type": "number"
+        },
+        "missingCount": {
+          "description": "Missing count is calculated by subtracting valuesCount - validCount.",
+          "type": "number"
+        },
+        "uniqueCount": {
+          "description": "No. of unique values in the column.",
+          "type": "number"
+        },
+        "uniqueProportion": {
+          "description": "Proportion of number of unique values in a column.",
+          "type": "number"
+        },
+        "distinctCount": {
+          "description": "Number of values that contain distinct values.",
+          "type": "number"
+        },
+        "distinctProportion": {
+          "description": "Proportion of distinct values in a column.",
+          "type": "number"
+        },
+        "min": {
+          "description": "Minimum value in a column.",
+          "type": ["number", "integer", "string"]
+        },
+        "max": {
+          "description": "Maximum value in a column.",
+          "type": ["number", "integer", "string"]
+        },
+        "minLength": {
+          "description": "Minimum string length in a column.",
+          "type": "number"
+        },
+        "maxLength": {
+          "description": "Maximum string length in a column.",
+          "type": "number"
+        },
+        "mean": {
+          "description": "Avg value in a column.",
+          "type": "number"
+        },
+        "sum": {
+          "description": "Median value in a column.",
+          "type": "number"
+        },
+        "stddev": {
+          "description": "Standard deviation of a column.",
+          "type": "number"
+        },
+        "variance": {
+          "description": "Variance of a column.",
+          "type": "number"
+        },
+        "histogram": {
+          "description": "Histogram of a column.",
+          "properties": {
+            "boundaries": {
+              "description": "Boundaries of Histogram.",
+              "type": "array"
+            },
+            "frequencies": {
+              "description": "Frequencies of Histogram.",
+              "type": "array"
+            }
+          },
+          "additionalProperties": false
+        },
+        "customMetricsProfile": {
+          "description": "Custom Metrics profile list bound to a column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customMetricProfile"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableProfile",
+      "description": "This schema defines the type to capture the table's data profile.",
+      "properties": {
+        "profileDate": {
+          "description": "Data one which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "profileSample": {
+          "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        },
+        "columnCount": {
+          "description": "No.of columns in the table.",
+          "type": "number"
+        },
+        "rowCount": {
+          "description": "No.of rows in the table. This is always executed on the whole table.",
+          "type": "number"
+        },
+        "columnProfile": {
+          "description": "List of local column profiles of the table.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnProfile"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sqlQuery": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.SQLQuery",
+      "description": "This schema defines the type to capture the table's sql queries.",
+      "properties": {
+        "query": {
+          "description": "SQL Query text that matches the table name.",
+          "type": "string"
+        },
+        "duration": {
+          "description": "How long did the query took to run in seconds.",
+          "type": "number"
+        },
+        "user": {
+          "description": "User who ran this query.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
+        },
+        "vote": {
+          "description": "Users can vote up to rank the popular queries.",
+          "type": "number",
+          "default": 1
+        },
+        "checksum": {
+          "description": "Checksum to avoid registering duplicate queries.",
+          "type": "string"
+        },
+        "queryDate": {
+          "description": "Date on which the query ran.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        }
+      },
+      "additionalProperties": false
+    },
+    "modelType": {
+      "$comment": "Currently only DBT model type is supported",
+      "enum": ["DBT"],
+      "javaEnums": [
+        {
+          "name": "DBT"
+        }
+      ]
+    },
+    "dataModel": {
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.DataModel",
+      "properties": {
+        "modelType": {
+          "$ref": "#/definitions/modelType"
+        },
+        "description": {
+          "description": "Description of the Table from the model.",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path to sql definition file.",
+          "type": "string"
+        },
+        "rawSql": {
+          "description": "This corresponds to rws SQL from `<model_name>.sql` in DBT. This might be null when SQL query need not be compiled as done in DBT.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "sql": {
+          "description": "This corresponds to compile SQL from `<model_name>.sql` in DBT. In cases where compilation is not necessary, this corresponds to SQL that created the table.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "upstream": {
+          "description": "Fully qualified name of Models/tables used for in `sql` for creating this table.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "columns": {
+          "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/column"
+          },
+          "default": null
+        },
+        "generatedAt": {
+          "$ref": "../../type/basic.json#/definitions/dateTime"
+        }
+      },
+      "required": ["modelType", "sql"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this table instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this table. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of a table.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this table resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "tableType": {
+      "$ref": "#/definitions/tableType"
+    },
+    "columns": {
+      "description": "Columns in this table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/column"
+      },
+      "default": null
+    },
+    "tableConstraints": {
+      "description": "Table constraints.",
+      "type": "array",
+      "items": {
+        "title": "TableConstraint",
+        "$ref": "#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "tablePartition": {
+      "$ref": "#/definitions/tablePartition"
+    },
+    "owner": {
+      "description": "Owner of this table.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "databaseSchema": {
+      "description": "Reference to database schema that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "database": {
+      "description": "Reference to Database that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to Database service this table is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type this table is hosted in.",
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+    },
+    "location": {
+      "description": "Reference to the Location that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "viewDefinition": {
+      "description": "View Definition in SQL. Applies to TableType.View only.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "tags": {
+      "description": "Tags for this table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this table.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "joins": {
+      "description": "Details of other tables this table is frequently joined with.",
+      "$ref": "#/definitions/tableJoins",
+      "default": null
+    },
+    "sampleData": {
+      "description": "Sample data for a table.",
+      "$ref": "#/definitions/tableData",
+      "default": null
+    },
+    "profileSample": {
+      "description": "Percentage of data we want to execute the profiler and tests on. Represented in the range (0, 100).",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100,
+      "default": null
+    },
+    "tableProfile": {
+      "description": "Data profile for a table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableProfile"
+      },
+      "default": null
+    },
+    "tableQueries": {
+      "description": "List of queries that ran against a table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/sqlQuery"
+      },
+      "default": null
+    },
+    "tableTests": {
+      "description": "List of test cases that ran against a table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/tableTest.json"
+      },
+      "default": null
+    },
+    "dataModel": {
+      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "$ref": "#/definitions/dataModel"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "customAttributes" : {
+      "description": "Custom attributes added to the entity",
+      "type" : "array",
+      "items" : {
+        "$ref" : "../type.json"
+      }
+    },
+    "displayConfig" : {
+
+    }
+  },
+  "required": ["id", "name", "columns"],
+  "additionalProperties": false
+}

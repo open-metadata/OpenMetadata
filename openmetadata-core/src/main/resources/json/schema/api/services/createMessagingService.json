@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createMessagingService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMessagingServiceRequest",
+  "description": "Create Messaging service entity request",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of messaging service entity.",
+      "type": "string"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/messagingService.json#/definitions/messagingServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/messagingService.json#/definitions/messagingConnection"
+    },
+    "owner": {
+      "description": "Owner of this messaging service.",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "serviceType", "connection"],
+  "additionalProperties": false
+}
