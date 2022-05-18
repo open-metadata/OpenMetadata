@@ -12,7 +12,13 @@
  */
 
 import { visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE } from '../../constants/constants';
+import {
+  FOLLOWING_TITLE,
+  MYDATA_SUMMARY_OPTIONS,
+  MY_DATA_TITLE,
+  RECENT_SEARCH_TITLE,
+  RECENT_VIEW_TITLE,
+} from '../../constants/constants';
 
 describe('MyData page should work', () => {
   beforeEach(() => {
