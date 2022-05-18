@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -232,7 +231,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create)
       throws IOException {
-    Bot bot = getBot(securityContext, create);
+    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, bot, ADMIN);
   }
 
@@ -250,7 +249,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) throws IOException {
-    Bot bot = getBot(securityContext, create);
+    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, bot, ADMIN);
   }
 
@@ -301,14 +300,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete, ADMIN);
   }
 
-  private Bot getBot(SecurityContext securityContext, CreateBot create) {
-    return new Bot()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withBotUser(create.getBotUser())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Bot getBot(CreateBot create, String user) {
+    return copy(new Bot(), create, user).withBotUser(create.getBotUser());
   }
 }

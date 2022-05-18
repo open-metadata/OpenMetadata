@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -288,7 +287,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
-    DatabaseService service = getService(create, securityContext);
+    DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
@@ -310,7 +309,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
-    DatabaseService service = getService(update, securityContext);
+    DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
@@ -342,15 +341,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
-    return new DatabaseService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private DatabaseService getService(CreateDatabaseService create, String user) {
+    return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withConnection(create.getConnection());
   }
 }

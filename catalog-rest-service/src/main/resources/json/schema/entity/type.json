@@ -88,6 +88,14 @@
     "category" : {
       "$ref" : "#/definitions/category"
     },
+    "nameSpace": {
+      "description": "Namespace or group to which this type belongs to. For example, some of the field types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
+      "type": "string",
+      "default" : "custom"
+    },
+    "category" : {
+      "$ref" : "#/definitions/category"
+    },
     "schema": {
       "description": "JSON schema encoded as string that defines the type. This will be used to validate the type values.",
       "$ref": "../type/basic.json#/definitions/jsonSchema"

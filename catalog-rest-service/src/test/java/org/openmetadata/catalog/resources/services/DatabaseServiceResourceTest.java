@@ -252,14 +252,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public CreateDatabaseService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateDatabaseService createRequest(String name) {
     return new CreateDatabaseService()
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
-        .withOwner(owner)
-        .withDescription(description);
+        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
   }
 
   @Override

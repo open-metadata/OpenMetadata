@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -267,7 +266,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
-    MessagingService service = getService(create, securityContext);
+    MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
@@ -293,7 +292,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           String id,
       @Valid CreateMessagingService update)
       throws IOException {
-    MessagingService service = getService(update, securityContext);
+    MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
@@ -324,15 +323,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
-    return new MessagingService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private MessagingService getService(CreateMessagingService create, String user) {
+    return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withServiceType(create.getServiceType());
   }
 }
