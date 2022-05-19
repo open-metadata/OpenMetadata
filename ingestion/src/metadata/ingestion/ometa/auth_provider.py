@@ -152,7 +152,7 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         try:
             is_file = Path(self.security_config.secretKey).is_file()
         except OSError:  # Might throw a filename too long error if we pass the creds dictionary
-            logger.info("Secret Key cannot be used as a path")
+            logger.info("Secret key is not a path. Sending the dict to Google auth...")
             is_file = False
 
         if is_file:
