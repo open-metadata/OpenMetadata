@@ -12,6 +12,7 @@
 """
 OpenMetadata Airflow Lineage Backend security providers config
 """
+import ast
 
 from airflow.configuration import conf
 
@@ -37,6 +38,12 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSCredentials,
+    GCSCredentialsPath,
+    GCSValues,
+)
+from metadata.utils.credentials import validate_private_key
 from metadata.utils.dispatch import enum_register
 
 provider_config_registry = enum_register()
@@ -54,11 +61,39 @@ def load_google_auth() -> GoogleSSOClientConfig:
     """
     Load config for Google Auth
     """
+    audience = conf.get(
+        LINEAGE, "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
+    )
+    secret_key = conf.get(LINEAGE, "secret_key", fallback=None)
+    if secret_key:
+        return GoogleSSOClientConfig(
+            credentials=GCSCredentials(
+                gcsConfig=secret_key
+            ),
+            audience=audience,
+        )
+
+    private_key = ast.literal_eval(conf.get(LINEAGE, "private_key"))
+    validate_private_key(private_key)
+
+    credentials = GCSCredentials(
+        gcsConfig=GCSValues(
+            type=conf.get(LINEAGE, "type"),
+            projectId=conf.get(LINEAGE, "project_id"),
+            privateKeyId=conf.get(LINEAGE, "private_key_id"),
+            privateKey=private_key,
+            clientEmail=conf.get(LINEAGE, "client_email"),
+            clientId=conf.get(LINEAGE, "client_id"),
+            authUri=conf.get(LINEAGE, "auth_uri"),
+            tokenUri=conf.get(LINEAGE, "token_uri"),
+            authProviderX509CertUrl=conf.get(LINEAGE, "auth_provider_x509_cert_url"),
+            clientX509CertUrl=conf.get(LINEAGE, "client_x509_cert_url"),
+        )
+    )
+
     return GoogleSSOClientConfig(
-        secretKey=conf.get(LINEAGE, "secret_key"),
-        audience=conf.get(
-            LINEAGE, "audience", fallback="https://www.googleapis.com/oauth2/v4/token"
-        ),
+        credentials=credentials,
+        audience=audience,
     )
 
 
