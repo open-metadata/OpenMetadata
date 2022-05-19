@@ -32,6 +32,7 @@ class InvalidPrivateKeyException(Exception):
     If the key cannot be serialised
     """
 
+
 class InvalidGcsConfigException(Exception):
     """
     Raised when we have errors trying to set GCS credentials

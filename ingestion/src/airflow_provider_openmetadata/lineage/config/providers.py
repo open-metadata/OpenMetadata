@@ -67,9 +67,7 @@ def load_google_auth() -> GoogleSSOClientConfig:
     secret_key = conf.get(LINEAGE, "secret_key", fallback=None)
     if secret_key:
         return GoogleSSOClientConfig(
-            credentials=GCSCredentials(
-                gcsConfig=secret_key
-            ),
+            credentials=GCSCredentials(gcsConfig=secret_key),
             audience=audience,
         )
 
