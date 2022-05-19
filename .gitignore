@@ -80,7 +80,7 @@ openmetadata-ui/src/main/resources/ui/cypress/fixtures
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
 
 #UI - Generated TS
-/openmetadata-ui/src/main/resources/ui/src/generated
+openmetadata-ui/src/main/resources/ui/src/generated
 
 #vscode
 */.vscode/*

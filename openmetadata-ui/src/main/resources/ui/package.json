@@ -108,7 +108,7 @@
     "prebuild": "yarn run json2ts && yarn run lint && yarn run parse-conn-schema",
     "build-test": "yarn run test",
     "commit-check": "yarn run pretty && yarn run build",
-    "json2ts": "cd ../../../../.. && yarn json2ts",
+    "json2ts": "sh json2ts.sh",
     "parse-conn-schema": "node parseConnectionSchema && rm -rf connTemp",
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4",
     "cypress:open": "cypress open",
