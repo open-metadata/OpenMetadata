@@ -99,6 +99,7 @@
     "mock-api": "node ./mock-api/app.js",
     "prebuild": "yarn run build-check",
     "pretest": "yarn run build-check",
+    "pretest:coverage": "yarn run pretest",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",

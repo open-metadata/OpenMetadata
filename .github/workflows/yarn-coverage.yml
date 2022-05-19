@@ -36,9 +36,6 @@ jobs:
     - name: Install Yarn Packages
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: yarn install
-    - name: Run Pretest
-      working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-      run: yarn pretest
     - name: Run Coverage
       working-directory: ${{ env.UI_WORKING_DIRECTORY }}
       run: yarn test:coverage
