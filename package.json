@@ -14,6 +14,7 @@
     "quicktype": "^15.0.260"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "json2ts": "sh json2ts.sh"
   }
 }
