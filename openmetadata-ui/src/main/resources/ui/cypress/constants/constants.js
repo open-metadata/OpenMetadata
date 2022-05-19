@@ -49,9 +49,29 @@ export const SEARCH_TERMS = {
   hive_etl: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
 };
 
+export const DELETE_ENTITY = {
+  table: {
+    term: 'fact_line_item',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  },
+  topic: {
+    term: 'shop_updates',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+  },
+  dashboard: {
+    term: 'Misc Charts',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  pipeline: {
+    term: 'Presto ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+};
+
 export const RECENT_SEARCH_TITLE = 'Recent Search Terms';
 export const RECENT_VIEW_TITLE = 'Recent Views';
 export const MY_DATA_TITLE = 'My Data';
 export const FOLLOWING_TITLE = 'Following';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
+export const DELETE_TERM = 'DELETE';

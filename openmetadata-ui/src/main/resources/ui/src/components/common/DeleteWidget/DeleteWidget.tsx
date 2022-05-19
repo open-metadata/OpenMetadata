@@ -146,7 +146,7 @@ const DeleteWidget = ({
 
   return (
     <Fragment>
-      <div className="tw-mt-1 tw-bg-white" data-testid="danger-zone">
+      <div className="tw-mt-1 tw-bg-white" data-testid="danger-zone-container">
         <div className="tw-border tw-border-error-70 tw-rounded tw-mt-3">
           {allowSoftDelete && (
             <div className="tw-border-b">
