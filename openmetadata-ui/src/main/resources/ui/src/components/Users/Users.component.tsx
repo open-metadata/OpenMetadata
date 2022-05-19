@@ -41,6 +41,7 @@ import {
   getExploreLinkByFilter,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
+import { filterEntityAssets } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
@@ -628,14 +629,16 @@ const Users = ({
   }, [userData]);
 
   const getRightPanel = useCallback(() => {
+    const ownData = filterEntityAssets(userData?.owns || []);
+
     return (
       <div className="tw-mt-4" data-testid="right-pannel">
         <EntityList
-          entityList={userData?.owns as unknown as FormatedTableData[]}
+          entityList={ownData as unknown as FormatedTableData[]}
           headerText={
             <div className="tw-flex tw-justify-between tw-items-center">
               My Data
-              {userData?.owns?.length ? (
+              {ownData.length ? (
                 <Link
                   className="tw-ml-1"
                   data-testid="my-data"
@@ -645,7 +648,7 @@ const Users = ({
                     AppState.nonSecureUserDetails
                   )}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({userData?.owns?.length})</span>
+                    View All <span>({ownData.length})</span>
                   </span>
                 </Link>
               ) : null}

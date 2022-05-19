@@ -1,0 +1,88 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/database.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Database",
+  "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Database",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this database instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the database.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this database.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the database instance.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this database.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the database cluster/service where this database is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this database is hosted in.",
+      "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+    },
+    "location": {
+      "description": "Reference to the Location that contains this database.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this database.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "databaseSchemas": {
+      "description": "References to schemas in the database.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "default": {
+      "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
+      "type": "boolean",
+      "default": false
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "service"],
+  "additionalProperties": false
+}

@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/glueConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlueConnection",
+  "description": "Glue Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.GlueConnection",
+  "definitions": {
+    "glueType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Glue"],
+      "default": "Glue"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/glueType",
+      "default": "Glue"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "storageServiceName": {
+      "title": "Storage Service Name",
+      "description": "AWS storageServiceName Name.",
+      "type": "string"
+    },
+    "pipelineServiceName": {
+      "title": "Pipeline Service Name",
+      "description": "AWS pipelineServiceName Name.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "awsConfig", "storageServiceName", "pipelineServiceName"
+  ]
+}

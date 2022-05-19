@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/createThread.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateThreadRequest",
+  "description": "Create thread request",
+  "type": "object",
+  "properties": {
+    "message": {
+      "description": "Message",
+      "type": "string"
+    },
+    "from": {
+      "description": "Name of the User (regular user or bot) posting the message",
+      "type": "string"
+    },
+    "addressedTo": {
+      "description": "User or team this thread is addressed to in format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "about": {
+      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityType}::{field}::{fieldValue}",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "required": ["message", "from", "about"],
+  "additionalProperties": false
+}
