@@ -129,8 +129,8 @@ core_install_dev:  ## Prepare a venv for the ingestion-core module
 	cd ingestion-core; \
 		rm -rf venv; \
 		python3 -m venv venv; \
-		. venv/bin/activate; \
-		python3 -m pip install ".[dev]"
+		source venv/bin/activate; \
+		python -m pip install ".[dev]"
 
 .PHONY: core_clean
 core_clean:  ## Clean the ingestion-core generated files

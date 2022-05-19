@@ -21,14 +21,16 @@ def get_long_description():
 
 
 dev = {
-    "datamodel-code-generator==0.11.14",
-    "black==21.12b0",
-    "incremental",
+    "boto3==1.20.14",
+    "botocore==1.23.14",
+    "datamodel-code-generator==0.12.0",
+    "black==22.3.0",
+    "pycln==1.3.2",
+    "docker",
+    "google-cloud-storage==1.43.0",
     "twine",
-    "twisted",
-    "wheel",
-    "click",
 }
+
 
 setup(
     name="openmetadata-ingestion-core",

@@ -147,6 +147,7 @@ dev = {
     "google-cloud-storage==1.43.0",
     "twine",
 }
+
 test = {
     "isort",
     "pre-commit",
