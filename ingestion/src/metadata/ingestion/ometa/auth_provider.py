@@ -11,6 +11,7 @@
 """
 Interface definition for an Auth provider
 """
+import ast
 import http.client
 import json
 import os.path
@@ -19,6 +20,7 @@ import traceback
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Tuple
 
 import requests
@@ -147,10 +149,25 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         import google.auth.transport.requests
         from google.oauth2 import service_account
 
-        credentials = service_account.IDTokenCredentials.from_service_account_file(
-            self.security_config.secretKey,
-            target_audience=self.security_config.audience,
-        )
+        try:
+            is_file = Path(self.security_config.secretKey).is_file()
+        except OSError:  # Might throw a filename too long error if we pass the creds dictionary
+            logger.info("Secret Key cannot be used as a path")
+            is_file = False
+
+        if is_file:
+            credentials = service_account.IDTokenCredentials.from_service_account_file(
+                self.security_config.secretKey,
+                target_audience=self.security_config.audience,
+            )
+        else:
+            # secretKey loaded as str from airflow.cfg
+            info_security_dict = ast.literal_eval(self.security_config.secretKey)
+            credentials = service_account.IDTokenCredentials.from_service_account_info(
+                info=info_security_dict,
+                target_audience=self.security_config.audience,
+            )
+
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
         self.generated_auth_token = credentials.token
@@ -365,7 +382,7 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
 
     @classmethod
     def create(
-        cls, config: OpenMetadataConnection
+            cls, config: OpenMetadataConnection
     ) -> "CustomOIDCAuthenticationProvider":
         return cls(config)
 
