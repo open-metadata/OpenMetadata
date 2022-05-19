@@ -18,69 +18,54 @@ A query log file is a CSV file which contains the following information.
 * **user\_name (optional):** Enter the database user name which has executed this query.&#x20;
 * **start\_time (optional):** Enter the query execution start time in `YYYY-MM-DD HH:MM:SS` format.
 * **end\_time (optional):** Enter the query execution end time in `YYYY-MM-DD HH:MM:SS` format.
-* **aborted (optional):** This field accepts values as `true`  or `false` and indicates whether the query was aborted during execution
+* **aborted (optional):** This field accepts values as `true` or `false` and indicates whether the query was aborted during execution
 * **database\_name (optional):** Enter the database name on which the query was executed.
 * **schema\_name (optional):** Enter the schema name to which the query is associated.
 
-Checkout a sample query log file here.
+Checkout a sample query log file [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/examples/sample\_data/glue/query\_log.csv).
 
 ## Usage Workflow
 
 In order to run a Usage Workflow we need to make sure that Metadata Ingestion Workflow for corresponding service has already been executed. We will follow the steps to create a JSON configuration able to collect the query log file and execute the usage workflow.
 
-### 1. Create a configuration file using template JSON
+### 1. Create a configuration file using template YAML
 
-Create a new file called  `query_log_usage.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+Create a new file called  `query_log_usage.yaml` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
-Copy and paste the configuration template below into the `query_log_usage.json` the file you created.
+Copy and paste the configuration template below into the `query_log_usage.yaml` the file you created.
 
-{% code title="query_log_usage.json" %}
+{% code title="query_log_usage.yaml" %}
 ```
-{
-    "source": {
-        "type": "query-log-usage",
-        "serviceName": "Mysql",
-        "serviceConnection": {
-            "config": {
-                "type": "Mysql",
-                "username": "openmetadata_user",
-                "password": "openmetadata_password",
-                "hostPort": "localhost:3306",
-                "connectionOptions": {},
-                "connectionArguments": {}
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "queryLogFilePath": "<query log file path>"
-            }
-        }
-    },
-    "processor": {
-        "type": "query-parser",
-        "config": {
-            "filter": ""
-        }
-    },
-    "stage": {
-        "type": "table-usage",
-        "config": {
-            "filename": "/tmp/query_log_usage"
-        }
-    },
-    "bulkSink": {
-        "type": "metadata-usage",
-        "config": {
-            "filename": "/tmp/query_log_usage"
-        }
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "no-auth"
-        }
-    }
-}
+source:
+  type: query-log-usage
+  serviceName: local_mysql
+  serviceConnection:
+    config:
+      type: Mysql
+      username: openmetadata_user
+      password: openmetadata_password
+      hostPort: localhost:3306
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      queryLogFilePath: <path to query log file>
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/query_log_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/query_log_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 {% endcode %}
 
@@ -92,10 +77,10 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 ### 2. Run with the CLI
 
-First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 Note that from connector-to-connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
