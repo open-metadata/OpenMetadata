@@ -81,7 +81,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   return (
     <div>
       <input
-        className="tw-form-inputs tw-px-3 tw-py-1 tw-w-full"
+        className="tw-form-inputs tw-form-inputs-padding tw-w-full"
         placeholder={`Search for ${capitalize(entityType)}s...`}
         type="search"
         value={searchValue}

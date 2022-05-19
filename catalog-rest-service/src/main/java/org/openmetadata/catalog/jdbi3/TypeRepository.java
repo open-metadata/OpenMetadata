@@ -27,6 +27,7 @@ import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.TypeRegistry;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.entity.type.CustomField;
@@ -35,7 +36,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 
@@ -58,6 +58,7 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public void prepare(Type type) throws IOException {
     setFullyQualifiedName(type);
+    TypeRegistry.instance().validateCustomFields(type);
   }
 
   @Override
@@ -67,11 +68,22 @@ public class TypeRepository extends EntityRepository<Type> {
     type.withHref(null).withCustomFields(null);
     store(type.getId(), type, update);
     type.withHref(href).withCustomFields(customFields);
+    updateTypeMap(type);
   }
 
   @Override
   public void storeRelationships(Type type) {
     // Nothing to do
+  }
+
+  private void updateTypeMap(Type entity) {
+    // Add entity type name to type map - example "email" -> email field type or "table" -> table entity type
+    TypeRegistry.instance().addType(entity);
+  }
+
+  @Override
+  protected void postDelete(Type entity) {
+    TypeRegistry.removeType(entity.getName());
   }
 
   @Override
@@ -94,20 +106,13 @@ public class TypeRepository extends EntityRepository<Type> {
     return createOrUpdate(uriInfo, type);
   }
 
-  private String getCustomFieldFQNPrefix(Type type) {
-    return FullyQualifiedName.build(type.getName(), "customFields");
-  }
-
-  private String getCustomFieldFQN(Type type, String fieldName) {
-    return FullyQualifiedName.build(type.getName(), "customFields", fieldName);
-  }
-
   private List<CustomField> getCustomFields(Type type) throws IOException {
     List<CustomField> customFields = new ArrayList<>();
     List<List<String>> results =
         daoCollection
             .fieldRelationshipDAO()
-            .listToByPrefix(getCustomFieldFQNPrefix(type), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
+            .listToByPrefix(
+                getCustomFieldFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
     for (List<String> result : results) {
       CustomField field = JsonUtils.readValue(result.get(2), CustomField.class);
       field.setFieldType(dao.findEntityReferenceByName(result.get(1)));
@@ -135,11 +140,11 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomField> deleted = new ArrayList<>();
       recordListChange("charts", origFields, updatedFields, added, deleted, EntityUtil.customFieldMatch);
       for (CustomField field : added) {
-        String customFieldFQN = getCustomFieldFQN(updated, field.getName());
+        String customFieldFQN = getCustomFieldFQN(updated.getName(), field.getName());
         String customFieldJson = JsonUtils.pojoToJson(field);
         LOG.info(
             "Adding customField {} with type {} to the entity {}",
-            field.getName(),
+            customFieldFQN,
             field.getFieldType().getName(),
             updated.getName());
         daoCollection
@@ -153,7 +158,7 @@ public class TypeRepository extends EntityRepository<Type> {
                 customFieldJson);
       }
       for (CustomField field : deleted) {
-        String customFieldFQN = getCustomFieldFQN(updated, field.getName());
+        String customFieldFQN = getCustomFieldFQN(updated.getName(), field.getName());
         LOG.info(
             "Deleting customField {} with type {} from the entity {}",
             field.getName(),

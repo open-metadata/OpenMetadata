@@ -57,9 +57,9 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         validate_regex(filter_pattern.includes)
         return not any(
             [
-                matched
+                name
                 for regex in filter_pattern.includes
-                if (matched := re.match(regex, name, re.IGNORECASE))
+                if (re.match(regex, name, re.IGNORECASE))
             ]
         )
 
@@ -67,9 +67,9 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         validate_regex(filter_pattern.excludes)
         return any(
             [
-                matched
+                name
                 for regex in filter_pattern.excludes
-                if (matched := re.match(regex, name, re.IGNORECASE))
+                if (re.match(regex, name, re.IGNORECASE))
             ]
         )
 

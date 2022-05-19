@@ -37,31 +37,38 @@ logger = logging.getLogger(__name__)
 
 
 class PolicyWrapper:
-    policy_dict: dict
+    data_dict: dict
 
     def __init__(self, policy_dict) -> None:
-        self.policy_dict = policy_dict
+        self.data_dict = policy_dict
+
+
+class TableWrapper:
+    data_dict: dict
+
+    def __init__(self, table_dict) -> None:
+        self.data_dict = table_dict
 
 
 class TagWrapper:
-    tag_dict: dict
+    data_dict: dict
 
     def __init__(self, tag_dict) -> None:
-        self.tag_dict = tag_dict
+        self.data_dict = tag_dict
 
 
 class MessagingServiceWrapper:
-    messaging_service_dict: dict
+    data_dict: dict
 
     def __init__(self, messaging_service_dict) -> None:
-        self.messaging_service_dict = messaging_service_dict
+        self.data_dict = messaging_service_dict
 
 
 class DatabaseServiceWrapper:
-    database_service_dict: dict
+    data_dict: dict
 
     def __init__(self, database_service_dict) -> None:
-        self.database_service_dict = database_service_dict
+        self.data_dict = database_service_dict
 
 
 class MigrateSource(MetadataSource):
@@ -107,8 +114,7 @@ class MigrateSource(MetadataSource):
 
     def next_record(self) -> Iterable[Entity]:
         if self.service_connection.includeTables:
-            yield from self.fetch_entities(
-                entity_class=Table,
+            yield from self.fetch_tables(
                 fields=[
                     "columns",
                     "tableConstraints",
@@ -184,6 +190,13 @@ class MigrateSource(MetadataSource):
         policy_entities = self.metadata.client.get("/policies")
         for policy in policy_entities.get("data"):
             yield PolicyWrapper(policy)
+
+    def fetch_tables(self, fields):
+        table_entities = self.metadata.client.get(
+            f"/tables?fields={','.join(fields)}&limit=1000000"
+        )
+        for table in table_entities.get("data"):
+            yield TableWrapper(table)
 
     def fetch_tags(self):
         tag_entities = self.metadata.client.get("/tags")

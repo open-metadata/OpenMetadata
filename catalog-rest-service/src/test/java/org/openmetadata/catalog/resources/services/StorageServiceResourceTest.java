@@ -28,7 +28,6 @@ import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource.StorageServiceList;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -70,13 +69,8 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public CreateStorageService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
-    return new CreateStorageService()
-        .withName(name)
-        .withServiceType(StorageServiceType.S3)
-        .withOwner(owner)
-        .withDescription(description);
+  public CreateStorageService createRequest(String name) {
+    return new CreateStorageService().withName(name).withServiceType(StorageServiceType.S3);
   }
 
   @Override

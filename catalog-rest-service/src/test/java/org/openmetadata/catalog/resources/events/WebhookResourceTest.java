@@ -38,7 +38,6 @@ import org.openmetadata.catalog.resources.events.WebhookCallbackResource.EventDe
 import org.openmetadata.catalog.resources.events.WebhookResource.WebhookList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventFilter;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FailureDetails;
@@ -219,11 +218,10 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   }
 
   @Override
-  public CreateWebhook createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateWebhook createRequest(String name) {
     String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/ignore";
     return new CreateWebhook()
         .withName(name)
-        .withDescription(description)
         .withEventFilters(ALL_EVENTS_FILTER)
         .withEndpoint(URI.create(uri))
         .withBatchSize(100)

@@ -115,19 +115,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
-  public CreateIngestionPipeline createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateIngestionPipeline createRequest(String name) {
     return new CreateIngestionPipeline()
         .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
         .withPipelineType(PipelineType.METADATA)
         .withService(getContainer())
         .withSourceConfig(DATABASE_METADATA_CONFIG)
-        .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(false))
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+        .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(false));
   }
 
   @Override

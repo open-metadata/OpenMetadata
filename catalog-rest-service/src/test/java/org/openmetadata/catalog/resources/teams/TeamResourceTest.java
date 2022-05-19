@@ -368,13 +368,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public CreateTeam createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateTeam()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withProfile(PROFILE)
-        .withOwner(owner);
+  public CreateTeam createRequest(String name) {
+    return new CreateTeam().withName(name).withProfile(PROFILE);
   }
 
   @Override

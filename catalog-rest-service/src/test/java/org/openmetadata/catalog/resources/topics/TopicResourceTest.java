@@ -263,13 +263,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public CreateTopic createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateTopic()
-        .withName(name)
-        .withService(getContainer())
-        .withPartitions(1)
-        .withDescription(description)
-        .withOwner(owner);
+  public CreateTopic createRequest(String name) {
+    return new CreateTopic().withName(name).withService(getContainer()).withPartitions(1);
   }
 
   @Override

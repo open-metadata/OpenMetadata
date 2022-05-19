@@ -240,7 +240,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
-    Webhook webhook = getWebhook(securityContext, create);
+    Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, webhook, ADMIN);
     dao.addWebhookPublisher(webhook);
     return response;
@@ -261,7 +261,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
-    Webhook webhook = getWebhook(securityContext, create);
+    Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
     return response;
@@ -291,20 +291,15 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
-  public Webhook getWebhook(SecurityContext securityContext, CreateWebhook create) {
+  public Webhook getWebhook(CreateWebhook create, String user) {
     // Add filter for soft delete events if delete event type is requested
     EntityUtil.addSoftDeleteFilter(create.getEventFilters());
-    return new Webhook()
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withId(UUID.randomUUID())
+    return copy(new Webhook(), create, user)
         .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())
         .withBatchSize(create.getBatchSize())
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
         .withSecretKey(create.getSecretKey())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
   }

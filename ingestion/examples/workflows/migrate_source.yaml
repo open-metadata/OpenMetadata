@@ -9,6 +9,7 @@ source:
       includeTables: true
       includeUsers: true
       includeTopics: true
+      enableVersionValidation: false
       limitRecords: 10
   sourceConfig:
     config:

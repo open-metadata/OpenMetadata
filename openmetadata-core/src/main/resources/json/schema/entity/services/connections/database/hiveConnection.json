@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/hiveConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HiveConnection",
+  "description": "Hive SQL Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.HiveConnection",
+  "definitions": {
+    "hiveType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Hive"],
+      "default": "Hive"
+    },
+    "hiveScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["hive"],
+      "default": "hive"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/hiveType",
+      "default": "Hive"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/hiveScheme",
+      "default": "hive"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Hive. This user should have privileges to read all the metadata in Hive.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Hive.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Hive service.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "authOptions": {
+      "title": "URL Authentication Options",
+      "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}
