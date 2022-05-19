@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ addLicensing(){
 }
 generateType(){
     ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types
-    if [[ -s $om_ui_directory$2 ]]
+    if [ -s $om_ui_directory$2 ]
     then
         addLicensing "$om_ui_directory$2"
     else
@@ -35,7 +35,7 @@ getTypes(){
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
     do
         mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
-        fileTS=${file_with_dir//.json/.ts}
+        fileTS=$(echo "$file_with_dir" | sed "s/.json/.ts/g")
         generateType "$file_with_dir" "$fileTS" &
     done
 }
