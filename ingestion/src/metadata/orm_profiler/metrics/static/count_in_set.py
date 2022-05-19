@@ -48,5 +48,4 @@ class CountInSet(StaticMetric):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.error(f"Error trying to run countInSet for {self.col.name} - {err}")
-            print(err)
             return None
