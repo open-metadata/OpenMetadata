@@ -18,7 +18,7 @@ addLicensing(){
     echo "$txt" > "$dir"
 }
 generateType(){
-    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}/$1" -o $PWD"/"$om_ui_directory$2 --just-types
+    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types
     if [[ -s $om_ui_directory$2 ]]
     then
         addLicensing "$om_ui_directory$2"
@@ -30,12 +30,11 @@ getTypes(){
     if [ -d "$om_ui_directory" ]
     then
         rm -r $om_ui_directory
-        echo ">>>>>>>>>>>>> Old Generated deleted! >>>>>>>>>>>>>>"
     fi
 
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
     do
-        mkdir -p "$(dirname "$om_ui_directory/$file_with_dir")"
+        mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
         fileTS=${file_with_dir//.json/.ts}
         generateType "$file_with_dir" "$fileTS" &
     done
