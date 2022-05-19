@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  InteractionRequiredAuthError,
-  InteractionStatus,
-} from '@azure/msal-browser';
+import { InteractionStatus } from '@azure/msal-browser';
 import { useAccount, useIsAuthenticated, useMsal } from '@azure/msal-react';
 import React, {
   forwardRef,
@@ -23,6 +20,7 @@ import React, {
   useEffect,
   useImperativeHandle,
 } from 'react';
+import { useMutex } from 'react-context-mutex';
 import { oidcTokenKey } from '../../constants/constants';
 import { msalLoginRequest } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../auth-provider/AuthProvider';
@@ -39,10 +37,13 @@ interface Props {
 
 const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, setLoadingIndicator } = useAuthContext();
+    const { setIsAuthenticated, loading, setLoadingIndicator } =
+      useAuthContext();
     const { instance, accounts, inProgress } = useMsal();
     const isMsalAuthenticated = useIsAuthenticated();
     const account = useAccount(accounts[0] || {});
+    const MutexRunner = useMutex();
+    const mutex = new MutexRunner('fetchIdToken');
 
     const handleOnLogoutSuccess = () => {
       for (const key in localStorage) {
@@ -55,22 +56,20 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = () => {
       setLoadingIndicator(true);
-      instance
-        .loginPopup(msalLoginRequest)
-        .finally(() => setLoadingIndicator(false));
+      instance.loginPopup(msalLoginRequest);
     };
     const logout = () => {
       setLoadingIndicator(false);
       handleOnLogoutSuccess();
     };
 
-    const fetchIdToken = (isRenewal = false): Promise<string> => {
+    const fetchIdToken = (): Promise<OidcUser> => {
       const tokenRequest = {
         account: account || accounts[0], // This is an example - Select account based on your app's requirements
         scopes: msalLoginRequest.scopes,
       };
 
-      return new Promise<string>((resolve, reject) => {
+      return new Promise<OidcUser>((resolve, reject) => {
         // Acquire access token
         instance
           .ssoSilent(tokenRequest)
@@ -89,24 +88,13 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
             };
             setIsAuthenticated(isMsalAuthenticated);
             localStorage.setItem(oidcTokenKey, idToken);
-            if (!isRenewal) {
-              onLoginSuccess(user);
-            }
-
-            resolve('');
+            resolve(user);
           })
-          .catch(async (e) => {
-            // Catch interaction_required errors and call interactive method to resolve
-            if (e instanceof InteractionRequiredAuthError) {
-              await instance.acquireTokenRedirect(tokenRequest);
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error(e);
 
-              resolve('');
-            } else {
-              // eslint-disable-next-line no-console
-              console.error(e);
-
-              reject(e);
-            }
+            reject(e);
           });
       });
     };
@@ -118,7 +106,22 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         inProgress === InteractionStatus.None &&
         (accounts.length > 0 || account?.idTokenClaims)
       ) {
-        fetchIdToken();
+        mutex.run(async () => {
+          mutex.lock();
+          fetchIdToken()
+            .then((user) => {
+              if ((user as OidcUser).id_token) {
+                setLoadingIndicator(false);
+                onLoginSuccess(user as OidcUser);
+              }
+            })
+            .finally(() => {
+              if (loading) {
+                setLoadingIndicator(false);
+              }
+              mutex.unlock();
+            });
+        });
       }
     }, [inProgress, accounts, instance, account]);
 
@@ -130,7 +133,15 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       renewIdToken() {
-        return fetchIdToken(true);
+        return new Promise((resolve, reject) => {
+          fetchIdToken()
+            .then((user) => {
+              resolve(user.id_token);
+            })
+            .catch((e) => {
+              reject(e);
+            });
+        });
       },
     }));
 

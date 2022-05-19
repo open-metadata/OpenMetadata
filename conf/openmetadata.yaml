@@ -129,7 +129,7 @@ migrationConfiguration:
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
-  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
+  adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[vivekratnavel.s]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
 
