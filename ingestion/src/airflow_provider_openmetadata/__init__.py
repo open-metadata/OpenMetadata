@@ -24,5 +24,5 @@ def get_provider_config():
         "name": "OpenMetadata",
         "description": "OpenMetadata <https://open-metadata.org/>",
         "package-name": "openmetadata-ingestion",
-        "version": "0.4.1",
+        "versions": ["0.10.1"]
     }

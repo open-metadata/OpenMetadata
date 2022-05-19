@@ -15,7 +15,7 @@ name: OpenMetadata
 description: |
     `OpenMetadata <https://open-metadata.org/>`__
 versions:
-  - 0.0.1
+  - 0.10.1
 
 additional-dependencies:
   - apache-airflow>=1.1.10
