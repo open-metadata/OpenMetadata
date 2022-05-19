@@ -51,7 +51,7 @@ describe('Entity Details Page', () => {
       .should('be.visible')
       .as('textBox');
 
-    // delete modal should disapeard
+    // delete modal should be disappeared
     cy.get('@discardBtn').click();
 
     // open modal and type required text in input box to delete entity
