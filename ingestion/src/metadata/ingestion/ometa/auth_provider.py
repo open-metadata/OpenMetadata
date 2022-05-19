@@ -382,7 +382,7 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
 
     @classmethod
     def create(
-            cls, config: OpenMetadataConnection
+        cls, config: OpenMetadataConnection
     ) -> "CustomOIDCAuthenticationProvider":
         return cls(config)
 
