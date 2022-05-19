@@ -209,3 +209,12 @@ export const visitEntityTab = (id) => {
   cy.get(`[data-testid="${id}"]`).click();
   cy.get(`[data-testid="${id}-tab"]`).should('be.visible');
 };
+/**
+ * Search for entities through the search bar
+ * @param {string} term Entity name
+ */
+export const searchEntity = (term) => {
+  cy.get('[data-testid="searchBox"]').should('be.visible');
+  cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
+  cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+};
