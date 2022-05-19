@@ -12,19 +12,19 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be
  * between minimum and maximum value.
  */
 export interface ColumnValuesToBeBetween {
-    /**
-     * The {maxValue} value for the column entry. if maxValue is not included, minValue is
-     * treated as lowerBound and there will eb no maximum number of rows
-     */
-    maxValue?: number;
-    /**
-     * The {minValue} value for the column entry. If minValue is not included, maxValue is
-     * treated as upperBound and there will be no minimum number of rows
-     */
-    minValue?: number;
+  /**
+   * The {maxValue} value for the column entry. if maxValue is not included, minValue is
+   * treated as lowerBound and there will eb no maximum number of rows
+   */
+  maxValue?: number;
+  /**
+   * The {minValue} value for the column entry. If minValue is not included, maxValue is
+   * treated as upperBound and there will be no minimum number of rows
+   */
+  minValue?: number;
 }

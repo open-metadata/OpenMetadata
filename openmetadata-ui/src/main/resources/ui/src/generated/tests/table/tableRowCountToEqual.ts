@@ -12,13 +12,13 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test TableRowCountToEqual. Test the number of rows equal to a
  * value.
  */
 export interface TableRowCountToEqual {
-    /**
-     * Expected number of rows {value}
-     */
-    value: number;
+  /**
+   * Expected number of rows {value}
+   */
+  value: number;
 }

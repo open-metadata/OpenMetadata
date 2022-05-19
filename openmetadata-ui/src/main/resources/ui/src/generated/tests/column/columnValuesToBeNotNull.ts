@@ -12,10 +12,10 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesToBeNotNull. Test the number of values in a
  * column are null. Values must be explicitly null. Empty strings don't count as null.
  */
 export interface ColumnValuesToBeNotNull {
-    columnValuesToBeNotNull?: boolean;
+  columnValuesToBeNotNull?: boolean;
 }

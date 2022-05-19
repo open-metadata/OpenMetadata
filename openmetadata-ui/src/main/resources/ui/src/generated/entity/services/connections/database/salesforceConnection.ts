@@ -12,50 +12,50 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Salesforce Connection Config
  */
 export interface SalesforceConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Host and port of the Salesforce service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to the Salesforce.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?: SalesforceScheme;
-    /**
-     * Salesforce Security Token.
-     */
-    securityToken?: string;
-    /**
-     * Salesforce Object Name.
-     */
-    sobjectName?:                string;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: SalesforceType;
-    /**
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Host and port of the Salesforce service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to the Salesforce.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: SalesforceScheme;
+  /**
+   * Salesforce Security Token.
+   */
+  securityToken?: string;
+  /**
+   * Salesforce Object Name.
+   */
+  sobjectName?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: SalesforceType;
+  /**
+   * Username to connect to the Salesforce. This user should have privileges to read all the
+   * metadata in Redshift.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum SalesforceScheme {
-    Salesforce = "salesforce",
+  Salesforce = 'salesforce',
 }
 
 /**
@@ -64,5 +64,5 @@ export enum SalesforceScheme {
  * Service type.
  */
 export enum SalesforceType {
-    Salesforce = "Salesforce",
+  Salesforce = 'Salesforce',
 }

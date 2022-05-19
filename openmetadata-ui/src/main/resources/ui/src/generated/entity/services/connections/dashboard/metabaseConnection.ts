@@ -12,32 +12,32 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Metabase Connection Config
  */
 export interface MetabaseConnection {
-    /**
-     * Database Service Name for creation of lineage
-     */
-    dbServiceName?: string;
-    /**
-     * Host and Port of the Metabase instance.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Metabase.
-     */
-    password?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: MetabaseType;
-    /**
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
-     */
-    username: string;
+  /**
+   * Database Service Name for creation of lineage
+   */
+  dbServiceName?: string;
+  /**
+   * Host and Port of the Metabase instance.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Metabase.
+   */
+  password?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: MetabaseType;
+  /**
+   * Username to connect to Metabase. This user should have privileges to read all the
+   * metadata in Metabase.
+   */
+  username: string;
 }
 
 /**
@@ -46,5 +46,5 @@ export interface MetabaseConnection {
  * Metabase service type
  */
 export enum MetabaseType {
-    Metabase = "Metabase",
+  Metabase = 'Metabase',
 }

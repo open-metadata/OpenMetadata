@@ -12,88 +12,88 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * OpenMetadata Connection Config
  */
 export interface OpenMetadataConnection {
-    /**
-     * OpenMetadata server API version to use.
-     */
-    apiVersion?: string;
-    /**
-     * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
-     * the one configured on OpenMetadata server.
-     */
-    authProvider?: AuthProvider;
-    /**
-     * Validate Openmetadata Server & Client Version.
-     */
-    enableVersionValidation?: boolean;
-    /**
-     * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
-     */
-    hostPort: string;
-    /**
-     * Include Dashboards for Indexing
-     */
-    includeDashboards?: boolean;
-    /**
-     * Include Database Services for Indexing
-     */
-    includeDatabaseServices?: boolean;
-    /**
-     * Include Glossary Terms for Indexing
-     */
-    includeGlossaryTerms?: boolean;
-    /**
-     * Include Messaging Services for Indexing
-     */
-    includeMessagingServices?: boolean;
-    /**
-     * Include Pipelines for Indexing
-     */
-    includePipelines?: boolean;
-    /**
-     * Include Pipeline Services for Indexing
-     */
-    includePipelineServices?: boolean;
-    /**
-     * Include Tags for Policy
-     */
-    includePolicy?: boolean;
-    /**
-     * Include Tables for Indexing
-     */
-    includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
-    /**
-     * Include Teams for Indexing
-     */
-    includeTeams?: boolean;
-    /**
-     * Include Topics for Indexing
-     */
-    includeTopics?: boolean;
-    /**
-     * Include Users for Indexing
-     */
-    includeUsers?: boolean;
-    /**
-     * Limit the number of records for Indexing.
-     */
-    limitRecords?: number;
-    /**
-     * OpenMetadata Client security configuration.
-     */
-    securityConfig?:             ClientConfig;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: OpenmetadataType;
+  /**
+   * OpenMetadata server API version to use.
+   */
+  apiVersion?: string;
+  /**
+   * OpenMetadata Server Authentication Provider. Make sure configure same auth providers as
+   * the one configured on OpenMetadata server.
+   */
+  authProvider?: AuthProvider;
+  /**
+   * Validate Openmetadata Server & Client Version.
+   */
+  enableVersionValidation?: boolean;
+  /**
+   * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
+   */
+  hostPort: string;
+  /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  /**
+   * OpenMetadata Client security configuration.
+   */
+  securityConfig?: ClientConfig;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: OpenmetadataType;
 }
 
 /**
@@ -101,13 +101,13 @@ export interface OpenMetadataConnection {
  * the one configured on OpenMetadata server.
  */
 export enum AuthProvider {
-    Auth0 = "auth0",
-    Azure = "azure",
-    CustomOidc = "custom-oidc",
-    Google = "google",
-    NoAuth = "no-auth",
-    Okta = "okta",
-    Openmetadata = "openmetadata",
+  Auth0 = 'auth0',
+  Azure = 'azure',
+  CustomOidc = 'custom-oidc',
+  Google = 'google',
+  NoAuth = 'no-auth',
+  Okta = 'okta',
+  Openmetadata = 'openmetadata',
 }
 
 /**
@@ -126,66 +126,66 @@ export enum AuthProvider {
  * openMetadataJWTClientConfig security configs.
  */
 export interface ClientConfig {
-    /**
-     * Google SSO audience URL
-     */
-    audience?: string;
-    /**
-     * Google SSO client secret key path or contents.
-     *
-     * Auth0 Client Secret Key.
-     *
-     * Custom OIDC Client Secret Key.
-     */
-    secretKey?: string;
-    /**
-     * Okta Client ID.
-     *
-     * Auth0 Client ID.
-     *
-     * Azure Client ID.
-     *
-     * Custom OIDC Client ID.
-     */
-    clientId?: string;
-    /**
-     * Okta Service account Email.
-     */
-    email?: string;
-    /**
-     * Okta org url.
-     */
-    orgURL?: string;
-    /**
-     * Okta Private Key.
-     */
-    privateKey?: string;
-    /**
-     * Okta client scopes.
-     *
-     * Azure Client ID.
-     */
-    scopes?: string[];
-    /**
-     * Auth0 Domain.
-     */
-    domain?: string;
-    /**
-     * Azure SSO Authority
-     */
-    authority?: string;
-    /**
-     * Azure SSO client secret key
-     */
-    clientSecret?: string;
-    /**
-     * Custom OIDC token endpoint.
-     */
-    tokenEndpoint?: string;
-    /**
-     * OpenMetadata generated JWT token.
-     */
-    jwtToken?: string;
+  /**
+   * Google SSO audience URL
+   */
+  audience?: string;
+  /**
+   * Google SSO client secret key path or contents.
+   *
+   * Auth0 Client Secret Key.
+   *
+   * Custom OIDC Client Secret Key.
+   */
+  secretKey?: string;
+  /**
+   * Okta Client ID.
+   *
+   * Auth0 Client ID.
+   *
+   * Azure Client ID.
+   *
+   * Custom OIDC Client ID.
+   */
+  clientId?: string;
+  /**
+   * Okta Service account Email.
+   */
+  email?: string;
+  /**
+   * Okta org url.
+   */
+  orgURL?: string;
+  /**
+   * Okta Private Key.
+   */
+  privateKey?: string;
+  /**
+   * Okta client scopes.
+   *
+   * Azure Client ID.
+   */
+  scopes?: string[];
+  /**
+   * Auth0 Domain.
+   */
+  domain?: string;
+  /**
+   * Azure SSO Authority
+   */
+  authority?: string;
+  /**
+   * Azure SSO client secret key
+   */
+  clientSecret?: string;
+  /**
+   * Custom OIDC token endpoint.
+   */
+  tokenEndpoint?: string;
+  /**
+   * OpenMetadata generated JWT token.
+   */
+  jwtToken?: string;
 }
 
 /**
@@ -194,5 +194,5 @@ export interface ClientConfig {
  * OpenMetadata service type
  */
 export enum OpenmetadataType {
-    OpenMetadata = "OpenMetadata",
+  OpenMetadata = 'OpenMetadata',
 }

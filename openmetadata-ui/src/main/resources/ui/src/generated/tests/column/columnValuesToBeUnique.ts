@@ -12,10 +12,10 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be
  * unique.
  */
 export interface ColumnValuesToBeUnique {
-    columnValuesToBeUnique?: boolean;
+  columnValuesToBeUnique?: boolean;
 }

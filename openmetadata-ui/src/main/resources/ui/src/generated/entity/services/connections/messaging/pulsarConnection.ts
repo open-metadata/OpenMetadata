@@ -12,15 +12,15 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Pulsar Connection Config
  */
 export interface PulsarConnection {
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: PulsarType;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: PulsarType;
 }
 
 /**
@@ -29,5 +29,5 @@ export interface PulsarConnection {
  * Pulsar service type
  */
 export enum PulsarType {
-    Pulsar = "Pulsar",
+  Pulsar = 'Pulsar',
 }

@@ -12,53 +12,53 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Clickhouse Connection Config
  */
 export interface ClickhouseConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Clickhouse SQL connection duration.
-     */
-    duration?: number;
-    /**
-     * Host and port of the Clickhouse service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Clickhouse.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     ClickhouseScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsUsageExtraction?:    boolean;
-    /**
-     * Service Type
-     */
-    type?: ClickhouseType;
-    /**
-     * Username to connect to Clickhouse. This user should have privileges to read all the
-     * metadata in Clickhouse.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Clickhouse SQL connection duration.
+   */
+  duration?: number;
+  /**
+   * Host and port of the Clickhouse service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Clickhouse.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: ClickhouseScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: ClickhouseType;
+  /**
+   * Username to connect to Clickhouse. This user should have privileges to read all the
+   * metadata in Clickhouse.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum ClickhouseScheme {
-    ClickhouseHTTP = "clickhouse+http",
+  ClickhouseHTTP = 'clickhouse+http',
 }
 
 /**
@@ -67,5 +67,5 @@ export enum ClickhouseScheme {
  * Service type.
  */
 export enum ClickhouseType {
-    Clickhouse = "Clickhouse",
+  Clickhouse = 'Clickhouse',
 }

@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * MariaDB Database Connection Config
  */
 export interface MariaDBConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the MariaDB service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to MariaDB.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     MariaDBScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: MariaDBType;
-    /**
-     * Username to connect to MariaDB. This user should have privileges to read all the metadata
-     * in MariaDB.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the MariaDB service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to MariaDB.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: MariaDBScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: MariaDBType;
+  /**
+   * Username to connect to MariaDB. This user should have privileges to read all the metadata
+   * in MariaDB.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum MariaDBScheme {
-    MysqlPymysql = "mysql+pymysql",
+  MysqlPymysql = 'mysql+pymysql',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum MariaDBScheme {
  * Service type.
  */
 export enum MariaDBType {
-    MariaDB = "MariaDB",
+  MariaDB = 'MariaDB',
 }

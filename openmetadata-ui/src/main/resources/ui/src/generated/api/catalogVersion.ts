@@ -12,20 +12,20 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Catalog application software version
  */
 export interface CatalogVersion {
-    /**
-     * Software revision of the catalog
-     */
-    revision?: string;
-    /**
-     * Build timestamp
-     */
-    timestamp?: number;
-    /**
-     * Software version of the catalog
-     */
-    version?: string;
+  /**
+   * Software revision of the catalog
+   */
+  revision?: string;
+  /**
+   * Build timestamp
+   */
+  timestamp?: number;
+  /**
+   * Software version of the catalog
+   */
+  version?: string;
 }

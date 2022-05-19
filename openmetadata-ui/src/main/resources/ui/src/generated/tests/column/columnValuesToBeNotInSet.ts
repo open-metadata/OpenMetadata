@@ -12,13 +12,13 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be
  * in the set.
  */
 export interface ColumnValuesToBeNotInSet {
-    /**
-     * An Array of values.
-     */
-    forbiddenValues: Array<number | string>;
+  /**
+   * An Array of values.
+   */
+  forbiddenValues: Array<number | string>;
 }

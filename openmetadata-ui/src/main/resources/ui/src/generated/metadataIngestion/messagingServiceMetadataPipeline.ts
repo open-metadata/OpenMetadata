@@ -12,19 +12,19 @@
  *  limitations under the License.
  */
 
- export interface MessagingServiceMetadataPipelineClass {
-    /**
-     * Option to turn on/off generating sample data during metadata extraction.
-     */
-    generateSampleData?: boolean;
-    /**
-     * Regex to only fetch topics that matches the pattern.
-     */
-    topicFilterPattern?: FilterPattern;
-    /**
-     * Pipeline type
-     */
-    type?: MessagingMetadataConfigType;
+export interface MessagingServiceMetadataPipelineClass {
+  /**
+   * Option to turn on/off generating sample data during metadata extraction.
+   */
+  generateSampleData?: boolean;
+  /**
+   * Regex to only fetch topics that matches the pattern.
+   */
+  topicFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: MessagingMetadataConfigType;
 }
 
 /**
@@ -33,14 +33,14 @@
  * Regex to only fetch dashboards or charts that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
@@ -49,5 +49,5 @@ export interface FilterPattern {
  * Messaging Source Config Metadata Pipeline type
  */
 export enum MessagingMetadataConfigType {
-    MessagingMetadata = "MessagingMetadata",
+  MessagingMetadata = 'MessagingMetadata',
 }

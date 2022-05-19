@@ -12,51 +12,51 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Azure SQL Connection Config
  */
 export interface AzureSQLConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * SQLAlchemy driver for AzureSQL.
-     */
-    driver?: string;
-    /**
-     * Host and port of the AzureSQL service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to AzureSQL.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     AzureSQLScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: AzureSQLType;
-    /**
-     * Username to connect to AzureSQL. This user should have privileges to read the metadata.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * SQLAlchemy driver for AzureSQL.
+   */
+  driver?: string;
+  /**
+   * Host and port of the AzureSQL service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to AzureSQL.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: AzureSQLScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: AzureSQLType;
+  /**
+   * Username to connect to AzureSQL. This user should have privileges to read the metadata.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum AzureSQLScheme {
-    MssqlPyodbc = "mssql+pyodbc",
+  MssqlPyodbc = 'mssql+pyodbc',
 }
 
 /**
@@ -65,5 +65,5 @@ export enum AzureSQLScheme {
  * Service type.
  */
 export enum AzureSQLType {
-    AzureSQL = "AzureSQL",
+  AzureSQL = 'AzureSQL',
 }

@@ -12,13 +12,13 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test TableColumnCountToEqual. Test the number of columns equal to
  * a value.
  */
 export interface TableColumnCountToEqual {
-    /**
-     * Expected number of columns to equal to a {value}
-     */
-    columnCount: number;
+  /**
+   * Expected number of columns to equal to a {value}
+   */
+  columnCount: number;
 }

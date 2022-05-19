@@ -12,39 +12,39 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Superset Connection Config
  */
 export interface SupersetConnection {
-    /**
-     * Additional connection options that can be sent to service during the connection.
-     */
-    connectionOptions?: { [key: string]: any };
-    /**
-     * Database Service Name to create lineage
-     */
-    dbServiceName?: string;
-    /**
-     * URL for the superset instance.
-     */
-    hostPort: string;
-    /**
-     * Password for Superset.
-     */
-    password?: string;
-    /**
-     * Authentication provider for the Superset service.
-     */
-    provider?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: SupersetType;
-    /**
-     * Username for Superset.
-     */
-    username: string;
+  /**
+   * Additional connection options that can be sent to service during the connection.
+   */
+  connectionOptions?: { [key: string]: any };
+  /**
+   * Database Service Name to create lineage
+   */
+  dbServiceName?: string;
+  /**
+   * URL for the superset instance.
+   */
+  hostPort: string;
+  /**
+   * Password for Superset.
+   */
+  password?: string;
+  /**
+   * Authentication provider for the Superset service.
+   */
+  provider?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: SupersetType;
+  /**
+   * Username for Superset.
+   */
+  username: string;
 }
 
 /**
@@ -53,5 +53,5 @@ export interface SupersetConnection {
  * Superset service type
  */
 export enum SupersetType {
-    Superset = "Superset",
+  Superset = 'Superset',
 }

@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Druid Connection Config
  */
 export interface DruidConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the Druid service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Druid.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     DruidScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: DruidType;
-    /**
-     * Username to connect to Druid. This user should have privileges to read all the metadata
-     * in Druid.
-     */
-    username?: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the Druid service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Druid.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: DruidScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: DruidType;
+  /**
+   * Username to connect to Druid. This user should have privileges to read all the metadata
+   * in Druid.
+   */
+  username?: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum DruidScheme {
-    Druid = "druid",
+  Druid = 'druid',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum DruidScheme {
  * Service type.
  */
 export enum DruidType {
-    Druid = "Druid",
+  Druid = 'Druid',
 }

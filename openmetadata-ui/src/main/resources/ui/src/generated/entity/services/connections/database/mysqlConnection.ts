@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Mysql Database Connection Config
  */
 export interface MysqlConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the MySQL service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to MySQL.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     MySQLScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: MySQLType;
-    /**
-     * Username to connect to MySQL. This user should have privileges to read all the metadata
-     * in Mysql.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the MySQL service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to MySQL.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: MySQLScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: MySQLType;
+  /**
+   * Username to connect to MySQL. This user should have privileges to read all the metadata
+   * in Mysql.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum MySQLScheme {
-    MysqlPymysql = "mysql+pymysql",
+  MysqlPymysql = 'mysql+pymysql',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum MySQLScheme {
  * Service type.
  */
 export enum MySQLType {
-    Mysql = "Mysql",
+  Mysql = 'Mysql',
 }

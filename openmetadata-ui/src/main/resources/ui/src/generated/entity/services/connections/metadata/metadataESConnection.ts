@@ -12,67 +12,67 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Metadata to ElasticSearch Connection Config
  */
 export interface MetadataESConnection {
-    /**
-     * Include Dashboards for Indexing
-     */
-    includeDashboards?: boolean;
-    /**
-     * Include Database Services for Indexing
-     */
-    includeDatabaseServices?: boolean;
-    /**
-     * Include Glossary Terms for Indexing
-     */
-    includeGlossaryTerms?: boolean;
-    /**
-     * Include Messaging Services for Indexing
-     */
-    includeMessagingServices?: boolean;
-    /**
-     * Include Pipelines for Indexing
-     */
-    includePipelines?: boolean;
-    /**
-     * Include Pipeline Services for Indexing
-     */
-    includePipelineServices?: boolean;
-    /**
-     * Include Tags for Policy
-     */
-    includePolicy?: boolean;
-    /**
-     * Include Tables for Indexing
-     */
-    includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
-    /**
-     * Include Teams for Indexing
-     */
-    includeTeams?: boolean;
-    /**
-     * Include Topics for Indexing
-     */
-    includeTopics?: boolean;
-    /**
-     * Include Users for Indexing
-     */
-    includeUsers?: boolean;
-    /**
-     * Limit the number of records for Indexing.
-     */
-    limitRecords?:               number;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: MetadataESType;
+  /**
+   * Include Dashboards for Indexing
+   */
+  includeDashboards?: boolean;
+  /**
+   * Include Database Services for Indexing
+   */
+  includeDatabaseServices?: boolean;
+  /**
+   * Include Glossary Terms for Indexing
+   */
+  includeGlossaryTerms?: boolean;
+  /**
+   * Include Messaging Services for Indexing
+   */
+  includeMessagingServices?: boolean;
+  /**
+   * Include Pipelines for Indexing
+   */
+  includePipelines?: boolean;
+  /**
+   * Include Pipeline Services for Indexing
+   */
+  includePipelineServices?: boolean;
+  /**
+   * Include Tags for Policy
+   */
+  includePolicy?: boolean;
+  /**
+   * Include Tables for Indexing
+   */
+  includeTables?: boolean;
+  /**
+   * Include Tags for Indexing
+   */
+  includeTags?: boolean;
+  /**
+   * Include Teams for Indexing
+   */
+  includeTeams?: boolean;
+  /**
+   * Include Topics for Indexing
+   */
+  includeTopics?: boolean;
+  /**
+   * Include Users for Indexing
+   */
+  includeUsers?: boolean;
+  /**
+   * Limit the number of records for Indexing.
+   */
+  limitRecords?: number;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: MetadataESType;
 }
 
 /**
@@ -81,5 +81,5 @@ export interface MetadataESConnection {
  * Metadata to Elastic Search type
  */
 export enum MetadataESType {
-    MetadataES = "MetadataES",
+  MetadataES = 'MetadataES',
 }

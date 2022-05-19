@@ -12,23 +12,23 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * User/Bot SSOAuthN.
  */
 export interface SsoAuth {
-    /**
-     * Type of database service such as Amundsen, Atlas...
-     */
-    ssoServiceType?: SsoServiceType;
+  /**
+   * Type of database service such as Amundsen, Atlas...
+   */
+  ssoServiceType?: SsoServiceType;
 }
 
 /**
  * Type of database service such as Amundsen, Atlas...
  */
 export enum SsoServiceType {
-    Auth0 = "Auth0",
-    Azure = "Azure",
-    CustomOIDC = "CustomOIDC",
-    Google = "Google",
-    Okta = "Okta",
+  Auth0 = 'Auth0',
+  Azure = 'Azure',
+  CustomOIDC = 'CustomOIDC',
+  Google = 'Google',
+  Okta = 'Okta',
 }

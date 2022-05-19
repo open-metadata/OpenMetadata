@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Postgres Database Connection Config
  */
 export interface PostgresConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the Postgres service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Postgres.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     PostgresScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: PostgresType;
-    /**
-     * Username to connect to Postgres. This user should have privileges to read all the
-     * metadata in Postgres.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the Postgres service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Postgres.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: PostgresScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: PostgresType;
+  /**
+   * Username to connect to Postgres. This user should have privileges to read all the
+   * metadata in Postgres.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum PostgresScheme {
-    PostgresqlPsycopg2 = "postgresql+psycopg2",
+  PostgresqlPsycopg2 = 'postgresql+psycopg2',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum PostgresScheme {
  * Service type.
  */
 export enum PostgresType {
-    Postgres = "Postgres",
+  Postgres = 'Postgres',
 }

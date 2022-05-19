@@ -12,49 +12,49 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Vertica Connection Config
  */
 export interface VerticaConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the Vertica service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Vertica.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     VerticaScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsUsageExtraction?:    boolean;
-    /**
-     * Service Type
-     */
-    type?: VerticaType;
-    /**
-     * Username to connect to Vertica. This user should have privileges to read all the metadata
-     * in Vertica.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the Vertica service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Vertica.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: VerticaScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: VerticaType;
+  /**
+   * Username to connect to Vertica. This user should have privileges to read all the metadata
+   * in Vertica.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum VerticaScheme {
-    VerticaVerticaPython = "vertica+vertica_python",
+  VerticaVerticaPython = 'vertica+vertica_python',
 }
 
 /**
@@ -63,5 +63,5 @@ export enum VerticaScheme {
  * Service type.
  */
 export enum VerticaType {
-    Vertica = "Vertica",
+  Vertica = 'Vertica',
 }

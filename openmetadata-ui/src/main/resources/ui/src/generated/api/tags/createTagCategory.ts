@@ -12,26 +12,26 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Create tag category request
  */
 export interface CreateTagCategory {
-    categoryType: TagCategoryType;
-    /**
-     * Description of the tag category
-     */
-    description: string;
-    /**
-     * Display Name that identifies this tag category.
-     */
-    displayName?: string;
-    name:         string;
+  categoryType: TagCategoryType;
+  /**
+   * Description of the tag category
+   */
+  description: string;
+  /**
+   * Display Name that identifies this tag category.
+   */
+  displayName?: string;
+  name: string;
 }
 
 /**
  * Type of tag category.
  */
 export enum TagCategoryType {
-    Classification = "Classification",
-    Descriptive = "Descriptive",
+  Classification = 'Classification',
+  Descriptive = 'Descriptive',
 }

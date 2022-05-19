@@ -12,85 +12,85 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Create a topic entity request
  */
 export interface CreateTopic {
-    /**
-     * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
-     */
-    cleanupPolicies?: CleanupPolicy[];
-    /**
-     * Description of the topic instance. What it has and how to use it.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this topic.
-     */
-    displayName?: string;
-    /**
-     * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
-     */
-    maximumMessageSize?: number;
-    /**
-     * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas`
-     * configuration.
-     */
-    minimumInSyncReplicas?: number;
-    /**
-     * Name that identifies this topic instance uniquely.
-     */
-    name: string;
-    /**
-     * Owner of this topic
-     */
-    owner?: EntityReference;
-    /**
-     * Number of partitions into which the topic is divided.
-     */
-    partitions: number;
-    /**
-     * Replication Factor in integer (more than 1).
-     */
-    replicationFactor?: number;
-    /**
-     * Maximum size of a partition in bytes before old data is discarded. For Kafka -
-     * `retention.bytes` configuration.
-     */
-    retentionSize?: number;
-    /**
-     * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
-     */
-    retentionTime?: number;
-    /**
-     * Schema used for message serialization. Optional as some topics may not have associated
-     * schemas.
-     */
-    schemaText?: string;
-    /**
-     * Schema used for message serialization.
-     */
-    schemaType?: SchemaType;
-    /**
-     * Link to the messaging service where this topic is hosted in
-     */
-    service: EntityReference;
-    /**
-     * Tags for this topic
-     */
-    tags?: TagLabel[];
-    /**
-     * Contains key/value pair of topic configuration.
-     */
-    topicConfig?: { [key: string]: any };
+  /**
+   * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
+   */
+  cleanupPolicies?: CleanupPolicy[];
+  /**
+   * Description of the topic instance. What it has and how to use it.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this topic.
+   */
+  displayName?: string;
+  /**
+   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
+   */
+  maximumMessageSize?: number;
+  /**
+   * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas`
+   * configuration.
+   */
+  minimumInSyncReplicas?: number;
+  /**
+   * Name that identifies this topic instance uniquely.
+   */
+  name: string;
+  /**
+   * Owner of this topic
+   */
+  owner?: EntityReference;
+  /**
+   * Number of partitions into which the topic is divided.
+   */
+  partitions: number;
+  /**
+   * Replication Factor in integer (more than 1).
+   */
+  replicationFactor?: number;
+  /**
+   * Maximum size of a partition in bytes before old data is discarded. For Kafka -
+   * `retention.bytes` configuration.
+   */
+  retentionSize?: number;
+  /**
+   * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
+   */
+  retentionTime?: number;
+  /**
+   * Schema used for message serialization. Optional as some topics may not have associated
+   * schemas.
+   */
+  schemaText?: string;
+  /**
+   * Schema used for message serialization.
+   */
+  schemaType?: SchemaType;
+  /**
+   * Link to the messaging service where this topic is hosted in
+   */
+  service: EntityReference;
+  /**
+   * Tags for this topic
+   */
+  tags?: TagLabel[];
+  /**
+   * Contains key/value pair of topic configuration.
+   */
+  topicConfig?: { [key: string]: any };
 }
 
 /**
  * Topic clean up policy. For Kafka - `cleanup.policy` configuration.
  */
 export enum CleanupPolicy {
-    Compact = "compact",
-    Delete = "delete",
+  Compact = 'compact',
+  Delete = 'delete',
 }
 
 /**
@@ -104,41 +104,41 @@ export enum CleanupPolicy {
  * Link to the messaging service where this topic is hosted in
  */
 export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
 }
 
 /**
@@ -147,42 +147,42 @@ export interface EntityReference {
  * Schema type used for the message.
  */
 export enum SchemaType {
-    Avro = "Avro",
-    JSON = "JSON",
-    Other = "Other",
-    Protobuf = "Protobuf",
+  Avro = 'Avro',
+  JSON = 'JSON',
+  Other = 'Other',
+  Protobuf = 'Protobuf',
 }
 
 /**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
-    /**
-     * Unique name of the tag category.
-     */
-    description?: string;
-    /**
-     * Link to the tag resource.
-     */
-    href?: string;
-    /**
-     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
-     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
-     * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
-     * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
-     * to determine the tag label.
-     */
-    labelType: LabelType;
-    /**
-     * Label is from Tags or Glossary.
-     */
-    source: Source;
-    /**
-     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
-     */
-    state:  State;
-    tagFQN: string;
+  /**
+   * Unique name of the tag category.
+   */
+  description?: string;
+  /**
+   * Link to the tag resource.
+   */
+  href?: string;
+  /**
+   * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+   * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+   * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
+   * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
+   * to determine the tag label.
+   */
+  labelType: LabelType;
+  /**
+   * Label is from Tags or Glossary.
+   */
+  source: Source;
+  /**
+   * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+   * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+   */
+  state: State;
+  tagFQN: string;
 }
 
 /**
@@ -193,18 +193,18 @@ export interface TagLabel {
  * to determine the tag label.
  */
 export enum LabelType {
-    Automated = "Automated",
-    Derived = "Derived",
-    Manual = "Manual",
-    Propagated = "Propagated",
+  Automated = 'Automated',
+  Derived = 'Derived',
+  Manual = 'Manual',
+  Propagated = 'Propagated',
 }
 
 /**
  * Label is from Tags or Glossary.
  */
 export enum Source {
-    Glossary = "Glossary",
-    Tag = "Tag",
+  Glossary = 'Glossary',
+  Tag = 'Tag',
 }
 
 /**
@@ -212,6 +212,6 @@ export enum Source {
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
 export enum State {
-    Confirmed = "Confirmed",
-    Suggested = "Suggested",
+  Confirmed = 'Confirmed',
+  Suggested = 'Suggested',
 }

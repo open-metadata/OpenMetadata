@@ -12,27 +12,27 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Redash Connection Config
  */
 export interface RedashConnection {
-    /**
-     * API key of the redash instance to access.
-     */
-    apiKey: string;
-    /**
-     * URL for the Redash instance
-     */
-    hostPort:                    string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: RedashType;
-    /**
-     * Username for Redash
-     */
-    username: string;
+  /**
+   * API key of the redash instance to access.
+   */
+  apiKey: string;
+  /**
+   * URL for the Redash instance
+   */
+  hostPort: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: RedashType;
+  /**
+   * Username for Redash
+   */
+  username: string;
 }
 
 /**
@@ -41,5 +41,5 @@ export interface RedashConnection {
  * Redash service type
  */
 export enum RedashType {
-    Redash = "Redash",
+  Redash = 'Redash',
 }

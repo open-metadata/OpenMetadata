@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Db2 Connection Config
  */
 export interface Db2Connection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the DB2 service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to DB2.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     Db2Scheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: Db2Type;
-    /**
-     * Username to connect to DB2. This user should have privileges to read all the metadata in
-     * DB2.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the DB2 service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to DB2.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: Db2Scheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: Db2Type;
+  /**
+   * Username to connect to DB2. This user should have privileges to read all the metadata in
+   * DB2.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum Db2Scheme {
-    Db2IBMDB = "db2+ibm_db",
+  Db2IBMDB = 'db2+ibm_db',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum Db2Scheme {
  * Service type.
  */
 export enum Db2Type {
-    Db2 = "Db2",
+  Db2 = 'Db2',
 }

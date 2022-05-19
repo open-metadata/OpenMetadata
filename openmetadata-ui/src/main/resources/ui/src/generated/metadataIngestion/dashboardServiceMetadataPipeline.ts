@@ -12,19 +12,19 @@
  *  limitations under the License.
  */
 
- export interface DashboardServiceMetadataPipelineClass {
-    /**
-     * Regex exclude tables or databases that matches the pattern.
-     */
-    chartFilterPattern?: FilterPattern;
-    /**
-     * Regex to only fetch tables or databases that matches the pattern.
-     */
-    dashboardFilterPattern?: FilterPattern;
-    /**
-     * Pipeline type
-     */
-    type?: DashboardMetadataConfigType;
+export interface DashboardServiceMetadataPipelineClass {
+  /**
+   * Regex exclude tables or databases that matches the pattern.
+   */
+  chartFilterPattern?: FilterPattern;
+  /**
+   * Regex to only fetch tables or databases that matches the pattern.
+   */
+  dashboardFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: DashboardMetadataConfigType;
 }
 
 /**
@@ -35,14 +35,14 @@
  * Regex to only fetch tables or databases that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
@@ -51,5 +51,5 @@ export interface FilterPattern {
  * Dashboard Source Config Metadata Pipeline type
  */
 export enum DashboardMetadataConfigType {
-    DashboardMetadata = "DashboardMetadata",
+  DashboardMetadata = 'DashboardMetadata',
 }

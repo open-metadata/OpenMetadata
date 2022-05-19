@@ -12,31 +12,31 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * User/Bot JWTAuthMechanism.
  */
 export interface JwtAuth {
-    /**
-     * JWT Auth Token.
-     */
-    JWTToken: string;
-    /**
-     * JWT Auth Token expiration time.
-     */
-    JWTTokenExpiresAt?: number;
-    /**
-     * JWT Auth Token expiration in days
-     */
-    JWTTokenExpiry: JWTTokenExpiry;
+  /**
+   * JWT Auth Token.
+   */
+  JWTToken: string;
+  /**
+   * JWT Auth Token expiration time.
+   */
+  JWTTokenExpiresAt?: number;
+  /**
+   * JWT Auth Token expiration in days
+   */
+  JWTTokenExpiry: JWTTokenExpiry;
 }
 
 /**
  * JWT Auth Token expiration in days
  */
 export enum JWTTokenExpiry {
-    The30 = "30",
-    The60 = "60",
-    The7 = "7",
-    The90 = "90",
-    Unlimited = "Unlimited",
+  The30 = '30',
+  The60 = '60',
+  The7 = '7',
+  The90 = '90',
+  Unlimited = 'Unlimited',
 }

@@ -12,28 +12,28 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * AWS credentials configs.
  */
 export interface AwsCredentials {
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId: string;
-    /**
-     * AWS Region
-     */
-    awsRegion: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
+  /**
+   * AWS Access key ID.
+   */
+  awsAccessKeyId: string;
+  /**
+   * AWS Region
+   */
+  awsRegion: string;
+  /**
+   * AWS Secret Access Key.
+   */
+  awsSecretAccessKey: string;
+  /**
+   * AWS Session Token.
+   */
+  awsSessionToken?: string;
+  /**
+   * EndPoint URL for the AWS
+   */
+  endPointURL?: string;
 }

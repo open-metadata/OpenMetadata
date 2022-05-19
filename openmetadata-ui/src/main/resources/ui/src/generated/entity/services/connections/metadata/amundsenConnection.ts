@@ -12,43 +12,43 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Amundsen Connection Config
  */
 export interface AmundsenConnection {
-    /**
-     * Enable encryption for the Amundsen Neo4j Connection.
-     */
-    encrypted?: boolean;
-    /**
-     * Host and port of the Amundsen Neo4j Connection.
-     */
-    hostPort?: string;
-    /**
-     * Maximum connection lifetime for the Amundsen Neo4j Connection.
-     */
-    maxConnectionLifeTime?: number;
-    /**
-     * Model Class for the Amundsen Neo4j Connection.
-     */
-    modelClass?: string;
-    /**
-     * password to connect to the Amundsen Neo4j Connection.
-     */
-    password?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: AmundsenType;
-    /**
-     * username to connect to the Amundsen Neo4j Connection.
-     */
-    username?: string;
-    /**
-     * Enable SSL validation for the Amundsen Neo4j Connection.
-     */
-    validateSSL?: boolean;
+  /**
+   * Enable encryption for the Amundsen Neo4j Connection.
+   */
+  encrypted?: boolean;
+  /**
+   * Host and port of the Amundsen Neo4j Connection.
+   */
+  hostPort?: string;
+  /**
+   * Maximum connection lifetime for the Amundsen Neo4j Connection.
+   */
+  maxConnectionLifeTime?: number;
+  /**
+   * Model Class for the Amundsen Neo4j Connection.
+   */
+  modelClass?: string;
+  /**
+   * password to connect to the Amundsen Neo4j Connection.
+   */
+  password?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: AmundsenType;
+  /**
+   * username to connect to the Amundsen Neo4j Connection.
+   */
+  username?: string;
+  /**
+   * Enable SSL validation for the Amundsen Neo4j Connection.
+   */
+  validateSSL?: boolean;
 }
 
 /**
@@ -57,5 +57,5 @@ export interface AmundsenConnection {
  * Amundsen service type
  */
 export enum AmundsenType {
-    Amundsen = "Amundsen",
+  Amundsen = 'Amundsen',
 }

@@ -12,49 +12,49 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Redshift  Connection Config
  */
 export interface RedshiftConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database: string;
-    /**
-     * Host and port of the Redshift service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Redshift.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     RedshiftScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsUsageExtraction?:    boolean;
-    /**
-     * Service Type
-     */
-    type?: RedshiftType;
-    /**
-     * Username to connect to Redshift. This user should have privileges to read all the
-     * metadata in Redshift.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database: string;
+  /**
+   * Host and port of the Redshift service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Redshift.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: RedshiftScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: RedshiftType;
+  /**
+   * Username to connect to Redshift. This user should have privileges to read all the
+   * metadata in Redshift.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum RedshiftScheme {
-    RedshiftPsycopg2 = "redshift+psycopg2",
+  RedshiftPsycopg2 = 'redshift+psycopg2',
 }
 
 /**
@@ -63,5 +63,5 @@ export enum RedshiftScheme {
  * Service type.
  */
 export enum RedshiftType {
-    Redshift = "Redshift",
+  Redshift = 'Redshift',
 }

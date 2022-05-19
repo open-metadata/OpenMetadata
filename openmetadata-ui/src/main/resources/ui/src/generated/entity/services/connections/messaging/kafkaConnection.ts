@@ -12,31 +12,31 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Kafka Connection Config
  */
 export interface KafkaConnection {
-    /**
-     * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
-     */
-    bootstrapServers: string;
-    /**
-     * Confluent Kafka Consumer Config
-     */
-    consumerConfig?: { [key: string]: any };
-    /**
-     * Confluent Kafka Schema Registry Config.
-     */
-    schemaRegistryConfig?: { [key: string]: any };
-    /**
-     * Confluent Kafka Schema Registry URL.
-     */
-    schemaRegistryURL?:          string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: KafkaType;
+  /**
+   * Kafka bootstrap servers. add them in comma separated values ex: host1:9092,host2:9092
+   */
+  bootstrapServers: string;
+  /**
+   * Confluent Kafka Consumer Config
+   */
+  consumerConfig?: { [key: string]: any };
+  /**
+   * Confluent Kafka Schema Registry Config.
+   */
+  schemaRegistryConfig?: { [key: string]: any };
+  /**
+   * Confluent Kafka Schema Registry URL.
+   */
+  schemaRegistryURL?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: KafkaType;
 }
 
 /**
@@ -45,5 +45,5 @@ export interface KafkaConnection {
  * Kafka service type
  */
 export enum KafkaType {
-    Kafka = "Kafka",
+  Kafka = 'Kafka',
 }

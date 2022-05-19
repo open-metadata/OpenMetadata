@@ -12,26 +12,26 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Create thread request
  */
 export interface CreateThread {
-    /**
-     * Data asset about which this thread is created for with format
-     * <#E::{entities}::{entityType}::{field}::{fieldValue}
-     */
-    about: string;
-    /**
-     * User or team this thread is addressed to in format
-     * <#E::{entities}::{entityName}::{field}::{fieldValue}.
-     */
-    addressedTo?: string;
-    /**
-     * Name of the User (regular user or bot) posting the message
-     */
-    from: string;
-    /**
-     * Message
-     */
-    message: string;
+  /**
+   * Data asset about which this thread is created for with format
+   * <#E::{entities}::{entityType}::{field}::{fieldValue}
+   */
+  about: string;
+  /**
+   * User or team this thread is addressed to in format
+   * <#E::{entities}::{entityName}::{field}::{fieldValue}.
+   */
+  addressedTo?: string;
+  /**
+   * Name of the User (regular user or bot) posting the message
+   */
+  from: string;
+  /**
+   * Message
+   */
+  message: string;
 }

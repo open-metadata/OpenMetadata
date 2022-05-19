@@ -12,56 +12,56 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Databricks Connection Config
  */
 export interface DatabricksConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
-     * attempts to scan all the databases in Databricks.
-     */
-    database?: string;
-    /**
-     * Host and port of the Databricks service.
-     */
-    hostPort: string;
-    /**
-     * Databricks compute resources URL.
-     */
-    httpPath?: string;
-    /**
-     * Password to connect to Databricks.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     DatabricksScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Generated Token to connect to Databricks.
-     */
-    token: string;
-    /**
-     * Service Type
-     */
-    type?: DatabricksType;
-    /**
-     * Username to connect to Databricks. This user should have privileges to read all the
-     * metadata in Databricks.
-     */
-    username?: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank , OpenMetadata Ingestion
+   * attempts to scan all the databases in Databricks.
+   */
+  database?: string;
+  /**
+   * Host and port of the Databricks service.
+   */
+  hostPort: string;
+  /**
+   * Databricks compute resources URL.
+   */
+  httpPath?: string;
+  /**
+   * Password to connect to Databricks.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: DatabricksScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Generated Token to connect to Databricks.
+   */
+  token: string;
+  /**
+   * Service Type
+   */
+  type?: DatabricksType;
+  /**
+   * Username to connect to Databricks. This user should have privileges to read all the
+   * metadata in Databricks.
+   */
+  username?: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum DatabricksScheme {
-    DatabricksConnector = "databricks+connector",
+  DatabricksConnector = 'databricks+connector',
 }
 
 /**
@@ -70,5 +70,5 @@ export enum DatabricksScheme {
  * Service type.
  */
 export enum DatabricksType {
-    Databricks = "Databricks",
+  Databricks = 'Databricks',
 }

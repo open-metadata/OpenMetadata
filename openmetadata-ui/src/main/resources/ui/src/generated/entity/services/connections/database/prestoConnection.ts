@@ -12,52 +12,52 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Presto Database Connection Config
  */
 export interface PrestoConnection {
-    /**
-     * Presto catalog
-     */
-    catalog:              string;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the Presto service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Presto.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     PrestoScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: PrestoType;
-    /**
-     * Username to connect to Presto. This user should have privileges to read all the metadata
-     * in Postgres.
-     */
-    username: string;
+  /**
+   * Presto catalog
+   */
+  catalog: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the Presto service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Presto.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: PrestoScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: PrestoType;
+  /**
+   * Username to connect to Presto. This user should have privileges to read all the metadata
+   * in Postgres.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum PrestoScheme {
-    Presto = "presto",
+  Presto = 'presto',
 }
 
 /**
@@ -66,5 +66,5 @@ export enum PrestoScheme {
  * Service type.
  */
 export enum PrestoType {
-    Presto = "Presto",
+  Presto = 'Presto',
 }

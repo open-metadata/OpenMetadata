@@ -12,51 +12,51 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Tableau Connection Config
  */
 export interface TableauConnection {
-    /**
-     * Tableau API version.
-     */
-    apiVersion: string;
-    /**
-     * Database Service Name in order to add data lineage.
-     */
-    dbServiceName?: string;
-    /**
-     * Tableau Environment Name.
-     */
-    env: string;
-    /**
-     * Tableau Server.
-     */
-    hostPort?: string;
-    /**
-     * Password for Tableau.
-     */
-    password?: string;
-    /**
-     * Personal Access Token Name.
-     */
-    personalAccessTokenName?: string;
-    /**
-     * Personal Access Token Secret.
-     */
-    personalAccessTokenSecret?: string;
-    /**
-     * Tableau Site Name.
-     */
-    siteName:                    string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: TableauType;
-    /**
-     * Username for Tableau.
-     */
-    username?: string;
+  /**
+   * Tableau API version.
+   */
+  apiVersion: string;
+  /**
+   * Database Service Name in order to add data lineage.
+   */
+  dbServiceName?: string;
+  /**
+   * Tableau Environment Name.
+   */
+  env: string;
+  /**
+   * Tableau Server.
+   */
+  hostPort?: string;
+  /**
+   * Password for Tableau.
+   */
+  password?: string;
+  /**
+   * Personal Access Token Name.
+   */
+  personalAccessTokenName?: string;
+  /**
+   * Personal Access Token Secret.
+   */
+  personalAccessTokenSecret?: string;
+  /**
+   * Tableau Site Name.
+   */
+  siteName: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: TableauType;
+  /**
+   * Username for Tableau.
+   */
+  username?: string;
 }
 
 /**
@@ -65,5 +65,5 @@ export interface TableauConnection {
  * Tableau service type
  */
 export enum TableauType {
-    Tableau = "Tableau",
+  Tableau = 'Tableau',
 }

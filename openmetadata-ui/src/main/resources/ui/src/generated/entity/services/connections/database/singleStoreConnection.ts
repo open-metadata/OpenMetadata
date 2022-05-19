@@ -12,48 +12,48 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * SingleStore Database Connection Config
  */
 export interface SingleStoreConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the SingleStore service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to SingleStore.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     SingleStoreScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: SingleStoreType;
-    /**
-     * Username to connect to SingleStore. This user should have privileges to read all the
-     * metadata in MySQL.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the SingleStore service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to SingleStore.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: SingleStoreScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: SingleStoreType;
+  /**
+   * Username to connect to SingleStore. This user should have privileges to read all the
+   * metadata in MySQL.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum SingleStoreScheme {
-    MysqlPymysql = "mysql+pymysql",
+  MysqlPymysql = 'mysql+pymysql',
 }
 
 /**
@@ -62,5 +62,5 @@ export enum SingleStoreScheme {
  * Service type.
  */
 export enum SingleStoreType {
-    SingleStore = "SingleStore",
+  SingleStore = 'SingleStore',
 }

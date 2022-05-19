@@ -12,19 +12,19 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test TableRowCountToBeBetween. Test the number of rows to between
  * to two values.
  */
 export interface TableRowCountToBeBetween {
-    /**
-     * Expected number of rows should be lower than or equal to {maxValue}. if maxValue is not
-     * included, minValue is treated as lowerBound and there will eb no maximum number of rows
-     */
-    maxValue?: number;
-    /**
-     * Expected number of rows should be greater than or equal to {minValue}. If minValue is not
-     * included, maxValue is treated as upperBound and there will be no minimum number of rows
-     */
-    minValue?: number;
+  /**
+   * Expected number of rows should be lower than or equal to {maxValue}. if maxValue is not
+   * included, minValue is treated as lowerBound and there will eb no maximum number of rows
+   */
+  maxValue?: number;
+  /**
+   * Expected number of rows should be greater than or equal to {minValue}. If minValue is not
+   * included, maxValue is treated as upperBound and there will be no minimum number of rows
+   */
+  minValue?: number;
 }

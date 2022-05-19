@@ -12,55 +12,55 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Mssql Database Connection Config
  */
 export interface MssqlConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the MSSQL service.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to MSSQL.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     MssqlScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsUsageExtraction?:    boolean;
-    /**
-     * Service Type
-     */
-    type?: MssqlType;
-    /**
-     * Connection URI In case of pyodbc
-     */
-    uriString?: string;
-    /**
-     * Username to connect to MSSQL. This user should have privileges to read all the metadata
-     * in MsSQL.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the MSSQL service.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to MSSQL.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: MssqlScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: MssqlType;
+  /**
+   * Connection URI In case of pyodbc
+   */
+  uriString?: string;
+  /**
+   * Username to connect to MSSQL. This user should have privileges to read all the metadata
+   * in MsSQL.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum MssqlScheme {
-    MssqlPymssql = "mssql+pymssql",
-    MssqlPyodbc = "mssql+pyodbc",
-    MssqlPytds = "mssql+pytds",
+  MssqlPymssql = 'mssql+pymssql',
+  MssqlPyodbc = 'mssql+pyodbc',
+  MssqlPytds = 'mssql+pytds',
 }
 
 /**
@@ -69,5 +69,5 @@ export enum MssqlScheme {
  * Service type.
  */
 export enum MssqlType {
-    Mssql = "Mssql",
+  Mssql = 'Mssql',
 }

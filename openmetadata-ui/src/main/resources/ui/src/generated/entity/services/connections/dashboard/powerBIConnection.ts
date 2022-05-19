@@ -12,39 +12,39 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * PowerBI Connection Config
  */
 export interface PowerBIConnection {
-    /**
-     * client_id for PowerBI.
-     */
-    clientId: string;
-    /**
-     * clientSecret for PowerBI.
-     */
-    clientSecret: string;
-    /**
-     * Credentials for PowerBI.
-     */
-    credentials?: string;
-    /**
-     * Dashboard URL for PowerBI service.
-     */
-    hostPort: string;
-    /**
-     * Dashboard redirect URI for the PowerBI service.
-     */
-    redirectURI?: string;
-    /**
-     * PowerBI secrets.
-     */
-    scope?:                      string[];
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: PowerBIType;
+  /**
+   * client_id for PowerBI.
+   */
+  clientId: string;
+  /**
+   * clientSecret for PowerBI.
+   */
+  clientSecret: string;
+  /**
+   * Credentials for PowerBI.
+   */
+  credentials?: string;
+  /**
+   * Dashboard URL for PowerBI service.
+   */
+  hostPort: string;
+  /**
+   * Dashboard redirect URI for the PowerBI service.
+   */
+  redirectURI?: string;
+  /**
+   * PowerBI secrets.
+   */
+  scope?: string[];
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: PowerBIType;
 }
 
 /**
@@ -53,5 +53,5 @@ export interface PowerBIConnection {
  * PowerBI service type
  */
 export enum PowerBIType {
-    PowerBI = "PowerBI",
+  PowerBI = 'PowerBI',
 }

@@ -12,22 +12,22 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Sample Data Connection Config
  */
 export interface SampleDataConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Sample Data File Path
-     */
-    sampleDataFolder?:           string;
-    supportsMetadataExtraction?: boolean;
-    supportsUsageExtraction?:    boolean;
-    /**
-     * Service Type
-     */
-    type?: SampleDataType;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Sample Data File Path
+   */
+  sampleDataFolder?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: SampleDataType;
 }
 
 /**
@@ -36,5 +36,5 @@ export interface SampleDataConnection {
  * Service type.
  */
 export enum SampleDataType {
-    SampleData = "SampleData",
+  SampleData = 'SampleData',
 }

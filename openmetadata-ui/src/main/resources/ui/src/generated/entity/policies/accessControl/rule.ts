@@ -12,43 +12,43 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Describes an Access Control Rule for OpenMetadata Metadata Operations. All non-null user
  * (subject) and entity (object) attributes are evaluated with logical AND.
  */
 export interface Rule {
-    /**
-     * Allow or Deny operation on the entity.
-     */
-    allow?: boolean;
-    /**
-     * Is the rule soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Entity tag that the rule should match on.
-     */
-    entityTagAttr?: string;
-    /**
-     * Entity type that the rule should match on.
-     */
-    entityTypeAttr?: string;
-    /**
-     * FullyQualifiedName same as `name`.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Name for this Rule.
-     */
-    name: string;
-    /**
-     * Operation on the entity.
-     */
-    operation?: Operation;
-    /**
-     * Priority of this rule among all rules across all policies.
-     */
-    priority?: number;
+  /**
+   * Allow or Deny operation on the entity.
+   */
+  allow?: boolean;
+  /**
+   * Is the rule soft-deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Entity tag that the rule should match on.
+   */
+  entityTagAttr?: string;
+  /**
+   * Entity type that the rule should match on.
+   */
+  entityTypeAttr?: string;
+  /**
+   * FullyQualifiedName same as `name`.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Name for this Rule.
+   */
+  name: string;
+  /**
+   * Operation on the entity.
+   */
+  operation?: Operation;
+  /**
+   * Priority of this rule among all rules across all policies.
+   */
+  priority?: number;
 }
 
 /**
@@ -57,12 +57,12 @@ export interface Rule {
  * This schema defines all possible operations on metadata of data entities.
  */
 export enum Operation {
-    DecryptTokens = "DecryptTokens",
-    SuggestDescription = "SuggestDescription",
-    SuggestTags = "SuggestTags",
-    UpdateDescription = "UpdateDescription",
-    UpdateLineage = "UpdateLineage",
-    UpdateOwner = "UpdateOwner",
-    UpdateTags = "UpdateTags",
-    UpdateTeam = "UpdateTeam",
+  DecryptTokens = 'DecryptTokens',
+  SuggestDescription = 'SuggestDescription',
+  SuggestTags = 'SuggestTags',
+  UpdateDescription = 'UpdateDescription',
+  UpdateLineage = 'UpdateLineage',
+  UpdateOwner = 'UpdateOwner',
+  UpdateTags = 'UpdateTags',
+  UpdateTeam = 'UpdateTeam',
 }

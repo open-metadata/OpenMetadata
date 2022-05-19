@@ -12,53 +12,53 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Oracle Database Connection Config
  */
 export interface OracleConnection {
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
-     */
-    database?: string;
-    /**
-     * Host and port of the Oracle service.
-     */
-    hostPort: string;
-    /**
-     * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
-     * sent, not both.
-     */
-    oracleServiceName?: string;
-    /**
-     * Password to connect to Oracle.
-     */
-    password?: string;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     OracleScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: OracleType;
-    /**
-     * Username to connect to Oracle. This user should have privileges to read all the metadata
-     * in Oracle.
-     */
-    username: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases.
+   */
+  database?: string;
+  /**
+   * Host and port of the Oracle service.
+   */
+  hostPort: string;
+  /**
+   * Oracle Service Name to be passed. Note: either Database or Oracle service name can be
+   * sent, not both.
+   */
+  oracleServiceName?: string;
+  /**
+   * Password to connect to Oracle.
+   */
+  password?: string;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: OracleScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: OracleType;
+  /**
+   * Username to connect to Oracle. This user should have privileges to read all the metadata
+   * in Oracle.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum OracleScheme {
-    OracleCxOracle = "oracle+cx_oracle",
+  OracleCxOracle = 'oracle+cx_oracle',
 }
 
 /**
@@ -67,5 +67,5 @@ export enum OracleScheme {
  * Service type.
  */
 export enum OracleType {
-    Oracle = "Oracle",
+  Oracle = 'Oracle',
 }

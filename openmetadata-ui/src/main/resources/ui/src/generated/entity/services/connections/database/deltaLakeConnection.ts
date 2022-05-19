@@ -12,30 +12,30 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * DeltaLake Database Connection Config
  */
 export interface DeltaLakeConnection {
-    /**
-     * pySpark App Name.
-     */
-    appName?:             string;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * File path of the local Hive Metastore.
-     */
-    metastoreFilePath?: string;
-    /**
-     * Host and port of the remote Hive Metastore.
-     */
-    metastoreHostPort?:          string;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: DeltaLakeType;
+  /**
+   * pySpark App Name.
+   */
+  appName?: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * File path of the local Hive Metastore.
+   */
+  metastoreFilePath?: string;
+  /**
+   * Host and port of the remote Hive Metastore.
+   */
+  metastoreHostPort?: string;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: DeltaLakeType;
 }
 
 /**
@@ -44,5 +44,5 @@ export interface DeltaLakeConnection {
  * Service type.
  */
 export enum DeltaLakeType {
-    DeltaLake = "DeltaLake",
+  DeltaLake = 'DeltaLake',
 }

@@ -12,13 +12,13 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to
  * match a given regular expression.
  */
 export interface ColumnValuesToMatchRegex {
-    /**
-     * The regular expression the column entries should match.
-     */
-    regex: string;
+  /**
+   * The regular expression the column entries should match.
+   */
+  regex: string;
 }

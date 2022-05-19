@@ -12,17 +12,17 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * An action to delete or expire the entity.
  */
 export interface DeleteAction {
-    /**
-     * Number of days after creation of the entity that the deletion should be triggered.
-     */
-    daysAfterCreation?: number;
-    /**
-     * Number of days after last modification of the entity that the deletion should be
-     * triggered.
-     */
-    daysAfterModification?: number;
+  /**
+   * Number of days after creation of the entity that the deletion should be triggered.
+   */
+  daysAfterCreation?: number;
+  /**
+   * Number of days after last modification of the entity that the deletion should be
+   * triggered.
+   */
+  daysAfterModification?: number;
 }

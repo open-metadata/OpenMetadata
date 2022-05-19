@@ -12,24 +12,24 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the type for reporting the count of threads related to an entity.
  */
 export interface ThreadCount {
-    counts: EntityLinkThreadCount[];
-    /**
-     * Total count of all the threads.
-     */
-    totalCount: number;
+  counts: EntityLinkThreadCount[];
+  /**
+   * Total count of all the threads.
+   */
+  totalCount: number;
 }
 
 /**
  * Type used to return thread count per entity link.
  */
 export interface EntityLinkThreadCount {
-    /**
-     * Count of threads for the given entity link.
-     */
-    count:      number;
-    entityLink: string;
+  /**
+   * Count of threads for the given entity link.
+   */
+  count: number;
+  entityLink: string;
 }

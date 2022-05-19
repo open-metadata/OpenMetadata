@@ -12,28 +12,28 @@
  *  limitations under the License.
  */
 
- export interface DatabaseServiceQueryUsagePipelineClass {
-    /**
-     * Configuration to tune how far we want to look back in query logs to process usage data.
-     */
-    queryLogDuration?: number;
-    /**
-     * Configuration to set the file path for query logs
-     */
-    queryLogFilePath?: string;
-    /**
-     * Configuration to set the limit for query logs
-     */
-    resultLimit?: number;
-    /**
-     * Temporary file name to store the query logs before processing. Absolute file path
-     * required.
-     */
-    stageFileLocation?: string;
-    /**
-     * Pipeline type
-     */
-    type?: DatabaseUsageConfigType;
+export interface DatabaseServiceQueryUsagePipelineClass {
+  /**
+   * Configuration to tune how far we want to look back in query logs to process usage data.
+   */
+  queryLogDuration?: number;
+  /**
+   * Configuration to set the file path for query logs
+   */
+  queryLogFilePath?: string;
+  /**
+   * Configuration to set the limit for query logs
+   */
+  resultLimit?: number;
+  /**
+   * Temporary file name to store the query logs before processing. Absolute file path
+   * required.
+   */
+  stageFileLocation?: string;
+  /**
+   * Pipeline type
+   */
+  type?: DatabaseUsageConfigType;
 }
 
 /**
@@ -42,5 +42,5 @@
  * Database Source Config Usage Pipeline type
  */
 export enum DatabaseUsageConfigType {
-    DatabaseUsage = "DatabaseUsage",
+  DatabaseUsage = 'DatabaseUsage',
 }

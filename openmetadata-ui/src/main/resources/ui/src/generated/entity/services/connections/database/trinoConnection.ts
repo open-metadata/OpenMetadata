@@ -12,60 +12,60 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Trino Connection Config
  */
 export interface TrinoConnection {
-    /**
-     * Catalog of the data source.
-     */
-    catalog:              string;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases in the selected catalog.
-     */
-    database?: string;
-    /**
-     * Host and port of the Trino service.
-     */
-    hostPort: string;
-    /**
-     * URL parameters for connection to the Trino data source
-     */
-    params?: { [key: string]: string };
-    /**
-     * Password to connect to Trino.
-     */
-    password?: string;
-    /**
-     * Proxies for the connection to Trino data source
-     */
-    proxies?: { [key: string]: string };
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?:                     TrinoScheme;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    /**
-     * Service Type
-     */
-    type?: TrinoType;
-    /**
-     * Username to connect to Trino. This user should have privileges to read all the metadata
-     * in Trino.
-     */
-    username: string;
+  /**
+   * Catalog of the data source.
+   */
+  catalog: string;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Database of the data source. This is optional parameter, if you would like to restrict
+   * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+   * attempts to scan all the databases in the selected catalog.
+   */
+  database?: string;
+  /**
+   * Host and port of the Trino service.
+   */
+  hostPort: string;
+  /**
+   * URL parameters for connection to the Trino data source
+   */
+  params?: { [key: string]: string };
+  /**
+   * Password to connect to Trino.
+   */
+  password?: string;
+  /**
+   * Proxies for the connection to Trino data source
+   */
+  proxies?: { [key: string]: string };
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: TrinoScheme;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  /**
+   * Service Type
+   */
+  type?: TrinoType;
+  /**
+   * Username to connect to Trino. This user should have privileges to read all the metadata
+   * in Trino.
+   */
+  username: string;
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum TrinoScheme {
-    Trino = "trino",
+  Trino = 'trino',
 }
 
 /**
@@ -74,5 +74,5 @@ export enum TrinoScheme {
  * Service type.
  */
 export enum TrinoType {
-    Trino = "Trino",
+  Trino = 'Trino',
 }

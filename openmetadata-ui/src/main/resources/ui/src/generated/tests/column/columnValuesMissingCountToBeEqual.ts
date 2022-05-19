@@ -12,18 +12,25 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * This schema defines the test ColumnValuesMissingCount. Test the column values missing
  * count to be equal to given number.
  */
 export interface ColumnValuesMissingCountToBeEqual {
-    /**
-     * No.of missing values to be equal to.
-     */
-    missingCountValue: number;
-    /**
-     * By default match all null and empty values to be missing. This field allows us to
-     * configure additional strings such as N/A, NULL as missing strings as well.
-     */
-    missingValueMatch?: string[] | boolean | number | number | { [key: string]: any } | null | string;
+  /**
+   * No.of missing values to be equal to.
+   */
+  missingCountValue: number;
+  /**
+   * By default match all null and empty values to be missing. This field allows us to
+   * configure additional strings such as N/A, NULL as missing strings as well.
+   */
+  missingValueMatch?:
+    | string[]
+    | boolean
+    | number
+    | number
+    | { [key: string]: any }
+    | null
+    | string;
 }

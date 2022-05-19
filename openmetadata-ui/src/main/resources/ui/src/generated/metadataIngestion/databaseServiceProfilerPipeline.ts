@@ -12,15 +12,15 @@
  *  limitations under the License.
  */
 
- export interface DatabaseServiceProfilerPipelineClass {
-    /**
-     * Regex to only fetch tables with FQN matching the pattern.
-     */
-    fqnFilterPattern?: FilterPattern;
-    /**
-     * Pipeline type
-     */
-    type?: ProfilerConfigType;
+export interface DatabaseServiceProfilerPipelineClass {
+  /**
+   * Regex to only fetch tables with FQN matching the pattern.
+   */
+  fqnFilterPattern?: FilterPattern;
+  /**
+   * Pipeline type
+   */
+  type?: ProfilerConfigType;
 }
 
 /**
@@ -29,14 +29,14 @@
  * Regex to only fetch dashboards or charts that matches the pattern.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
@@ -45,5 +45,5 @@ export interface FilterPattern {
  * Profiler Source Config Pipeline type
  */
 export enum ProfilerConfigType {
-    Profiler = "Profiler",
+  Profiler = 'Profiler',
 }

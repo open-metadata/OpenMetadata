@@ -12,32 +12,32 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Looker Connection Config
  */
 export interface LookerConnection {
-    /**
-     * Looker Environment
-     */
-    env?: string;
-    /**
-     * URL to the Looker instance.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Looker.
-     */
-    password?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: LookerType;
-    /**
-     * Username to connect to Looker. This user should have privileges to read all the metadata
-     * in Looker.
-     */
-    username: string;
+  /**
+   * Looker Environment
+   */
+  env?: string;
+  /**
+   * URL to the Looker instance.
+   */
+  hostPort: string;
+  /**
+   * Password to connect to Looker.
+   */
+  password?: string;
+  supportsMetadataExtraction?: boolean;
+  /**
+   * Service Type
+   */
+  type?: LookerType;
+  /**
+   * Username to connect to Looker. This user should have privileges to read all the metadata
+   * in Looker.
+   */
+  username: string;
 }
 
 /**
@@ -46,5 +46,5 @@ export interface LookerConnection {
  * Looker service type
  */
 export enum LookerType {
-    Looker = "Looker",
+  Looker = 'Looker',
 }

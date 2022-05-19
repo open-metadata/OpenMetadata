@@ -12,18 +12,18 @@
  *  limitations under the License.
  */
 
- /**
+/**
  * Add lineage details between two entities
  */
 export interface AddLineage {
-    /**
-     * User provided description of the lineage details.
-     */
-    description?: string;
-    /**
-     * Lineage edge details.
-     */
-    edge: EntitiesEdge;
+  /**
+   * User provided description of the lineage details.
+   */
+  description?: string;
+  /**
+   * Lineage edge details.
+   */
+  edge: EntitiesEdge;
 }
 
 /**
@@ -32,15 +32,15 @@ export interface AddLineage {
  * Edge in the lineage graph from one entity to another using entity references.
  */
 export interface EntitiesEdge {
-    description?: string;
-    /**
-     * From entity that is upstream of lineage edge.
-     */
-    fromEntity?: EntityReference;
-    /**
-     * To entity that is downstream of lineage edge.
-     */
-    toEntity?: EntityReference;
+  description?: string;
+  /**
+   * From entity that is upstream of lineage edge.
+   */
+  fromEntity?: EntityReference;
+  /**
+   * To entity that is downstream of lineage edge.
+   */
+  toEntity?: EntityReference;
 }
 
 /**
@@ -54,39 +54,39 @@ export interface EntitiesEdge {
  * To entity that is downstream of lineage edge.
  */
 export interface EntityReference {
-    /**
-     * If true the entity referred to has been soft-deleted.
-     */
-    deleted?: boolean;
-    /**
-     * Optional description of entity.
-     */
-    description?: string;
-    /**
-     * Display Name that identifies this entity.
-     */
-    displayName?: string;
-    /**
-     * Fully qualified name of the entity instance. For entities such as tables, databases
-     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
-     * such as `user` and `team` this will be same as the `name` field.
-     */
-    fullyQualifiedName?: string;
-    /**
-     * Link to the entity resource.
-     */
-    href?: string;
-    /**
-     * Unique identifier that identifies an entity instance.
-     */
-    id: string;
-    /**
-     * Name of the entity instance.
-     */
-    name?: string;
-    /**
-     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
-     * `dashboardService`...
-     */
-    type: string;
+  /**
+   * If true the entity referred to has been soft-deleted.
+   */
+  deleted?: boolean;
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
+   * Fully qualified name of the entity instance. For entities such as tables, databases
+   * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+   * such as `user` and `team` this will be same as the `name` field.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+   * `dashboardService`...
+   */
+  type: string;
 }
