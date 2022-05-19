@@ -118,10 +118,6 @@
       "minLength": 1,
       "maxLength": 128
     },
-    "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
     "tablePartition": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TablePartition",
@@ -193,7 +189,7 @@
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedColumnName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
@@ -244,11 +240,11 @@
       "additionalProperties": false
     },
     "joinedWith": {
-      "description": "Fully qualified names of the columns that this column is joined with.",
+      "description": "Fully qualified names of the fields/entities that this field/entity is joined with.",
       "type": "object",
       "properties": {
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedColumnName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "joinCount": {
           "type": "integer"
