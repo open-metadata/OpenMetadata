@@ -11,7 +11,6 @@
 """
 Interface definition for an Auth provider
 """
-import ast
 import http.client
 import json
 import os.path
@@ -20,7 +19,6 @@ import traceback
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Tuple
 
 import requests
@@ -45,8 +43,13 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSCredentialsPath,
+    GCSValues,
+)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.credentials import build_google_credentials_dict
 
 logger = ometa_logger()
 
@@ -149,23 +152,25 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         import google.auth.transport.requests
         from google.oauth2 import service_account
 
-        try:
-            is_file = Path(self.security_config.secretKey).is_file()
-        except OSError:  # Might throw a filename too long error if we pass the creds dictionary
-            logger.info("Secret key is not a path. Sending the dict to Google auth...")
-            is_file = False
-
-        if is_file:
+        credentials = None
+        if isinstance(self.security_config.credentials.gcsConfig, GCSCredentialsPath):
             credentials = service_account.IDTokenCredentials.from_service_account_file(
-                self.security_config.secretKey,
+                str(self.security_config.credentials.gcsConfig.__root__),
                 target_audience=self.security_config.audience,
             )
-        else:
-            # secretKey loaded as str from airflow.cfg
-            info_security_dict = ast.literal_eval(self.security_config.secretKey)
+
+        if isinstance(self.security_config.credentials.gcsConfig, GCSValues):
+            info_security_dict = build_google_credentials_dict(
+                self.security_config.credentials.gcsConfig
+            )
             credentials = service_account.IDTokenCredentials.from_service_account_info(
                 info=info_security_dict,
                 target_audience=self.security_config.audience,
+            )
+
+        if not credentials:
+            raise AuthenticationException(
+                "Cannot create GCS identity from given config"
             )
 
         request = google.auth.transport.requests.Request()
