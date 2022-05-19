@@ -27,10 +27,6 @@ export interface Table {
    */
   columns: Column[];
   /**
-   * Custom attributes added to the entity
-   */
-  customAttributes?: Type[];
-  /**
    * Reference to Database that contains this table.
    */
   database?: EntityReference;
@@ -51,12 +47,15 @@ export interface Table {
    * Description of a table.
    */
   description?: string;
-  displayConfig?: any;
   /**
    * Display Name that identifies this table. It could be title or label from the source
    * services.
    */
   displayName?: string;
+  /**
+   * Entity extension data with custom attributes added to the entity.
+   */
+  extension?: any;
   /**
    * Followers of this table.
    */
@@ -660,62 +659,6 @@ export enum Source {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * This schema defines a type entity used for extending an entity with custom attributes.
- */
-export interface Type {
-  /**
-   * Change that lead to this version of the entity.
-   */
-  changeDescription?: ChangeDescription;
-  /**
-   * Optional description of entity.
-   */
-  description: string;
-  /**
-   * Display Name that identifies this type.
-   */
-  displayName?: string;
-  /**
-   * FullyQualifiedName same as `name`.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to this table resource.
-   */
-  href?: string;
-  /**
-   * Unique identifier of the type instance.
-   */
-  id?: string;
-  /**
-   * Unique name that identifies the type.
-   */
-  name: string;
-  /**
-   * Namespace or group to which this type belongs to.
-   */
-  nameSpace: string;
-  /**
-   * JSON schema encoded as string that defines the type. This will be used to validate the
-   * type values.
-   */
-  schema?: string;
-  /**
-   * Last update time corresponding to the new version of the entity in Unix epoch time
-   * milliseconds.
-   */
-  updatedAt?: number;
-  /**
-   * User who made the update.
-   */
-  updatedBy?: string;
-  /**
-   * Metadata version of the entity.
-   */
-  version?: number;
 }
 
 /**

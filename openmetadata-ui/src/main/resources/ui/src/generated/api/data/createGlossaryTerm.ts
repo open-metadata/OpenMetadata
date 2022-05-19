@@ -21,7 +21,7 @@ export interface CreateGlossaryTerm {
    */
   description: string;
   /**
-   * Display Name that identifies this glossary.
+   * Display Name that identifies this glossary term.
    */
   displayName?: string;
   /**

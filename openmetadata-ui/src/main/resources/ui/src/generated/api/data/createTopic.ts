@@ -25,6 +25,10 @@ export interface CreateTopic {
    */
   description?: string;
   /**
+   * Display Name that identifies this topic.
+   */
+  displayName?: string;
+  /**
    * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
    */
   maximumMessageSize?: number;

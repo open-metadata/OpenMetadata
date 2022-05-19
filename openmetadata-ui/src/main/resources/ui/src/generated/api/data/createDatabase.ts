@@ -27,6 +27,10 @@ export interface CreateDatabase {
    */
   description?: string;
   /**
+   * Display Name that identifies this database.
+   */
+  displayName?: string;
+  /**
    * Name that identifies this database instance uniquely.
    */
   name: string;

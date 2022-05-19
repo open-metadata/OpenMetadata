@@ -29,6 +29,14 @@ export interface CreateTable {
    */
   description?: string;
   /**
+   * Display Name that identifies this table.
+   */
+  displayName?: string;
+  /**
+   * Entity extension data with custom attributes added to the entity.
+   */
+  extension?: any;
+  /**
    * Name that identifies the this entity instance uniquely. Same as id if when name is not
    * unique
    */

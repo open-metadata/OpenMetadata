@@ -20,6 +20,10 @@ export interface CreateLocation {
    * Description of the location instance.
    */
   description?: string;
+  /**
+   * Display Name that identifies this location.
+   */
+  displayName?: string;
   locationType?: LocationType;
   /**
    * Name that identifies this Location.

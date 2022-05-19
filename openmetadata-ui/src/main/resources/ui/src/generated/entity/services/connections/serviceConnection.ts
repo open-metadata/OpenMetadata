@@ -618,6 +618,10 @@ export interface Connection {
    */
   authProvider?: AuthProvider;
   /**
+   * Validate Openmetadata Server & Client Version.
+   */
+  enableVersionValidation?: boolean;
+  /**
    * OpenMetadata Client security configuration.
    */
   securityConfig?: ClientConfig;

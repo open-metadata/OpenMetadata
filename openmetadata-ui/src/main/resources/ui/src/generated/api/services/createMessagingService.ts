@@ -22,6 +22,11 @@ export interface CreateMessagingService {
    */
   description?: string;
   /**
+   * Display Name that identifies this messaging service. It could be title or label from the
+   * source services.
+   */
+  displayName?: string;
+  /**
    * Name that identifies the this entity instance uniquely
    */
   name: string;

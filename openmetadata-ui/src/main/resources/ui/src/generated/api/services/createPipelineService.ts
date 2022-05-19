@@ -21,6 +21,10 @@ export interface CreatePipelineService {
    */
   description?: string;
   /**
+   * Display Name that identifies this pipeline service.
+   */
+  displayName?: string;
+  /**
    * Schedule for running pipeline ingestion jobs
    */
   ingestionSchedule?: Schedule;

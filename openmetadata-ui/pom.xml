@@ -120,20 +120,6 @@
             </configuration>
           </execution>
           <execution>
-            <id>yarn run build-check</id>
-            <goals>
-              <goal>yarn</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run build-check</arguments>
-              <!--arguments>build</arguments-->
-            </configuration>
-          </execution>
-          <execution>
             <id>yarn run build-test</id>
             <goals>
               <goal>yarn</goal>

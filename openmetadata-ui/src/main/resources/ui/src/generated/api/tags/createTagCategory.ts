@@ -21,6 +21,10 @@ export interface CreateTagCategory {
    * Description of the tag category
    */
   description: string;
+  /**
+   * Display Name that identifies this tag category.
+   */
+  displayName?: string;
   name: string;
 }
 
