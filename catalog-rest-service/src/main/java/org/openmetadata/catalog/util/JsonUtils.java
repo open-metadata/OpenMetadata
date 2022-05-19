@@ -178,10 +178,30 @@ public final class JsonUtils {
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
-      otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      if (otherOperations.get(0).getString("path").matches(".*\\d$")) {
+        otherOperations.sort(
+            (o1, o2) -> {
+              String[] path_list1 = o1.getString("path").split("/");
+              String[] path_list2 = o2.getString("path").split("/");
+              return Integer.parseInt(path_list1[path_list1.length - 1])
+                  - Integer.parseInt(path_list2[path_list2.length - 1]);
+            });
+      } else {
+        otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      }
     }
     if (!removeOperations.isEmpty()) {
-      removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      if (otherOperations.get(0).getString("path").matches(".*\\d$")) {
+        otherOperations.sort(
+            (o1, o2) -> {
+              String[] path_list1 = o1.getString("path").split("/");
+              String[] path_list2 = o2.getString("path").split("/");
+              return Integer.parseInt(path_list1[path_list1.length - 1])
+                  - Integer.parseInt(path_list2[path_list2.length - 1]);
+            });
+      } else {
+        removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      }
       // reverse sort only the remove operations
       Collections.reverse(removeOperations);
     }
