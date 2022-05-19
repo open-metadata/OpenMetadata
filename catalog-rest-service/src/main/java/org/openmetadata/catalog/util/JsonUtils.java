@@ -191,8 +191,8 @@ public final class JsonUtils {
       }
     }
     if (!removeOperations.isEmpty()) {
-      if (otherOperations.get(0).getString("path").matches(".*\\d$")) {
-        otherOperations.sort(
+      if (removeOperations.get(0).getString("path").matches(".*\\d$")) {
+        removeOperations.sort(
             (o1, o2) -> {
               String[] path_list1 = o1.getString("path").split("/");
               String[] path_list2 = o2.getString("path").split("/");
