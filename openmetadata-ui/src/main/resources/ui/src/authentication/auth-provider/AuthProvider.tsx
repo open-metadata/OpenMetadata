@@ -214,7 +214,7 @@ export const AuthProvider = ({
         }
       })
       .catch((err) => {
-        if (err.response.status === 404) {
+        if (err && err.response && err.response.status === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
           appState.updateUserPermissions({} as UserPermissions);
