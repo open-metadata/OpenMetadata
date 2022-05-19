@@ -69,3 +69,10 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @abstractmethod
     def test_connection(self) -> None:
         pass
+
+
+@dataclass  # type: ignore[misc]
+class DashboardSourceService(Source, metaclass=ABCMeta):
+    @abstractmethod
+    def test_connection(self) -> None:
+        pass

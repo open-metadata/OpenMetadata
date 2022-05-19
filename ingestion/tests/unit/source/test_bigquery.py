@@ -222,7 +222,7 @@ def execute_workflow(config_dict):
 
 class BigQueryIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_indexes")
-    @patch("metadata.ingestion.source.sql_source.SQLSource.fetch_sample_data")
+    @patch("metadata.ingestion.source.database.sql_source.SQLSource.fetch_sample_data")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_definition")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_names")
     @patch("sqlalchemy.engine.reflection.Inspector.get_table_comment")

@@ -18,6 +18,10 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -56,7 +60,10 @@ class Workflow:
 
         source_type = self.config.source.type.lower()
         source_class = self.get(
-            "metadata.ingestion.source.{}.{}Source".format(
+            "metadata.ingestion.source.{}.{}.{}Source".format(
+                self._get_source_dir(
+                    type(self.config.source.serviceConnection.__root__)
+                ),
                 self.typeClassFetch(source_type, True),
                 self.typeClassFetch(source_type, False),
             )
@@ -146,6 +153,17 @@ class Workflow:
     def create(cls, config_dict: dict) -> "Workflow":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config)
+
+    # TODO TOTEST
+    def _get_source_dir(self, type):
+        if type == DatabaseService:
+            return "database"
+        elif type == MessagingService:
+            return "messaging"
+        elif type == MetadataService:
+            return "metadata"
+        elif type == DashboardService:
+            return "dashboard"
 
     def execute(self):
         for record in self.source.next_record():

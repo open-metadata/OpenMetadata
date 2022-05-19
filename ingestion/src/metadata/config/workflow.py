@@ -70,9 +70,9 @@ def get_ingestion_source(
     :param source_config: Specific source configurations, such as the host
     :param metadata_config: Metadata server configurations
     """
-
+    # TODO
     source_class = get_class(
-        "metadata.ingestion.source.{}.{}Source".format(
+        "metadata.ingestion.source.{}.{}.{}Source".format(
             fetch_type_class(source_type, is_file=True),
             fetch_type_class(source_type, is_file=False),
         )
