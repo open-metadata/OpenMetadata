@@ -25,6 +25,10 @@ export interface CreateWebhook {
    */
   description?: string;
   /**
+   * Display Name that identifies this webhook.
+   */
+  displayName?: string;
+  /**
    * When set to `true`, the webhook event notification is enabled. Set it to `false` to
    * disable the subscription. (Default `true`)
    */

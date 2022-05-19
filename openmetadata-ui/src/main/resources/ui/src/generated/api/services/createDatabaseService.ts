@@ -22,6 +22,10 @@ export interface CreateDatabaseService {
    */
   description?: string;
   /**
+   * Display Name that identifies this database service.
+   */
+  displayName?: string;
+  /**
    * Name that identifies the this entity instance uniquely
    */
   name: string;

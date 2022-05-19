@@ -23,7 +23,7 @@ import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -544,4 +544,10 @@ export const isColumnTestSupported = (dataType: string) => {
 
 export const getTitleCase = (text?: string) => {
   return text ? startCase(text) : '';
+};
+
+export const filterEntityAssets = (data: EntityReference[]) => {
+  const includedEntity = Object.values(AssetsType);
+
+  return data.filter((d) => includedEntity.includes(d.type as AssetsType));
 };

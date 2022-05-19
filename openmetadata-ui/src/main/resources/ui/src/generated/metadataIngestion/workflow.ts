@@ -690,6 +690,10 @@ export interface Connection {
    */
   authProvider?: AuthProvider;
   /**
+   * Validate Openmetadata Server & Client Version.
+   */
+  enableVersionValidation?: boolean;
+  /**
    * OpenMetadata Client security configuration.
    */
   securityConfig?: ClientConfig;
@@ -1217,6 +1221,10 @@ export interface OpenMetadataConnection {
    * the one configured on OpenMetadata server.
    */
   authProvider?: AuthProvider;
+  /**
+   * Validate Openmetadata Server & Client Version.
+   */
+  enableVersionValidation?: boolean;
   /**
    * OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api
    */

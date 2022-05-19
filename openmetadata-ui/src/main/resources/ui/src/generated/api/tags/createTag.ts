@@ -24,5 +24,9 @@ export interface CreateTag {
    * Unique name of the tag category
    */
   description: string;
+  /**
+   * Display Name that identifies this tag.
+   */
+  displayName?: string;
   name: string;
 }

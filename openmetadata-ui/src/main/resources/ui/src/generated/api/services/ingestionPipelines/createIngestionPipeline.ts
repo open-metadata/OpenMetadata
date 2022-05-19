@@ -22,7 +22,7 @@ export interface CreateIngestionPipeline {
    */
   description?: string;
   /**
-   * Display Name that identifies this pipeline.
+   * Display Name that identifies this ingeestion pipeline.
    */
   displayName?: string;
   /**

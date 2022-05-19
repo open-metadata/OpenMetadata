@@ -25,6 +25,10 @@ export interface CreateDatabaseSchema {
    */
   description?: string;
   /**
+   * Display Name that identifies this database schema.
+   */
+  displayName?: string;
+  /**
    * Name that identifies this database schema instance uniquely.
    */
   name: string;

@@ -21,6 +21,10 @@ export interface CreateStorageService {
    */
   description?: string;
   /**
+   * Display Name that identifies this storage service.
+   */
+  displayName?: string;
+  /**
    * Name that identifies the this entity instance uniquely
    */
   name: string;
