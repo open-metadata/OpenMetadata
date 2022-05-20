@@ -741,6 +741,15 @@ body .profiler-graph .recharts-active-dot circle {
 .leaf-node.core .react-flow__handle {
   background-color: #7147e8;
 }
+.react-flow__edge {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.react-flow__edge .react-flow__edge-path {
+  stroke-width: 2px;
+}
+
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
 }

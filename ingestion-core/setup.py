@@ -28,6 +28,7 @@ dev = {
     "twisted",
     "wheel",
     "click",
+    "pydantic[email]==1.8.2",
 }
 
 setup(

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { visitEntityTab } from '../../common/common';
+import { searchEntity, visitEntityTab } from '../../common/common';
 import {
   FOLLOWING_TITLE,
   MYDATA_SUMMARY_OPTIONS,
@@ -48,9 +48,7 @@ describe('MyData page should work', () => {
   };
 
   const checkRecentlySearchElement = (term) => {
-    cy.get('[data-testid="searchBox"]').should('be.visible');
-    cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
-    cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+    searchEntity(term);
     cy.clickOnLogo();
     cy.get(`[data-testid="search-term-${term}"]`).should('be.visible').click();
     cy.get('[data-testid="searchBox"]')
@@ -69,9 +67,7 @@ describe('MyData page should work', () => {
 
   const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
-    cy.get('[data-testid="searchBox"]').should('be.visible');
-    cy.get('[data-testid="searchBox"]').scrollIntoView().type(termObj.term);
-    cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+    searchEntity(termObj.term);
     cy.get(`[data-testid="${termObj.entity}-tab"]`)
       .should('be.visible')
       .click();
