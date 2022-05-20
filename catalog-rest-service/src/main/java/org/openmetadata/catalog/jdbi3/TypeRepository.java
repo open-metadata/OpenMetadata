@@ -107,6 +107,9 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   private List<CustomField> getCustomFields(Type type) throws IOException {
+    if (type.getCategory().equals(Category.Field)) {
+      return null; // Field types don't support custom fields
+    }
     List<CustomField> customFields = new ArrayList<>();
     List<List<String>> results =
         daoCollection
