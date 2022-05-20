@@ -178,27 +178,27 @@ public final class JsonUtils {
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
-      if (otherOperations.get(0).getString("path").matches(".*tags/\\d$")) {
+      if (otherOperations.get(0).getString("path").matches(".*\\d$")) {
         otherOperations.sort(
-            (o1, o2) -> {
-              String[] path_list1 = o1.getString("path").split("/");
-              String[] path_list2 = o2.getString("path").split("/");
-              return Integer.parseInt(path_list1[path_list1.length - 1])
-                  - Integer.parseInt(path_list2[path_list2.length - 1]);
-            });
+            Comparator.comparing(
+                jsonObject -> {
+                  String path = jsonObject.getString("path");
+                  String tagIndex = path.substring(path.lastIndexOf("/") + 1);
+                  return Integer.parseInt(tagIndex);
+                }));
       } else {
         otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
       }
     }
     if (!removeOperations.isEmpty()) {
-      if (removeOperations.get(0).getString("path").matches(".*tags/\\d$")) {
+      if (removeOperations.get(0).getString("path").matches(".*\\d$")) {
         removeOperations.sort(
-            (o1, o2) -> {
-              String[] path_list1 = o1.getString("path").split("/");
-              String[] path_list2 = o2.getString("path").split("/");
-              return Integer.parseInt(path_list1[path_list1.length - 1])
-                  - Integer.parseInt(path_list2[path_list2.length - 1]);
-            });
+            Comparator.comparing(
+                jsonObject -> {
+                  String path = jsonObject.getString("path");
+                  String tagIndex = path.substring(path.lastIndexOf("/") + 1);
+                  return Integer.parseInt(tagIndex);
+                }));
       } else {
         removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
       }

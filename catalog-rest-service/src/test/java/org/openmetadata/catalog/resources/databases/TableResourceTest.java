@@ -1484,6 +1484,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL).withDescription(null));
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
     columns.add(getColumn("\"c.3\"", FLOAT, GLOSSARY1_TERM1_LABEL));
+    columns.add(getColumn("c4", INT, USER_ADDRESS_TAG_LABEL));
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
@@ -1492,13 +1493,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns
         .get(0)
         .withDescription("new0") // Set new description
-        .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
+        .withTags(List.of(USER_ADDRESS_TAG_LABEL)); // No change in tags
     // Column c1 has new description
     change.getFieldsAdded().add(new FieldChange().withName(build("columns", "c1", "description")).withNewValue("new0"));
     //  Column c1 got new tags
-    change
-        .getFieldsAdded()
-        .add(new FieldChange().withName(build("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     columns
         .get(1)
@@ -1519,6 +1517,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                 .withOldValue(List.of(GLOSSARY1_TERM1_LABEL)));
     change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "precision")).withNewValue(10));
     change.getFieldsAdded().add(new FieldChange().withName(build("columns", "\"c.3\"", "scale")).withNewValue(3));
+
+    columns
+        .get(3)
+        .withDescription("c4") // No change in description.
+        .withTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY1_TERM1_LABEL));
+    //  Column c4 got new tags
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName(build("columns", "c4", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
