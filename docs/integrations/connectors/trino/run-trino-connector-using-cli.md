@@ -27,7 +27,7 @@ pip3 install 'openmetadata-ingestion[trino]'
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json) you can find the structure to create a connection to Trino.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/trinoConnection.json) you can find the structure to create a connection to Trino.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -76,7 +76,7 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/trinoConnection.json).
 
 * **hostPort**: Host and port of the data source.
 * **username** (Optional): Specify the User to connect to Trino. It should have enough privileges to read all the metadata.
@@ -198,7 +198,7 @@ workflowConfig:
 
 #### Source Configuration
 
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/trinoConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
 
 Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,

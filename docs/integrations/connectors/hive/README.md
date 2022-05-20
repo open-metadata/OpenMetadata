@@ -57,13 +57,13 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name <a href="#service-name" id="service-name"></a>
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Hive services that you might be ingesting metadata from.
 
 ![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (34).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Snowflake service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Hive service as desired.
 
 ![Configure the Service connection](<../../../../.gitbook/assets/image (73).png>)
 
@@ -93,11 +93,11 @@ Authentication options to pass to Hive connector. These options are based on SQL
 
 **Connection Options (Optional)**
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to Hive during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Hive during the connection. These details must be added as Key-Value pairs.
 
 To specify the LDAP Authentication, add the Key-Value pair: `auth` & `LDAP`.
 
@@ -231,8 +231,16 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](run-hive-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="run-hive-connector-using-airflow-sdk.md" %}
+[run-hive-connector-using-airflow-sdk.md](run-hive-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](run-hive-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
+
+{% content-ref url="run-hive-connector-with-the-cli.md" %}
+[run-hive-connector-with-the-cli.md](run-hive-connector-with-the-cli.md)
+{% endcontent-ref %}

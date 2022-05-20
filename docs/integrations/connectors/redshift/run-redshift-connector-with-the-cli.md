@@ -10,7 +10,7 @@ Follow this [guide](../../airflow/) to learn how to set up Airflow to run the me
 
 ### Python requirements
 
-To run the Snowflake ingestion, you will need to install:
+To run the Redshift ingestion, you will need to install:
 
 ```
 pip3 install 'openmetadata-ingestion[redshift]'
@@ -18,7 +18,7 @@ pip3 install 'openmetadata-ingestion[redshift]'
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Snowflake.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/redshiftConnection.json) you can find the structure to create a connection to Redshift.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -296,7 +296,7 @@ processor:
                 columnTestType: columnValuesToBeBetween
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](broken-reference/).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../../data-quality/data-quality-overview/tests.md).
 
 #### Workflow Configuration
 

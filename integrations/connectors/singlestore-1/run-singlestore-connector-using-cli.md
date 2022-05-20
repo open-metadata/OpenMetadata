@@ -82,7 +82,7 @@ This is a sample config for SingleStore:
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json).
 
-* **hostPort**: \*\*\*\* Host and port of the data source.
+* **hostPort**: Host and port of the data source.
 * **username** (Optional): Specify the User to connect to SingleStore. It should have enough privileges to read all the metadata.
 * **password** (Optional): Connection password.
 * **database** (Optional): The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
@@ -283,4 +283,4 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).

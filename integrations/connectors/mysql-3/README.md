@@ -73,15 +73,15 @@ In this step, we will configure the connection settings required for this connec
 
 **Username**
 
-Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your Superset user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Metabase user in the _Password_ field.
+Enter the password for your Superset user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Superset deployment in the _Host and Port_ field.
 
 **Database Service Name (optional)**
 

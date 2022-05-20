@@ -266,8 +266,16 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../snowflake/run-snowflake-connector-with-the-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="run-clickhouse-connector-with-the-airflow-sdk.md" %}
+[run-clickhouse-connector-with-the-airflow-sdk.md](run-clickhouse-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../../../../integrations/connectors/mysql-1-1/run-mysql-connector-using-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
+
+{% content-ref url="run-clickhouse-connector-with-the-cli.md" %}
+[run-clickhouse-connector-with-the-cli.md](run-clickhouse-connector-with-the-cli.md)
+{% endcontent-ref %}

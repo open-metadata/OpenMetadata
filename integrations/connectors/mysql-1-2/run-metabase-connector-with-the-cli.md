@@ -23,7 +23,7 @@ pip3 install 'openmetadata-ingestion[redash]'
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json) you can find the structure to create a connection to Redash.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json) you can find the structure to create a connection to Redash.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -69,7 +69,7 @@ This is a sample config for Redash:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json).
 
 * **username**: Enter the username of your Redash user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Redash user in the _Password_ field.

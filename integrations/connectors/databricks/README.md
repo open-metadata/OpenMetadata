@@ -235,10 +235,16 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 ## Run using Airflow SDK
 
-You can learn more about how to host and run the different workflows on your own Airflow instances [here](../../../docs/integrations/connectors/hive/run-hive-connector-using-airflow-sdk.md).
+You can learn more about how to host and run the different workflows on your own Airflow instances here.
 
-![](<../../../.gitbook/assets/explore (1) (2).png>)
+{% content-ref url="run-databricks-connector-using-airflow-sdk.md" %}
+[run-databricks-connector-using-airflow-sdk.md](run-databricks-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
-You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI [here](../../../docs/integrations/connectors/hive/run-hive-connector-with-the-cli.md).
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI here.
+
+{% content-ref url="run-databricks-connector-with-the-cli.md" %}
+[run-databricks-connector-with-the-cli.md](run-databricks-connector-with-the-cli.md)
+{% endcontent-ref %}

@@ -4,7 +4,7 @@ description: Use your own Airflow instance to schedule and run the Hive Connecto
 
 # Run Hive Connector using Airflow SDK
 
-Configure and schedule Snowflake **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
+Configure and schedule Hive **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
 
 * [Requirements](run-hive-connector-using-airflow-sdk.md#requirements)
 * [Metadata Ingestion](run-hive-connector-using-airflow-sdk.md#metadata-ingestion)
@@ -78,7 +78,6 @@ Copy and paste the configuration template below into the `hive.json` the file yo
     }
   }
 }
-
 ```
 {% endcode %}
 
@@ -86,13 +85,13 @@ Copy and paste the configuration template below into the `hive.json` the file yo
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/hiveConnection.json).
 
-* **username** (Optional): Enter the username of your Snowflake user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **password** (Optional): Enter the password for your Snowflake user in the _Password_ field.
+* **username** (Optional): Enter the username of your Hive user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password** (Optional): Enter the password for your Hive user in the _Password_ field.
 * **hostPort**: Enter the fully qualified hostname and port number for your Hive deployment in the _Host and Port_ field.
 * **authOptions** (Optional): Enter the auth options string for hive connection.
 * **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
-* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
-* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Hive during the connection. These details must be added as Key-Value pairs.
+* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Hive during the connection. These details must be added as Key-Value pairs.
 
 To specify LDAP Auth, use the following `connectionArguments`:
 
@@ -108,7 +107,7 @@ In this step, we will configure the Hive service settings required for this conn
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -159,7 +158,7 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-#### &#x20;Edit a Python script to define your ingestion DAG
+#### Edit a Python script to define your ingestion DAG
 
 Copy and paste the code below into a file called `openmetadata-airflow.py`.
 
@@ -237,16 +236,16 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 
 ### 1. Define the JSON configuration
 
-This is a sample config for a Snowflake profiler:
+This is a sample config for a Hive profiler:
 
 ```json
 {
     "source": {
-        "type": "snowflake",
+        "type": "hive",
         "serviceName": "<service name>",
         "serviceConnection": {
             "config": {
-                "type": "Snowflake",
+                "type": "Hive",
                 "hostPort": "<hostPort>",
                 "username": "<username>",
                 "password": "<password>",
@@ -285,10 +284,10 @@ This is a sample config for a Snowflake profiler:
 
 #### Source Configuration
 
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json).
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/hiveConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {

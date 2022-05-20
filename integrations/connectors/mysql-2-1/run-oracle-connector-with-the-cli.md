@@ -26,7 +26,7 @@ pip3 install 'openmetadata-ingestion[presto]'
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/mysqlConnection.json) you can find the structure to create a connection to Presto.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/prestoConnection.json) you can find the structure to create a connection to Presto.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -89,7 +89,7 @@ This is a sample config for Presto:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/prestoConnection.json).
 
 * **username**: Enter the username of your Presto user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Presto user in the _Password_ field.
@@ -170,7 +170,7 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 
 ### 1. Define the JSON configuration
 
-This is a sample config for a Snowflake profiler:
+This is a sample config for a Presto profiler:
 
 ```json
 {
@@ -225,7 +225,7 @@ This is a sample config for a Snowflake profiler:
 
 #### Source Configuration
 
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json).
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/prestoConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
 Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,

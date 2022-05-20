@@ -254,6 +254,6 @@ You can learn more about how to host and run the different workflows on your own
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="broken-reference/" %}
-[broken-reference](broken-reference/)
+{% content-ref url="run-redshift-connector-with-the-cli.md" %}
+[run-redshift-connector-with-the-cli.md](run-redshift-connector-with-the-cli.md)
 {% endcontent-ref %}

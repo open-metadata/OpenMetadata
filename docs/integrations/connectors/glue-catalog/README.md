@@ -244,5 +244,3 @@ You can learn more about how to run a one-time ingestion of the different workfl
 {% content-ref url="run-glue-connector-with-the-cli.md" %}
 [run-glue-connector-with-the-cli.md](run-glue-connector-with-the-cli.md)
 {% endcontent-ref %}
-
-***

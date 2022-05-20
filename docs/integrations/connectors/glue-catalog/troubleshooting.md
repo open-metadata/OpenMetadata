@@ -28,4 +28,4 @@ Failed to establish a new connection: [Errno 61] Connection refused'))
 
 To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) to deploy OpenMetadata.
 
-Then re-run the metadata ingestion workflow in [Run Glue Connector](troubleshooting.md#5.-run-glue-connector).
+Then re-run the metadata ingestion workflow in Run Glue Connector.

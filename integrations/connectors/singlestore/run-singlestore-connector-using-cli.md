@@ -225,7 +225,7 @@ processor:
                 columnTestType: columnValuesToBeBetween
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](https://docs.open-metadata.org/v/0.10.0/data-quality/data-quality-overview/tests).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../data-quality/data-quality-overview/tests.md).
 
 #### Workflow Configuration
 
