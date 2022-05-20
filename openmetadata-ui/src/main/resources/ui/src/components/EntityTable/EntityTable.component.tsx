@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
+import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
@@ -154,24 +155,38 @@ const EntityTable = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
-        if (values[0].data) {
-          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
-        if (values[1] && values[1].length > 0) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
-            (tag) => {
-              return { fqn: tag, source: 'Glossary' };
-            }
-          );
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
           tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
         }
         setAllTags(tagsAndTerms);
-        setTagFetchFailed(false);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
       })
       .catch(() => {
         setAllTags([]);
@@ -525,6 +540,7 @@ const EntityTable = ({
                             </div>
                           ) : (
                             <div
+                              data-testid="tags-wrapper"
                               onClick={() => {
                                 if (!editColumnTag) {
                                   handleEditColumnTag(row.original, row.id);
