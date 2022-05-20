@@ -11,12 +11,15 @@ global:
     className: "org.openmetadata.catalog.security.DefaultAuthorizer"
     # JWT Filter
     containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-    initialAdmin: "suresh"
-    botPrincipal: "ingestion-bot"
+    initialAdmins: 
+    - "suresh"
+    botPrincipals: 
+    - "ingestion-bot"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "google"
-    publicKey: "https://www.googleapis.com/oauth2/v3/certs"
+    publicKeys: 
+    - "https://www.googleapis.com/oauth2/v3/certs"
     authority: "https://accounts.google.com"
     clientId: "{client id}"
     callbackUrl: "http://localhost:8585/callback"

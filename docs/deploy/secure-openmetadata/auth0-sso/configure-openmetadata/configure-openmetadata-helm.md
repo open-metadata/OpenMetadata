@@ -4,17 +4,20 @@
 
 * Once the `client id` and `client secret` are generated, see the snippet below for an example of where to place the `client id` value and update the authorizer configurations.
 
-```
+```yaml
 global:
   authorizer:
     className: "org.openmetadata.catalog.security.DefaultAuthorizer"
     containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-    initialAdmin: "suresh"
-    botPrincipal: "ingestion-bot"
+    initialAdmins: 
+    - "suresh"
+    botPrincipals: 
+    - "<client_id>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "auth0"
-    publicKey: "{Auth0 Domain Name}/.well-known/jwks.json"
+    publicKeys: 
+    - "{Auth0 Domain Name}/.well-known/jwks.json"
     authority: "https://parth-panchal.us.auth0.com/"
     clientId: "{Client ID}"
     callbackUrl: "http://localhost:8585/callback"

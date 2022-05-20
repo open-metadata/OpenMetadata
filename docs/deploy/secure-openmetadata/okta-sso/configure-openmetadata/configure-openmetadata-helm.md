@@ -22,21 +22,18 @@ global:
   authorizer:
     className: "org.openmetadata.catalog.security.DefaultAuthorizer"
     containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-    initialAdmin: "<username>"
-    botPrincipal: "<Ingestion Client ID>"
+    initialAdmins: 
+    - "<username>"
+    botPrincipals: 
+    - "<Ingestion Client ID>"
     principalDomain: "open-metadata.org"
   authentication:
     provider: "okta"
-    publicKey: "{ISSUER_URL}/v1/keys"
+    publicKeys: 
+    - "{ISSUER_URL}/v1/keys"
     authority: "{ISSUER_URL}"
     clientId: "{CLIENT_ID - SPA APP}"
     callbackUrl: "http://localhost:8585/callback"
-authenticationConfiguration:
-  provider: "okta"
-  publicKey: "{ISSUER_URL}/v1/keys"
-  authority: "{ISSUER_URL}"
-  clientId: "{CLIENT_ID - SPA APP}"
-  callbackUrl: "http://localhost:8585/callback"
 ```
 
 ## Upgrade Helm Release
