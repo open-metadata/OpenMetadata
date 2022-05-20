@@ -123,19 +123,6 @@ class GlossaryPageTest {
   }
 
   @Test
-  @Order(5)
-  void deleteGlossaryReviewer() throws InterruptedException {
-    openGlossaryPage();
-    Events.click(webDriver, common.containsText(glossaryName));
-    Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
-    Events.click(webDriver, common.removeAssociatedTag());
-    Thread.sleep(waitTime);
-    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
-    Assert.assertEquals(reviewerCount.toString(), "3");
-  }
-
-  @Test
   @Order(6)
   void removeAddedTagsToGlossary() throws InterruptedException {
     openGlossaryPage();
@@ -159,7 +146,7 @@ class GlossaryPageTest {
     openGlossaryPage();
     Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.addGlossaryReviewer());
-    for (int i = 1; i <= 3; i++) {
+    for (int i = 1; i <= 4; i++) {
       Events.click(webDriver, glossary.checkboxAddUser(i));
     }
     Events.click(webDriver, common.descriptionSaveButton());
@@ -187,11 +174,6 @@ class GlossaryPageTest {
     Events.sendKeys(webDriver, common.urlLink(), faker.address().toString());
     Events.sendKeys(webDriver, common.linkText(), faker.address().firstName());
     Events.click(webDriver, common.okButton());
-    Events.click(webDriver, glossary.addReviewerButton());
-    for (int i = 1; i <= 2; i++) {
-      Events.click(webDriver, glossary.checkboxAddUser(i));
-    }
-    Events.click(webDriver, common.descriptionSaveButton());
     Events.click(webDriver, glossary.saveGlossaryTerm());
   }
 
@@ -199,8 +181,6 @@ class GlossaryPageTest {
   @Order(9)
   void addTagToTerm() throws InterruptedException {
     openGlossaryPage();
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
     Events.click(webDriver, common.breadCrumbTags());
     Events.click(webDriver, common.enterAssociatedTagName());
@@ -218,12 +198,16 @@ class GlossaryPageTest {
   @Order(10)
   void addTermReviewer() throws InterruptedException {
     openGlossaryPage();
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
+    Events.click(webDriver, common.manage());
     Events.click(webDriver, common.addGlossaryReviewer());
+    Thread.sleep(waitTime);
+    Events.click(webDriver, glossary.checkboxAddUser(1));
+    Thread.sleep(waitTime);
+    Events.click(webDriver, glossary.checkboxAddUser(2));
+    Thread.sleep(waitTime);
     Events.click(webDriver, glossary.checkboxAddUser(3));
+    Thread.sleep(waitTime);
     Events.click(webDriver, glossary.saveTermReviewer());
     Thread.sleep(waitTime);
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
@@ -231,35 +215,17 @@ class GlossaryPageTest {
   }
 
   @Test
-  @Order(11)
-  void deleteTermReviewer() throws InterruptedException {
-    openGlossaryPage();
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
-    Thread.sleep(waitTime);
-    actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
-    Events.click(webDriver, common.removeAssociatedTag());
-    Thread.sleep(waitTime);
-    Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
-    Assert.assertEquals(reviewerCount.toString(), "2");
-  }
-
-  @Test
   @Order(12)
   void removeAddedReviewersToTerm() throws InterruptedException {
     openGlossaryPage();
-    Events.click(webDriver, common.containsText(glossaryName));
-    Events.click(webDriver, common.containsText(glossaryName));
     Events.click(webDriver, common.containsText(termName));
-    Events.click(webDriver, glossary.reviewers());
-    Events.click(webDriver, common.addGlossaryReviewer());
-    for (int i = 1; i <= 2; i++) {
-      Events.click(webDriver, glossary.checkboxAddUser(i));
-    }
-    Events.click(webDriver, glossary.saveTermReviewer());
+    Events.click(webDriver, common.manage());
     Thread.sleep(waitTime);
+    actions.moveToElement(webDriver.findElement(common.removeAssociatedTag())).perform();
+    for (int i = 1; i <= 3; i++) {
+      Events.click(webDriver, common.removeAssociatedTag());
+      Thread.sleep(waitTime);
+    }
     Object reviewerCount = webDriver.findElements(common.reviewCount()).size();
     Assert.assertEquals(reviewerCount.toString(), "0");
   }

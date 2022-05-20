@@ -43,6 +43,7 @@ import {
   getTeamAndUserDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { Team } from '../../generated/entity/teams/team';
 import {
@@ -103,6 +104,10 @@ const TeamsPage = () => {
         currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
       isLink: currentTeam?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        currentTeam?.owner?.type === OwnerType.USER
+          ? currentTeam?.owner?.name
+          : undefined,
     },
   ];
 
@@ -867,7 +872,7 @@ const TeamsPage = () => {
                           <ManageTabComponent
                             hideTier
                             allowTeamOwner={false}
-                            currentUser={currentTeam?.owner?.id}
+                            currentUser={currentTeam?.owner}
                             hasEditAccess={isOwner()}
                             isJoinable={currentTeam?.isJoinable}
                             onSave={handleUpdateTeam}

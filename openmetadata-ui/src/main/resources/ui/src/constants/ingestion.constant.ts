@@ -16,7 +16,8 @@ import { FilterPattern } from '../generated/entity/services/ingestionPipelines/i
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   { name: 'Configure Ingestion', step: 1 },
-  { name: 'Schedule Interval', step: 2 },
+  { name: 'Configure DBT', step: 2 },
+  { name: 'Schedule Interval', step: 3 },
 ];
 
 export const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';

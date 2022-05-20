@@ -17,21 +17,17 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private static final String UPDATE_FIELDS = "owner";
@@ -56,13 +52,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public EntityInterface<DashboardService> getEntityInterface(DashboardService entity) {
-    return new DashboardServiceEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(DashboardService entity) throws IOException {
     // Check if owner is valid and set the relationship
+    setFullyQualifiedName(entity);
     entity.setOwner(Entity.getEntityReference(entity.getOwner()));
   }
 
@@ -104,124 +96,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     return ingestionPipelines;
   }
 
-  public static class DashboardServiceEntityInterface extends EntityInterface<DashboardService> {
-    public DashboardServiceEntityInterface(DashboardService entity) {
-      super(Entity.DASHBOARD_SERVICE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public DashboardService getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public DashboardService withHref(URI href) {
-      return entity.withHref(href);
-    }
-  }
-
   public class DashboardServiceUpdater extends EntityUpdater {
     public DashboardServiceUpdater(DashboardService original, DashboardService updated, Operation operation) {
       super(original, updated, operation);
@@ -233,8 +107,8 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     private void updateConnection() throws JsonProcessingException {
-      DashboardConnection origConn = original.getEntity().getConnection();
-      DashboardConnection updatedConn = updated.getEntity().getConnection();
+      DashboardConnection origConn = original.getConnection();
+      DashboardConnection updatedConn = updated.getConnection();
       recordChange("connection", origConn, updatedConn, true);
     }
   }

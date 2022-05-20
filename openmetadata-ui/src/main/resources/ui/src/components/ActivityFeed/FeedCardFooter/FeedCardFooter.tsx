@@ -15,7 +15,7 @@ import { isUndefined, toLower } from 'lodash';
 import React, { FC } from 'react';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
-import Avatar from '../../common/avatar/Avatar';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { FeedFooterProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 const FeedCardFooter: FC<FeedFooterProp> = ({
@@ -36,12 +36,12 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       isFooterVisible ? (
         <div className="tw-flex tw-group">
           {repliedUsers?.map((u, i) => (
-            <Avatar
+            <ProfilePicture
               className="tw-mt-0.5 tw-mx-0.5"
               data-testid="replied-user"
+              id=""
               key={i}
               name={u}
-              type="square"
               width="22"
             />
           ))}

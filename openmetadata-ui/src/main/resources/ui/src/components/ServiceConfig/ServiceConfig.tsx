@@ -24,6 +24,7 @@ import ConnectionConfigForm from './ConnectionConfigForm';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
+  serviceType: string;
   data?: ServicesData;
   handleUpdate: (
     data: ConfigData,
@@ -37,6 +38,7 @@ export const Field = ({ children }: { children: React.ReactNode }) => {
 
 const ServiceConfig = ({
   serviceCategory,
+  serviceType,
   data,
   handleUpdate,
 }: ServiceConfigProps) => {
@@ -69,6 +71,7 @@ const ServiceConfig = ({
             | PipelineService
         }
         serviceCategory={serviceCategory}
+        serviceType={serviceType}
         status={status}
         onSave={handleOnSaveClick}
       />

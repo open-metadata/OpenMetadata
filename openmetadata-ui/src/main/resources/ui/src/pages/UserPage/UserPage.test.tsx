@@ -91,6 +91,14 @@ const mockUserData = {
   ],
 };
 
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: true,
+    })),
+  };
+});
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ username: 'xyz' })),
 }));
@@ -107,6 +115,24 @@ jest.mock('../../axiosAPIs/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockUserData })),
+}));
+
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  getUserByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockUserData })),
+  updateUserDetail: jest.fn(),
+}));
+
+jest.mock('../../axiosAPIs/feedsAPI', () => ({
+  getFeedsWithFilter: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+  postFeedById: jest.fn(),
 }));
 
 describe('Test the User Page', () => {

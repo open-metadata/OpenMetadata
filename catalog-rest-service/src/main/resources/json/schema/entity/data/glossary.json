@@ -4,6 +4,8 @@
   "title": "Glossary",
   "description": "This schema defines the Glossary entity. A Glossary is collection of hierarchical GlossaryTerms.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Glossary",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "name": {
       "description": "Name that identifies a glossary term.",
@@ -19,6 +21,10 @@
       "description": "Preferred name for the glossary term.",
       "type": "string",
       "$ref": "#/definitions/name"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as name.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this glossary.",

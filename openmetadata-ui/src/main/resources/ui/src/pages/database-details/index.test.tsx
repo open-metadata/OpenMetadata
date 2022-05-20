@@ -282,7 +282,7 @@ describe('Test DatabaseDetails page', () => {
     );
     const headerOwner = await findByTestId(container, 'header-owner');
     const headerUsage = await findByTestId(container, 'header-usage');
-    const tableColumn = await findByTestId(container, 'tabale-column');
+    const tableColumn = await findByTestId(container, 'table-column');
 
     expect(databaseTable).toBeInTheDocument();
     expect(tableHeader).toBeInTheDocument();

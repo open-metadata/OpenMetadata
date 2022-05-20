@@ -60,13 +60,14 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
-import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
   Column,
+  ColumnTestType,
   Table,
   TableData,
   TableJoins,
@@ -79,7 +80,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
@@ -542,6 +542,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     saveUpdatedTableData(updatedTable)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setTableDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTableTags(getTagsWithoutTier(res.data.tags));
@@ -797,7 +798,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const handleAddColumnTestCase = (data: ColumnTest) => {
+  const handleAddColumnTestCase = (data: CreateColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {

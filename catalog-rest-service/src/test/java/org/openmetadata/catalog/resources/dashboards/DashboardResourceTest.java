@@ -43,13 +43,11 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -154,8 +152,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Override
-  public EntityInterface<Dashboard> validateGetWithDifferentFields(Dashboard dashboard, boolean byName)
-      throws HttpResponseException {
+  public Dashboard validateGetWithDifferentFields(Dashboard dashboard, boolean byName) throws HttpResponseException {
     String fields = "";
     dashboard =
         byName
@@ -179,7 +176,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     assertListNotNull(dashboard.getUsageSummary());
     TestUtils.validateEntityReferences(dashboard.getCharts(), true);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(dashboard);
+    return dashboard;
   }
 
   private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> expectedCharts) {
@@ -201,14 +198,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Override
-  public CreateDashboard createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateDashboard()
-        .withName(name)
-        .withService(getContainer())
-        .withCharts(CHART_REFERENCES)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreateDashboard createRequest(String name) {
+    return new CreateDashboard().withName(name).withService(getContainer()).withCharts(CHART_REFERENCES);
   }
 
   @Override
@@ -217,13 +208,15 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Override
+  public EntityReference getContainer(Dashboard entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Dashboard dashboard, CreateDashboard createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(dashboard),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        dashboard, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertNotNull(dashboard.getServiceType());
     assertReference(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());
@@ -232,11 +225,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
   @Override
   public void compareEntities(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {}
-
-  @Override
-  public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
-    return new DashboardEntityInterface(entity);
-  }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {

@@ -44,6 +44,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -59,7 +60,6 @@ import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MessagingConnection;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 
@@ -104,15 +104,10 @@ public final class TestUtils {
             .withConfig(
                 new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
     BIGQUERY_DATABASE_CONNECTION =
-        new DatabaseConnection()
-            .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
+        new DatabaseConnection().withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
     SNOWFLAKE_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(
-                new SnowflakeConnection()
-                    .withHostPort("snowflake:1000")
-                    .withUsername("snowflake")
-                    .withPassword("snowflake"));
+            .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
   }
 
   static {
@@ -312,7 +307,7 @@ public final class TestUtils {
     for (TagLabel expected : expectedList) {
       if (expected.getSource() == Source.GLOSSARY) {
         GlossaryTerm glossaryTerm =
-            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), "tags", ADMIN_AUTH_HEADERS);
+            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
         for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
           Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
@@ -378,6 +373,7 @@ public final class TestUtils {
       return;
     }
     if (expected != null) {
+      actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);

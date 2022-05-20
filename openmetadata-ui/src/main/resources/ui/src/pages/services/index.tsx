@@ -16,16 +16,9 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { addAirflowPipeline } from '../../axiosAPIs/airflowPipelineAPI';
-import {
-  deleteService,
-  getServiceDetails,
-  getServices,
-  postService,
-  updateService,
-} from '../../axiosAPIs/serviceAPI';
+import { getServiceDetails, getServices } from '../../axiosAPIs/serviceAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -34,8 +27,6 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import { AddServiceModal } from '../../components/Modals/AddServiceModal/AddServiceModal';
-import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
   PAGE_SIZE,
@@ -48,20 +39,14 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateAirflowPipeline } from '../../generated/api/operations/pipelines/createAirflowPipeline';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
-import { PipelineType } from '../../generated/operations/pipelines/airflowPipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import {
-  DataObj,
-  EditObj,
-  ServiceDataObj,
-} from '../../interface/service.interface';
+import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
@@ -71,9 +56,11 @@ import {
 } from '../../utils/CommonUtils';
 import { getDashboardURL } from '../../utils/DashboardServiceUtils';
 import { getBrokers } from '../../utils/MessagingServiceUtils';
-import { getAddServicePath } from '../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 type ServiceRecord = {
@@ -101,18 +88,14 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
+  const { serviceCategory } = useParams<{ [key: string]: string }>();
   const history = useHistory();
 
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState({
-    id: '',
-    name: '',
-  });
-  const [serviceName, setServiceName] =
-    useState<ServiceTypes>('databaseServices');
+  const [serviceName, setServiceName] = useState<ServiceTypes>(
+    (serviceCategory as ServiceTypes) ?? 'databaseServices'
+  );
   const [paging, setPaging] = useState<ServicePagingRecord>({
     databaseServices: pagingObject,
     messagingServices: pagingObject,
@@ -126,7 +109,6 @@ const ServicesPage = () => {
     pipelineServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
-  const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -223,186 +205,6 @@ const ServicesPage = () => {
   const handleAddService = () => {
     goToAddService();
   };
-  const handleClose = () => {
-    setIsModalOpen(false);
-    setEditData(undefined);
-  };
-
-  const handleUpdate = (
-    selectedService: string,
-    id: string,
-    dataObj: DataObj
-  ) => {
-    return new Promise<void>((resolve, reject) => {
-      updateService(selectedService, id, dataObj)
-        .then(({ data }: { data: AxiosResponse['data'] }) => {
-          if (data) {
-            const updatedData = {
-              ...data,
-              ...data.jdbc,
-              ...data.brokers,
-              ...data.schemaRegistry,
-            };
-            const updatedServiceList = serviceList.map((s) =>
-              s.id === updatedData.id ? updatedData : s
-            );
-            setServices({ ...services, [serviceName]: updatedServiceList });
-            setServiceList(updatedServiceList);
-            resolve();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          reject(err);
-        });
-    });
-  };
-
-  const handleAdd = (selectedService: string, dataObj: DataObj) => {
-    return new Promise<AxiosResponse>((resolve, reject) => {
-      postService(selectedService, dataObj)
-        .then((res: AxiosResponse) => {
-          const { data } = res;
-          if (data) {
-            const updatedData = {
-              ...data,
-              ...data.jdbc,
-              ...data.brokers,
-              ...data.schemaRegistry,
-            };
-            const updatedServiceList = [...serviceList, updatedData];
-            setServices({ ...services, [serviceName]: updatedServiceList });
-            setServicesCount((pre) => ({
-              ...servicesCount,
-              [serviceName]: pre[serviceName] + 1,
-            }));
-            setServiceList(updatedServiceList);
-            resolve(res);
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          reject(err);
-        });
-    });
-  };
-
-  const handleServicePromises = (
-    serviceId: string,
-    ingestionList?: CreateAirflowPipeline[]
-  ) => {
-    if (ingestionList?.length && serviceId) {
-      const promises = ingestionList.map((ingestion) => {
-        return addAirflowPipeline({
-          ...ingestion,
-          service: {
-            ...ingestion.service,
-            id: serviceId,
-          },
-          pipelineType: PipelineType.Metadata,
-        });
-      });
-
-      Promise.allSettled(promises)
-        .then((response: PromiseSettledResult<AxiosResponse>[]) => {
-          setIsModalOpen(false);
-          setEditData(undefined);
-          response.map((data) => {
-            if (data.status === 'rejected') {
-              throw data.reason;
-            }
-          });
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['add-ingestion-error']
-          );
-        });
-    } else {
-      setIsModalOpen(false);
-      setEditData(undefined);
-    }
-  };
-
-  const handleServiceSavePromise = (
-    serviceRes: AxiosResponse | void,
-    ingestionList?: CreateAirflowPipeline[]
-  ) => {
-    if (serviceRes?.data) {
-      const serviceId = serviceRes?.data.id;
-      handleServicePromises(serviceId, ingestionList);
-    } else {
-      throw jsonData['api-error-messages']['unexpected-server-response'];
-    }
-  };
-
-  const handleSave = (
-    dataObj: DataObj,
-    selectedService: string,
-    isEdit: EditObj,
-    ingestionList?: CreateAirflowPipeline[]
-  ) => {
-    let promiseSave;
-    if (isEdit.edit && isEdit.id) {
-      promiseSave = handleUpdate(selectedService, isEdit.id, dataObj);
-    } else {
-      promiseSave = handleAdd(selectedService, dataObj);
-    }
-    promiseSave
-      .then((serviceRes: AxiosResponse | void) => {
-        handleServiceSavePromise(serviceRes, ingestionList);
-      })
-      .catch((err: AxiosError | string) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['add-service-error']
-        );
-      });
-  };
-
-  const handleCancelConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    deleteService(serviceName, id)
-      .then((res: AxiosResponse) => {
-        if (res.statusText === 'OK') {
-          const updatedServiceList = serviceList.filter((s) => s.id !== id);
-          setServices({ ...services, [serviceName]: updatedServiceList });
-          setServicesCount((pre) => ({
-            ...servicesCount,
-            [serviceName]: pre[serviceName] - 1,
-          }));
-          setServiceList(updatedServiceList);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-service-error']
-        );
-      });
-
-    handleCancelConfirmationModal();
-  };
-
-  const ConfirmDelete = (id: string, name: string) => {
-    setDeleteSelection({
-      id,
-      name,
-    });
-    setIsConfirmationModalOpen(true);
-  };
 
   const getServiceTabs = (): Array<{
     name: ServiceTypes;
@@ -423,6 +225,7 @@ const ServicesPage = () => {
   const handleTabChange = (tabName: ServiceTypes) => {
     setSearchText('');
     setServiceName(tabName);
+    history.push(getServicesWithTabPath(tabName));
     setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
   };
 
@@ -473,7 +276,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="brokers">
-                {getBrokers(messagingService.connection.config)}
+                {getBrokers(messagingService.connection?.config)}
               </span>
             </div>
           </>
@@ -552,33 +355,6 @@ const ServicesPage = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  };
-
-  const getConfirmationModal = () => {
-    return isConfirmationModalOpen ? (
-      <ConfirmationModal
-        bodyText={`You want to delete service ${deleteSelection.name} permanently? This action cannot be reverted.`}
-        cancelText="Cancel"
-        confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-        confirmText="Delete"
-        header="Are you sure?"
-        onCancel={handleCancelConfirmationModal}
-        onConfirm={() => handleDelete(deleteSelection.id)}
-      />
-    ) : null;
-  };
-
-  const getAddServiceModal = () => {
-    return isModalOpen ? (
-      <AddServiceModal
-        data={editData as DataObj}
-        header={`${editData ? 'Edit' : 'Add new'} service`}
-        serviceList={serviceList}
-        serviceName={serviceName}
-        onCancel={handleClose}
-        onSave={handleSave}
-      />
-    ) : null;
   };
 
   const getPagination = () => {
@@ -672,29 +448,8 @@ const ServicesPage = () => {
               <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                 <div
                   className="tw-flex tw-justify-end"
-                  data-testid="delete-icon-container">
-                  <NonAdminAction
-                    position="top"
-                    title={TITLE_FOR_NON_ADMIN_ACTION}>
-                    <button
-                      className="focus:tw-outline-none"
-                      data-testid={`delete-service-${service.name}`}
-                      onClick={() =>
-                        ConfirmDelete(service.id || '', service.name)
-                      }>
-                      <SVGIcons
-                        alt="delete"
-                        icon="icon-delete"
-                        title="Delete"
-                        width="12px"
-                      />
-                    </button>
-                  </NonAdminAction>
-                </div>
-                <div
-                  className="tw-flex tw-justify-end"
                   data-testid="service-icon">
-                  {getServiceLogo(service.serviceType || '', 'tw-h-8 tw-w-8')}
+                  {getServiceLogo(service.serviceType || '', 'tw-h-8')}
                 </div>
               </div>
             </div>
@@ -739,10 +494,6 @@ const ServicesPage = () => {
           {getServiceList()}
 
           {getPagination()}
-
-          {getAddServiceModal()}
-
-          {getConfirmationModal()}
         </div>
       </PageLayout>
     );

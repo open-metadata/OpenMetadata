@@ -23,7 +23,6 @@ of logging these issues.
 from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.column.column_values_length_to_be_between import (
     column_value_length_to_be_between,
 )
@@ -54,8 +53,9 @@ from metadata.orm_profiler.validations.table.table_row_count_to_be_between impor
 from metadata.orm_profiler.validations.table.table_row_count_to_equal import (
     table_row_count_to_equal,
 )
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 @singledispatch

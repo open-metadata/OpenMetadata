@@ -1,0 +1,16 @@
+---
+source:
+  type: sample-data
+  serviceName: sample_data
+  serviceConnection:
+    config:
+      type: SampleData
+      sampleDataFolder: "./examples/sample_data"
+  sourceConfig: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

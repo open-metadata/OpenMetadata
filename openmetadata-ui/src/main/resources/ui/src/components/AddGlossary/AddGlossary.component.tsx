@@ -196,7 +196,7 @@ const AddGlossary = ({
           </label>
 
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="name"
             id="name"
             name="name"

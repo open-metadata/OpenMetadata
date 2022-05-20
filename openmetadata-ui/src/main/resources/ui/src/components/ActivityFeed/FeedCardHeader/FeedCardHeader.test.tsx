@@ -28,6 +28,7 @@ jest.mock('../../../axiosAPIs/userAPI', () => ({
 jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('feedcard'),
   getNonDeletedTeams: jest.fn().mockReturnValue([]),
+  getEntityName: jest.fn().mockReturnValue('entityname'),
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
@@ -38,8 +39,8 @@ jest.mock('../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p>Avatar</p>);
+jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 const mockFeedHeaderProps = {

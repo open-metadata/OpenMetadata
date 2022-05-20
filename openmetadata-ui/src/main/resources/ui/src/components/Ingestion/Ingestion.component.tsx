@@ -113,9 +113,9 @@ const Ingestion: React.FC<IngestionProps> = ({
       .catch(() => setCurrTriggerId({ id: '', state: '' }));
   };
 
-  const handleDeployIngestion = (id: string, ingestion: IngestionPipeline) => {
+  const handleDeployIngestion = (id: string) => {
     setCurrDeployId({ id, state: 'waiting' });
-    deployIngestion(ingestion)
+    deployIngestion(id)
       .then(() => {
         setCurrDeployId({ id, state: 'success' });
         setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
@@ -271,7 +271,19 @@ const Ingestion: React.FC<IngestionProps> = ({
       .slice(Math.max(ingestion.pipelineStatuses.length - 5, 0));
 
     return lastFiveIngestions?.map((r, i) => {
-      return (
+      const status =
+        i === lastFiveIngestions.length - 1 ? (
+          <p
+            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+            {capitalize(r.state)}
+          </p>
+        ) : (
+          <p
+            className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+          />
+        );
+
+      return r?.endDate || r?.startDate ? (
         <PopOver
           html={
             <div className="tw-text-left">
@@ -287,17 +299,10 @@ const Ingestion: React.FC<IngestionProps> = ({
           position="bottom"
           theme="light"
           trigger="mouseenter">
-          {i === lastFiveIngestions.length - 1 ? (
-            <p
-              className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
-              {capitalize(r.state)}
-            </p>
-          ) : (
-            <p
-              className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
-            />
-          )}
+          {status}
         </PopOver>
+      ) : (
+        status
       );
     });
   };
@@ -327,9 +332,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <button
           className="link-text tw-mr-2"
           data-testid="deploy"
-          onClick={() =>
-            handleDeployIngestion(ingestion.id as string, ingestion)
-          }>
+          onClick={() => handleDeployIngestion(ingestion.id as string)}>
           {currDeployId.id === ingestion.id ? (
             currDeployId.state === 'success' ? (
               <FontAwesomeIcon icon="check" />

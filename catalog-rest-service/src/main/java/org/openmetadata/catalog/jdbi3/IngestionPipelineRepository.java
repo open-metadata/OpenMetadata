@@ -17,24 +17,25 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
-import java.util.UUID;
+import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
+import org.openmetadata.catalog.metadataIngestion.LogLevels;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig";
-  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig";
+  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig,loggerLevel";
+  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig,loggerLevel";
+  private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
     super(
@@ -48,10 +49,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     this.allowEdits = true;
   }
 
-  public static String getFQN(IngestionPipeline ingestionPipeline) {
-    return (ingestionPipeline != null && ingestionPipeline.getService() != null)
-        ? FullyQualifiedName.add(ingestionPipeline.getService().getFullyQualifiedName(), ingestionPipeline.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
+    ingestionPipeline.setFullyQualifiedName(
+        FullyQualifiedName.add(ingestionPipeline.getService().getName(), ingestionPipeline.getName()));
   }
 
   @Override
@@ -62,15 +63,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public EntityInterface<IngestionPipeline> getEntityInterface(IngestionPipeline entity) {
-    return new IngestionPipelineEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(IngestionPipeline ingestionPipeline) throws IOException {
     EntityReference entityReference = Entity.getEntityReference(ingestionPipeline.getService());
     ingestionPipeline.setService(entityReference);
-    ingestionPipeline.setFullyQualifiedName(getFQN(ingestionPipeline));
+    setFullyQualifiedName(ingestionPipeline);
     ingestionPipeline.setOwner(Entity.getEntityReference(ingestionPipeline.getOwner()));
   }
 
@@ -111,128 +107,28 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return getContainer(ingestionPipeline.getId(), Entity.INGESTION_PIPELINE);
   }
 
-  public static class IngestionPipelineEntityInterface extends EntityInterface<IngestionPipeline> {
-    public IngestionPipelineEntityInterface(IngestionPipeline entity) {
-      super(Entity.INGESTION_PIPELINE, entity);
-    }
+  @Override
+  protected void postUpdate(IngestionPipeline entity) {
+    deploy(entity); // Deploy the ingestion pipeline
+  }
 
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
+  @Override
+  protected void postCreate(IngestionPipeline entity) {
+    deploy(entity); // Deploy the ingestion pipeline
+  }
 
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
+  @Override
+  protected void postDelete(IngestionPipeline entity) {
+    pipelineServiceClient.deletePipeline(entity.getName());
+  }
 
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
+  public void setPipelineServiceClient(PipelineServiceClient client) {
+    pipelineServiceClient = client;
+  }
 
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : IngestionPipelineRepository.getFQN(entity);
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public IngestionPipeline getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public IngestionPipeline withHref(URI href) {
-      return entity.withHref(href);
+  private void deploy(IngestionPipeline ingestionPipeline) {
+    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
+      pipelineServiceClient.deployPipeline(ingestionPipeline);
     }
   }
 
@@ -244,18 +140,23 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      IngestionPipeline origIngestion = original.getEntity();
-      IngestionPipeline updatedIngestion = updated.getEntity();
-      updateSource(origIngestion.getSource(), updatedIngestion.getSource());
-      updateAirflowConfig(origIngestion.getAirflowConfig(), updatedIngestion.getAirflowConfig());
+      updateSource(original.getSource(), updated.getSource());
+      updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateOpenMetadataServerConnection(
-          origIngestion.getOpenMetadataServerConnection(), updatedIngestion.getOpenMetadataServerConnection());
+          original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
+      updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
     }
 
     private void updateSource(Source origSource, Source updatedSource) throws JsonProcessingException {
-      if (origSource.getServiceConnection() != updatedSource.getServiceConnection()
-          && !origSource.getServiceName().equals(updatedSource.getServiceName())
-          && origSource.getSourceConfig() != updatedSource.getSourceConfig()) {
+      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getSourceConfig().getConfig()));
+      JSONObject updatedSourceConfig =
+          new JSONObject(JsonUtils.pojoToJson(updatedSource.getSourceConfig().getConfig()));
+      JSONObject origSourceConnection = new JSONObject(JsonUtils.pojoToJson(origSource.getServiceConnection()));
+      JSONObject updatedSourceConnection = new JSONObject(JsonUtils.pojoToJson(updatedSource.getServiceConnection()));
+
+      if (!origSource.getServiceName().equals(updatedSource.getServiceName())
+          || !origSourceConfig.similar(updatedSourceConfig)
+          || !origSourceConnection.similar(updatedSourceConnection)) {
         recordChange("source", origSource, updatedSource);
       }
     }
@@ -272,6 +173,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         throws JsonProcessingException {
       if (updatedConfig != null && !origConfig.equals(updatedConfig)) {
         recordChange("openMetadataServerConnection", origConfig, updatedConfig);
+      }
+    }
+
+    private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) throws JsonProcessingException {
+      if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
+        recordChange("loggerLevel", origLevel, updatedLevel);
       }
     }
   }

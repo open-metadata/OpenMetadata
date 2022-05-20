@@ -26,7 +26,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
-import { hasEditAccess } from '../../utils/CommonUtils';
+import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -35,9 +35,9 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -50,6 +50,7 @@ type props = {
   glossary: Glossary;
   updateGlossary: (value: Glossary) => void;
   afterDeleteAction?: () => void;
+  handleUserRedirection?: (name: string) => void;
 };
 
 const GlossaryDetails = ({
@@ -57,6 +58,7 @@ const GlossaryDetails = ({
   glossary,
   updateGlossary,
   afterDeleteAction,
+  handleUserRedirection,
 }: props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
@@ -217,13 +219,13 @@ const GlossaryDetails = ({
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
-          className={classNames('tw-h-8 tw-rounded tw-mr-1', {
+          className={classNames('tw-h-8 tw-mr-1 tw-rounded', {
             'tw-opacity-40': isHasAccess,
           })}
           data-testid="add-new-reviewer"
           size="small"
           theme="primary"
-          variant="contained"
+          variant="outlined"
           onClick={() => setShowRevieweModal(true)}>
           Add Reviewer
         </Button>
@@ -232,28 +234,38 @@ const GlossaryDetails = ({
   };
 
   const getReviewerTabData = () => {
-    return glossary.reviewers && glossary.reviewers.length > 0 ? (
-      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-        {glossary.reviewers?.map((term) => (
-          <UserCard
-            isActionVisible
-            isIconVisible
-            item={{
-              fqn: term.fullyQualifiedName || '',
-              displayName: term.displayName || term.name || '',
-              id: term.id,
-              type: term.type,
-              name: term.name,
-            }}
-            key={term.name}
-            onRemove={handleRemoveReviewer}
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main tw-shadow tw-rounded">
-        <p className="tw-mb-3">No reviewers assigned</p>
-        <p>{AddReviewerButton()}</p>
+    return (
+      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
+        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
+          <div className="tw-w-10/12">
+            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Add users as reviewer
+            </p>
+          </div>
+
+          {AddReviewerButton()}
+        </div>
+        {glossary.reviewers && glossary.reviewers.length > 0 && (
+          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
+            {glossary.reviewers?.map((term) => (
+              <UserCard
+                isActionVisible
+                isIconVisible
+                item={{
+                  fqn: term.fullyQualifiedName || '',
+                  displayName: term.displayName || term.name || '',
+                  id: term.id,
+                  type: term.type,
+                  name: term.name,
+                }}
+                key={term.name}
+                onRemove={handleRemoveReviewer}
+                onTitleClick={handleUserRedirection}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -263,17 +275,19 @@ const GlossaryDetails = ({
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
       <div className="tw-mb-3 tw-flex tw-items-center">
-        {(glossary.owner?.displayName || glossary.owner?.name) && (
+        {glossary.owner && getEntityName(glossary.owner) && (
           <div className="tw-inline-block tw-mr-2">
-            <Avatar
-              name={glossary.owner?.displayName || glossary.owner?.name || ''}
+            <ProfilePicture
+              displayName={getEntityName(glossary.owner)}
+              id={glossary.owner?.id || ''}
+              name={glossary.owner?.name || ''}
               textClass="tw-text-xs"
               width="20"
             />
           </div>
         )}
-        {glossary.owner?.displayName ? (
-          <span>{glossary.owner?.displayName}</span>
+        {glossary.owner && getEntityName(glossary.owner) ? (
+          <span>{getEntityName(glossary.owner)}</span>
         ) : (
           <span className="tw-text-grey-muted">No owner</span>
         )}
@@ -363,13 +377,6 @@ const GlossaryDetails = ({
         <TabsPane
           activeTab={activeTab}
           className="tw-flex-initial"
-          rightPosButton={
-            glossary.reviewers &&
-            glossary.reviewers.length > 0 &&
-            activeTab === 1
-              ? AddReviewerButton()
-              : undefined
-          }
           setActiveTab={setActiveTabHandler}
           tabs={tabs}
         />
@@ -379,14 +386,16 @@ const GlossaryDetails = ({
             <div
               className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
               data-testid="manage-glossary">
-              <div className="tw-mx-3">{getReviewerTabData()}</div>
+              <div className="tw-max-w-3xl tw-mx-auto">
+                {getReviewerTabData()}
+              </div>
               <div className="tw-mt-7">
                 <ManageTabComponent
                   allowDelete
                   hideTier
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
-                  currentUser={glossary?.owner?.id}
+                  currentUser={glossary?.owner}
                   entityId={glossary.id}
                   entityName={glossary?.name}
                   entityType={EntityType.GLOSSARY}

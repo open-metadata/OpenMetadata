@@ -13,7 +13,6 @@
 OpenMetadata Airflow Lineage Backend security providers config
 """
 
-
 from airflow.configuration import conf
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
@@ -31,6 +30,9 @@ from metadata.generated.schema.security.client.googleSSOClientConfig import (
 )
 from metadata.generated.schema.security.client.oktaSSOClientConfig import (
     OktaSSOClientConfig,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
 )
 from metadata.utils.dispatch import enum_register
 
@@ -94,3 +96,11 @@ def load_azure_auth() -> AzureSSOClientConfig:
         clientId=conf.get(LINEAGE, "client_id"),
         scopes=conf.get(LINEAGE, "scopes", fallback=[]),
     )
+
+
+@provider_config_registry.add(AuthProvider.openmetadata.value)
+def load_om_auth() -> OpenMetadataJWTClientConfig:
+    """
+    Load config for Azure Auth
+    """
+    return OpenMetadataJWTClientConfig(jwtToken=conf.get(LINEAGE, "jwt_token"))

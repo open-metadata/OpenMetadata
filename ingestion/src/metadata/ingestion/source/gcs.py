@@ -10,7 +10,6 @@
 #  limitations under the License.
 """gc source module"""
 
-import logging
 import uuid
 from typing import Iterable, List, Optional, Union
 
@@ -35,8 +34,9 @@ from metadata.ingestion.api.common import ConfigModel, Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.utils.helpers import get_storage_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class GcsSourceConfig(ConfigModel):
@@ -89,12 +89,13 @@ class GcsSource(Source[Entity]):
         try:
             for bucket in self.gcs.list_buckets():
                 self.status.scanned(bucket.name)
-                location_name = self._get_bucket_name_with_prefix(bucket.name)
+                location_path = self._get_bucket_name_with_prefix(bucket.name)
                 location_id = uuid.uuid4()
                 location = Location(
                     id=location_id,
-                    name=location_name,
-                    displayName=location_name,
+                    name=bucket.name,
+                    path=location_path,
+                    displayName=bucket.name,
                     locationType=LocationType.Bucket,
                     service=EntityReference(
                         id=self.service.id,

@@ -177,9 +177,10 @@ const NavBar = ({
                     title="Profile"
                     trigger="mouseenter">
                     {AppState?.userDetails?.profile?.images?.image512 ? (
-                      <div className="profile-image tw--mr-2">
+                      <div className="profile-image square tw--mr-2">
                         <img
                           alt="user"
+                          referrerPolicy="no-referrer"
                           src={AppState.userDetails.profile.images.image512}
                         />
                       </div>

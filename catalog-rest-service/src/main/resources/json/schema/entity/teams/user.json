@@ -4,6 +4,30 @@
   "title": "User",
   "description": "This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.teams.User",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "definitions": {
+    "authenticationMechanism": {
+      "type": "object",
+      "description": "User/Bot Authentication Mechanism.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./authN/ssoAuth.json"
+            },
+            {
+              "$ref": "./authN/jwtAuth.json"
+            }
+          ]
+        },
+        "authType": {
+          "enum": ["JWT", "SSO"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a user entity instance.",
@@ -12,6 +36,10 @@
     "name": {
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Used for user biography.",
@@ -56,6 +84,9 @@
       "type": "boolean",
       "boolean": false
     },
+    "authenticationMechanism": {
+      "$ref": "#/definitions/authenticationMechanism"
+    },
     "profile": {
       "description": "Profile of the user.",
       "$ref": "../../type/profile.json"
@@ -83,6 +114,10 @@
     },
     "roles": {
       "description": "Roles that the user has been assigned.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "inheritedRoles": {
+      "description": "Roles that a user is inheriting either as part of system default role or through membership in teams that have set team default roles.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

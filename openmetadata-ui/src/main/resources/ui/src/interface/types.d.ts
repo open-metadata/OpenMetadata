@@ -219,9 +219,10 @@ declare module 'Models' {
     tier: string | TagLabel;
     highlight?: {
       description: string[];
-      table_name: string[];
+      name: string[];
     };
     index: string;
+    type?: string;
     database?: string;
     databaseSchema?: string;
     deleted?: boolean;
@@ -493,6 +494,8 @@ declare module 'Models' {
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
+    avatarWidth?: string;
+    profileName?: string;
   };
 
   export type TourSteps = {
@@ -601,4 +604,6 @@ declare module 'Models' {
     count: number;
     entityField: string;
   }
+
+  export type ImageShape = 'circle' | 'square';
 }

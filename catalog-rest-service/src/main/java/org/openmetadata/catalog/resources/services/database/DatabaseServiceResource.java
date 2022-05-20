@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,9 +46,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -72,18 +69,17 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
 
   static final String FIELDS = "pipelines,owner";
-  private final Fernet fernet;
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
-    this.fernet = Fernet.getInstance();
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -291,7 +287,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
-    DatabaseService service = getService(create, securityContext);
+    DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
@@ -313,7 +309,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
-    DatabaseService service = getService(update, securityContext);
+    DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
@@ -345,29 +341,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private DatabaseService getService(CreateDatabaseService create, SecurityContext securityContext) {
-    return new DatabaseService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private DatabaseService getService(CreateDatabaseService create, String user) {
+    return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
-  }
-
-  private void validateDatabaseConnection(
-      DatabaseConnection databaseConnection, CreateDatabaseService.DatabaseServiceType databaseServiceType) {
-    try {
-      Object connectionConfig = databaseConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.database." + databaseServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      JsonUtils.convertValue(connectionConfig, clazz);
-    } catch (Exception e) {
-      throw new RuntimeException(
-          String.format("Failed to construct connection instance of %s", databaseServiceType.value()));
-    }
+        .withConnection(create.getConnection());
   }
 }

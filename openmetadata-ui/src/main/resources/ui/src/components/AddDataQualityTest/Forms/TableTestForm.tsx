@@ -18,7 +18,6 @@ import React, { Fragment, useEffect, useRef, useState } from 'react';
 import {
   CreateTableTest,
   TableTestType,
-  TestCaseExecutionFrequency,
 } from '../../../generated/api/tests/createTableTest';
 import { TableTest } from '../../../generated/tests/tableTest';
 import {
@@ -67,11 +66,6 @@ const TableTestForm = ({
   );
   const [value, setValue] = useState<number | undefined>(
     data?.testCase.config?.value || data?.testCase.config?.columnCount
-  );
-  const [frequency, setFrequency] = useState<TestCaseExecutionFrequency>(
-    data?.executionFrequency
-      ? data.executionFrequency
-      : TestCaseExecutionFrequency.Daily
   );
   const [isShowError, setIsShowError] = useState({
     minOrMax: false,
@@ -153,7 +147,6 @@ const TableTestForm = ({
     if (validateForm()) {
       const createTest: CreateTableTest = {
         description: markdownRef.current?.getEditorContent() || undefined,
-        executionFrequency: frequency,
         testCase: {
           config: getConfigValue(),
           tableTestType: tableTest,
@@ -203,11 +196,6 @@ const TableTestForm = ({
 
         break;
 
-      case 'frequency':
-        setFrequency(value as TestCaseExecutionFrequency);
-
-        break;
-
       default:
         break;
     }
@@ -222,7 +210,7 @@ const TableTestForm = ({
           {requiredField('Value:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="value"
           id="value"
           name="value"
@@ -245,7 +233,7 @@ const TableTestForm = ({
               Min:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="min"
               id="min"
               name="min"
@@ -260,7 +248,7 @@ const TableTestForm = ({
               Max:
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="max"
               id="max"
               name="max"
@@ -291,7 +279,7 @@ const TableTestForm = ({
               {requiredField('Test Type:')}
             </label>
             <select
-              className={classNames('tw-form-inputs tw-px-3 tw-py-1', {
+              className={classNames('tw-form-inputs tw-form-inputs-padding', {
                 'tw-cursor-not-allowed': !isUndefined(data),
               })}
               data-testid="tableTestType"
@@ -330,25 +318,6 @@ const TableTestForm = ({
             {tableTest === TableTestType.TableRowCountToBeBetween
               ? getMinMaxField()
               : getValueField()}
-          </Field>
-
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="frequency">
-              Frequency of Test Run:
-            </label>
-            <select
-              className="tw-form-inputs tw-px-3 tw-py-1"
-              data-testid="frequency"
-              id="frequency"
-              name="frequency"
-              value={frequency}
-              onChange={handleValidation}>
-              {Object.values(TestCaseExecutionFrequency).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
           </Field>
         </div>
         <Field className="tw-flex tw-justify-end">

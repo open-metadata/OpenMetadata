@@ -27,7 +27,6 @@ describe('Test ColumnTestForm component', () => {
     const columTestType = await findByTestId(container, 'columTestType');
     const cancelButton = await findByTestId(container, 'cancel-test');
     const saveButton = await findByTestId(container, 'save-test');
-    const frequency = await findByTestId(container, 'frequency');
     const description = await findByText(
       container,
       /MarkdownWithPreview component/i
@@ -38,6 +37,5 @@ describe('Test ColumnTestForm component', () => {
     expect(description).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
-    expect(frequency).toBeInTheDocument();
   });
 });

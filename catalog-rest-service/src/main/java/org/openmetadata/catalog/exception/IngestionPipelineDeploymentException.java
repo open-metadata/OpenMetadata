@@ -37,7 +37,7 @@ public class IngestionPipelineDeploymentException extends WebServiceException {
         Response.Status.BAD_REQUEST, buildMessageByName(name, errorMessage));
   }
 
-  private static String buildMessageByName(String name, String errorMessage) {
+  public static String buildMessageByName(String name, String errorMessage) {
     return String.format(BY_NAME_MESSAGE, name, errorMessage);
   }
 }

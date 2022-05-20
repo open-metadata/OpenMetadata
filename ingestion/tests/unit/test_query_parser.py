@@ -67,7 +67,7 @@ class QueryParserTest(TestCase):
             "shopify.dim_address": 100,
             "shopify.dim_shop": 190,
             "shopify.dim_customer": 125,
-            "dim_customer": 9,
+            "dim_customer": 38,
             "shopify.dim_location": 75,
             "dim_location.shop_id": 25,
             "dim_shop.shop_id": 105,

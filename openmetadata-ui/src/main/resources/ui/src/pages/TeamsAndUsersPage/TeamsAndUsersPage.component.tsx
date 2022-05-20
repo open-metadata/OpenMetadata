@@ -37,6 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
 import {
   getTeamAndUserDetailsPath,
+  INITIAL_PAGIN_VALUE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
@@ -69,7 +70,8 @@ const TeamsAndUsersPage = () => {
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
   const [teamUserPagin, setTeamUserPagin] = useState<Paging>({} as Paging);
-  const [currentTeamUserPage, setCurrentTeamUserPage] = useState(1);
+  const [currentTeamUserPage, setCurrentTeamUserPage] =
+    useState(INITIAL_PAGIN_VALUE);
   const [teamUsersSearchText, setTeamUsersSearchText] = useState('');
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
@@ -85,10 +87,6 @@ const TeamsAndUsersPage = () => {
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
-  };
-
-  const handleRightPannelLoading = (value: boolean) => {
-    setIsRightPannelLoading(value);
   };
 
   const handleAddTeam = (value: boolean) => {
@@ -134,6 +132,7 @@ const TeamsAndUsersPage = () => {
           break;
       }
     }
+    setIsRightPannelLoading(false);
     setIsUsersLoading(false);
   };
 
@@ -224,9 +223,10 @@ const TeamsAndUsersPage = () => {
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
         if (res.data) {
-          if (!teamAndUser) {
+          if (!teamAndUser && res.data.data.length > 0) {
             getCurrentTeamUsers(res.data.data[0].name);
             setCurrentTeam(res.data.data[0]);
+            setIsRightPannelLoading(false);
           }
           setTeams(res.data.data);
           AppState.updateUserTeam(res.data.data);
@@ -243,7 +243,6 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
-        handleRightPannelLoading(false);
       });
   };
 
@@ -281,7 +280,6 @@ const TeamsAndUsersPage = () => {
           showErrorToast(errMsg);
         })
         .finally(() => {
-          setIsLoading(false);
           setIsRightPannelLoading(false);
         });
     }
@@ -311,11 +309,15 @@ const TeamsAndUsersPage = () => {
       .finally(() => setIsTeamMemberLoading(false));
   };
 
-  const teamUserPaginHandler = (cursorValue: string | number) => {
+  const teamUserPaginHandler = (
+    cursorValue: string | number,
+    activePage?: number
+  ) => {
     if (teamUsersSearchText) {
       setCurrentTeamUserPage(cursorValue as number);
       searchUsers(teamUsersSearchText, cursorValue as number);
     } else {
+      setCurrentTeamUserPage(activePage as number);
       getCurrentTeamUsers(currentTeam?.name || '', {
         [cursorValue]: teamUserPagin[cursorValue as keyof Paging] as string,
       });
@@ -324,8 +326,9 @@ const TeamsAndUsersPage = () => {
 
   const handleTeamUsersSearchAction = (text: string) => {
     setTeamUsersSearchText(text);
+    setCurrentTeamUserPage(INITIAL_PAGIN_VALUE);
     if (text) {
-      searchUsers(text, currentTeamUserPage);
+      searchUsers(text, INITIAL_PAGIN_VALUE);
     } else {
       getCurrentTeamUsers(currentTeam?.name as string);
     }
@@ -362,28 +365,30 @@ const TeamsAndUsersPage = () => {
    * @param data
    */
   const addUsersToTeam = (data: Array<UserTeams>) => {
-    const updatedTeam = {
-      ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeams>), ...data],
-    };
-    const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchCurrentTeam(res.data.name, true);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((error: AxiosError) => {
-        showErrorToast(
-          error,
-          jsonData['api-error-messages']['update-team-error']
-        );
-      })
-      .finally(() => {
-        setIsAddingUsers(false);
-      });
+    if (!isUndefined(currentTeam)) {
+      const updatedTeam = {
+        ...currentTeam,
+        users: [...(currentTeam.users as Array<UserTeams>), ...data],
+      };
+      const jsonPatch = compare(currentTeam, updatedTeam);
+      patchTeamDetail(currentTeam.id, jsonPatch)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            fetchCurrentTeam(res.data.name, true);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            jsonData['api-error-messages']['update-team-error']
+          );
+        })
+        .finally(() => {
+          setIsAddingUsers(false);
+        });
+    }
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
@@ -409,7 +414,7 @@ const TeamsAndUsersPage = () => {
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
     setIsRightPannelLoading(true);
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
         .then((res: AxiosResponse) => {
           if (res.data) {
@@ -429,7 +434,6 @@ const TeamsAndUsersPage = () => {
             err,
             jsonData['api-error-messages']['leave-team-error']
           );
-          reject();
         });
     });
   };
@@ -439,14 +443,16 @@ const TeamsAndUsersPage = () => {
    * @param name - team name
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
-    handleRightPannelLoading(true);
-    history.push(getTeamAndUserDetailsPath(name));
-    if (isUsersCategory) {
-      setIsTeamVisible(false);
-      setCurrentTeam(undefined);
-    } else {
-      setIsTeamVisible(true);
-      setactiveUserTab(undefined);
+    if (name !== teamAndUser) {
+      setIsRightPannelLoading(true);
+      history.push(getTeamAndUserDetailsPath(name));
+      if (isUsersCategory) {
+        setIsTeamVisible(false);
+        setCurrentTeam(undefined);
+      } else {
+        setIsTeamVisible(true);
+        setactiveUserTab(undefined);
+      }
     }
   };
 
@@ -460,8 +466,6 @@ const TeamsAndUsersPage = () => {
             fetchCurrentTeam(res.data.name, true);
             resolve();
           } else {
-            reject();
-
             throw jsonData['api-error-messages']['unexpected-server-response'];
           }
         })
@@ -582,10 +586,10 @@ const TeamsAndUsersPage = () => {
    * @param updatedHTML - updated description
    */
   const onDescriptionUpdate = (updatedHTML: string) => {
-    if (currentTeam?.description !== updatedHTML) {
+    if (currentTeam && currentTeam.description !== updatedHTML) {
       const updatedTeam = { ...currentTeam, description: updatedHTML };
       const jsonPatch = compare(currentTeam as Team, updatedTeam);
-      patchTeamDetail(currentTeam?.id, jsonPatch)
+      patchTeamDetail(currentTeam.id, jsonPatch)
         .then((res: AxiosResponse) => {
           if (res.data) {
             fetchCurrentTeam(res.data.name, true);

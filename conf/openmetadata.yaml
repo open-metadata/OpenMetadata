@@ -89,15 +89,27 @@ server:
 logging:
   level: INFO
   loggers:
-    org.openmetadata.catalog.common: DEBUG
+    org.openmetadata.catalog.events: DEBUG
     io.swagger: ERROR
   appenders:
     - type: file
+      filterFactories:
+        - type: audit-exclude-filter-factory
       threshold: TRACE
       logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
       currentLogFilename: ./logs/openmetadata.log
       archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
+      timeZone: UTC
+      maxFileSize: 50MB
+    - type: file
+      filterFactories:
+        - type: audit-only-filter-factory
+      threshold: TRACE
+      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      currentLogFilename: ./logs/audit.log
+      archivedLogFilenamePattern: ./logs/audit-%d{yyyy-MM-dd}-%i.log.gz
+      archivedFileCount: 25
       timeZone: UTC
       maxFileSize: 50MB
 
@@ -111,22 +123,30 @@ database:
   url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "./bootstrap/sql/mysql"
+  path: "./bootstrap/sql"
 
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
-  botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPAL:-[ingestion-bot]}
+  botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEY:-[https://www.googleapis.com/oauth2/v3/certs]}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+  keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}

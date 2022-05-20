@@ -16,22 +16,16 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.resources.tags.TagResource;
-import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.Tag;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -81,11 +75,6 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public EntityInterface<Tag> getEntityInterface(Tag entity) {
-    return new TagEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(Tag entity) throws IOException {
     String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
     String category = split[0];
@@ -117,6 +106,11 @@ public class TagRepository extends EntityRepository<Tag> {
   public void storeRelationships(Tag entity) {}
 
   @Override
+  public void setFullyQualifiedName(Tag entity) {
+    /* Nothing to do since it is already setup */
+  }
+
+  @Override
   public Tag setFields(Tag tag, Fields fields) throws IOException {
     populateChildrenTags(tag, fields);
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
@@ -136,134 +130,6 @@ public class TagRepository extends EntityRepository<Tag> {
     return tag;
   }
 
-  public static class TagEntityInterface extends EntityInterface<Tag> {
-    public TagEntityInterface(Tag entity) {
-      super(Entity.TAG, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return null;
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return null;
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return null;
-    }
-
-    @Override
-    public Tag getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      /* No display name to set */
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      // TODO entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Tag withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      /* No tags to set */
-    }
-  }
-
   public class TagUpdater extends EntityUpdater {
     public TagUpdater(Tag original, Tag updated, Operation operation) {
       super(original, updated, operation);
@@ -271,7 +137,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateName(original.getEntity(), updated.getEntity());
+      updateName(original, updated);
     }
 
     public void updateName(Tag original, Tag updated) throws IOException {

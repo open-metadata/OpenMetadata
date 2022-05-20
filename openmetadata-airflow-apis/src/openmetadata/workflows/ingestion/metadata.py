@@ -15,6 +15,7 @@ Metadata DAG function builder
 from airflow import DAG
 from openmetadata.workflows.ingestion.common import (
     build_dag,
+    build_workflow_config_property,
     metadata_ingestion_workflow,
 )
 
@@ -29,7 +30,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
-    WorkflowConfig,
 )
 
 
@@ -45,9 +45,7 @@ def build_metadata_workflow_config(
             type="metadata-rest",
             config={},
         ),
-        workflowConfig=WorkflowConfig(
-            openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
-        ),
+        workflowConfig=build_workflow_config_property(ingestion_pipeline),
     )
 
     return workflow_config

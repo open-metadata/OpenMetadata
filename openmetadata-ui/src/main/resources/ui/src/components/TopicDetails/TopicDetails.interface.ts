@@ -13,7 +13,7 @@
 
 import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import { Topic } from '../../generated/entity/data/topic';
+import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -46,6 +46,8 @@ export interface TopicDetailsProps {
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
   paging: Paging;
+  isSampleDataLoading?: boolean;
+  sampleData?: TopicSampleData;
   fetchFeedHandler: (after?: string) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;

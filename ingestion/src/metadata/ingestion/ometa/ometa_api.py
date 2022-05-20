@@ -16,7 +16,12 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+
+try:
+    from typing import get_args
+except ImportError as err:
+    from typing_compat import get_args
 
 from pydantic import BaseModel
 
@@ -58,9 +63,11 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
+from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
@@ -114,11 +121,13 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaTopicMixin,
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
+    OMetaServerMixin,
     Generic[T, C],
 ):
     """
@@ -139,6 +148,7 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
+    tags_path = "tags"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -162,6 +172,8 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
+        if self.config.enableVersionValidation:
+            self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """
@@ -238,13 +250,28 @@ class OpenMetadata(
         if issubclass(entity, Report):
             return "/reports"
 
-        if issubclass(entity, (Tag, TagCategory)):
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                    TagCategory,
+                    self.get_create_entity_type(TagCategory),
+                ]
+            ),
+        ):
             return "/tags"
 
-        if issubclass(entity, Glossary):
+        if issubclass(
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+        ):
             return "/glossaries"
 
-        if issubclass(entity, GlossaryTerm):
+        if issubclass(
+            entity,
+            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
+        ):
             return "/glossaryTerms"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
@@ -313,6 +340,9 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
+        if "tag" in entity.__name__.lower():
+            return self.tags_path
+
         if (
             "user" in entity.__name__.lower()
             or "role" in entity.__name__.lower()
@@ -360,7 +390,11 @@ class OpenMetadata(
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name.lower()
+        file_name = (
+            class_name.lower()
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("tagcategory", "tagCategory")
+        )
 
         class_path = ".".join(
             [

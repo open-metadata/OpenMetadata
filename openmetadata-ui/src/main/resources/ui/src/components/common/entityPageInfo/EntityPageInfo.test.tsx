@@ -25,7 +25,7 @@ import EntityPageInfo from './EntityPageInfo';
 
 const mockEntityFieldThreads = [
   {
-    entityLink: '<#E/table/bigquery_gcp.shopify.raw_product_catalog/tags>',
+    entityLink: '<#E::table::bigquery_gcp.shopify.raw_product_catalog::tags>',
     count: 1,
     entityField: 'tags',
   },
@@ -153,8 +153,8 @@ jest.mock('../../tags/tags', () => {
   return jest.fn().mockReturnValue(<p data-testid="tier-tag">Tag</p>);
 });
 
-jest.mock('../avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p>Avatar</p>);
+jest.mock('../ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 jest.mock('./FollowersModal', () => {

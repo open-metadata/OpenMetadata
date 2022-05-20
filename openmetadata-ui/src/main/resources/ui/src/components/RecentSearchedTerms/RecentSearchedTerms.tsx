@@ -60,7 +60,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
                     to={getExplorePathWithSearch(item.term)}>
                     <button
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                      data-testid="recently-searched">
+                      data-testid={`search-term-${item.term}`}>
                       {item.term.length > 20 ? (
                         <PopOver
                           html={

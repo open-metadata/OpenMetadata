@@ -59,6 +59,7 @@ type Props = {
   handleGlossaryTermUpdate: (data: GlossaryTerm) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
+  handleUserRedirection?: (name: string) => void;
   afterDeleteAction?: () => void;
 };
 
@@ -70,6 +71,7 @@ const GlossaryTermsV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
   afterDeleteAction,
+  handleUserRedirection,
   currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
@@ -319,7 +321,7 @@ const GlossaryTermsV1 = ({
           data-testid="add-new-reviewer"
           size="small"
           theme="primary"
-          variant="contained"
+          variant="outlined"
           onClick={() => setShowRevieweModal(true)}>
           Add Reviewer
         </Button>
@@ -346,42 +348,47 @@ const GlossaryTermsV1 = ({
   };
 
   const getReviewerTabData = () => {
-    return glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 ? (
-      <div className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4">
-        {glossaryTerm.reviewers?.map((term) => (
-          <UserCard
-            isActionVisible
-            isIconVisible
-            item={{
-              fqn: term.fullyQualifiedName || '',
-              displayName: term.displayName || term.name || '',
-              id: term.id,
-              type: term.type,
-              name: term.name,
-            }}
-            key={term.name}
-            onRemove={handleRemoveReviewer}
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="tw-py-3 tw-text-center tw-bg-white tw-border tw-border-main tw-shadow tw-rounded">
-        <p className="tw-mb-3">No reviewers assigned</p>
-        <p>{AddReviewerButton()}</p>
+    return (
+      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
+        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
+          <div className="tw-w-10/12">
+            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Add users as reviewer
+            </p>
+          </div>
+
+          {AddReviewerButton()}
+        </div>
+        {glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 && (
+          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
+            {glossaryTerm.reviewers?.map((term) => (
+              <UserCard
+                isActionVisible
+                isIconVisible
+                item={{
+                  fqn: term.fullyQualifiedName || '',
+                  displayName: term.displayName || term.name || '',
+                  id: term.id,
+                  type: term.type,
+                  name: term.name,
+                }}
+                key={term.name}
+                onRemove={handleRemoveReviewer}
+                onTitleClick={handleUserRedirection}
+              />
+            ))}
+          </div>
+        )}
       </div>
     );
   };
 
   const getTabPaneButton = () => {
-    switch (activeTab) {
-      case 1: {
-        return relatedTerms.length ? AddRelatedTermButton() : undefined;
-      }
-      case 3: {
-        return glossaryTerm.reviewers?.length ? AddReviewerButton() : undefined;
-      }
-      default:
-        return;
+    if (activeTab === 1) {
+      return relatedTerms.length ? AddRelatedTermButton() : undefined;
+    } else {
+      return;
     }
   };
 
@@ -395,7 +402,7 @@ const GlossaryTermsV1 = ({
           {isSynonymsEditing ? (
             <div className="tw-flex tw-items-center tw-gap-1">
               <input
-                className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
                 data-testid="synonyms"
                 id="synonyms"
                 name="synonyms"
@@ -619,7 +626,9 @@ const GlossaryTermsV1 = ({
             <div
               className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
               data-testid="manage-glossary-term">
-              <div className="tw-mx-3">{getReviewerTabData()}</div>
+              <div className="tw-max-w-3xl tw-mx-auto">
+                {getReviewerTabData()}
+              </div>
               <div className="tw--mt-1">
                 <ManageTabComponent
                   allowDelete

@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,13 +26,10 @@ import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
@@ -72,12 +68,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
-    return new DatabaseServiceEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(DatabaseService databaseService) throws IOException {
+    setFullyQualifiedName(databaseService);
     // Check if owner is valid and set the relationship
     databaseService.setOwner(Entity.getEntityReference(databaseService.getOwner()));
     // validate database service connection
@@ -124,124 +116,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
   }
 
-  public static class DatabaseServiceEntityInterface extends EntityInterface<DatabaseService> {
-    public DatabaseServiceEntityInterface(DatabaseService entity) {
-      super(Entity.DATABASE_SERVICE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return FullyQualifiedName.build(entity.getName());
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public DatabaseService getEntity() {
-      return entity;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public DatabaseService withHref(URI href) {
-      return entity.withHref(href);
-    }
-  }
-
   public class DatabaseServiceUpdater extends EntityUpdater {
     public DatabaseServiceUpdater(DatabaseService original, DatabaseService updated, Operation operation) {
       super(original, updated, operation);
@@ -253,8 +127,8 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     private void updateDatabaseConnectionConfig() throws JsonProcessingException {
-      DatabaseConnection origConn = original.getEntity().getConnection();
-      DatabaseConnection updatedConn = updated.getEntity().getConnection();
+      DatabaseConnection origConn = original.getConnection();
+      DatabaseConnection updatedConn = updated.getConnection();
       recordChange("connection", origConn, updatedConn, true);
     }
   }

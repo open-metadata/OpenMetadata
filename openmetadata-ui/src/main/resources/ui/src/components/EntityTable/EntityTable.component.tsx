@@ -25,21 +25,20 @@ import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
   ColumnJoins,
+  ColumnTest,
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import {
-  ColumnTest,
-  ModifiedTableColumn,
-} from '../../interface/dataQuality.interface';
+import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
   getHtmlForNonAdminAction,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
 import { getThreadValue } from '../../utils/FeedUtils';
 import {
@@ -332,13 +331,17 @@ const EntityTable = ({
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
     // wrap it in quotes if dot is present
 
-    return columnName.includes('.') ? `"${columnName}"` : columnName;
+    return columnName.includes(FQN_SEPARATOR_CHAR)
+      ? `"${columnName}"`
+      : columnName;
   };
 
   /* eslint-disable-next-line */
   const onRequestDescriptionHandler = (cell: any) => {
     const columnName = getColumnName(cell);
-    onEntityFieldSelect?.(`columns/${columnName}/description`);
+    onEntityFieldSelect?.(
+      `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
+    );
   };
 
   useEffect(() => {
@@ -580,7 +583,9 @@ const EntityTable = ({
                                 onThreadLinkSelect,
                                 EntityType.TABLE,
                                 entityFqn,
-                                `columns/${getColumnName(cell)}/tags`,
+                                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                  cell
+                                )}${ENTITY_LINK_SEPARATOR}tags`,
                                 Boolean(cell.value.length)
                               )}
                             </div>
@@ -664,9 +669,9 @@ const EntityTable = ({
                                     onThreadLinkSelect,
                                     EntityType.TABLE,
                                     entityFqn,
-                                    `columns/${getColumnName(
+                                    `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
                                       cell
-                                    )}/description`,
+                                    )}${ENTITY_LINK_SEPARATOR}description`,
                                     Boolean(cell.value)
                                   )}
                                 </Fragment>

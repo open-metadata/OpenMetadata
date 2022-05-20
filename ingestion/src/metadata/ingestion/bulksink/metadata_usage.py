@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 from datetime import datetime
 from typing import List
 
@@ -31,8 +30,9 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import _get_formmated_table_name
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class MetadataUsageSinkConfig(ConfigModel):
@@ -81,6 +81,7 @@ class MetadataUsageBulkSink(BulkSink):
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
             table_entities = []
+            self.service_name = table_usage.service_name
             if "." in table_usage.table:
                 (
                     table_usage.database_schema,
@@ -100,7 +101,6 @@ class MetadataUsageBulkSink(BulkSink):
                     search_index="table_search_index",
                 )
                 table_entities = es_result
-            self.service_name = table_usage.service_name
             for table_entity in table_entities:
                 if table_entity is not None:
                     if not table_usage_map.get(table_entity.id.__root__):

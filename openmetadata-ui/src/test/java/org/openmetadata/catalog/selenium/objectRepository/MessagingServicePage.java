@@ -13,6 +13,7 @@ public class MessagingServicePage {
 
   By messagingServiceBootstrapServers = By.cssSelector("[id='root_bootstrapServers']");
   By messagingServiceSchemaRegistry = By.cssSelector("[id='root_schemaRegistryURL']");
+  By deleteMessagingService = By.cssSelector("[data-testid='delete-button']");
   By confirmationDeleteText = By.cssSelector("[data-testid='confirmation-text-input']");
   By deleteIngestion = By.cssSelector("[data-testid='delete']");
 }

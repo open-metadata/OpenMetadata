@@ -1,11 +1,10 @@
-import logging
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, Table, TableData
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -13,6 +12,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -25,8 +27,9 @@ from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class DynamodbSource(Source[Entity]):
@@ -35,6 +38,9 @@ class DynamodbSource(Source[Entity]):
         self.status = SQLSourceStatus()
 
         self.config = config
+        self.source_config: DatabaseServiceMetadataPipeline = (
+            self.config.sourceConfig.config
+        )
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
         self.service_connection = self.config.serviceConnection.__root__.config
@@ -65,7 +71,6 @@ class DynamodbSource(Source[Entity]):
             yield from self.ingest_tables()
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
@@ -104,11 +109,45 @@ class DynamodbSource(Source[Entity]):
                     database=database_entity,
                     database_schema=schema_entity,
                 )
+                try:
+                    if self.source_config.generateSampleData:
+                        table_data = self.fetch_sample_data(schema_entity, table)
+                        if table_data:
+                            table_entity.sampleData = table_data
+                # Catch any errors during the ingestion and continue
+                except Exception as err:  # pylint: disable=broad-except
+                    logger.error(repr(err))
+                    logger.error(err)
+
                 yield table_and_db
+
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
+
+    def fetch_sample_data(self, schema_entity: str, table: str) -> Optional[TableData]:
+        response = table.scan()
+        data = response["Items"]
+        while "LastEvaluatedKey" in response:
+            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+            data.extend(response["Items"])
+        try:
+            cols = []
+            table_cols = self.get_columns(table.attribute_definitions)
+
+            for col in table_cols:
+                cols.append(col.name.__root__)
+            rows = []
+            for res in data:
+                row = [res.get(i) for i in cols]
+                rows.append(row)
+            return TableData(columns=cols, rows=rows)
+        # Catch any errors and continue the ingestion
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to generate sample data for {table} - {err}")
+        return None
 
     def get_columns(self, column_data):
         for column in column_data:
@@ -127,7 +166,7 @@ class DynamodbSource(Source[Entity]):
                 yield Column(**parsed_string)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.debug(traceback.print_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def close(self):

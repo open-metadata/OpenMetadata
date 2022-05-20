@@ -15,7 +15,7 @@ test the REST APIs using some ongoing changes on OpenMetadata as well.
 Install following packages in your scheduler and webserver python env.
 
 ```
-pip install openmetadata-airflow-apis
+pip install openmetadata-airflow-managed-apis       
 ```
 
 ## Configuration
@@ -30,12 +30,11 @@ substitute AIRFLOW_HOME with your airflow installation home
 
 ## Deploy
 
-1. Download the latest release
-2. Create plugins folder in your scheduler and webserver if it does not exist already
-3. cp -r src/plugins/* ${AIRFLOW_HOME}/plugins
-4. cp -r src/plugins/dag_templates {AIRFLOW_HOME}
-5. mkdir -p {AIRFLOW_HOME}/dag_generated_configs
-7. (re)start the airflow webserver and scheduler
+1. Download the latest openmetadata-airflow-apis-plugin release from [here](https://github.com/open-metadata/OpenMetadata/releases)
+2. Untar it under {AIRFLOW_HOME} directory. This will create and setup a plugins directory under {AIRFLOW_HOME} .
+3. cp -r {AIRFLOW_HOME}/plugins/dag_templates {AIRFLOW_HOME}
+4. mkdir -p {AIRFLOW_HOME}/dag_generated_configs
+5. (re)start the airflow webserver and scheduler
 
     ```
     airflow webserver

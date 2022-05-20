@@ -59,6 +59,7 @@ import {
   prepareLabel,
 } from './CommonUtils';
 import { isLeafNode } from './EntityUtils';
+import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 
 export const getHeaderLabel = (
@@ -119,13 +120,14 @@ export const getLineageData = (
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLable: (node: EntityReference) => React.ReactNode,
+  getNodeLabel: (node: EntityReference) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
-  ) => void
+  ) => void,
+  removeNodeHandler: (node: Node) => void
 ) => {
   const [x, y] = [0, 0];
   const nodes = [
@@ -140,6 +142,7 @@ export const getLineageData = (
       isMapped: false,
       ...down,
     })) || [];
+
   const mainNode = entityLineage['entity'];
 
   const UPStreamNodes: Elements = [];
@@ -161,14 +164,20 @@ export const getLineageData = (
       type: 'default',
       className: 'leaf-node',
       data: {
-        label: getNodeLable(node),
+        label: getNodeLabel(node),
         entityType: node.type,
+        removeNodeHandler,
+        isEditMode,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
         y: yVal,
       },
     };
+  };
+
+  const makeEdge = (edge: FlowElement) => {
+    lineageEdges.push(edge);
   };
 
   const getNodes = (
@@ -187,7 +196,7 @@ export const getLineageData = (
           if (node) {
             UPNodes.push(node);
             UPStreamNodes.push(makeNode(node, 'from', depth, upDepth));
-            lineageEdges.push({
+            makeEdge({
               id: `edge-${up.fromEntity}-${id}-${depth}`,
               source: `${node.id}`,
               target: edg ? edg.id : `${id}`,
@@ -229,7 +238,7 @@ export const getLineageData = (
           if (node) {
             DOWNNodes.push(node);
             DOWNStreamNodes.push(makeNode(node, 'to', depth, downDepth));
-            lineageEdges.push({
+            makeEdge({
               id: `edge-${id}-${down.toEntity}`,
               source: edg ? edg.id : `${id}`,
               target: `${node.id}`,
@@ -328,7 +337,9 @@ export const getLineageData = (
           : 'input',
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
-        label: getNodeLable(mainNode),
+        label: getNodeLabel(mainNode),
+        isEditMode,
+        removeNodeHandler,
       },
       position: { x: x, y: y },
     },
@@ -343,6 +354,7 @@ export const getLineageData = (
             ...up,
             type: isEditMode ? 'default' : 'input',
             data: {
+              ...up.data,
               label: (
                 <div className="tw-flex">
                   <div
@@ -387,6 +399,7 @@ export const getLineageData = (
             ...down,
             type: isEditMode ? 'default' : 'output',
             data: {
+              ...down.data,
               label: (
                 <div className="tw-flex tw-justify-between">
                   <div>{down?.data?.label}</div>
@@ -444,7 +457,7 @@ export const getDataLabel = (
   } else {
     return (
       <span
-        className="tw-break-words description-text tw-self-center"
+        className="tw-break-words tw-self-center tw-w-60"
         data-testid="lineage-entity">
         {type === 'table'
           ? databaseName && schemaName
@@ -496,8 +509,8 @@ export const getLayoutedElements = (
   elements.forEach((el) => {
     if (isNode(el)) {
       dagreGraph.setNode(el.id, {
-        width: el?.__rf?.width ?? nodeWidth,
-        height: el?.__rf?.height ?? nodeHeight,
+        width: nodeWidth,
+        height: nodeHeight,
       });
     } else {
       dagreGraph.setEdge(el.source, el.target);
@@ -512,11 +525,8 @@ export const getLayoutedElements = (
       el.targetPosition = isHorizontal ? Position.Left : Position.Top;
       el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
       el.position = {
-        x:
-          nodeWithPosition.x -
-          (el?.__rf?.width ?? nodeWidth) / 2 +
-          Math.random() / 1000,
-        y: nodeWithPosition.y - (el?.__rf?.height ?? nodeHeight) / 2,
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
       };
     }
 
@@ -527,27 +537,19 @@ export const getLayoutedElements = (
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
   let sourceEntity = '';
   let targetEntity = '';
+  const sourceFQN = selectedEdge.source.fullyQualifiedName || '';
+  const targetFQN = selectedEdge.target.fullyQualifiedName || '';
 
   if (selectedEdge.source.type === EntityType.TABLE) {
-    sourceEntity = getPartialNameFromTableFQN(
-      selectedEdge.source.name as string,
-      [FqnPart.Table]
-    );
+    sourceEntity = getPartialNameFromTableFQN(sourceFQN, [FqnPart.Table]);
   } else {
-    sourceEntity = getPartialNameFromFQN(selectedEdge.source.name as string, [
-      'database',
-    ]);
+    sourceEntity = getPartialNameFromFQN(sourceFQN, ['database']);
   }
 
   if (selectedEdge.target.type === EntityType.TABLE) {
-    targetEntity = getPartialNameFromTableFQN(
-      selectedEdge.target.name as string,
-      [FqnPart.Table]
-    );
+    targetEntity = getPartialNameFromTableFQN(targetFQN, [FqnPart.Table]);
   } else {
-    targetEntity = getPartialNameFromFQN(selectedEdge.target.name as string, [
-      'database',
-    ]);
+    targetEntity = getPartialNameFromFQN(targetFQN, ['database']);
   }
 
   return `Are you sure you want to remove the edge between "${
@@ -559,4 +561,33 @@ export const getModalBodyText = (selectedEdge: SelectedEdge) => {
       ? selectedEdge.target.displayName
       : targetEntity
   }"?`;
+};
+
+export const getUniqueFlowElements = (elements: FlowElement[]) => {
+  const flag: { [x: string]: boolean } = {};
+  const uniqueElements: Elements = [];
+
+  elements.forEach((elem) => {
+    if (!flag[elem.id]) {
+      flag[elem.id] = true;
+      uniqueElements.push(elem);
+    }
+  });
+
+  return uniqueElements;
+};
+
+/**
+ *
+ * @param onClick - callback
+ * @returns - Button element with attach callback
+ */
+export const getNodeRemoveButton = (onClick: () => void) => {
+  return (
+    <button
+      className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+      onClick={() => onClick()}>
+      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
+    </button>
+  );
 };

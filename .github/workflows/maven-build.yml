@@ -53,6 +53,9 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
+      
+      - name: Setup Test Containers Properties
+        run: echo 'testcontainers.reuse.enable=true' >> $HOME/.testcontainers.properties
 
       - name: Build PR with Maven
         env:

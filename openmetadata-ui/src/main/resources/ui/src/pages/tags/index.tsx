@@ -39,10 +39,7 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import {
-  getExplorePathWithSearch,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -57,6 +54,7 @@ import {
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
+import { getExplorePathWithInitFilters } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories } from '../../utils/TagsUtils';
@@ -358,7 +356,6 @@ const TagsPage = () => {
     updateTag(currentCategory?.name, editTag?.name, {
       name: editTag?.name,
       description: updatedHTML,
-      associatedTags: editTag?.associatedTags,
     })
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -381,9 +378,9 @@ const TagsPage = () => {
 
   const getUsageCountLink = (tagFQN: string) => {
     if (tagFQN.startsWith('Tier')) {
-      return `${getExplorePathWithSearch()}?tier=${tagFQN}`;
+      return getExplorePathWithInitFilters('', undefined, `tier=${tagFQN}`);
     } else {
-      return `${getExplorePathWithSearch()}?tags=${tagFQN}`;
+      return getExplorePathWithInitFilters('', undefined, `tags=${tagFQN}`);
     }
   };
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
@@ -76,18 +76,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 
       let name = table.name;
       if (!isUndefined(table.highlight)) {
-        const [assetName] = Object.keys(table.highlight).filter((name) =>
-          ASSETS_NAME.includes(name)
-        );
-        name = !isEmpty(
-          table.highlight?.[assetName as keyof FormatedTableData['highlight']]
-        )
-          ? (
-              table.highlight?.[
-                assetName as keyof FormatedTableData['highlight']
-              ] as string[]
-            ).join(' ')
-          : name;
+        name = table.highlight?.name?.join(' ') || name;
       }
 
       const matches = table.highlight
@@ -123,7 +112,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             indexType={table.index}
             matches={matches}
             name={name}
-            owner={table.owner?.displayName || table.owner?.name}
+            owner={table.owner}
             service={table.service}
             serviceType={table.serviceType || '--'}
             tableType={table.tableType as TableType}

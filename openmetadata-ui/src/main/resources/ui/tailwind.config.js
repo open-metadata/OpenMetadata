@@ -28,6 +28,7 @@ const idealBG = '#C4C4C440';
 const success = '#008376';
 const successBG = '#00837640';
 const error = '#E54937';
+const error_70 = '#E5493770';
 const errorBG = '#E5493740';
 const info = '#1890FF';
 const infoBG = '#1890FF40';
@@ -111,6 +112,7 @@ module.exports = {
         'success-lite': successBG,
         error: error,
         'error-lite': errorBG,
+        'error-70': error_70,
         warning: warning,
         'warning-lite': warningBG,
         info: info,

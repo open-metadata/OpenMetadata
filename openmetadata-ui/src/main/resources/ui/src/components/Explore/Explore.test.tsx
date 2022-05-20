@@ -91,6 +91,7 @@ describe('Test Explore component', () => {
         error=""
         fetchCount={mockFunction}
         fetchData={mockFunction}
+        handleFilterChange={mockFunction}
         handlePathChange={mockFunction}
         handleSearchText={mockFunction}
         searchQuery=""
@@ -120,7 +121,7 @@ describe('Test Explore component', () => {
     const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, 'tab');
+    const tabs = await findAllByTestId(container, /tab/i);
 
     expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();

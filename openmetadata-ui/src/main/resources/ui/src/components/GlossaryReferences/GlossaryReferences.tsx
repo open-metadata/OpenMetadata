@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { TermReference } from '../../generated/entity/data/glossaryTerm';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import { Field } from '../Field/Field';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 interface Props {
   referenceList: TermReference[];
@@ -74,7 +74,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
           <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
             <Field>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id={`name-${i}`}
                 name="name"
                 placeholder="Name"
@@ -87,7 +87,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
             </Field>
             <Field>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id={`url-${i}`}
                 name="endpoint"
                 placeholder="Endpoint"

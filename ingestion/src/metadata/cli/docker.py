@@ -1,16 +1,14 @@
 import json
-import logging
 import pathlib
 import sys
 import tempfile
 import time
 import traceback
 from base64 import b64encode
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import click
 import requests as requests
-from requests._internal_utils import to_native_string
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -18,13 +16,14 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import cli_logger, ometa_logger
 
-logger = logging.getLogger(__name__)
+logger = cli_logger()
 calc_gb = 1024 * 1024 * 1024
 min_memory_limit = 6 * calc_gb
 
 
-def start_docker(docker, start_time, file_path, skip_sample_data):
+def start_docker(docker, start_time, file_path, ingest_sample_data: bool):
     logger.info("Running docker compose for OpenMetadata..")
     click.secho("It may take some time on the first run", fg="bright_yellow")
     if file_path:
@@ -33,14 +32,14 @@ def start_docker(docker, start_time, file_path, skip_sample_data):
         docker.compose.up(detach=True)
 
     logger.info("Ran docker compose for OpenMetadata successfully.")
-    if not skip_sample_data:
+    if ingest_sample_data:
         logger.info("Waiting for ingestion to complete..")
         wait_for_containers(docker)
-        ingest_sample_data()
+        run_sample_data()
         metadata_config = OpenMetadataConnection(
             hostPort="http://localhost:8585/api", authProvider="no-auth"
         )
-        logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = True
+        ometa_logger().disabled = True
         ometa_client = OpenMetadata(metadata_config)
         while True:
             try:
@@ -54,13 +53,27 @@ def start_docker(docker, start_time, file_path, skip_sample_data):
                 sys.stdout.write(".")
                 sys.stdout.flush()
                 time.sleep(5)
-        logging.getLogger("metadata.ingestion.ometa.ometa_api").disabled = False
+        ometa_logger().disabled = False
+
+    # Wait until docker is not only running, but the server is up
+    click.secho(
+        "Waiting for server to be up at http://localhost:8585", fg="bright_yellow"
+    )
+    while True:
+        try:
+            res = requests.get("http://localhost:8585")
+            if res.status_code == 200:
+                break
+        except Exception:
+            pass
+        time.sleep(5)
+
     elapsed = time.time() - start_time
     logger.info(
-        f"Time took to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
+        f"Time taken to get OpenMetadata running: {str(timedelta(seconds=elapsed))}"
     )
     click.secho(
-        "\n✅ OpenMetadata is up and running",
+        "\n✅  OpenMetadata is up and running",
         fg="bright_green",
     )
     click.secho(
@@ -111,32 +124,32 @@ def file_path_check(file_path):
 
 
 def run_docker(
-    start,
-    stop,
-    pause,
-    resume,
-    clean,
-    file_path,
-    env_file_path,
-    reset_db,
-    skip_sample_data,
+    start: bool,
+    stop: bool,
+    pause: bool,
+    resume: bool,
+    clean: bool,
+    file_path: str,
+    env_file_path: str,
+    reset_db: bool,
+    ingest_sample_data: bool,
 ):
     try:
         from python_on_whales import DockerClient
 
         docker = DockerClient(compose_project_name="openmetadata", compose_files=[])
 
-        logger.info("Checking if docker compose is installed..")
+        logger.info("Checking if docker compose is installed...")
         if not docker.compose.is_installed():
             raise Exception("Docker Compose CLI is not installed on the system.")
 
         docker_info = docker.info()
 
-        logger.info("Checking if docker service is running..")
+        logger.info("Checking if docker service is running...")
         if not docker_info.id:
             raise Exception("Docker Service is not up and running.")
 
-        logger.info("Checking openmetadata memory constraints..")
+        logger.info("Checking openmetadata memory constraints...")
         if docker_info.mem_total < min_memory_limit:
             raise MemoryError
 
@@ -151,25 +164,24 @@ def run_docker(
             compose_env_file=env_file,
         )
         if start:
-            start_docker(docker, start_time, file_path, skip_sample_data)
+            start_docker(docker, start_time, file_path, ingest_sample_data)
         if pause:
-            logger.info("Pausing docker compose for OpenMetadata..")
+            logger.info("Pausing docker compose for OpenMetadata...")
             docker.compose.pause()
             logger.info("Pausing docker compose for OpenMetadata successful.")
         if resume:
-            logger.info("Resuming docker compose for OpenMetadata..")
+            logger.info("Resuming docker compose for OpenMetadata...")
             docker.compose.unpause()
             logger.info("Resuming docker compose for OpenMetadata Successful.")
         if stop:
-            logger.info("Stopping docker compose for OpenMetadata..")
+            logger.info("Stopping docker compose for OpenMetadata...")
             docker.compose.stop()
             logger.info("Docker compose for OpenMetadata stopped successfully.")
         if reset_db:
-
             reset_db_om(docker)
         if clean:
             logger.info(
-                "Stopping docker compose for OpenMetadata and removing images, networks, volumes.."
+                "Stopping docker compose for OpenMetadata and removing images, networks, volumes..."
             )
             docker.compose.down(remove_orphans=True, remove_images="all", volumes=True)
             logger.info(
@@ -186,7 +198,6 @@ def run_docker(
         )
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.debug(traceback.print_exc())
         click.secho(str(err), fg="red")
 
 
@@ -226,10 +237,11 @@ def wait_for_containers(docker) -> None:
             time.sleep(5)
 
 
-def ingest_sample_data() -> None:
+def run_sample_data() -> None:
     """
     Trigger sample data DAGs
     """
+    from requests._internal_utils import to_native_string
 
     base_url = "http://localhost:8080/api"
     dags = ["sample_data", "sample_usage", "index_metadata"]
@@ -243,9 +255,20 @@ def ingest_sample_data() -> None:
         ),
     )
     client = REST(client_config)
-
+    timeout = time.time() + 60 * 5  # Timeout of 5 minutes
+    while True:
+        try:
+            resp = client.get("/dags")
+            if resp:
+                break
+            elif time.time() > timeout:
+                raise TimeoutError("Ingestion container timed out")
+        except TimeoutError as err:
+            print(err)
+            sys.exit(1)
+        except Exception:
+            sys.stdout.write(".")
+            time.sleep(5)
     for dag in dags:
-        json_sample_data = {
-            "dag_run_id": "{}_{}".format(dag, datetime.now()),
-        }
-        client.post("/dags/{}/dagRuns".format(dag), data=json.dumps(json_sample_data))
+        json_sample_data = {"is_paused": False}
+        client.patch("/dags/{}".format(dag), data=json.dumps(json_sample_data))

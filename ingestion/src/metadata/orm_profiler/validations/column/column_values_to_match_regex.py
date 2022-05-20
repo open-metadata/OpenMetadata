@@ -16,7 +16,6 @@ ColumnValuesToBeNotNull validation implementation
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
@@ -26,10 +25,10 @@ from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.utils import logger
 from metadata.orm_profiler.validations.utils import run_col_metric
+from metadata.utils.logger import profiler_logger
 
-logger = logger()
+logger = profiler_logger()
 
 
 def column_values_to_match_regex(

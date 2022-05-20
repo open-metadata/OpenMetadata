@@ -30,10 +30,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.objectRepository.Common;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -48,7 +45,7 @@ class CommonTests {
   static WebDriver webDriver;
   static Common common;
   static Actions actions;
-  static Faker faker = new Faker();
+  static final Faker faker = new Faker();
   static String tagCategoryDisplayName = faker.name().firstName();
   static WebDriverWait wait;
   static String url = Property.getInstance().getURL();
@@ -306,9 +303,9 @@ class CommonTests {
     openHomePage();
     Events.sendKeys(webDriver, common.searchBar(), "address"); // Search bar/dim
     Events.sendEnter(webDriver, common.searchBar());
-    Thread.sleep(2000);
-    Object tagCount = webDriver.findElements(common.tagCountSearch()).size() - 1;
-    Thread.sleep(2000);
+    Thread.sleep(waitTime);
+    Object tagCount = webDriver.findElements(common.tagCountSearch()).size();
+    Thread.sleep(waitTime);
     String matchesInDescription = webDriver.findElement(common.matchesInDescription()).getAttribute("innerHTML");
     Assert.assertEquals((tagCount + " in Description,"), matchesInDescription);
   }
@@ -345,7 +342,6 @@ class CommonTests {
     Events.sendKeys(webDriver, common.searchBar(), tableName);
     Events.click(webDriver, common.searchSuggestion());
     Thread.sleep(waitTime);
-    //    actions.moveToElement(webDriver.findElement(common.editAssociatedTagButton())).perform();
     Events.click(webDriver, common.editAssociatedTagButton());
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i <= 2; i++) {
@@ -354,7 +350,12 @@ class CommonTests {
       count = count + 1;
     }
     Events.click(webDriver, common.saveAssociatedTag());
-    Events.click(webDriver, common.editAssociatedTagButton());
+    try {
+      Events.click(webDriver, common.editAssociatedTagButton());
+    } catch (StaleElementReferenceException e) {
+      webDriver.findElement(common.editAssociatedTagButton()).click();
+    }
+
     Events.click(webDriver, common.enterAssociatedTagName());
     for (int i = 0; i < 2; i++) {
       Events.sendKeys(webDriver, common.enterAssociatedTagName(), "P");
@@ -364,7 +365,6 @@ class CommonTests {
     Events.click(webDriver, common.saveAssociatedTag());
     Thread.sleep(waitTime);
     Events.click(webDriver, common.editAssociatedTagButton());
-    Object tagsCount = webDriver.findElements(common.tagCount()).size();
     Events.click(webDriver, common.explore());
     Thread.sleep(waitTime);
     try {

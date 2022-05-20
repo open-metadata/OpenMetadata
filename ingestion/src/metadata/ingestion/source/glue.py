@@ -9,12 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, List, Optional
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
@@ -38,13 +36,14 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import (
     get_pipeline_service_or_create,
     get_storage_service_or_create,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class GlueSource(Source[Entity]):
@@ -98,36 +97,48 @@ class GlueSource(Source[Entity]):
     def prepare(self):
         pass
 
-    def assign_next_token_db(self, glue_db_resp):
-        if "NextToken" in glue_db_resp:
-            self.next_db_token = glue_db_resp["NextToken"]
-        else:
-            self.next_db_token = "break"
-
     def next_record(self) -> Iterable[Entity]:
-        while True:
-            if self.next_db_token == "break":
-                break
-            elif self.next_db_token:
-                glue_db_resp = self.glue.get_databases(
-                    NextToken=self.next_db_token, ResourceShareType="ALL"
-                )
-                self.assign_next_token_db(glue_db_resp)
-            else:
-                glue_db_resp = self.glue.get_databases(ResourceShareType="ALL")
-                self.assign_next_token_db(glue_db_resp)
-            for db in glue_db_resp["DatabaseList"]:
+
+        yield from self.ingest_catalog()
+        yield from self.ingest_pipelines()
+
+    def ingest_catalog(self) -> Iterable[Entity]:
+        """
+        Ingest db and table data
+
+        Catalog ID -> Database
+        Glue db -> Schema
+        """
+        paginator = self.glue.get_paginator("get_databases")
+        paginator_response = paginator.paginate()
+
+        for page in paginator_response:
+            for schema in page["DatabaseList"]:
+
+                if filter_by_database(
+                    database_filter_pattern=self.config.sourceConfig.config.databaseFilterPattern,
+                    database_name=schema["CatalogId"],
+                ):
+                    self.status.filter(
+                        schema["CatalogId"], "Database (Catalog ID) pattern not allowed"
+                    )
+                    continue
 
                 if filter_by_schema(
                     schema_filter_pattern=self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_name=db["Name"],
+                    schema_name=schema["Name"],
                 ):
-                    self.source_status.filter(db["Name"], "Schema pattern not allowed")
+                    self.status.filter(schema["Name"], "Schema pattern not allowed")
                     continue
 
-                self.database_name = db["Name"]
-                yield from self.ingest_tables()
-        yield from self.ingest_pipelines()
+                yield from self.ingest_tables(
+                    catalog_id=schema["CatalogId"], schema_name=schema["Name"]
+                )
+
+                if self.config.sourceConfig.config.markDeletedTables:
+                    logger.warning(
+                        "Glue source does not currently support marking tables as deleted."
+                    )
 
     def get_columns(self, column_data):
         for column in column_data["Columns"]:
@@ -144,15 +155,20 @@ class GlueSource(Source[Entity]):
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             yield Column(**parsed_string)
 
-    def ingest_tables(self, next_tables_token=None) -> Iterable[OMetaDatabaseAndTable]:
+    def ingest_tables(
+        self, catalog_id: str, schema_name: str
+    ) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            if next_tables_token is not None:
-                glue_resp = self.glue.get_tables(
-                    DatabaseName=self.database_name, NextToken=next_tables_token
-                )
-            else:
-                glue_resp = self.glue.get_tables(DatabaseName=self.database_name)
-            for table in glue_resp["TableList"]:
+
+            all_tables: List[dict] = []
+
+            paginator = self.glue.get_paginator("get_tables")
+            paginator_response = paginator.paginate(DatabaseName=schema_name)
+
+            for page in paginator_response:
+                all_tables += page["TableList"]
+
+            for table in all_tables:
 
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
@@ -165,7 +181,7 @@ class GlueSource(Source[Entity]):
                     continue
                 database_entity = Database(
                     id=uuid.uuid4(),
-                    name="default",
+                    name=catalog_id,
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
 
@@ -175,8 +191,6 @@ class GlueSource(Source[Entity]):
                     database=EntityReference(id=database_entity.id, type="database"),
                     service=EntityReference(id=self.service.id, type="databaseService"),
                 )
-                table_name = table["Name"][:255]
-                fqn = f"{self.config.serviceName}{FQDN_SEPARATOR}{self.database_name}{FQDN_SEPARATOR}{table_name}"
                 parameters = table.get("Parameters")
                 location_type = LocationType.Table
                 if parameters:
@@ -188,15 +202,8 @@ class GlueSource(Source[Entity]):
                         else LocationType.Iceberg
                     )
 
-                self.dataset_name = fqn
                 table_columns = self.get_columns(table["StorageDescriptor"])
-                location_entity = Location(
-                    name=table["StorageDescriptor"]["Location"],
-                    locationType=location_type,
-                    service=EntityReference(
-                        id=self.storage_service.id, type="storageService"
-                    ),
-                )
+                location_entity = self.get_table_location(table, location_type)
 
                 table_type: TableType = TableType.Regular
                 if location_type == LocationType.Iceberg:
@@ -211,10 +218,18 @@ class GlueSource(Source[Entity]):
                     description=table["Description"]
                     if hasattr(table, "Description")
                     else "",
-                    fullyQualifiedName=fqn[:128],
                     columns=table_columns,
                     tableType=table_type,
                 )
+
+                if (
+                    self.config.sourceConfig.config.generateSampleData
+                    or self.config.sourceConfig.config.enableDataProfiler
+                ):
+                    logger.warning(
+                        "Glue source does not provide querying capabilities. Please ingest sample data with Athena."
+                    )
+
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database_entity,
@@ -222,12 +237,34 @@ class GlueSource(Source[Entity]):
                     location=location_entity,
                 )
                 yield table_and_db
-            if "NextToken" in glue_resp:
-                yield from self.ingest_tables(glue_resp["NextToken"])
+
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
+
+    def get_table_location(
+        self, table: dict, location_type: LocationType
+    ) -> Optional[Location]:
+        """
+        Try to create the location or return None
+        :param table: Table dict from boto3
+        :param location_type: Table or Iceberg
+        :return: Location or None
+        """
+        try:
+            return Location(
+                name=table["Name"][:128],  # set location name as table name
+                path=table["StorageDescriptor"]["Location"],
+                locationType=location_type,
+                service=EntityReference(
+                    id=self.storage_service.id, type="storageService"
+                ),
+            )
+        except Exception as err:
+            logger.error(f"Cannot create location for {table['Name']} due to {err}")
+            logger.debug(traceback.format_exc())
+
+        return None
 
     def get_downstream_tasks(self, task_unique_id, tasks):
         downstream_tasks = []
@@ -283,7 +320,6 @@ class GlueSource(Source[Entity]):
                 yield pipeline_ev
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.debug(traceback.print_exc())
             logger.error(err)
 
     def close(self):
@@ -293,4 +329,4 @@ class GlueSource(Source[Entity]):
         return self.status
 
     def test_connection(self) -> None:
-        pass
+        test_connection(self.connection)

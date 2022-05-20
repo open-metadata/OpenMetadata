@@ -22,6 +22,7 @@ const jsonData = {
     'add-ingestion-error': 'Error while adding ingestion workflow!',
     'add-service-error': 'Error while adding service!',
 
+    'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
@@ -82,6 +83,7 @@ const jsonData = {
     'fetch-ingestion-error': 'Error while fetching ingestion workflow!',
     'fetch-lineage-error': 'Error while fetching lineage data!',
     'fetch-lineage-node-error': 'Error while fetching lineage node!',
+    'fetch-logged-in-user-error': 'Error while fetching logged-in user!',
     'fetch-pipeline-details-error': 'Error while fetching pipeline details!',
     'fetch-pipeline-status-error': 'Error while fetching pipeline status!',
     'fetch-policy-error': 'Error while fetching policy details!',
@@ -151,6 +153,8 @@ const jsonData = {
   'form-error-messages': {
     'empty-email': 'Email is required.',
     'invalid-email': 'Email is invalid.',
+    'invalid-url': 'Url is invalid.',
+    'is-required': 'is required',
   },
   label: {
     'delete-entity-text':

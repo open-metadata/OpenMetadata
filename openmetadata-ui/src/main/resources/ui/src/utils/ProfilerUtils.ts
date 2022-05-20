@@ -11,19 +11,10 @@
  *  limitations under the License.
  */
 
-import { HistogramObject } from '../generated/entity/data/table';
+import { ColumnProfile } from '../generated/entity/data/table';
 
 export const getRoundedValue = (
-  value:
-    | string
-    | number
-    | boolean
-    | Date
-    | HistogramObject
-    | null
-    | undefined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    | any[]
+  value: ColumnProfile['histogram'] | Date | undefined
 ) => {
   if (typeof value == 'number' && !isNaN(value)) {
     if (Number.isInteger(value)) {

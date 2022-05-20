@@ -18,12 +18,15 @@ import javax.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.type.EntityReference;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 @Slf4j
 public class AuditEventHandler implements EventHandler {
+  private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     // Nothing to do
@@ -36,7 +39,7 @@ public class AuditEventHandler implements EventHandler {
       String path = requestContext.getUriInfo().getPath();
       String username = requestContext.getSecurityContext().getUserPrincipal().getName();
       try {
-        EntityReference entityReference = Entity.getEntityReference(responseContext.getEntity());
+        EntityReference entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
@@ -46,9 +49,11 @@ public class AuditEventHandler implements EventHandler {
                 .withMethod(AuditLog.Method.fromValue(method))
                 .withUserName(username)
                 .withResponseCode(responseCode);
-        LOG.info("Added audit log entry: {}", auditLog);
+        LOG.info(auditMarker, String.format("Added audit log entry: %s", auditLog));
       } catch (Exception e) {
-        LOG.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
+        LOG.error(
+            auditMarker,
+            String.format("Failed to capture audit log for %s and method %s due to %s", path, method, e.getMessage()));
       }
     }
     return null;

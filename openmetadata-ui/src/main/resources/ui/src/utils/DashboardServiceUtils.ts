@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { cloneDeep, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import {
   DashboardConnection,
@@ -25,29 +25,9 @@ import supersetConnection from '../jsons/connectionSchemas/connections/dashboard
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
-  let retVal: string | undefined;
-  switch (config?.type) {
-    case DashboardServiceType.PowerBI: {
-      retVal = config.dashboardURL;
-
-      break;
-    }
-    case DashboardServiceType.Redash: {
-      retVal = config.redashURL;
-
-      break;
-    }
-    case DashboardServiceType.Looker:
-    case DashboardServiceType.Metabase:
-    case DashboardServiceType.Superset:
-    case DashboardServiceType.Tableau: {
-      retVal = config.hostPort;
-
-      break;
-    }
-  }
-
-  return !isUndefined(retVal) ? retVal : '--';
+  return !isUndefined(config) && !isEmpty(config.hostPort)
+    ? config.hostPort
+    : '--';
 };
 
 export const getDashboardConfig = (config?: DashboardConnection['config']) => {

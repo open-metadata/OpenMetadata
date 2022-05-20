@@ -15,17 +15,17 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import Avatar from '../common/avatar/Avatar';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 type Item = {
-  description: string;
+  displayName: string;
   name: string;
   id?: string;
   email: string;
   isActiveUser?: boolean;
   profilePhoto?: string;
-  teamCount?: string;
+  teamCount?: string | JSX.Element;
 };
 
 type Props = {
@@ -41,17 +41,11 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
       className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group"
       data-testid="user-card-container">
       <div className="tw-flex tw-gap-1">
-        {item.profilePhoto ? (
-          <div className="tw-h-9 tw-w-9">
-            <img
-              alt="profile"
-              className="tw-rounded-full tw-w-full"
-              src={item.profilePhoto}
-            />
-          </div>
-        ) : (
-          <Avatar name={item.description} />
-        )}
+        <ProfilePicture
+          displayName={item?.displayName}
+          id={item?.id || ''}
+          name={item?.name || ''}
+        />
 
         <div
           className="tw-flex tw-flex-col tw-flex-1 tw-pl-2"
@@ -64,7 +58,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
               onClick={() => {
                 onClick?.(item.name);
               }}>
-              {item.description}
+              {item.displayName}
             </p>
             {!item?.isActiveUser && (
               <span className="tw-text-xs tw-bg-badge tw-border tw-px-2 tw-py-0.5 tw-rounded">
@@ -73,7 +67,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
             )}
           </div>
           <p className="tw-truncate">{item.email}</p>
-          {showTeams && <p>Teams: {item.teamCount}</p>}
+          {showTeams && <div>Teams: {item.teamCount}</div>}
         </div>
       </div>
       {!isNil(onDelete) && (
@@ -87,7 +81,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onDelete(item.id as string, item.description);
+                onDelete(item.id as string, item.displayName);
               }}>
               <SVGIcons
                 alt="delete"

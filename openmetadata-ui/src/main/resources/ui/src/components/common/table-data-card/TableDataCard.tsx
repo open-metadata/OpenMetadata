@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  faAngleRight,
-  faExclamationCircle,
-} from '@fortawesome/free-solid-svg-icons';
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isString, isUndefined, startCase, uniqueId } from 'lodash';
+import { isNil, isString, isUndefined, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -25,16 +22,20 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import './TableDataCard.style.css';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
   name: string;
-  owner?: string;
+  owner?: EntityReference;
   description?: string;
   tableType?: TableType;
   id?: string;
@@ -55,7 +56,7 @@ type Props = {
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  owner = '',
+  owner,
   description,
   id,
   tier = '',
@@ -67,6 +68,9 @@ const TableDataCard: FunctionComponent<Props> = ({
   matches,
   tableType,
   deleted = false,
+  name,
+  database,
+  databaseSchema,
 }: Props) => {
   const location = useLocation();
   const history = useHistory();
@@ -79,7 +83,12 @@ const TableDataCard: FunctionComponent<Props> = ({
   };
 
   const OtherDetails: Array<ExtraInfo> = [
-    { key: 'Owner', value: owner },
+    {
+      key: 'Owner',
+      value: getEntityName(owner),
+      avatarWidth: '16',
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+    },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -116,25 +125,17 @@ const TableDataCard: FunctionComponent<Props> = ({
     }
   };
 
-  const fqnParts = fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
-  const separatorHtml = (
-    <span className="tw-px-2">
-      <FontAwesomeIcon
-        className="tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"
-        icon={faAngleRight}
-      />
-    </span>
-  );
-  const tableTitle = fqnParts.map((part, i) => {
-    const separator = i !== fqnParts.length - 1 ? separatorHtml : null;
-
-    return (
-      <span key={i}>
-        <span>{part}</span>
-        {separator}
-      </span>
-    );
-  });
+  const getTableMetaInfo = () => {
+    if (!isNil(database) && !isNil(databaseSchema)) {
+      return (
+        <span
+          className="tw-text-grey-muted tw-text-xs tw-mb-0.5"
+          data-testid="database-schema">{`${database}${FQN_SEPARATOR_CHAR}${databaseSchema}`}</span>
+      );
+    } else {
+      return null;
+    }
+  };
 
   return (
     <div
@@ -142,19 +143,20 @@ const TableDataCard: FunctionComponent<Props> = ({
       data-testid="table-data-card"
       id={id}>
       <div>
+        {getTableMetaInfo()}
         <div className="tw-flex tw-items-center">
           <img
             alt=""
-            className="tw-inline tw-h-5 tw-w-5"
+            className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">
             <button
-              className="tw-text-grey-body tw-font-medium"
+              className="tw-text-grey-body tw-font-semibold"
               data-testid="table-link"
               id={`${id}Title`}
               onClick={handleLinkClick}>
-              <span className="table-title">{tableTitle}</span>
+              {stringToHTML(name)}
             </button>
           </h6>
           {deleted && (

@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import uuid
 from typing import Iterable, List, Union
 
@@ -35,8 +34,9 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.utils.aws_client import AWSClient
 from metadata.utils.helpers import get_storage_service_or_create
+from metadata.utils.logger import ingestion_logger
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class S3SourceConfig(AWSCredentials):
@@ -77,12 +77,13 @@ class S3Source(Source[Entity]):
             for bucket in buckets_response["Buckets"]:
                 bucket_name = bucket["Name"]
                 self.status.scanned(bucket_name)
-                location_name = self._get_bucket_name_with_prefix(bucket_name)
+                location_path = self._get_bucket_name_with_prefix(bucket_name)
                 location_id = uuid.uuid4()
                 location = Location(
                     id=location_id,
-                    name=location_name,
-                    displayName=location_name,
+                    name=bucket_name,
+                    path=location_path,
+                    displayName=bucket_name,
                     locationType=LocationType.Bucket,
                     service=EntityReference(
                         id=self.service.id,

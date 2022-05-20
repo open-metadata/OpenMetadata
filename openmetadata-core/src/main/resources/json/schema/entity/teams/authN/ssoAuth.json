@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/authN/ssoAuth.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SSOAuthMechanism",
+  "description": "User/Bot SSOAuthN.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.teams.authn.SSOAuthMechanism",
+  "properties": {
+    "ssoServiceType": {
+      "description": "Type of database service such as Amundsen, Atlas...",
+      "type": "string",
+      "enum": ["Google", "Okta", "CustomOIDC", "Auth0", "Azure"],
+      "javaEnums": [
+        {
+          "name": "Google"
+        },
+        {
+          "name": "Okta"
+        },
+        {
+          "name": "Auth0"
+        },
+        {
+          "name": "CustomOIDC"
+        },
+        {
+          "name": "Azure"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

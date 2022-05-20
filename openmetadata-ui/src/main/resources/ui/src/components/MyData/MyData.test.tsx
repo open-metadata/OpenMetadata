@@ -319,6 +319,8 @@ const mockProp = {
   countServices: 0,
   countTables: 10,
   countTopics: 5,
+  followedDataCount: 5,
+  ownedDataCount: 5,
   error: '',
   feedData: formatDataResponse(mockData.data.hits.hits),
   feedFilter: FeedFilter.ALL,

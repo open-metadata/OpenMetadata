@@ -17,7 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -50,7 +50,6 @@ import {
   getAggrWithDefaultValue,
   getCurrentIndex,
   getCurrentTab,
-  getQueryParam,
   INITIAL_FILTERS,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -66,11 +65,7 @@ import {
 } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
-import {
-  getFilterCount,
-  getFilterString,
-  prepareQueryParams,
-} from '../../utils/FilterUtils';
+import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
@@ -78,12 +73,15 @@ import { ExploreProps } from './explore.interface';
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
+  initialFilter,
+  searchFilter,
   tab,
   searchQuery,
   searchResult,
   sortValue,
   error,
   fetchCount,
+  handleFilterChange,
   handlePathChange,
   handleSearchText,
   fetchData,
@@ -98,10 +96,13 @@ const Explore: React.FC<ExploreProps> = ({
   const history = useHistory();
   const filterObject: FilterObject = {
     ...INITIAL_FILTERS,
-    ...getQueryParam(location.search),
+    ...initialFilter,
   };
   const [data, setData] = useState<Array<FormatedTableData>>([]);
-  const [filters, setFilters] = useState<FilterObject>(filterObject);
+  const [filters, setFilters] = useState<FilterObject>({
+    ...filterObject,
+    ...searchFilter,
+  });
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
@@ -116,7 +117,7 @@ const Explore: React.FC<ExploreProps> = ({
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
-    !isEmpty(getQueryParam(location.search))
+    !isEmpty(initialFilter)
   );
   const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
@@ -128,19 +129,19 @@ const Explore: React.FC<ExploreProps> = ({
     selectedFilter: string,
     type: keyof typeof filterObject
   ) => {
+    let filterData;
     if (checked) {
-      setFilters((prevState) => {
-        const filterType = prevState[type];
-        if (filterType.includes(selectedFilter)) {
-          return { ...prevState };
-        }
+      const filterType = filters[type];
+      if (filterType.includes(selectedFilter)) {
+        filterData = { ...filters };
+      } else {
         setIsFilterSet(true);
 
-        return {
-          ...prevState,
-          [type]: [...prevState[type], selectedFilter],
+        filterData = {
+          ...filters,
+          [type]: [...filters[type], selectedFilter],
         };
-      });
+      }
     } else {
       if (searchTag.includes(selectedFilter)) {
         setSearchTag('');
@@ -148,13 +149,13 @@ const Explore: React.FC<ExploreProps> = ({
       const filter = filters[type];
       const index = filter.indexOf(selectedFilter);
       filter.splice(index, 1);
-      setFilters((prevState) => {
-        const selectedFilterCount = getFilterCount(prevState);
-        setIsFilterSet(selectedFilterCount >= 1);
+      const selectedFilterCount = getFilterCount(filters);
+      setIsFilterSet(selectedFilterCount >= 1);
 
-        return { ...prevState, [type]: filter };
-      });
+      filterData = { ...filters, [type]: filter };
     }
+
+    handleFilterChange(filterData);
   };
 
   const handleShowDeleted = (checked: boolean) => {
@@ -162,18 +163,15 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const onClearFilterHandler = (type: string[], isForceClear = false) => {
-    setFilters((prevFilters) => {
-      const updatedFilter = type.reduce((filterObj, type) => {
-        return { ...filterObj, [type]: [] };
-      }, {});
-      const queryParamFilters = getQueryParam(location.search);
-      setIsFilterSet(false);
+    const updatedFilter = type.reduce((filterObj, type) => {
+      return { ...filterObj, [type]: [] };
+    }, {});
+    const queryParamFilters = initialFilter;
+    setIsFilterSet(false);
 
-      return {
-        ...prevFilters,
-        ...updatedFilter,
-        ...(isForceClear ? {} : queryParamFilters),
-      };
+    handleFilterChange({
+      ...updatedFilter,
+      ...(isForceClear ? {} : queryParamFilters),
     });
   };
 
@@ -452,7 +450,7 @@ const Explore: React.FC<ExploreProps> = ({
                   className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                     tabDetail.tab
                   )}`}
-                  data-testid="tab"
+                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
                   key={index}
                   onClick={() => {
                     onTabChange(tabDetail.tab);
@@ -478,28 +476,12 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
-  /**
-   * on filter change , change the route
-   * @param filtersObj - filter object
-   */
-  const handleFilterChange = (filtersObj: FilterObject) => {
-    const params = prepareQueryParams(filtersObj);
-
-    const explorePath = getExplorePathWithSearch(searchQuery, tab);
-
-    history.push({
-      pathname: explorePath,
-      search: params,
-    });
-  };
-
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
   }, [searchQuery]);
 
   useEffect(() => {
-    setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(
       searchQuery
@@ -512,8 +494,17 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentPage(1);
     if (!isMounting.current) {
       fetchCount();
+      handleFilterChange(filterObject);
     }
   }, [tab]);
+
+  useEffect(() => {
+    setFilters({
+      ...filterObject,
+      ...initialFilter,
+      ...searchFilter,
+    });
+  }, [initialFilter, searchFilter]);
 
   useEffect(() => {
     if (getFilterString(filters)) {
@@ -589,9 +580,6 @@ const Explore: React.FC<ExploreProps> = ({
       getData();
     } else {
       setCurrentPage(1);
-    }
-    if (!isMounting.current) {
-      handleFilterChange(filters);
     }
   }, [filters]);
 

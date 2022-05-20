@@ -12,9 +12,20 @@
  */
 
 import { AxiosError } from 'axios';
-import { Bucket, SearchDataFunctionType, SearchResponse } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import {
+  Bucket,
+  FilterObject,
+  SearchDataFunctionType,
+  SearchResponse,
+} from 'Models';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -24,12 +35,14 @@ import {
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
-import { PAGE_SIZE } from '../../constants/constants';
+import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
   getCurrentIndex,
   getCurrentTab,
+  getInitialFilter,
   getQueryParam,
+  getSearchFilter,
   INITIAL_FROM,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -39,11 +52,20 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { getFilterString } from '../../utils/FilterUtils';
+import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const initialFilter = getFilterString(getQueryParam(location.search));
+  const location = useLocation();
+  const history = useHistory();
+  const initialFilter = useMemo(
+    () => getQueryParam(getInitialFilter(location.search)),
+    [location.search]
+  );
+  const searchFilter = useMemo(
+    () => getQueryParam(getSearchFilter(location.search)),
+    [location.search]
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
@@ -90,6 +112,21 @@ const ExplorePage: FunctionComponent = () => {
     AppState.updateExplorePageTab(path);
   };
 
+  /**
+   * on filter change , change the route
+   * @param filterData - filter object
+   */
+  const handleFilterChange = (filterData: FilterObject) => {
+    const params = prepareQueryParams(filterData, initialFilter);
+
+    const explorePath = getExplorePathWithSearch(searchQuery, tab);
+
+    history.push({
+      pathname: explorePath,
+      search: params,
+    });
+  };
+
   const fetchCounts = () => {
     const entities = [
       SearchIndex.TABLE,
@@ -103,7 +140,7 @@ const ExplorePage: FunctionComponent = () => {
         searchText,
         0,
         0,
-        initialFilter,
+        getFilterString(initialFilter),
         emptyValue,
         emptyValue,
         entity,
@@ -210,7 +247,7 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText, showDeleted]);
+  }, [searchText, showDeleted, initialFilter]);
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
@@ -222,7 +259,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -231,7 +268,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -240,7 +277,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -249,7 +286,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -267,8 +304,11 @@ const ExplorePage: FunctionComponent = () => {
             error={error}
             fetchCount={fetchCounts}
             fetchData={fetchData}
+            handleFilterChange={handleFilterChange}
             handlePathChange={handlePathChange}
             handleSearchText={handleSearchText}
+            initialFilter={initialFilter}
+            searchFilter={searchFilter}
             searchQuery={searchQuery}
             searchResult={searchResult}
             searchText={searchText}

@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
+import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
 import React, {
@@ -56,7 +56,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
-  getExplorePathWithSearch,
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
   PAGE_SIZE,
@@ -65,6 +64,7 @@ import {
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -73,6 +73,7 @@ import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
+  getEntityDeleteMessage,
   getEntityName,
   hasEditAccess,
   isEven,
@@ -89,6 +90,10 @@ import {
   getEntityFieldThreadCounts,
   getUpdatedThread,
 } from '../../utils/FeedUtils';
+import {
+  getExplorePathWithInitFilters,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
@@ -190,6 +195,10 @@ const DatabaseDetails: FunctionComponent = () => {
         database?.owner?.displayName || database?.owner?.name || '',
       isLink: database?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        database?.owner?.type === OwnerType.USER
+          ? database?.owner?.name
+          : undefined,
     },
   ];
 
@@ -273,6 +282,10 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
 
           setSlashedDatabaseName([
+            {
+              name: startCase(ServiceCategory.DATABASE_SERVICES),
+              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
+            },
             {
               name: service.name,
               url: service.name
@@ -387,7 +400,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const handleUpdateOwner = (owner: Database['owner']) => {
     const updatedData = {
       ...database,
-      owner,
+      owner: { ...database?.owner, ...owner },
     };
 
     return new Promise<void>((_, reject) => {
@@ -561,11 +574,15 @@ const DatabaseDetails: FunctionComponent = () => {
       return;
     }
 
-    return `Deleting this database will also delete ${pluralize(
-      databaseSchemaInstanceCount,
-      'schema',
-      's'
-    )} and ${pluralize(tableInstanceCount, 'table', 's')}.`;
+    const counts = [];
+    if (databaseSchemaInstanceCount) {
+      counts.push(pluralize(databaseSchemaInstanceCount, 'Schema'));
+    }
+    if (tableInstanceCount) {
+      counts.push(pluralize(tableInstanceCount, 'Table'));
+    }
+
+    return getEntityDeleteMessage('Database', counts.join(' and '));
   };
 
   useEffect(() => {
@@ -576,9 +593,11 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     if (!isMounting.current && appState.inPageSearchText) {
       history.push(
-        `${getExplorePathWithSearch(
-          appState.inPageSearchText
-        )}?database=${databaseName}&service_type=${serviceType}`
+        getExplorePathWithInitFilters(
+          appState.inPageSearchText,
+          undefined,
+          `database=${databaseName}&service_type=${serviceType}`
+        )
       );
     }
   }, [appState.inPageSearchText]);
@@ -703,7 +722,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 'tableBody-row',
                                 !isEven(index + 1) ? 'odd-row' : null
                               )}
-                              data-testid="tabale-column"
+                              data-testid="table-column"
                               key={index}>
                               <td className="tableBody-cell">
                                 <Link
@@ -766,7 +785,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         pageSize={PAGE_SIZE}
                         paging={databaseSchemaPaging}
                         pagingHandler={databaseSchemaPagingHandler}
-                        totalCount={paging.total}
+                        totalCount={databaseSchemaPaging.total}
                       />
                     )}
                   </Fragment>
@@ -793,7 +812,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     allowDelete
                     hideTier
                     isRecursiveDelete
-                    currentUser={database?.owner?.id}
+                    currentUser={database?.owner}
                     deletEntityMessage={getDeleteEntityMessage()}
                     entityId={database?.id}
                     entityName={database?.name}

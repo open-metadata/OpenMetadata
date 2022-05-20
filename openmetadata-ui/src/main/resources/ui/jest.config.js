@@ -49,6 +49,7 @@ module.exports = {
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
     '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
+    '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
   },

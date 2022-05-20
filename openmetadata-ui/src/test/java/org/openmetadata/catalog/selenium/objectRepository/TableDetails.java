@@ -19,11 +19,11 @@ public class TableDetails {
   By selectUser = By.xpath("//div[@data-testid=\"list-item\"]");
   By saveManage = By.cssSelector("[data-testid='saveManageTab']");
   By follow = By.cssSelector("button[data-testid='follow-button']");
-  By schema = By.xpath("[data-testid='Schema']");;
-  By lineage = By.cssSelector("[data-testid='Lineage']");;
+  By schema = By.xpath("[data-testid='Schema']");
+  By lineage = By.cssSelector("[data-testid='Lineage']");
   By lineageComponents = By.cssSelector("[data-testid='node-label']");
   By profiler = By.cssSelector("[data-testid='Profiler']");
-  By sampleData = By.cssSelector("[data-testid='Sample Data']");;
+  By sampleData = By.cssSelector("[data-testid='Sample Data']");
   By selectTier1 = By.xpath("(//div[@data-testid='card-list'])[1]");
   By tier1 = By.xpath("(/h4[@class='tw-text-base tw-mb-0']");
   By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");
@@ -40,7 +40,7 @@ public class TableDetails {
   By version = By.xpath("//button[@data-testid=\"version-button\"]");
   By versionDetailsGrid = By.xpath("//div[@class=\"tw-grid tw-gap-0.5\"]");
   By versionRadioButton = By.xpath("//span[@data-testid=\"select-version\"]");
-  By descriptionBox = By.xpath("(//div[@data-testid='description']/div/span)[1]");
+  By descriptionBox = By.xpath("(//div[@data-testid='viewer-container']/p)[1]");
   By breadCrumb = By.xpath("//li[@data-testid=\"breadcrumb-link\"]");
   By sideDrawerLineage = By.xpath("//header[@class=\"tw-flex tw-justify-between\"]");
   By breadCrumbTier = By.xpath("//div[@class=\"tw-flex tw-gap-1 tw-mb-2 tw-mt-1 tw-ml-7 tw-flex-wrap\"]");

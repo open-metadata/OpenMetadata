@@ -13,12 +13,13 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getUserByName, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -40,10 +41,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const UserPage = () => {
   const { username } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
+  const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>();
   const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -83,13 +85,9 @@ const UserPage = () => {
     );
   };
 
-  const feedFilterHandler = (filter: FeedFilter) => {
-    setFeedFilter(filter);
-  };
-
-  const getFeedData = (filterType: FeedFilter, after?: string) => {
+  const getFeedData = (after?: string) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(userData.id, filterType, after)
+    getFeedsWithFilter(userData.id, FeedFilter.OWNER, after)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -181,7 +179,7 @@ const UserPage = () => {
   };
 
   const isLoggedinUser = (userName: string) => {
-    return userName === AppState.getCurrentUserDetails()?.name;
+    return userName === currentLoggedInUser?.name;
   };
 
   const getUserComponent = () => {
@@ -190,10 +188,9 @@ const UserPage = () => {
         <Users
           deletePostHandler={deletePostHandler}
           feedData={entityThread || []}
-          feedFilter={feedFilter as FeedFilter}
-          feedFilterHandler={feedFilterHandler}
           fetchFeedHandler={getFeedData}
           isAdminUser={Boolean(isAdminUser)}
+          isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
@@ -208,24 +205,19 @@ const UserPage = () => {
   };
 
   useEffect(() => {
+    setEntityThread([]);
     fetchUserData();
   }, [username]);
 
   useEffect(() => {
-    setEntityThread([]);
-  }, [feedFilter, username]);
-
-  useEffect(() => {
-    setFeedFilter(
-      isLoggedinUser(username) ? FeedFilter.MENTIONS : FeedFilter.OWNER
-    );
-  }, [username, AppState.userDetails, AppState.nonSecureUserDetails]);
-
-  useEffect(() => {
-    if (!isUndefined(feedFilter) && userData.id) {
-      getFeedData(feedFilter);
+    if (userData.id) {
+      getFeedData();
     }
-  }, [feedFilter, userData]);
+  }, [userData]);
+
+  useEffect(() => {
+    setCurrentLoggedInUser(AppState.getCurrentUserDetails());
+  }, [AppState.nonSecureUserDetails, AppState.userDetails]);
 
   return (
     <PageContainerV1 className="tw-pt-4">

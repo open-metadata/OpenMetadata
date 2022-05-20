@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/bots.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bot",
+  "description": "This schema defines a Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It performs this task as a special user in the system.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.Bot",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+
+  "properties": {
+    "id": {
+      "description": "Unique identifier of a bot instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the bot.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the bot.",
+      "type": "string"
+    },
+    "botUser" : {
+      "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
+      "$ref" : "../type/entityReference.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this bot.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "botUser"],
+  "additionalProperties": false
+}

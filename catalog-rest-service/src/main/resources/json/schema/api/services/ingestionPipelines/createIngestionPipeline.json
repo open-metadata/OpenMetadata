@@ -4,13 +4,15 @@
   "title": "CreateIngestionPipelineRequest",
   "description": "Ingestion Pipeline Config is used to setup a Airflow DAG.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
       "$ref": "../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this pipeline.",
+      "description": "Display Name that identifies this ingestion pipeline.",
       "type": "string"
     },
     "description": {
@@ -25,6 +27,10 @@
     },
     "airflowConfig": {
       "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/airflowConfig"
+    },
+    "loggerLevel": {
+      "description": "Set the logging level for the workflow.",
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
     "service": {
       "description": "Link to the database service where this database is hosted in.",

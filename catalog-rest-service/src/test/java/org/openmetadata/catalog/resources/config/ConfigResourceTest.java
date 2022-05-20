@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.resources.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +34,8 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.airflow.AirflowConfigurationForAPI;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWKSKey;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
 import org.openmetadata.catalog.util.TestUtils;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -69,5 +72,19 @@ class ConfigResourceTest extends CatalogApplicationTest {
     WebTarget target = getConfigResource("airflow");
     AirflowConfigurationForAPI auth = TestUtils.get(target, AirflowConfigurationForAPI.class, TEST_AUTH_HEADERS);
     assertEquals(config.getAirflowConfiguration().getApiEndpoint(), auth.getApiEndpoint());
+  }
+
+  @Test
+  void get_jwks_configs_200_OK() throws IOException {
+    WebTarget target = getConfigResource("jwks");
+    JWKSResponse auth = TestUtils.get(target, JWKSResponse.class, TEST_AUTH_HEADERS);
+    assertNotNull(auth);
+    assertEquals(1, auth.getJwsKeys().size());
+    JWKSKey jwksKey = auth.getJwsKeys().get(0);
+    assertEquals("RS256", jwksKey.getAlg());
+    assertEquals("sig", jwksKey.getUse());
+    assertEquals("RSA", jwksKey.getKty());
+    assertNotNull(jwksKey.getN());
+    assertNotNull(jwksKey.getE());
   }
 }

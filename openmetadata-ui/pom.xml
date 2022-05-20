@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.openmetadata</groupId>
-    <version>0.10.0-SNAPSHOT</version>
+    <version>0.11.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -14,6 +14,7 @@
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
     <testng.version>7.5</testng.version>
+    <!-- Don't upgrade from this version as tests don't work with later version-->
     <selenium.version>4.1.1</selenium.version>
     <skipTests>false</skipTests>
   </properties>
@@ -62,12 +63,6 @@
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-engine</artifactId>
       <version>${org.junit.jupiter.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.github.artsok</groupId>
-      <artifactId>rerunner-jupiter</artifactId>
-      <version>2.1.6</version>
       <scope>test</scope>
     </dependency>
     <!-- https://mvnrepository.com/artifact/io.rest-assured/rest-assured -->
@@ -122,20 +117,6 @@
             <phase>prepare-package</phase>
             <configuration>
               <arguments>install --frozen-lockfile</arguments>
-            </configuration>
-          </execution>
-          <execution>
-            <id>yarn run build-check</id>
-            <goals>
-              <goal>yarn</goal>
-            </goals>
-            <!-- optional: the default phase is "generate-resources" -->
-            <phase>prepare-package</phase>
-            <configuration>
-              <!-- optional: if not specified, it will run gulp's default task
-                  (and you can remove this whole <configuration> section.) -->
-              <arguments>run build-check</arguments>
-              <!--arguments>build</arguments-->
             </configuration>
           </execution>
           <execution>

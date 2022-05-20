@@ -15,7 +15,6 @@ import { capitalize } from 'lodash';
 import React from 'react';
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Field } from '../../Field/Field';
-import ReactSelectMultiInput from '../react-select-component/ReactSelectMultiInput';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -28,6 +27,20 @@ const FilterPattern = ({
   getExcludeValue,
   type,
 }: FilterPatternProps) => {
+  const includeFilterChangeHandler = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const value = event.target.value ? event.target.value.split(',') : [];
+    getIncludeValue(value, type);
+  };
+
+  const excludeFilterChangeHandler = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const value = event.target.value ? event.target.value.split(',') : [];
+    getExcludeValue(value, type);
+  };
+
   return (
     <div className="tw-mt-4" data-testid="filter-pattern-container">
       <div className="tw-flex tw-items-center">
@@ -49,18 +62,24 @@ const FilterPattern = ({
         <div data-testid="field-container">
           <Field>
             <label className="tw-block tw-form-label">Include:</label>
-            <ReactSelectMultiInput
-              getTagValue={(data) => getIncludeValue(data, type)}
-              initialData={includePattern}
-              placeholder="Type include filter pattern and hit enter"
+            <input
+              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
+              data-testid={`filter-pattern-includes-${type}`}
+              placeholder="Enter a list of strings/regex patterns as a comma separated value"
+              type="text"
+              value={includePattern}
+              onChange={includeFilterChangeHandler}
             />
           </Field>
           <Field>
             <label className="tw-block tw-form-label">Exclude:</label>
-            <ReactSelectMultiInput
-              getTagValue={(data) => getExcludeValue(data, type)}
-              initialData={excludePattern}
-              placeholder="Type exclude filter pattern and hit enter"
+            <input
+              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
+              data-testid={`filter-pattern-excludes-${type}`}
+              placeholder="Enter a list of strings/regex patterns as a comma separated value"
+              type="text"
+              value={excludePattern}
+              onChange={excludeFilterChangeHandler}
             />
           </Field>
           {showSeparator && getSeparator('')}

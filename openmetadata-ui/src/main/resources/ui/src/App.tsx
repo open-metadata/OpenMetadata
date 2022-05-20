@@ -18,6 +18,7 @@ import {
   faCheckSquare,
   faChevronDown,
   faChevronRight,
+  faChevronUp,
   faPlus,
   faSearch,
   faTimes,
@@ -27,6 +28,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
+import { toastOptions } from './constants/toast.constants';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
@@ -38,7 +40,8 @@ const App: FunctionComponent = () => {
     faCheckSquare,
     faCheckCircle,
     faChevronDown,
-    faChevronRight
+    faChevronRight,
+    faChevronUp
   );
 
   return (
@@ -49,7 +52,7 @@ const App: FunctionComponent = () => {
             <AppRouter />
           </AuthProvider>
         </Router>
-        <ToastContainer autoClose={false} />
+        <ToastContainer {...toastOptions} newestOnTop />
       </div>
     </div>
   );

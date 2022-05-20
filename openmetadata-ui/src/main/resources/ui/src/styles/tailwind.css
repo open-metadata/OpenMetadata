@@ -198,6 +198,10 @@
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
+  .tw-form-inputs-padding {
+    @apply tw-px-2 tw-py-1;
+  }
+
   .tw-form-inputs-bottom-border {
     @apply tw-w-full tw-text-grey-body tw-border-b tw-bg-body-main tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
@@ -326,8 +330,8 @@
     @apply tw-border-main;
     box-shadow: 0 0 0 0.5px #e2dce4;
   }
-  .leaf-node.selected-node,
-  .leaf-node.selected-node:hover {
+  .leaf-node.selected,
+  .leaf-node.selected:hover {
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
   }
@@ -395,7 +399,7 @@
   }
 
   .rjsf .form-control {
-    @apply tw-w-full tw-px-3 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
+    @apply tw-w-full tw-px-2 tw-py-1 tw-text-grey-body tw-rounded tw-border tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
@@ -443,6 +447,10 @@
     @apply tw-list-disc;
   }
 
+  .rjsf .checkbox input[type='checkbox'] {
+    @apply tw-mr-1;
+  }
+
   @keyframes highlight {
     0% {
       @apply tw-bg-warning-lite;
@@ -471,7 +479,7 @@
   /* delete button style */
 
   .tw-delete-outline-button {
-    @apply tw-border-gray-300 tw-border tw-text-error focus:tw-outline-none focus:tw-bg-transparent hover:tw-border-error focus:tw-border-error 
+    @apply tw-border-gray-300 tw-border tw-rounded-md tw-text-error focus:tw-outline-none focus:tw-bg-transparent hover:tw-border-error focus:tw-border-error 
   hover:tw-text-error focus:tw-text-error focus:tw-ring focus:tw-ring-error;
   }
 

@@ -16,6 +16,7 @@ Metadata DAG function builder
 from airflow import DAG
 from openmetadata.workflows.ingestion.common import (
     build_dag,
+    build_workflow_config_property,
     metadata_ingestion_workflow,
 )
 
@@ -24,7 +25,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Processor,
     Stage,
-    WorkflowConfig,
 )
 
 try:
@@ -46,18 +46,19 @@ def build_usage_workflow_config(
     Given an airflow_pipeline, prepare the workflow config JSON
     """
 
+    usage_source = ingestion_pipeline.source
+    usage_source.type = f"{usage_source.type}-usage"
+
     with tempfile.NamedTemporaryFile() as tmp_file:
 
         workflow_config = OpenMetadataWorkflowConfig(
-            source=ingestion_pipeline.source,
+            source=usage_source,
             processor=Processor(type="query-parser", config={"filter": ""}),
             stage=Stage(type="table-usage", config={"filename": tmp_file.name}),
             bulkSink=BulkSink(
                 type="metadata-usage", config={"filename": tmp_file.name}
             ),
-            workflowConfig=WorkflowConfig(
-                openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection
-            ),
+            workflowConfig=build_workflow_config_property(ingestion_pipeline),
         )
 
     return workflow_config

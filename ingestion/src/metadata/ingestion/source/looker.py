@@ -9,15 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
 import os
 import traceback
 from typing import Iterable
 
 import looker_sdk
 
-from metadata.generated.schema.entity.services.connections.dashboard import (
-    lookerConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -32,8 +31,9 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class LookerSource(Source[Entity]):
@@ -82,8 +82,8 @@ class LookerSource(Source[Entity]):
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         config = WorkflowSource.parse_obj(config_dict)
-        connection: lookerConnection = config.serviceConnection.__root__.config
-        if not isinstance(connection, lookerConnection):
+        connection: LookerConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
                 f"Expected LookerConnection, but got {connection}"
             )
@@ -96,11 +96,11 @@ class LookerSource(Source[Entity]):
         yield from self._get_looker_dashboards()
 
     def _get_dashboard_elements(self, dashboard_elements):
-        if not filter_by_chart(
+        if filter_by_chart(
             chart_filter_pattern=self.source_config.chartFilterPattern,
             chart_name=dashboard_elements.id,
         ):
-            self.status.failures(dashboard_elements.id)
+            self.status.failure(dashboard_elements.id, "Chart filtered out")
             return None
         om_dashboard_elements = Chart(
             name=dashboard_elements.id,
@@ -121,11 +121,11 @@ class LookerSource(Source[Entity]):
         all_dashboards = self.client.all_dashboards(fields="id")
         for child_dashboard in all_dashboards:
             try:
-                if not filter_by_dashboard(
+                if filter_by_dashboard(
                     dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
                     dashboard_name=child_dashboard.id,
                 ):
-                    self.status.failures(child_dashboard.id)
+                    self.status.failure(child_dashboard.id, "Dashboard Filtered out")
                     continue
                 fields = [
                     "id",
@@ -143,7 +143,7 @@ class LookerSource(Source[Entity]):
                     try:
                         yield from self._get_dashboard_elements(iter_chart)
                     except Exception as err:
-                        logger.debug(traceback.print_exc())
+                        logger.debug(traceback.format_exc())
                         logger.error(err)
                 yield Dashboard(
                     name=dashboard.id,
@@ -155,9 +155,9 @@ class LookerSource(Source[Entity]):
                         id=self.service.id, type="dashboardService"
                     ),
                 )
-                self.status.failures(child_dashboard.id)
             except Exception as err:
                 logger.error(repr(err))
+                self.status.failure(child_dashboard.id, repr(err))
 
     def get_status(self) -> SourceStatus:
         return self.status

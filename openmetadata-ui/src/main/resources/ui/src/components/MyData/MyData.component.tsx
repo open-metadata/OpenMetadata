@@ -22,12 +22,11 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getOwnerIds } from '../../utils/CommonUtils';
+import { getExploreLinkByFilter } from '../../utils/CommonUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
@@ -53,6 +52,8 @@ const MyData: React.FC<MyDataProps> = ({
   followedData,
   feedData,
   feedFilter,
+  ownedDataCount,
+  followedDataCount,
   feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
@@ -100,14 +101,6 @@ const MyData: React.FC<MyDataProps> = ({
     );
   };
 
-  const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
-      filter,
-      AppState.userDetails,
-      AppState.nonSecureUserDetails
-    ).join()}`;
-  };
-
   const getLeftPanel = () => {
     return (
       <div className="tw-mt-12">
@@ -130,45 +123,63 @@ const MyData: React.FC<MyDataProps> = ({
   const getRightPanel = useCallback(() => {
     return (
       <div className="tw-mt-12">
-        <EntityList
-          entityList={ownedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              My Data
-              {ownedData.length ? (
-                <Link
-                  data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not owned anything yet.</>}
-          testIDText="My data"
-        />
+        <div data-testid="my-data-container">
+          <EntityList
+            entityList={ownedData}
+            headerText={
+              <div className="tw-flex tw-justify-between">
+                My Data
+                {ownedData.length ? (
+                  <Link
+                    data-testid="my-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.OWNER,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="my-data-total-count">
+                        ({ownedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            }
+            noDataPlaceholder={<>You have not owned anything yet.</>}
+            testIDText="My data"
+          />
+        </div>
         <div className="tw-filter-seperator tw-mt-3" />
-        <EntityList
-          entityList={followedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              Following
-              {followedData.length ? (
-                <Link
-                  data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not followed anything yet.</>}
-          testIDText="Following data"
-        />
+        <div data-testid="following-data-container">
+          <EntityList
+            entityList={followedData}
+            headerText={
+              <div className="tw-flex tw-justify-between">
+                Following
+                {followedData.length ? (
+                  <Link
+                    data-testid="following-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.FOLLOWERS,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="link-text tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="following-data-total-count">
+                        ({followedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </div>
+            }
+            noDataPlaceholder={<>You have not followed anything yet.</>}
+            testIDText="Following data"
+          />
+        </div>
         <div className="tw-filter-seperator tw-mt-3" />
       </div>
     );

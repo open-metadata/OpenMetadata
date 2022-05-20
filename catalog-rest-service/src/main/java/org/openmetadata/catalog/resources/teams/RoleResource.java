@@ -30,7 +30,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -106,7 +105,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {
-              EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName());
+              EntityReference ref =
+                  Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
               policy.setId(ref.getId());
             }
             dao.initSeedData(role);
@@ -177,7 +177,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
     ResultList<Role> roles;
     if (defaultParam) {
-      // The number of default roles is usually 1, and hence does not require pagination.
+      // The number of default roles is 1, and hence does not require pagination.
       roles = dao.getDefaultRolesResultList(uriInfo, fields);
     } else if (before != null) { // Reverse paging
       roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
@@ -316,7 +316,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
-    Role role = getRole(createRole, securityContext);
+    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, role, ADMIN | BOT);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
@@ -337,7 +337,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Response createOrUpdateRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
-    Role role = getRole(createRole, securityContext);
+    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
@@ -396,17 +396,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return response;
   }
 
-  private Role getRole(CreateRole cr, SecurityContext securityContext) {
-    if (nullOrEmpty(cr.getPolicies())) {
+  private Role getRole(CreateRole create, String user) {
+    if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return new Role()
-        .withId(UUID.randomUUID())
-        .withName(cr.getName())
-        .withDescription(cr.getDescription())
-        .withDisplayName(cr.getDisplayName())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withPolicies(cr.getPolicies());
+    return copy(new Role(), create, user).withPolicies(create.getPolicies());
   }
 }

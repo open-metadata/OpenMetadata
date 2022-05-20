@@ -152,7 +152,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         key={fqdn}>
         <img
           alt={serviceType}
-          className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
+          className="tw-inline tw-h-4 tw-ml-2"
           src={serviceTypeLogo(serviceType)}
         />
         <Link
