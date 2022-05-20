@@ -34,44 +34,32 @@ The workflow is modelled around the following [JSON Schema](https://github.com/o
 This is a sample config for DynamoDB:
 
 ```javascript
-{
-  "source": {
-    "type": "dynamodb",
-    "serviceName": "local_dynamodb",
-    "serviceConnection": {
-      "config": {
-	"awsAccessKeyId": "KEY",
-        "awsSecretAccessKey": "SECRET",        
-        "awsRegion": "us-east-2",
-        "endPointURL": "https://dynamodb.us-east-2.amazonaws.com",
-        "database": "custom_database_name",
-        "connectionOptions": {},
-        "connectionArguments": {},
-        "supportsMetadataExtraction": true
-      }
-    },
-    "sourceConfig": {
-      "config": {
-        "enableDataProfiler": false,
-        "tableFilterPattern": {
-          "includes": [
-            ""
-          ]
-        }
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
+source:
+  type: dynamodb
+  serviceName: local_dynamodb
+  serviceConnection:
+    config:
+      type: DynamoDB
+      awsConfig:
+        awsAccessKeyId: aws_access_key_id
+        awsSecretAccessKey: aws_secret_access_key
+        awsRegion: aws region
+        endPointURL: https://dynamodb.<region_name>.amazonaws.com
+      database: custom_database_name
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+
 ```
 
 #### Source Configuration - Source Config
@@ -87,9 +75,10 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
-"tableFilterPattern": {
-  "includes": ["users", "type_test"]
-}
+tableFilterPattern:
+  includes:
+    - users
+    - type_test
 ```
 
 #### Sink Configuration
@@ -103,12 +92,10 @@ The main property here is the `openMetadataServerConfig`, where you can define t
 For a simple, local installation using our docker containers, this looks like:
 
 ```
-"workflowConfig": {
-  "openMetadataServerConfig": {
-    "hostPort": "http://localhost:8585/api",
-    "authProvider": "no-auth"
-  }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 #### OpenMetadata Security Providers
@@ -116,25 +103,22 @@ For a simple, local installation using our docker containers, this looks like:
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
 
 ```
-"workflowConfig": {
-    "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "auth0",
-        "securityConfig": {
-            "clientId": "<client ID>",
-            "secretKey": "<secret key>",
-            "domain": "<domain>"
-        }
-    }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: auth0
+    securityConfig:
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
 
 ### 2. Run with the CLI
 
-First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
