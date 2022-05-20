@@ -123,16 +123,8 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    RestUtil.validateCursors(before, after);
     ListFilter filter = new ListFilter(include).addQueryParam("status", statusParam);
-    ResultList<Webhook> webhooks;
-    if (before != null) { // Reverse paging
-      webhooks = dao.listBefore(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, before);
-    } else { // Forward paging or first page
-      webhooks = dao.listAfter(uriInfo, Fields.EMPTY_FIELDS, filter, limitParam, after);
-    }
-    webhooks.getData().forEach(t -> dao.withHref(uriInfo, t));
-    return webhooks;
+    return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET
