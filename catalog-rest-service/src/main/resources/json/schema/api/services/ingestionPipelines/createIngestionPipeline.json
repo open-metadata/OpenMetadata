@@ -12,7 +12,7 @@
       "$ref": "../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this ingeestion pipeline.",
+      "description": "Display Name that identifies this ingestion pipeline.",
       "type": "string"
     },
     "description": {

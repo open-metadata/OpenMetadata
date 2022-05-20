@@ -11419,6 +11419,11 @@ react-codemirror2@^7.2.1:
   resolved "https://registry.yarnpkg.com/react-codemirror2/-/react-codemirror2-7.2.1.tgz#38dab492fcbe5fb8ebf5630e5bb7922db8d3a10c"
   integrity sha512-t7YFmz1AXdlImgHXA9Ja0T6AWuopilub24jRaQdPVbzUJVNKIYuy3uCFZYa7CE5S3UW6SrSa5nAqVQvtzRF9gw==
 
+react-context-mutex@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/react-context-mutex/-/react-context-mutex-2.0.0.tgz#4060bc8fbced6d2680ab093139c727201d402b88"
+  integrity sha512-Qss0YfJAKQ/+CYdVjHB3w7wRLdeetSrp2IMEEouXEpoTdohaCXIKZtFyNMMKDytLVWqHiiXg0RDA2kj/DQbeMQ==
+
 react-copy-to-clipboard@^5.0.4:
   version "5.0.4"
   resolved "https://registry.yarnpkg.com/react-copy-to-clipboard/-/react-copy-to-clipboard-5.0.4.tgz#42ec519b03eb9413b118af92d1780c403a5f19bf"
