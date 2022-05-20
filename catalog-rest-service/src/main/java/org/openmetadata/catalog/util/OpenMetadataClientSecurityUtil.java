@@ -29,6 +29,7 @@ public final class OpenMetadataClientSecurityUtil {
   public static final String CLIENT_SECRET = "clientSecret";
   public static final String SECRET_KEY = "secretKey";
   public static final String JWT_TOKEN = "jwtToken";
+  public static final String CREDENTIALS = "credentials";
 
   private OpenMetadataClientSecurityUtil() {
     /* Utility class with private constructor */
@@ -48,7 +49,7 @@ public final class OpenMetadataClientSecurityUtil {
       case GOOGLE:
         GoogleSSOClientConfig googleSSOClientConfig = authConfig.getGoogle();
         checkAuthConfig(googleSSOClientConfig, authProvider);
-        checkRequiredField(SECRET_KEY, googleSSOClientConfig.getSecretKey(), authProvider);
+        checkRequiredField(CREDENTIALS, googleSSOClientConfig.getCredentials(), authProvider);
         openMetadataServerConnection.setSecurityConfig(googleSSOClientConfig);
         break;
       case AUTH_0:
@@ -115,6 +116,13 @@ public final class OpenMetadataClientSecurityUtil {
 
   public static void checkRequiredField(String fieldName, List<?> fieldValue, AuthProvider authProvider) {
     if (nullOrEmpty(fieldValue)) {
+      throw new OpenMetadataClientSecurityConfigException(
+          String.format("%s SSO client config requires %s", authProvider, fieldName));
+    }
+  }
+
+  public static void checkRequiredField(String fieldName, Object fieldValue, AuthProvider authProvider) {
+    if (fieldValue == null) {
       throw new OpenMetadataClientSecurityConfigException(
           String.format("%s SSO client config requires %s", authProvider, fieldName));
     }

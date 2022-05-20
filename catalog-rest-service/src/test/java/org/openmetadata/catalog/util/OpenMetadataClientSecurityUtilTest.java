@@ -15,6 +15,7 @@ import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
 import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
 import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
+import org.openmetadata.catalog.security.credentials.GCSCredentials;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 
 @Slf4j
@@ -29,10 +30,12 @@ class OpenMetadataClientSecurityUtilTest {
     assertEquals(serverConnection.getAuthProvider().value(), airflowConfiguration.getAuthProvider());
     GoogleSSOClientConfig googleSSOClientConfig =
         JsonUtils.convertValue(serverConnection.getSecurityConfig(), GoogleSSOClientConfig.class);
-    assertEquals(googleSSOClientConfig.getSecretKey(), airflowConfiguration.getAuthConfig().getGoogle().getSecretKey());
+    assertEquals(
+        googleSSOClientConfig.getCredentials().getGcsConfig(),
+        airflowConfiguration.getAuthConfig().getGoogle().getCredentials().getGcsConfig());
     assertEquals(googleSSOClientConfig.getAudience(), airflowConfiguration.getAuthConfig().getGoogle().getAudience());
     AuthConfiguration authConfigs = airflowConfiguration.getAuthConfig();
-    authConfigs.getGoogle().setSecretKey(null);
+    authConfigs.getGoogle().setCredentials(null);
     airflowConfiguration.setAuthConfig(authConfigs);
     OpenMetadataClientSecurityConfigException exception =
         assertThrows(
@@ -40,7 +43,7 @@ class OpenMetadataClientSecurityUtilTest {
             () -> {
               OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
             });
-    assertEquals("google SSO client config requires secretKey", exception.getMessage());
+    assertEquals("google SSO client config requires credentials", exception.getMessage());
   }
 
   @Test
@@ -139,7 +142,9 @@ class OpenMetadataClientSecurityUtilTest {
   private AirflowConfiguration buildGoogleAuthConfig() {
     AuthConfiguration authConfig = new AuthConfiguration();
     GoogleSSOClientConfig googleSSOClientConfig =
-        new GoogleSSOClientConfig().withSecretKey("1234").withAudience("test");
+        new GoogleSSOClientConfig()
+            .withAudience("test")
+            .withCredentials(new GCSCredentials().withGcsConfig("/path/to/key.json"));
     authConfig.setGoogle(googleSSOClientConfig);
     AirflowConfiguration airflowConfiguration = new AirflowConfiguration();
     airflowConfiguration.setAuthConfig(authConfig);
