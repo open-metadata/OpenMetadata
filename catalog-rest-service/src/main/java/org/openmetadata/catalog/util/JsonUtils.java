@@ -178,7 +178,7 @@ public final class JsonUtils {
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
-      if (otherOperations.get(0).getString("path").matches(".*\\d$")) {
+      if (otherOperations.get(0).getString("path").matches(".*tags/\\d$")) {
         otherOperations.sort(
             Comparator.comparing(
                 jsonObject -> {
@@ -191,7 +191,7 @@ public final class JsonUtils {
       }
     }
     if (!removeOperations.isEmpty()) {
-      if (removeOperations.get(0).getString("path").matches(".*\\d$")) {
+      if (removeOperations.get(0).getString("path").matches(".*tags/\\d$")) {
         removeOperations.sort(
             Comparator.comparing(
                 jsonObject -> {
