@@ -17,45 +17,35 @@ Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up 
 
 All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json) you can find the structure to create a connection to Redash.
 
-In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
+In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
+### 1. Define the YAML Config
 
 This is a sample config for Redash:
 
 ```json
-{
-  "source": {
-    "type": "redash",
-    "serviceName": "local_redash",
-    "serviceConnection": {
-      "config": {
-        "type": "Redash",
-        "hostPort": "http://localhost:5000",
-        "apiKey": "api_key",
-        "username": "random"
-      }
-    },
-    "sourceConfig": {
-      "config": {
-        "dashboardFilterPattern": {},
-        "chartFilterPattern": {}
-      }
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
+source:
+  type: redash
+  serviceName: local_redash
+  serviceConnection:
+    config:
+      type: Redash
+      hostPort: http://localhost:5000
+      apiKey: api_key
+      username: random
+  sourceConfig:
+    config:
+      dashboardFilterPattern: {}
+      chartFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 
 ```
 
@@ -75,9 +65,10 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **dashboardFilterPattern** and **chartFilterPattern**: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
-"dashboardFilterPattern": {
-  "includes": ["users", "type_test"]
-}
+dashboardFilterPattern:
+  includes:
+    - users
+    - type_test
 ```
 
 #### Sink Configuration
@@ -91,12 +82,10 @@ The main property here is the `openMetadataServerConfig`, where you can define t
 For a simple, local installation using our docker containers, this looks like:
 
 ```
-"workflowConfig": {
-  "openMetadataServerConfig": {
-    "hostPort": "http://localhost:8585/api",
-    "authProvider": "no-auth"
-  }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 #### OpenMetadata Security Providers
@@ -104,17 +93,14 @@ For a simple, local installation using our docker containers, this looks like:
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
 
 ```
-"workflowConfig": {
-    "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "auth0",
-        "securityConfig": {
-            "clientId": "<client ID>",
-            "secretKey": "<secret key>",
-            "domain": "<domain>"
-        }
-    }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: auth0
+    securityConfig:
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
 
 ### 2. Prepare the Ingestion DAG

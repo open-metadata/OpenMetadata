@@ -226,7 +226,7 @@ fqnFilterPattern:
 
 #### Processor
 
-To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
+To choose the `orm-profiler`. It can also be updated to define tests from the YAML itself instead of the UI:
 
 ```json
 processor:

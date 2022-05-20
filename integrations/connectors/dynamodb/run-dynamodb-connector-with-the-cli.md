@@ -29,7 +29,7 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 
 The workflow is modelled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
+### 1. Define the YAML Config
 
 This is a sample config for DynamoDB:
 
