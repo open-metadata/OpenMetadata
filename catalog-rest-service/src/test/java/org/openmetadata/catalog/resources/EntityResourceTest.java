@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.Entity.FIELD_DELETED;
+import static org.openmetadata.catalog.Entity.FIELD_EXTENSION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -57,6 +58,9 @@ import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -83,6 +87,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.api.data.TermReference;
@@ -101,10 +106,14 @@ import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipe
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.entity.type.Category;
+import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.resources.events.WebhookResourceTest;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.catalog.resources.metadata.TypeResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
@@ -130,8 +139,10 @@ import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public abstract class EntityResourceTest<T extends EntityInterface, K> extends CatalogApplicationTest {
-  private static final Map<String, EntityResourceTest<?, ?>> ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
+public abstract class EntityResourceTest<T extends EntityInterface, K extends CreateEntity>
+    extends CatalogApplicationTest {
+  private static final Map<String, EntityResourceTest<? extends EntityInterface, ? extends CreateEntity>>
+      ENTITY_RESOURCE_TEST_MAP = new HashMap<>();
   private final String entityType;
   protected final Class<T> entityClass;
   private final Class<? extends ResultList<T>> entityListClass;
@@ -145,6 +156,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
   protected boolean supportsAuthorizedMetadataOperations = true;
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
+  protected boolean supportsNameWithDot = true;
+  protected final boolean supportsCustomAttributes;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -208,6 +221,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
 
   public static List<Column> COLUMNS;
 
+  public static Type INT_TYPE;
+  public static Type STRING_TYPE;
+
   // Run webhook related tests randomly. This will ensure these tests are not run for every entity evey time junit
   // tests are run to save time. But over the course of development of a release, when tests are run enough times,
   // the webhook tests are run for all the entities.
@@ -230,6 +246,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
+    this.supportsCustomAttributes = allowedFields.contains(FIELD_EXTENSION);
   }
 
   @BeforeAll
@@ -272,15 +289,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   // Create request such as CreateTable, CreateChart returned by concrete implementation
-  public K createRequest(TestInfo test) {
-    return createRequest(getEntityName(test), "", null, null);
+  public final K createRequest(TestInfo test) {
+    return createRequest(getEntityName(test)).withDescription("").withDisplayName(null).withOwner(null);
   }
 
-  public K createRequest(TestInfo test, int index) {
-    return createRequest(getEntityName(test, index), "", null, null);
+  public final K createRequest(TestInfo test, int index) {
+    return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null).withOwner(null);
   }
 
-  public abstract K createRequest(String name, String description, String displayName, EntityReference owner);
+  public final K createRequest(String name, String description, String displayName, EntityReference owner) {
+    return createRequest(name).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  }
+
+  public abstract K createRequest(String name);
 
   // Add all possible relationships to check if the entity is missing any of them after deletion
   public T beforeDeletion(TestInfo test, T entity) throws HttpResponseException {
@@ -482,8 +503,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
       ResultList<T> listBeforeDeletion = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
 
       // Delete non-empty container entity and ensure deletion is not allowed
-      EntityResourceTest<? extends EntityInterface, Object> containerTest =
-          (EntityResourceTest<? extends EntityInterface, Object>) ENTITY_RESOURCE_TEST_MAP.get(container.getType());
+      EntityResourceTest<? extends EntityInterface, ? extends CreateEntity> containerTest =
+          ENTITY_RESOURCE_TEST_MAP.get(container.getType());
       assertResponse(
           () -> containerTest.deleteEntity(container.getId(), ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -505,7 +526,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
         String parentOfContainer = containerTest.getContainer().getName();
         containerName = container.getName().replace(parentOfContainer + Entity.SEPARATOR, "");
       }
-      Object request = containerTest.createRequest(containerName, "", "", null);
+      CreateEntity request = containerTest.createRequest(containerName, "", "", null);
       containerTest.updateEntity(request, Status.OK, ADMIN_AUTH_HEADERS);
 
       ResultList<T> listAfterRestore = listEntities(null, 1000, null, null, ADMIN_AUTH_HEADERS);
@@ -623,14 +644,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
   // Common entity tests for POST operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
-  void post_entityCreateWithInvalidName_400() {
+  protected void post_entityCreateWithInvalidName_400() {
     // Create an entity with mandatory name field null
     final K request = createRequest(null, "description", "displayName", null);
     assertResponse(() -> createEntity(request, ADMIN_AUTH_HEADERS), BAD_REQUEST, "[name must not be null]");
 
     // Create an entity with mandatory name field empty
     final K request1 = createRequest("", "description", "displayName", null);
-    assertResponse(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
+    assertResponseContains(() -> createEntity(request1, ADMIN_AUTH_HEADERS), BAD_REQUEST, ENTITY_NAME_LENGTH_ERROR);
 
     // Create an entity with mandatory name field too long
     final K request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
@@ -698,6 +719,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
 
   @Test
   void post_entityWithDots_200() throws HttpResponseException {
+    if (!supportsNameWithDot) {
+      return;
+    }
     // Entity without "." should not have quoted fullyQualifiedName
     String name = format("%s_foo_bar", entityType);
     K request = createRequest(name, "", null, null);
@@ -1101,6 +1125,63 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
         readOnlyAttribute(entityType, FIELD_DELETED));
   }
 
+  @Test
+  void put_entityExtension(TestInfo test) throws IOException {
+    if (!supportsCustomAttributes) {
+      return;
+    }
+
+    // Add valid custom fields to the entity
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    INT_TYPE = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
+    STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
+    Type entity = typeResourceTest.getEntityByName(this.entityType, "customFields", ADMIN_AUTH_HEADERS);
+    CustomField fieldA =
+        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
+    CustomField fieldB =
+        new CustomField()
+            .withName("stringB")
+            .withDescription("stringB")
+            .withFieldType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addCustomField(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
+    typeResourceTest.addCustomField(entity.getId(), fieldB, OK, ADMIN_AUTH_HEADERS);
+
+    // Add invalid custom fields to the entity - custom field has invalid type
+    Type INVALID_TYPE =
+        new Type().withId(UUID.randomUUID()).withName("invalid").withCategory(Category.Field).withSchema("{}");
+    CustomField fieldInvalid =
+        new CustomField()
+            .withName("invalid")
+            .withDescription("invalid")
+            .withFieldType(INVALID_TYPE.getEntityReference());
+    assertResponse(
+        () -> typeResourceTest.addCustomField(entity.getId(), fieldInvalid, OK, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, INVALID_TYPE.getId()));
+
+    // Now create an entity with custom field
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode jsonNode = mapper.createObjectNode();
+    jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
+    jsonNode.set("stringB", mapper.convertValue("string", JsonNode.class));
+    K create = createRequest(test).withExtension(jsonNode);
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Now set the entity custom field with an unknown field
+    jsonNode.set("stringC", mapper.convertValue("string", JsonNode.class)); // Unknown field
+    assertResponse(
+        () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.unknownCustomField("stringC"));
+
+    // Now set the entity custom field to an invalid value
+    jsonNode.set("intA", mapper.convertValue("stringInsteadOfNumber", JsonNode.class)); // String in integer field
+    assertResponseContains(
+        () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.jsonValidationError("intA", ""));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for DELETE operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1232,11 +1313,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public final T createEntity(K createRequest, Map<String, String> authHeaders) throws HttpResponseException {
+  public final T createEntity(CreateEntity createRequest, Map<String, String> authHeaders)
+      throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
-  public final T updateEntity(K updateRequest, Status status, Map<String, String> authHeaders)
+  public final T updateEntity(CreateEntity updateRequest, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
@@ -1305,14 +1387,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K> extends C
 
     assertEquals(updatedBy, entity.getUpdatedBy());
     assertEquals(0.1, entity.getVersion()); // First version of the entity
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
     validateCreatedEntity(entity, created, authHeaders);
 
     // GET the entity created and ensure it has all the information set in create request
     T getEntity = getEntity(entity.getId(), authHeaders);
     assertEquals(0.1, entity.getVersion()); // First version of the entity
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(getEntity.getExtension()));
     validateCreatedEntity(getEntity, created, authHeaders);
 
-    // TODO GET the entity by name
+    getEntity = getEntityByName(entity.getFullyQualifiedName(), allFields, authHeaders);
+    assertEquals(0.1, entity.getVersion()); // First version of the entity
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(getEntity.getExtension()));
+    validateCreatedEntity(getEntity, created, authHeaders);
 
     // Validate that change event was created
     validateChangeEvents(entity, entity.getUpdatedAt(), EventType.ENTITY_CREATED, null, authHeaders);

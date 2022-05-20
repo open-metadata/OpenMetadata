@@ -16,7 +16,12 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+
+try:
+    from typing import get_args
+except ImportError as err:
+    from typing_compat import get_args
 
 from pydantic import BaseModel
 
@@ -167,8 +172,8 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
-
-        self.validate_versions()
+        if self.config.enableVersionValidation:
+            self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """

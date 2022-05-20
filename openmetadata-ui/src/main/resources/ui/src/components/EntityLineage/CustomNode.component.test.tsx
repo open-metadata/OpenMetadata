@@ -88,7 +88,9 @@ const mockTableColumns = [
 ];
 
 const mockCustomNodeProp = {
+  id: 'node-1',
   type: 'default',
+  selected: false,
   isConnectable: false,
   data: {
     label: <p>label</p>,

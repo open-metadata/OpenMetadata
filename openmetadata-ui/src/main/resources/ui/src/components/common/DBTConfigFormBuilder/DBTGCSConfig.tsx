@@ -147,7 +147,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud service account type.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="credential-type"
             id="credential-type"
             name="credential-type"
@@ -167,7 +167,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud project id.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="project-id"
             id="project-id"
             name="project-id"
@@ -187,7 +187,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud Private key id.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key-id"
             id="private-key-id"
             name="private-key-id"
@@ -209,7 +209,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud private key.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="private-key"
             id="private-key"
             name="private-key"
@@ -229,7 +229,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud email.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="client-email"
             id="client-email"
             name="client-email"
@@ -249,7 +249,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud Client ID.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="client-id"
             id="client-id"
             name="client-id"
@@ -267,7 +267,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud auth uri.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="auth-uri"
             id="auth-uri"
             name="auth-uri"
@@ -285,7 +285,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud token uri.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="token-uri"
             id="token-uri"
             name="token-uri"
@@ -305,7 +305,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud auth provider certificate.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="auth-x509-certificate-uri"
             id="auth-x509-certificate-uri"
             name="auth-x509-certificate-uri"
@@ -328,7 +328,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
             Google Cloud client certificate uri.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="client-x509-certificate-uri"
             id="client-x509-certificate-uri"
             name="client-x509-certificate-uri"
@@ -356,7 +356,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           GCS Credentials Path.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="gcs-cred-path"
           id="gcs-cred-path"
           name="gcs-cred-path"
@@ -389,7 +389,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           Available sources to fetch DBT catalog and manifest files.
         </p>
         <select
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="gcs-config"
           id="gcs-config"
           name="gcs-config"
@@ -419,7 +419,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           Name of the bucket where the dbt files are stored.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-bucket-name"
           id="dbt-bucket-name"
           name="dbt-bucket-name"
@@ -438,7 +438,7 @@ export const DBTGCSConfig: FunctionComponent<Props> = ({
           Path of the folder where the dbt files are stored.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-object-prefix"
           id="dbt-object-prefix"
           name="dbt-object-prefix"

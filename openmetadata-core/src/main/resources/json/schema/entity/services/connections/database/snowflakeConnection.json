@@ -1,0 +1,99 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/snowflakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SnowflakeConnection",
+  "description": "Snowflake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "definitions": {
+    "snowflakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Snowflake"],
+      "default": "Snowflake"
+    },
+    "snowflakeScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["snowflake"],
+      "default": "snowflake"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/snowflakeType",
+      "default": "Snowflake"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/snowflakeScheme",
+      "default": "snowflake"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Snowflake. This user should have privileges to read all the metadata in Snowflake.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Snowflake.",
+      "type": "string",
+      "format": "password"
+    },
+    "account": {
+      "title": "Account",
+      "description": "If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp",
+      "type": "string"
+    },
+    "role": {
+      "title": "Role",
+      "description": "Snowflake Role.",
+      "type": "string"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
+      "type": "string"
+    },
+    "warehouse": {
+      "title": "Warehouse",
+      "description": "Snowflake warehouse.",
+      "type": "string"
+    },
+    "privateKey": {
+      "title": "Private Key",
+      "description": "Connection to Snowflake instance via Private Key",
+      "type": "string"
+    },
+    "snowflakePrivatekeyPassphrase": {
+      "title": "Snowflake Passphrase Key",
+      "description": "Snowflake Passphrase Key used with Private Key",
+      "type": "string",
+      "format": "password"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["username", "account"]
+}

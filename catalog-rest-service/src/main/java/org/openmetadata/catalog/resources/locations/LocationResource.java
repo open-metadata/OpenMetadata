@@ -329,7 +329,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
-    Location location = getLocation(securityContext, create);
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
 
@@ -348,7 +348,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
-    Location location = getLocation(securityContext, create);
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
 
@@ -444,17 +444,11 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
-  private Location getLocation(SecurityContext securityContext, CreateLocation create) {
-    return new Location()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
+  private Location getLocation(CreateLocation create, String user) {
+    return copy(new Location(), create, user)
         .withPath(create.getPath())
-        .withDescription(create.getDescription())
         .withService(create.getService())
         .withLocationType(create.getLocationType())
-        .withTags(create.getTags())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withOwner(create.getOwner())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

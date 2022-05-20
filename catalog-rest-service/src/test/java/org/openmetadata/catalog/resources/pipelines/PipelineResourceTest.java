@@ -88,14 +88,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Override
-  public CreatePipeline createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreatePipeline()
-        .withName(name)
-        .withService(getContainer())
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withTasks(TASKS);
+  public CreatePipeline createRequest(String name) {
+    return new CreatePipeline().withName(name).withService(getContainer()).withTasks(TASKS);
   }
 
   @Override

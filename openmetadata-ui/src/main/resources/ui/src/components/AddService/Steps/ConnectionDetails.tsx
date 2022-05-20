@@ -69,7 +69,7 @@ const ConnectionDetails = ({
               {requiredField('Host:')}
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="url"
               id="url"
               name="url"
@@ -85,7 +85,7 @@ const ConnectionDetails = ({
               {requiredField('Port:')}
             </label>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="port"
               id="port"
               name="port"
@@ -102,7 +102,7 @@ const ConnectionDetails = ({
             Username:
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="username"
             id="username"
             name="username"
@@ -117,7 +117,7 @@ const ConnectionDetails = ({
             Password:
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="password"
             id="password"
             name="password"
@@ -133,7 +133,7 @@ const ConnectionDetails = ({
             Database:
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="database"
             id="database"
             name="database"
@@ -152,7 +152,7 @@ const ConnectionDetails = ({
                 Warehouse:
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="warehouse"
                 id="warehouse"
                 name="warehouse"
@@ -168,7 +168,7 @@ const ConnectionDetails = ({
                 Account:
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="account"
                 id="account"
                 name="account"
@@ -198,7 +198,7 @@ const ConnectionDetails = ({
               <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`option-key-${i}`}
                     name="key"
                     placeholder="Key"
@@ -215,7 +215,7 @@ const ConnectionDetails = ({
                 </Field>
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`option-value-${i}`}
                     name="value"
                     placeholder="Value"
@@ -264,7 +264,7 @@ const ConnectionDetails = ({
               <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`argument-key-${i}`}
                     name="key"
                     placeholder="Key"
@@ -281,7 +281,7 @@ const ConnectionDetails = ({
                 </Field>
                 <Field>
                   <input
-                    className="tw-form-inputs tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-form-inputs-padding"
                     id={`argument-value-${i}`}
                     name="value"
                     placeholder="Value"
@@ -325,7 +325,7 @@ const ConnectionDetails = ({
             {requiredField('Broker Url:')}
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="brokers-url"
             id="brokers"
             name="brokers"
@@ -341,7 +341,7 @@ const ConnectionDetails = ({
             Schema Registry:
           </label>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="schema-registry"
             id="schemaRegistry"
             name="schemaRegistry"
@@ -366,7 +366,7 @@ const ConnectionDetails = ({
                 {requiredField('Dashboard Url:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="dashboardUrl"
                 name="dashboardUrl"
                 placeholder="http(s)://hostname:port"
@@ -381,7 +381,7 @@ const ConnectionDetails = ({
                 {requiredField('Api key:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="apiKey"
                 name="apiKey"
                 placeholder="api key"
@@ -404,7 +404,7 @@ const ConnectionDetails = ({
                 {requiredField('Site Name:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="siteName"
                 name="siteName"
                 placeholder="site name"
@@ -419,7 +419,7 @@ const ConnectionDetails = ({
                 {requiredField('Site Url:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="dashboardUrl"
                 name="dashboardUrl"
                 placeholder="http(s)://hostname:port"
@@ -434,7 +434,7 @@ const ConnectionDetails = ({
                 {requiredField('Username:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="username"
                 name="username"
                 placeholder="username"
@@ -449,7 +449,7 @@ const ConnectionDetails = ({
                 {requiredField('Password:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="password"
                 name="password"
                 placeholder="password"
@@ -464,7 +464,7 @@ const ConnectionDetails = ({
                 {requiredField('Server:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="server"
                 name="server"
                 placeholder="http(s)://hostname:port"
@@ -479,7 +479,7 @@ const ConnectionDetails = ({
                 {requiredField('Api Version:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="api-version"
                 id="apiVersion"
                 name="apiVersion"
@@ -495,7 +495,7 @@ const ConnectionDetails = ({
                 Environment:
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 id="env"
                 name="env"
                 placeholder="environment"
@@ -517,7 +517,7 @@ const ConnectionDetails = ({
                 {requiredField('Dashboard Url:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="dashboard-url"
                 id="dashboard-url"
                 name="dashboard-url"
@@ -534,7 +534,7 @@ const ConnectionDetails = ({
                 {requiredField('Username:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="username"
                 id="username"
                 name="username"
@@ -550,7 +550,7 @@ const ConnectionDetails = ({
                 {requiredField('Password:')}
               </label>
               <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-form-inputs-padding"
                 data-testid="password"
                 id="password"
                 name="password"
@@ -578,7 +578,7 @@ const ConnectionDetails = ({
           {requiredField('Pipeline Url:')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="pipeline-url"
           id="pipelineUrl"
           name="pipelineUrl"

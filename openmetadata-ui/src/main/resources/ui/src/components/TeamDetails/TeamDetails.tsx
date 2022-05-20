@@ -37,7 +37,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
+import { filterEntityAssets, getInfoElements } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -119,7 +119,7 @@ const TeamDetails = ({
       name: 'Assets',
       isProtected: false,
       position: 2,
-      count: currentTeam?.owns?.length,
+      count: filterEntityAssets(currentTeam?.owns || []).length,
     },
     {
       name: 'Roles',
@@ -151,6 +151,10 @@ const TeamDetails = ({
       currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
     isLink: currentTeam?.owner?.type === 'team',
     openInNewTab: false,
+    profileName:
+      currentTeam?.owner?.type === OwnerType.USER
+        ? currentTeam?.owner?.name
+        : undefined,
   };
 
   const isActionAllowed = (operation = false) => {
@@ -403,7 +407,9 @@ const TeamDetails = ({
    * @returns - dataset cards
    */
   const getDatasetCards = () => {
-    if ((currentTeam?.owns?.length as number) <= 0) {
+    const ownData = filterEntityAssets(currentTeam?.owns || []);
+
+    if (ownData.length <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>Your team does not have any dataset</p>
@@ -427,7 +433,7 @@ const TeamDetails = ({
           className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
           data-testid="dataset-card">
           {' '}
-          {currentTeam?.owns?.map((dataset, index) => {
+          {ownData.map((dataset, index) => {
             const Dataset = {
               displayName: dataset.displayName || dataset.name || '',
               type: dataset.type,
@@ -511,7 +517,7 @@ const TeamDetails = ({
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
-              className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"

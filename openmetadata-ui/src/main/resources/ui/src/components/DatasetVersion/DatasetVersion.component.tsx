@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FqnPart } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Column,
@@ -120,6 +121,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',

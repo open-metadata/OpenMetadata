@@ -12,12 +12,11 @@
  */
 
 import React, { useState } from 'react';
-import { ColumnTestType } from '../../enums/columnTest.enum';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
-import { Table } from '../../generated/entity/data/table';
+import { ColumnTestType, Table } from '../../generated/entity/data/table';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
   TableTestDataType,
@@ -28,7 +27,7 @@ import DataQualityTest from '../DataQualityTest/DataQualityTest';
 type Props = {
   handleAddTableTestCase: (data: CreateTableTest) => void;
   isTableDeleted?: boolean;
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   columnOptions: Table['columns'];
   testMode: DatasetTestModeType;
   handleTestModeChange: (mode: DatasetTestModeType) => void;
@@ -100,7 +99,7 @@ const DataQualityTab = ({
     setActiveData(undefined);
   };
 
-  const onColumnTestSave = (data: ColumnTest) => {
+  const onColumnTestSave = (data: CreateColumnTest) => {
     handleAddColumnTestCase(data);
     setActiveData(undefined);
   };

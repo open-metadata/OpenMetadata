@@ -13,12 +13,16 @@
 
 import classNames from 'classnames';
 import { capitalize } from 'lodash';
+import { FormattedUsersData } from 'Models';
 import React, { useState } from 'react';
-import Avatar from '../../components/common/avatar/Avatar';
+import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import SVGIcons from '../../utils/SvgUtils';
 
 type Props = {
-  item: { description: string; name: string; id: string; isChecked: boolean };
+  item: Pick<FormattedUsersData, 'displayName' | 'id' | 'name' | 'type'> & {
+    email?: string;
+    isChecked: boolean;
+  };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isCheckBoxes?: boolean;
@@ -44,7 +48,11 @@ const CheckboxUserCard = ({
       data-testid="user-card-container">
       {isIconVisible && (
         <div className="tw-flex tw-mr-2">
-          <Avatar name={item.description || item.name} />
+          <ProfilePicture
+            displayName={item.displayName || item.name}
+            id={item.id || ''}
+            name={item.name || ''}
+          />
         </div>
       )}
       <div
@@ -56,8 +64,8 @@ const CheckboxUserCard = ({
               'tw-font-normal',
               isActionVisible ? 'tw-truncate tw-w-32' : null
             )}
-            title={item.description}>
-            {item.description}
+            title={item.displayName}>
+            {item.displayName}
           </p>
           {item.name && (
             <p

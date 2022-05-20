@@ -14,41 +14,100 @@
 package org.openmetadata.catalog.resources.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
+import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
-  public static Type INT_TYPE;
 
   public TypeResourceTest() {
     super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.FIELDS);
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
+    supportsNameWithDot = false;
   }
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-    INT_TYPE = getEntityByName("type.basic.integer", "", ADMIN_AUTH_HEADERS);
+    INT_TYPE = getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  @Test
+  public void post_entityCreateWithInvalidName_400() {
+    String[][] tests = {
+      {"Abcd", "[name must match \"^[a-z][a-zA-Z0-9]+$\"]"},
+      {"a bc", "[name must match \"^[a-z][a-zA-Z0-9]+$\"]"}, // Name must not have space
+      {"a_bc", "[name must match \"^[a-z][a-zA-Z0-9]+$\"]"}, // Name must not be underscored
+      {"a-bc", "[name must match \"^[a-z][a-zA-Z0-9]+$\"]"}, // Name must not be hyphened
+    };
+
+    CreateType create = createRequest("placeHolder", "", "", null);
+    for (String[] test : tests) {
+      LOG.info("Testing with the name {}", test[0]);
+      create.withName(test[0]);
+      assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), Status.BAD_REQUEST, test[1]);
+    }
+  }
+
+  @Test
+  public void put_customField_200() throws HttpResponseException {
+    Type tableEntity = getEntityByName("table", "customFields", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(tableEntity.getCustomFields()).isEmpty());
+
+    // Add a custom field with name intA with type integer
+    CustomField fieldA =
+        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
+    tableEntity = addCustomField(tableEntity.getId(), fieldA, Status.OK, ADMIN_AUTH_HEADERS);
+    assertEquals(1, tableEntity.getCustomFields().size());
+    assertEquals(fieldA, tableEntity.getCustomFields().get(0));
+
+    // Add a second field with name intB with type integer
+    CustomField fieldB =
+        new CustomField().withName("intB").withDescription("intB").withFieldType(INT_TYPE.getEntityReference());
+    tableEntity = addCustomField(tableEntity.getId(), fieldB, Status.OK, ADMIN_AUTH_HEADERS);
+    assertEquals(2, tableEntity.getCustomFields().size());
+    assertEquals(fieldA, tableEntity.getCustomFields().get(0));
+    assertEquals(fieldB, tableEntity.getCustomFields().get(1));
+  }
+
+  @Test
+  public void put_customFieldToFieldType_4xx() {
+    // Adding a custom field to a field type is not allowed (only entity type is allowed)
+    CustomField field =
+        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
+    assertResponse(
+        () -> addCustomField(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
+        Status.BAD_REQUEST,
+        "Field types can't be extended");
   }
 
   @Override
@@ -61,13 +120,18 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     return type;
   }
 
+  public Type addCustomField(UUID entityTypeId, CustomField customField, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(entityTypeId);
+    return TestUtils.put(target, customField, Type.class, status, authHeaders);
+  }
+
   @Override
-  public CreateType createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateType()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withSchema(INT_TYPE.getSchema());
+  public CreateType createRequest(String name) {
+    if (name != null) {
+      name = name.replaceAll("[. _-]", "");
+    }
+    return new CreateType().withName(name).withCategory(Category.Field).withSchema(INT_TYPE.getSchema());
   }
 
   @Override

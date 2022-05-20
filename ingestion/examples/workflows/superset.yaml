@@ -1,0 +1,20 @@
+source:
+  type: superset
+  serviceName: local_superset
+  serviceConnection:
+    config:
+      hostPort: http://localhost:8080
+      username: admin
+      password: admin
+      type: Superset
+  sourceConfig:
+    config:
+      chartFilterPattern: {}
+      dashboardFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

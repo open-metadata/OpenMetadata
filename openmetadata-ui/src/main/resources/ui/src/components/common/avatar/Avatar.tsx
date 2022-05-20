@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { ImageShape } from 'Models';
 import React from 'react';
 import { getRandomColor } from '../../../utils/CommonUtils';
 
@@ -26,7 +27,7 @@ const Avatar = ({
   width?: string;
   textClass?: string;
   className?: string;
-  type?: 'circle' | 'square';
+  type?: ImageShape;
 }) => {
   const { color, character } = getRandomColor(name);
 

@@ -16,6 +16,7 @@ package org.openmetadata.catalog.resources.types;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -52,18 +53,22 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
+import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TypeRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/metadata/types")
@@ -77,7 +82,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
-    return type; // Nothing to do
+    listOrEmpty(type.getCustomFields()).forEach(field -> Entity.withHref(uriInfo, field.getFieldType()));
+    return type;
   }
 
   @Inject
@@ -88,26 +94,18 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Find tag definitions and load tag categories from the json file, if necessary
-    List<String> jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/type/.*\\.json$");
     long now = System.currentTimeMillis();
-    for (String jsonSchema : jsonSchemas) {
-      try {
-        List<Type> types = JsonUtils.getTypes(jsonSchema);
-        types.forEach(
-            type -> {
-              type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-              LOG.info("Loading from {} type {} with schema {}", jsonSchema, type.getName(), type.getSchema());
-              try {
-                this.dao.createOrUpdate(null, type);
-              } catch (IOException e) {
-                LOG.error("Error loading type {} from {}", type.getName(), jsonSchema, e);
-                e.printStackTrace();
-              }
-            });
-      } catch (Exception e) {
-        LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
-      }
-    }
+    List<Type> types = JsonUtils.getTypes();
+    types.forEach(
+        type -> {
+          type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
+          LOG.info("Loading type {} with schema {}", type.getName(), type.getSchema());
+          try {
+            this.dao.createOrUpdate(null, type);
+          } catch (IOException e) {
+            LOG.error("Error loading type {}", type.getName(), e);
+          }
+        });
   }
 
   public static class TypeList extends ResultList<Type> {
@@ -121,7 +119,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     }
   }
 
-  public static final String FIELDS = "";
+  public static final String FIELDS = "customFields";
 
   @GET
   @Valid
@@ -141,6 +139,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   public ResultList<Type> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Filter types by metadata type category.",
+              schema = @Schema(type = "string", example = "Field, Entity"))
+          @QueryParam("category")
+          Category category,
       @Parameter(description = "Limit the number types returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -284,7 +287,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
       throws IOException {
-    Type type = getType(securityContext, create);
+    Type type = getType(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type, ADMIN | BOT);
   }
 
@@ -327,7 +330,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
-    Type type = getType(securityContext, create);
+    Type type = getType(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type, ADMIN | BOT | OWNER);
   }
 
@@ -349,14 +352,32 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return delete(uriInfo, securityContext, id, false, true, ADMIN | BOT);
   }
 
-  private Type getType(SecurityContext securityContext, CreateType create) {
-    return new Type()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withSchema(create.getSchema())
-        .withDescription(create.getDescription())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  @PUT
+  @Path("/{id}")
+  @Operation(
+      summary = "Add a field to an entity",
+      tags = "metadata",
+      description = "Add a field to an entity type. Fields can only be added to entity type and not field type.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
+      })
+  public Response addField(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid CustomField field)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    PutResponse<Type> response = dao.addCustomField(uriInfo, securityContext.getUserPrincipal().getName(), id, field);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  private Type getType(CreateType create, String user) {
+    return copy(new Type(), create, user)
+        .withFullyQualifiedName(create.getName())
+        .withCategory(create.getCategory())
+        .withSchema(create.getSchema());
   }
 }

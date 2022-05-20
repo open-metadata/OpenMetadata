@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/role.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Role",
+  "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
+  "javaType": "org.openmetadata.catalog.entity.teams.Role",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "type": "object",
+  "definitions": {
+    "roleName": {
+      "description": "A unique name for the role.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/definitions/roleName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Consumer'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the role.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "policies": {
+      "description": "Policies that is attached to this role.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "defaultRole": {
+      "description": "If `true`, this role is set as default system role and will be inherited by all the users.",
+      "type": "boolean",
+      "default": false
+    },
+    "users": {
+      "description": "Users that have this role assigned to them.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "teams": {
+      "description": "Teams that have this role assigned to them.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

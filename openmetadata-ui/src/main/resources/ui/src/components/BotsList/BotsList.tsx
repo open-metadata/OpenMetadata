@@ -38,7 +38,9 @@ const BotsList: FC<BotsListProp> = ({ bots }) => {
 
   const BotCard = ({ bot }: { bot: User }) => {
     return (
-      <div className="tw-bg-white tw-shadow tw-border tw-border-main tw-rounded tw-p-3">
+      <div
+        className="tw-bg-white tw-shadow tw-border tw-border-main tw-rounded tw-p-3"
+        data-testid="bot-card">
         <div className="tw-flex">
           <SVGIcons alt="bot-profile" icon={Icons.BOT_PROFILE} />
           <span
@@ -52,7 +54,9 @@ const BotsList: FC<BotsListProp> = ({ bots }) => {
           {bot.description ? (
             <RichTextEditorPreviewer markdown={bot.description || ''} />
           ) : (
-            <span className="tw-no-description tw-p-2 tw--ml-1.5">
+            <span
+              className="tw-no-description tw-p-2 tw--ml-1.5"
+              data-testid="no-description">
               No description{' '}
             </span>
           )}

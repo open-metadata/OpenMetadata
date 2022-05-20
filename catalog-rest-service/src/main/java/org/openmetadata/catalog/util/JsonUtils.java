@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.networknt.schema.JsonSchema;
@@ -45,10 +46,14 @@ import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.ws.rs.core.MediaType;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
 
+@Slf4j
 public final class JsonUtils {
-  public static final String TYPE_ANNOTATION = "@om-type";
+  public static final String FIELD_TYPE_ANNOTATION = "@om-field-type";
+  public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
   private static final ObjectMapper OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
@@ -212,16 +217,52 @@ public final class JsonUtils {
     return schemaFactory.getSchema(schema);
   }
 
+  public static JsonNode valueToTree(Object object) {
+    return OBJECT_MAPPER.valueToTree(object);
+  }
+
+  public static ObjectNode createObject() {
+    return OBJECT_MAPPER.createObjectNode();
+  }
+
   public static boolean hasAnnotation(JsonNode jsonNode, String annotation) {
     String comment = String.valueOf(jsonNode.get("$comment"));
     return comment != null && comment.contains(annotation);
   }
 
+  /** Get all the fields types and entity types from OpenMetadata JSON schema definition files. */
+  public static List<Type> getTypes() throws IOException {
+    // Get Field Types
+    List<Type> types = new ArrayList<>();
+    List<String> jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/type/.*\\.json$");
+    for (String jsonSchema : jsonSchemas) {
+      try {
+        types.addAll(JsonUtils.getFieldTypes(jsonSchema));
+      } catch (Exception e) {
+        LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
+      }
+    }
+
+    // Get Entity Types
+    jsonSchemas = EntityUtil.getJsonDataResources(".*json/schema/entity/.*\\.json$");
+    for (String jsonSchema : jsonSchemas) {
+      try {
+        Type entityType = JsonUtils.getEntityType(jsonSchema);
+        if (entityType != null) {
+          types.add(entityType);
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
+      }
+    }
+    return types;
+  }
+
   /**
-   * Get all the types from the `definitions` section of a JSON schema file that are annotated with "$comment" field set
-   * to "@om-type".
+   * Get all the fields types from the `definitions` section of a JSON schema file that are annotated with "$comment"
+   * field set to "@om-field-type".
    */
-  public static List<Type> getTypes(String jsonSchemaFile) throws IOException {
+  public static List<Type> getFieldTypes(String jsonSchemaFile) throws IOException {
     JsonNode node =
         OBJECT_MAPPER.readTree(
             Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
@@ -236,12 +277,15 @@ public final class JsonUtils {
     Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
     while (definitions != null && definitions.hasNext()) {
       Entry<String, JsonNode> entry = definitions.next();
+      String typeName = entry.getKey();
       JsonNode value = entry.getValue();
-      if (JsonUtils.hasAnnotation(value, JsonUtils.TYPE_ANNOTATION)) {
+      if (JsonUtils.hasAnnotation(value, JsonUtils.FIELD_TYPE_ANNOTATION)) {
         String description = String.valueOf(value.get("description"));
         Type type =
             new Type()
-                .withName(entry.getKey())
+                .withName(typeName)
+                .withCategory(Category.Field)
+                .withFullyQualifiedName(typeName)
                 .withNameSpace(jsonNamespace)
                 .withDescription(description)
                 .withDisplayName(entry.getKey())
@@ -250,5 +294,34 @@ public final class JsonUtils {
       }
     }
     return types;
+  }
+
+  /**
+   * Get all the fields types from the `definitions` section of a JSON schema file that are annotated with "$comment"
+   * field set to "@om-entity-type".
+   */
+  public static Type getEntityType(String jsonSchemaFile) throws IOException {
+    JsonNode node =
+        OBJECT_MAPPER.readTree(
+            Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(jsonSchemaFile)));
+    if (!JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)) {
+      return null;
+    }
+
+    String fileName = Paths.get(jsonSchemaFile).getFileName().toString();
+    String entityName = fileName.replace(" ", "").replace(".json", "");
+
+    String namespaceFile = Paths.get(jsonSchemaFile).getParent().getFileName().toString();
+    String namespace = namespaceFile.replace(" ", "").replace(".json", "");
+
+    String description = String.valueOf(node.get("description"));
+    return new Type()
+        .withName(entityName)
+        .withCategory(Category.Entity)
+        .withFullyQualifiedName(entityName)
+        .withNameSpace(namespace)
+        .withDescription(description)
+        .withDisplayName(entityName)
+        .withSchema(node.toPrettyString());
   }
 }

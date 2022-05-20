@@ -33,13 +33,21 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import javax.json.JsonPatch;
@@ -51,6 +59,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
+import org.openmetadata.catalog.TypeRegistry;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.tags.Tag;
@@ -59,6 +68,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.exception.UnhandledServerException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
@@ -73,6 +83,7 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
@@ -115,7 +126,7 @@ import org.openmetadata.catalog.util.ResultList;
 public abstract class EntityRepository<T extends EntityInterface> {
   private final String collectionPath;
   private final Class<T> entityClass;
-  private final String entityType;
+  protected final String entityType;
   public final EntityDAO<T> dao;
   protected final CollectionDAO daoCollection;
   protected final List<String> allowedFields;
@@ -129,7 +140,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private final Fields patchFields;
 
   /** Fields that can be updated during PUT operation */
-  private final Fields putFields;
+  protected final Fields putFields;
 
   EntityRepository(
       String collectionPath,
@@ -340,7 +351,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String extension = EntityUtil.getVersionExtension(entityType, requestedVersion);
 
     // Get previous version from version history
-    String json = daoCollection.entityExtensionDAO().getEntityVersion(id, extension);
+    String json = daoCollection.entityExtensionDAO().getExtension(id, extension);
     if (json != null) {
       return JsonUtils.readValue(json, entityClass);
     }
@@ -357,7 +368,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public EntityHistory listVersions(String id) throws IOException {
     T latest = setFields(dao.findEntityById(UUID.fromString(id), ALL), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
-    List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
+    List<ExtensionRecord> records = daoCollection.entityExtensionDAO().getExtensions(id, extensionPrefix);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
     oldVersions.sort(EntityUtil.compareVersion.reversed());
 
     final List<Object> allVersions = new ArrayList<>();
@@ -375,12 +388,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final T createInternal(T entity) throws IOException {
     prepare(entity);
+    validateExtension(entity);
     return createNewEntity(entity);
   }
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T original, T updated) throws IOException {
     prepare(updated);
+    validateExtension(updated);
     // Check if there is any original, deleted or not
     original = JsonUtils.readValue(dao.findJsonByFqn(original.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -400,6 +415,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PutResponse<T> createOrUpdateInternal(UriInfo uriInfo, T updated) throws IOException {
     prepare(updated);
+    validateExtension(updated);
     // Check if there is any original, deleted or not
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) {
@@ -446,6 +462,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepare(updated);
+    validateExtension(updated);
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -617,6 +634,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private T createNewEntity(T entity) throws IOException {
     storeEntity(entity, false);
+    storeExtension(entity);
     storeRelationships(entity);
     return entity;
   }
@@ -627,6 +645,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       dao.insert(entity);
     }
+  }
+
+  public void validateExtension(T entity) {
+    if (entity.getExtension() == null) {
+      return;
+    }
+
+    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode fieldValue = entry.getValue();
+
+      // Validate the customFields using jsonSchema
+      JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      if (jsonSchema == null) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+      Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
+      if (!validationMessages.isEmpty()) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.jsonValidationError(fieldName, validationMessages.toString()));
+      }
+    }
+  }
+
+  public void storeExtension(T entity) throws JsonProcessingException {
+    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      String fieldName = entry.getKey();
+      JsonNode value = entry.getValue();
+      storeCustomField(entity, fieldName, value);
+    }
+  }
+
+  private void storeCustomField(T entity, String fieldName, JsonNode value) throws JsonProcessingException {
+    String fieldFQN = TypeRegistry.getCustomFieldFQN(entityType, fieldName);
+    daoCollection
+        .entityExtensionDAO()
+        .insert(entity.getId().toString(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
+  }
+
+  public ObjectNode getExtension(T entity) throws JsonProcessingException {
+    String fieldFQNPrefix = TypeRegistry.getCustomFieldFQNPrefix(entityType);
+    List<ExtensionRecord> records =
+        daoCollection.entityExtensionDAO().getExtensions(entity.getId().toString(), fieldFQNPrefix);
+    if (records.isEmpty()) {
+      return null;
+    }
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode objectNode = mapper.createObjectNode();
+    for (ExtensionRecord record : records) {
+      String fieldName = TypeRegistry.getFieldName(record.getExtensionName());
+      objectNode.set(fieldName, mapper.readTree(record.getExtensionJson()));
+    }
+    return objectNode;
   }
 
   /** Validate given list of tags and add derived tags to it */
@@ -738,7 +815,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public int addRelationship(
+      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, String json) {
+    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, json, false);
+  }
+
+  public int addRelationship(
       UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
+    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
+  }
+
+  public int addRelationship(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      Relationship relationship,
+      String json,
+      boolean bidirectional) {
     UUID from = fromId;
     UUID to = toId;
     if (bidirectional && fromId.compareTo(toId) > 0) {
@@ -747,7 +840,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       from = toId;
       to = fromId;
     }
-    return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal());
+    return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
   public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
@@ -895,6 +988,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<String> getAllowedFields() {
     return allowedFields;
+  }
+
+  protected String getCustomFieldFQNPrefix(String entityType) {
+    return FullyQualifiedName.build(entityType, "customFields");
+  }
+
+  protected String getCustomFieldFQN(String entityType, String fieldName) {
+    return FullyQualifiedName.build(entityType, "customFields", fieldName);
   }
 
   enum Operation {
