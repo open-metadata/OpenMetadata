@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -272,7 +271,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
-    Glossary glossary = getGlossary(securityContext, create);
+    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, glossary, ADMIN | BOT);
   }
 
@@ -316,7 +315,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
-    Glossary glossary = getGlossary(securityContext, create);
+    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, glossary, ADMIN | BOT | OWNER);
   }
 
@@ -346,16 +345,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private Glossary getGlossary(SecurityContext securityContext, CreateGlossary create) {
-    return new Glossary()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
-        .withReviewers(create.getReviewers())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Glossary getGlossary(CreateGlossary create, String user) {
+    return copy(new Glossary(), create, user).withReviewers(create.getReviewers()).withTags(create.getTags());
   }
 }

@@ -125,12 +125,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public CreateGlossary createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateGlossary()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreateGlossary createRequest(String name) {
+    return new CreateGlossary().withName(name);
   }
 
   @Override

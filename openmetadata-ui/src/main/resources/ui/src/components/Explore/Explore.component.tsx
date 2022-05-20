@@ -17,7 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -450,7 +450,7 @@ const Explore: React.FC<ExploreProps> = ({
                   className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                     tabDetail.tab
                   )}`}
-                  data-testid="tab"
+                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
                   key={index}
                   onClick={() => {
                     onTabChange(tabDetail.tab);

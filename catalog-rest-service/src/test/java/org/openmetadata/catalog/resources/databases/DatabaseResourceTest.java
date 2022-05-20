@@ -139,12 +139,8 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public CreateDatabase createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateDatabase()
-        .withName(name)
-        .withDescription(description)
-        .withOwner(owner)
-        .withService(getContainer());
+  public CreateDatabase createRequest(String name) {
+    return new CreateDatabase().withName(name).withService(getContainer());
   }
 
   @Override

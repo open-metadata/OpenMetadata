@@ -287,7 +287,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
       throws IOException {
-    Type type = getType(securityContext, create);
+    Type type = getType(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type, ADMIN | BOT);
   }
 
@@ -330,7 +330,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create) throws IOException {
-    Type type = getType(securityContext, create);
+    Type type = getType(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type, ADMIN | BOT | OWNER);
   }
 
@@ -366,7 +366,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
-      CustomField field)
+      @Valid CustomField field)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     PutResponse<Type> response = dao.addCustomField(uriInfo, securityContext.getUserPrincipal().getName(), id, field);
@@ -374,16 +374,10 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return response.toResponse();
   }
 
-  private Type getType(SecurityContext securityContext, CreateType create) {
-    return new Type()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
+  private Type getType(CreateType create, String user) {
+    return copy(new Type(), create, user)
         .withFullyQualifiedName(create.getName())
-        .withDisplayName(create.getDisplayName())
         .withCategory(create.getCategory())
-        .withSchema(create.getSchema())
-        .withDescription(create.getDescription())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withSchema(create.getSchema());
   }
 }

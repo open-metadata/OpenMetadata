@@ -17,14 +17,18 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 
 import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -32,6 +36,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -240,7 +245,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response createWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
-    Webhook webhook = getWebhook(securityContext, create);
+    Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, webhook, ADMIN);
     dao.addWebhookPublisher(webhook);
     return response;
@@ -261,10 +266,35 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public Response updateWebhook(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebhook create)
       throws IOException {
-    Webhook webhook = getWebhook(securityContext, create);
+    Webhook webhook = getWebhook(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, webhook, ADMIN | BOT);
     dao.updateWebhookPublisher((Webhook) response.getEntity());
     return response;
+  }
+
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      summary = "Update a webhook",
+      tags = "webhook",
+      description = "Update an existing webhook using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -291,20 +321,15 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
-  public Webhook getWebhook(SecurityContext securityContext, CreateWebhook create) {
+  public Webhook getWebhook(CreateWebhook create, String user) {
     // Add filter for soft delete events if delete event type is requested
     EntityUtil.addSoftDeleteFilter(create.getEventFilters());
-    return new Webhook()
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withId(UUID.randomUUID())
+    return copy(new Webhook(), create, user)
         .withEndpoint(create.getEndpoint())
         .withEventFilters(create.getEventFilters())
         .withBatchSize(create.getBatchSize())
         .withTimeout(create.getTimeout())
         .withEnabled(create.getEnabled())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
         .withSecretKey(create.getSecretKey())
         .withStatus(Boolean.TRUE.equals(create.getEnabled()) ? Status.ACTIVE : Status.DISABLED);
   }

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.networknt.schema.JsonSchema;
@@ -214,6 +215,14 @@ public final class JsonUtils {
 
   public static JsonSchema getJsonSchema(String schema) {
     return schemaFactory.getSchema(schema);
+  }
+
+  public static JsonNode valueToTree(Object object) {
+    return OBJECT_MAPPER.valueToTree(object);
+  }
+
+  public static ObjectNode createObject() {
+    return OBJECT_MAPPER.createObjectNode();
   }
 
   public static boolean hasAnnotation(JsonNode jsonNode, String annotation) {

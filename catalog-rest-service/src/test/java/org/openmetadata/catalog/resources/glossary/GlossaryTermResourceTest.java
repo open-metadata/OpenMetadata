@@ -300,12 +300,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Override
-  public CreateGlossaryTerm createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateGlossaryTerm createRequest(String name) {
     return new CreateGlossaryTerm()
         .withName(name)
         .withSynonyms(List.of("syn1", "syn2", "syn3"))
-        .withDescription(description)
-        .withDisplayName(displayName)
         .withGlossary(GLOSSARY1_REF)
         .withRelatedTerms(Arrays.asList(GLOSSARY1_TERM1_REF, GLOSSARY2_TERM1_REF))
         .withReviewers(List.of(USER_OWNER1));

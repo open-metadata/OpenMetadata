@@ -37,7 +37,6 @@ from metadata.generated.schema.api.tags.createTagCategory import (
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
@@ -47,7 +46,10 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
@@ -85,6 +87,9 @@ class MigrateBulkSink(BulkSink):
         self.role_entities = {}
         self.team_entities = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
+        self.database_service_map = {
+            service.value.lower(): service.value for service in DatabaseServiceType
+        }
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -150,14 +155,7 @@ class MigrateBulkSink(BulkSink):
                     table_id,
                     columns[i].get("description"),
                     f"/columns/{i}/description",
-                    "replace",
-                )
-                self.update_through_patch(
-                    Table,
-                    table_id,
-                    columns[i].get("description"),
-                    f"/columns/{i}/description",
-                    "replace",
+                    "add",
                 )
             if columns[i].get("tags"):
                 tags_list = columns[i].get("tags", [])
@@ -185,7 +183,7 @@ class MigrateBulkSink(BulkSink):
                     table_entity.databaseSchema.id.__root__,
                     table.get("database").get("description"),
                     self.DESCRIPTION_PATH,
-                    "replace",
+                    "add",
                 )
                 self._add_entity_owner_by_patch(
                     owner_dict=table.get("database").get("owner"),
@@ -197,7 +195,7 @@ class MigrateBulkSink(BulkSink):
                     table_entity.id.__root__,
                     table.get("description"),
                     self.DESCRIPTION_PATH,
-                    "replace",
+                    "add",
                 )
                 self._add_entity_owner_by_patch(
                     owner_dict=table.get("owner"),
@@ -224,9 +222,12 @@ class MigrateBulkSink(BulkSink):
                 logger.error(err)
                 self.status.failure("Table: {}".format(table.get("name")))
 
-    def _create_role(self, create_role: CreateRoleRequest) -> Role:
+    def _create_role(self, create_role) -> Role:
         try:
-            role = self.metadata.create_or_update(create_role)
+            create_req = CreateRoleRequest(
+                name=create_role.name, displayName=create_role.displayName, policies=[]
+            )
+            role = self.metadata.create_or_update(create_req)
             self.role_entities[role.name] = str(role.id.__root__)
             return role
         except Exception as err:
@@ -246,14 +247,13 @@ class MigrateBulkSink(BulkSink):
         if user_obj.roles:  # Roles can be optional
             role_ids = []
             for role in user_obj.roles.__root__:
-                try:
-                    role_entity = self.metadata.get_by_name(
-                        entity=Role, fqdn=str(role.name)
-                    )
-                except APIError:
-                    role_entity = self._create_role(role)
+                role_entity = self.metadata.get_by_name(
+                    entity=Role, fqdn=str(role.name)
+                )
                 if role_entity:
                     role_ids.append(role_entity.id)
+                else:
+                    role_entity = self._create_role(role)
         else:
             role_ids = None
 
@@ -280,8 +280,7 @@ class MigrateBulkSink(BulkSink):
                     team_ids.append(team_entity.id.__root__)
                 except Exception as err:
                     logger.error(err)
-        else:
-            team_ids = None
+            return team_ids
 
     def write_users(self, file):
         """
@@ -367,7 +366,7 @@ class MigrateBulkSink(BulkSink):
                     topic_obj.id.__root__,
                     topic.get("description"),
                     self.DESCRIPTION_PATH,
-                    "replace",
+                    "add",
                 )
                 tags_list = topic.get("tags", [])
                 self._add_tags_by_patch(
@@ -392,26 +391,27 @@ class MigrateBulkSink(BulkSink):
                 pipelines_obj: Pipeline = self.metadata.get_by_name(
                     Pipeline, pipeline.get("fullyQualifiedName")
                 )
-                self.update_through_patch(
-                    Pipeline,
-                    pipelines_obj.id.__root__,
-                    pipeline.get("description"),
-                    self.DESCRIPTION_PATH,
-                    "replace",
-                )
-                self._add_entity_owner_by_patch(
-                    owner_dict=pipeline.get("owner"),
-                    entity=Pipeline,
-                    entity_id=pipelines_obj.id.__root__,
-                )
-                tags_list = pipeline.get("tags", [])
-                self._add_tags_by_patch(
-                    tags_list=tags_list,
-                    entity=Pipeline,
-                    entity_id=pipelines_obj.id.__root__,
-                )
-                logger.info(f"Successfully ingested topic {pipeline.get('name')}")
-                self.status.records_written(f"Topic: {pipeline.get('name')}")
+                if pipelines_obj:
+                    self.update_through_patch(
+                        Pipeline,
+                        pipelines_obj.id.__root__,
+                        pipeline.get("description"),
+                        self.DESCRIPTION_PATH,
+                        "add",
+                    )
+                    self._add_entity_owner_by_patch(
+                        owner_dict=pipeline.get("owner"),
+                        entity=Pipeline,
+                        entity_id=pipelines_obj.id.__root__,
+                    )
+                    tags_list = pipeline.get("tags", [])
+                    self._add_tags_by_patch(
+                        tags_list=tags_list,
+                        entity=Pipeline,
+                        entity_id=pipelines_obj.id.__root__,
+                    )
+                    logger.info(f"Successfully ingested topic {pipeline.get('name')}")
+                    self.status.records_written(f"Topic: {pipeline.get('name')}")
 
             except (APIError, ValidationError) as err:
                 logger.error(f"Failed to ingest pipeline {pipeline.get('name')}")
@@ -653,7 +653,9 @@ class MigrateBulkSink(BulkSink):
                 database_service = CreateDatabaseServiceRequest(
                     name=databas_services.get("name"),
                     description=databas_services.get("description"),
-                    serviceType=databas_services.get("serviceType"),
+                    serviceType=self.database_service_map.get(
+                        databas_services.get("serviceType").lower(), "Mysql"
+                    ),
                     connection=service_obj.connection,
                     owner=owner_ref,
                 )

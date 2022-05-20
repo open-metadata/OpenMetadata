@@ -61,3 +61,15 @@ Cypress.Commands.add('loginByGoogleApi', () => {
     });
   });
 });
+
+Cypress.Commands.add('goToHomePage', () => {
+  cy.visit('/');
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  cy.get('[data-testid="closeWhatsNew"]').click();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  cy.get('[data-testid="tables"]').should('be.visible');
+});
+
+Cypress.Commands.add('clickOnLogo', () => {
+  cy.get('#openmetadata_logo > [data-testid="image"]').click();
+});

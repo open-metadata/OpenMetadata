@@ -70,7 +70,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           DBT catalog file to extract dbt models with their column schemas.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="catalog-file"
           id="catalog-file"
           name="catalog-file"
@@ -91,7 +91,7 @@ export const DBTLocalConfig: FunctionComponent<Props> = ({
           tables.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="manifest-file"
           id="manifest-file"
           name="manifest-file"

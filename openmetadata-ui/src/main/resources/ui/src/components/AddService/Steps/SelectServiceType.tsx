@@ -58,7 +58,7 @@ const SelectServiceType = ({
     <div>
       <Field>
         <select
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="service-category"
           id="serviceCategory"
           name="serviceCategory"

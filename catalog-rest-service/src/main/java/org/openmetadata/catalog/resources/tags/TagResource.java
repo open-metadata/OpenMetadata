@@ -38,6 +38,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -47,6 +48,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.tags.CreateTag;
+import org.openmetadata.catalog.api.tags.CreateTagCategory;
 import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -55,8 +58,6 @@ import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.CreateTag;
-import org.openmetadata.catalog.type.CreateTagCategory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -70,6 +71,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tags")
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";

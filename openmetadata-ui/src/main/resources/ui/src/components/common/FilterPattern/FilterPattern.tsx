@@ -63,7 +63,7 @@ const FilterPattern = ({
           <Field>
             <label className="tw-block tw-form-label">Include:</label>
             <input
-              className="tw-form-inputs tw-relative tw-px-2 tw-py-2"
+              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
               data-testid={`filter-pattern-includes-${type}`}
               placeholder="Enter a list of strings/regex patterns as a comma separated value"
               type="text"
@@ -74,7 +74,7 @@ const FilterPattern = ({
           <Field>
             <label className="tw-block tw-form-label">Exclude:</label>
             <input
-              className="tw-form-inputs tw-relative tw-px-2 tw-py-2"
+              className="tw-form-inputs tw-relative tw-form-inputs-padding tw-py-2"
               data-testid={`filter-pattern-excludes-${type}`}
               placeholder="Enter a list of strings/regex patterns as a comma separated value"
               type="text"

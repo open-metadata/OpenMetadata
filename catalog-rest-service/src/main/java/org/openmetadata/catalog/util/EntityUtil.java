@@ -286,11 +286,6 @@ public final class EntityUtil {
     return String.format("%s.%s", entityType, "version");
   }
 
-  /** Entity attribute extension name formed by `entityType.attributeName`. Example - `table.<customAttributeName>` */
-  public static String getAttributeExtensionPrefix(String entityType, String attributeName) {
-    return String.format("%s.%s", entityType, attributeName);
-  }
-
   public static Double getVersion(String extension) {
     String[] s = extension.split("\\.");
     String versionString = s[2] + "." + s[3];

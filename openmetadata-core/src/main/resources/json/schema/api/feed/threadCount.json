@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/threadCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Count of threads related to an entity",
+  "description": "This schema defines the type for reporting the count of threads related to an entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.api.feed.ThreadCount",
+  "definitions": {
+    "entityLinkThreadCount": {
+      "description": "Type used to return thread count per entity link.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.api.feed.EntityLinkThreadCount",
+      "properties": {
+        "count": {
+          "description": "Count of threads for the given entity link.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "entityLink": {
+          "$ref": "../../type/basic.json#/definitions/entityLink"
+        }
+      },
+      "required": ["count", "entityLink"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "totalCount": {
+      "description": "Total count of all the threads.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "counts": {
+      "description": "",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/entityLinkThreadCount"
+      }
+    }
+  },
+  "required": ["counts", "totalCount"],
+  "additionalProperties": false
+}
