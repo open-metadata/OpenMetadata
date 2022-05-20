@@ -16,7 +16,7 @@ From the **Data Quality** Tab you can create both Table and Column Tests:
 
 ![Write your first test](<../../docs/.gitbook/assets/image (4) (1) (1) (1) (1) (1).png>)
 
-![Sample form to create a column test](<../../docs/.gitbook/assets/image (16) (1) (1) (1) (2).png>)
+![Sample form to create a column test](<../../docs/.gitbook/assets/image (16) (1) (1) (1).png>)
 
 Directly from the **Profiler** tab, you can create a Column Test in the column of your choice:
 

@@ -32,19 +32,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
+![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
 Select Redshift as the service type and click _Next_.
 
-![](../../../.gitbook/assets/redshift-create-service.jpg)
+![](<../../../../.gitbook/assets/image (76).png>)
 
 ### 4. Name and Describe your Service
 
@@ -54,7 +54,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Redshift services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/create-service (1) (1).jpg>)
+![](<../../../../.gitbook/assets/image (64).png>)
 
 ### 5. Configure the Service Connection
 
@@ -104,13 +104,13 @@ You can find more information in the AWS [docs](https://docs.aws.amazon.com/reds
 
 After hitting Save you will see that your Redshift connector has been added successfully, and you can add an ingestion.
 
-![Service has been saved](<../../../.gitbook/assets/image (17) (3) (1) (1).png>)
+![](<../../../../.gitbook/assets/image (68).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (3).png>)
+![](<../../../../.gitbook/assets/image (50).png>)
 
 <details>
 
@@ -164,8 +164,6 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
-
 <details>
 
 <summary><strong>Schedule Options</strong></summary>
@@ -202,11 +200,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
+
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -214,7 +214,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

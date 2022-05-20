@@ -13,7 +13,7 @@ Configure and schedule Postgres **metadata** and **profiler** workflows using yo
 
 ## Requirements
 
-Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ### Python requirements
 
@@ -224,7 +224,7 @@ processor:
                 columnTestType: columnValuesToBeBetween
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../../data-quality/data-quality-overview/tests.md).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../data-quality/data-quality-overview/tests.md).
 
 #### Workflow Configuration
 
@@ -244,4 +244,4 @@ Note how instead of running `ingest`, we are using the `profile` command to sele
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).

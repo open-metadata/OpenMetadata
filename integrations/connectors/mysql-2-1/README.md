@@ -39,27 +39,25 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (15) (1).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
 Select Presto as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (71).png>)
+![](<../../../.gitbook/assets/image (24).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![](<../../../.gitbook/assets/image (5).png>)
-
-
+![](<../../../.gitbook/assets/image (72).png>)
 
 #### Service Name
 
@@ -105,13 +103,13 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![](<../../../.gitbook/assets/image (79).png>)
+![](<../../../.gitbook/assets/image (79) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](<../../../.gitbook/assets/image (80).png>)
+![](<../../../.gitbook/assets/image (80) (1).png>)
 
 <details>
 
@@ -201,7 +199,7 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![](<../../../.gitbook/assets/image (59).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 

@@ -1,18 +1,18 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the AzureSQL
+  In this section, we provide the guides and reference to use the MSSQL
   connector.
 ---
 
-# AzureSQL
+# MSSQL
 
-Configure and schedule AzureSQL **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule MSSQL **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
-* [Requirements](<README (1).md#requirements>)
-* [Metadata Ingestion](<README (1).md#metadata-ingestion>)
-* [Query Usage and Lineage Ingestion](<README (1).md#query-usage-and-lineage-ingestion>)
-* [Data Profiler and Quality Tests](<README (1).md#data-profiler-and-quality-tests>)
-* [DBT Integration](<README (1).md#dbt-integration>)
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](./#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](./#data-profiler-and-quality-tests)
+* [DBT Integration](./#dbt-integration)
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
@@ -40,19 +40,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
-Select `AzureSQL` as the service type and click _Next_.
+Select `MSSQL` as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.10.41 PM.png>)
+![](<../../../.gitbook/assets/image (4).png>)
 
 ### 4. Name and Describe your Service
 
@@ -60,15 +60,15 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other AzureSQL services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MSSQL services that you might be ingesting metadata from.
 
-![](<../../../docs/.gitbook/assets/image (52) (2).png>)
+![](<../../../.gitbook/assets/image (12).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your AzureSQL service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 4.59.14 PM.png>)
+![](<../../../docs/.gitbook/assets/image (55) (1).png>)
 
 <details>
 
@@ -122,13 +122,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.04 PM.png>)
+![](<../../../docs/.gitbook/assets/image (54) (3).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.13.24 PM.png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116).png>)
 
 <details>
 
@@ -174,7 +174,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (14) (1) (1).png>)
+![](<../../../docs/.gitbook/assets/image (14) (1).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -183,8 +183,6 @@ Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is
 Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
-
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (21) (1).png>)
 
 <details>
 
@@ -224,11 +222,13 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-17 at 3.14.12 PM.png>)
+![](<../../../docs/.gitbook/assets/image (18) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -236,7 +236,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (8) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

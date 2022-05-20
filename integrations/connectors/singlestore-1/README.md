@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the Salesforce
+  In this section, we provide the guides and references to use the SingleStore
   connector.
 ---
 
-# Salesforce
+# SingleStore
 
-Configure and schedule Salesforce **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule SingleStore **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,12 +15,12 @@ Configure and schedule Salesforce **metadata** and **profiler** workflows from t
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="../singlestore/run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](../singlestore/run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}
 
-{% content-ref url="../singlestore/run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](../singlestore/run-singlestore-connector-using-cli.md)
+{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
+[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -39,19 +39,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (127).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
-Select BigQuery as the service type and click _Next_.
+Select SingleStore as the service type and click _Next_.
 
-![](<../../../docs/.gitbook/assets/image (11).png>)
+![](<../../../.gitbook/assets/image (25).png>)
 
 ### 4. Name and Describe your Service
 
@@ -117,7 +117,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (39) (3).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (39) (2) (1).png>)
 
 <details>
 
@@ -171,8 +171,6 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (94).png>)
-
 <details>
 
 <summary><strong>Scheduling Options</strong></summary>
@@ -209,11 +207,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (126).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../docs/.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -221,7 +221,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -245,14 +245,14 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="../singlestore/run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](../singlestore/run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
+[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="../singlestore/run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](../singlestore/run-singlestore-connector-using-cli.md)
+{% content-ref url="run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}

@@ -24,7 +24,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../d
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../.gitbook/assets/image (9) (2) (2).png>)
+![Add Ingestion](<../.gitbook/assets/image (9) (2).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
@@ -32,7 +32,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1) (1) (1) (1) (1) (1).png>)
+![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1) (1).png>)
 
 <details>
 

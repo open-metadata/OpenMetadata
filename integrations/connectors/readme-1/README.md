@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the SingleStore
+  In this section, we provide the guides and references to use the Postgres
   connector.
 ---
 
-# SingleStore
+# Postgres
 
-Configure and schedule SingleStore **metadata** and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule Postgres **metadata** and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -15,19 +15,19 @@ Configure and schedule SingleStore **metadata** and **profiler** workflows from 
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-cli.md)
+{% content-ref url="run-postgres-connector-with-the-airflow-sdk.md" %}
+[run-postgres-connector-with-the-airflow-sdk.md](run-postgres-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-postgres-connector-with-the-cli.md" %}
+[run-postgres-connector-with-the-cli.md](run-postgres-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -39,19 +39,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
-Select SingleStore as the service type and click _Next_.
+Select Postgres as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (11).png>)
+![](<../../../.gitbook/assets/image (53).png>)
 
 ### 4. Name and Describe your Service
 
@@ -59,65 +59,51 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Postgres services that you might be ingesting metadata from.
 
-![Provide a Name and description for your Service](<../../../.gitbook/assets/image (39) (2).png>)
+![](<../../../.gitbook/assets/image (12).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Postgres service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (6).png>)
-
-Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
-
-![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1) (1) (1).png>)
+![](<../../../docs/.gitbook/assets/Screenshot 2022-04-28 at 3.01.26 PM.png>)
 
 <details>
 
-<summary>Connection Options</summary>
-
-**Host and Port**
-
-Host and Port of the data source.
+<summary>Metadata Ingestion Options</summary>
 
 **Username**
 
-Specify the User to connect to SingleStore. It should have enough privileges to read all the metadata.
+Enter the username of your `Postgres` user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
-**Password (Optional)**
+**Password**
 
-SingleStore instance password.
+Enter the password for your Postgres user in the _Password_ field.
 
-**Database (Optional)**
+**Host and Port**
 
-The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+Enter the fully qualified hostname and port number for your Postgres deployment in the _Host and Port_ field.
 
 **Connection Options (Optional)**
 
-Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to Postgres during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
-
-In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
-
-`"authenticator" : "sso_login_url"`
-
-In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
-
-`"authenticator" : "externalbrowser"`
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Postgres during the connection. These details must be added as Key-Value pairs.
 
 </details>
 
-![Service has been created](<../../../.gitbook/assets/image (17).png>)
+After hitting Save you will see that your connector has been added successfully, and you can add an ingestion.
+
+![](<../../../docs/.gitbook/assets/Screenshot 2022-04-28 at 3.17.01 PM.png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (3).png>)
+![](<../../../docs/.gitbook/assets/Screenshot 2022-04-28 at 6.05.10 PM.png>)
 
 <details>
 
@@ -171,8 +157,6 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
-
 <details>
 
 <summary><strong>Scheduling Options</strong></summary>
@@ -209,11 +193,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
+![](<../../../docs/.gitbook/assets/Screenshot 2022-04-28 at 3.20.27 PM.png>)
 
 ### 9. Workflow Deployment Error
 
@@ -221,38 +207,36 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
-
-From the _Connection_ tab, you can also _Edit_ the Service if needed.
+![](<../../../docs/.gitbook/assets/image (8) (1).png>)
 
 ## Data Profiler and Quality Tests
 
 You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-{% content-ref url="../../../data-quality/profiler-workflow.md" %}
-[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% content-ref url="../../../docs/data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../docs/data-quality/profiler-workflow.md)
 {% endcontent-ref %}
 
 ## DBT Integration
 
 You can learn more about how to ingest DBT models' definitions and their lineage below:
 
-{% content-ref url="../../../../data-lineage/dbt-integration/" %}
-[dbt-integration](../../../../data-lineage/dbt-integration/)
+{% content-ref url="../../../data-lineage/dbt-integration/" %}
+[dbt-integration](../../../data-lineage/dbt-integration/)
 {% endcontent-ref %}
 
 ## Run using Airflow SDK
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-postgres-connector-with-the-airflow-sdk.md" %}
+[run-postgres-connector-with-the-airflow-sdk.md](run-postgres-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](../../../../integrations/connectors/singlestore-1/run-singlestore-connector-using-cli.md)
+{% content-ref url="run-postgres-connector-with-the-cli.md" %}
+[run-postgres-connector-with-the-cli.md](run-postgres-connector-with-the-cli.md)
 {% endcontent-ref %}
