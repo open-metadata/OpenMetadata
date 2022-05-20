@@ -1,0 +1,26 @@
+source:
+  type: azuresql
+  serviceName: azuresql
+  serviceConnection:
+    config:
+      type: AzureSQL
+      hostPort: hostPort
+      database: database_name
+      username: username
+      password: password
+      driver: ODBC Driver 17 for SQL Server
+  sourceConfig:
+    config:
+      schemaFilterPattern:
+        excludes:
+        - mysql.*
+        - information_schema.*
+        - performance_schema.*
+        - sys.*
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

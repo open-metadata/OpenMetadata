@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -33,6 +34,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bot;
+import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
@@ -53,41 +55,16 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.BotRepository.BotEntityInterface;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
-import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
-import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository.IngestionPipelineEntityInterface;
-import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
-import org.openmetadata.catalog.jdbi3.MlModelRepository.MlModelEntityInterface;
-import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
-import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
-import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
-import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
-import org.openmetadata.catalog.jdbi3.WebhookRepository.WebhookEntityInterface;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
@@ -199,6 +176,9 @@ public interface CollectionDAO {
   @CreateSqlObject
   WebhookDAO webhookDAO();
 
+  @CreateSqlObject
+  TypeEntityDAO typeEntityDAO();
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {
@@ -213,11 +193,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Dashboard entity) {
-      return new DashboardEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -236,11 +211,6 @@ public interface CollectionDAO {
     default Class<DashboardService> getEntityClass() {
       return DashboardService.class;
     }
-
-    @Override
-    default EntityReference getEntityReference(DashboardService entity) {
-      return new DashboardServiceEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface DatabaseDAO extends EntityDAO<Database> {
@@ -257,11 +227,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Database entity) {
-      return new DatabaseEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -280,11 +245,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(DatabaseSchema entity) {
-      return new DatabaseSchemaEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface DatabaseServiceDAO extends EntityDAO<DatabaseService> {
@@ -302,11 +262,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(DatabaseService entity) {
-      return new DatabaseServiceEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface StorageServiceDAO extends EntityDAO<StorageService> {
@@ -323,11 +278,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "name";
-    }
-
-    @Override
-    default EntityReference getEntityReference(StorageService entity) {
-      return new StorageServiceEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -349,57 +299,62 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@Bind("id") String id, @Bind("extension") String extension);
 
-    @RegisterRowMapper(EntityVersionMapper.class)
+    @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
             + "LIKE CONCAT (:extensionPrefix, '.%')")
-    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
-
-    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
-    String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
+    List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     int deleteAll(@Bind("id") String id);
   }
 
   class EntityVersionPair {
-    private final Double version;
-    private final String entityJson;
+    @Getter private final Double version;
+    @Getter private final String entityJson;
 
-    public Double getVersion() {
-      return version;
-    }
-
-    public String getEntityJson() {
-      return entityJson;
-    }
-
-    public EntityVersionPair(Double version, String json) {
-      this.version = version;
-      this.entityJson = json;
+    public EntityVersionPair(ExtensionRecord record) {
+      this.version = EntityUtil.getVersion(record.getExtensionName());
+      this.entityJson = record.getExtensionJson();
     }
   }
 
-  class EntityVersionMapper implements RowMapper<EntityVersionPair> {
+  class ExtensionRecord {
+    @Getter private final String extensionName;
+    @Getter private final String extensionJson;
+
+    public ExtensionRecord(String extensionName, String extensionJson) {
+      this.extensionName = extensionName;
+      this.extensionJson = extensionJson;
+    }
+  }
+
+  class ExtensionMapper implements RowMapper<ExtensionRecord> {
     @Override
-    public EntityVersionPair map(ResultSet rs, StatementContext ctx) throws SQLException {
-      Double version = EntityUtil.getVersion(rs.getString("extension"));
-      return new EntityVersionPair(version, rs.getString("json"));
+    public ExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ExtensionRecord(rs.getString("extension"), rs.getString("json"));
     }
   }
 
   interface EntityRelationshipDAO {
     default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation);
+      return insert(fromId, toId, fromEntity, toEntity, relation, null);
+    }
+
+    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) ON CONFLICT (fromId, toId, relation) DO NOTHING",
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
         connectionType = POSTGRES)
     int insert(
         @Bind("fromId") String fromId,
@@ -407,6 +362,25 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
+        connectionType = POSTGRES)
+    int insert(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("json") String json);
 
     //
     // Find to operations
@@ -418,17 +392,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT toId, toEntity FROM entity_relationship "
-            + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
-            + "ORDER BY toId")
-    @RegisterRowMapper(ToEntityReferenceMapper.class)
-    List<EntityReference> findToReference(
-        @Bind("fromId") String fromId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("relation") int relation,
-        @Bind("toEntity") String toEntity);
 
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
@@ -471,17 +434,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
-
-    @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
-            + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
-            + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFromEntity(
-        @Bind("toId") String toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation,
-        @Bind("fromEntity") String fromEntity);
 
     //
     // Delete Operations
@@ -760,18 +712,22 @@ public interface CollectionDAO {
   interface FieldRelationshipDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation)",
+            "INSERT IGNORE INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation) VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation) ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
+            "INSERT INTO field_relationship(fromFQN, toFQN, fromType, toType, relation, json) "
+                + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, (:json :: jsonb)) "
+                + "ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
         connectionType = POSTGRES)
-    void insert(
+    int insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -845,6 +801,16 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE from field_relationship <cond>")
     void deleteAllByPrefixInternal(@Define("cond") String cond);
 
+    @SqlUpdate(
+        "DELETE from field_relationship WHERE fromFQN = :fromFQN AND toFQN = :toFQN AND fromType = :fromType "
+            + "AND toType = :toType AND relation = :relation")
+    void delete(
+        @Bind("fromFQN") String fromFQN,
+        @Bind("toFQN") String toFQN,
+        @Bind("fromType") String fromType,
+        @Bind("toType") String toType,
+        @Bind("relation") int relation);
+
     class ToFieldMapper implements RowMapper<List<String>> {
       @Override
       public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -875,11 +841,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(Bot entity) {
-      return new BotEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -896,11 +857,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Chart entity) {
-      return new ChartEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -919,11 +875,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(MessagingService entity) {
-      return new MessagingServiceEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface MetricsDAO extends EntityDAO<Metrics> {
@@ -940,11 +891,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Metrics entity) {
-      return new MetricsEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -963,11 +909,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(MlModel entity) {
-      return new MlModelEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface GlossaryDAO extends EntityDAO<Glossary> {
@@ -984,11 +925,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "name";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Glossary entity) {
-      return new GlossaryEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1007,11 +943,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(GlossaryTerm entity) {
-      return new GlossaryTermEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -1028,11 +959,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(IngestionPipeline entity) {
-      return new IngestionPipelineEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1051,11 +977,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(PipelineService entity) {
-      return new PipelineServiceEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface PolicyDAO extends EntityDAO<Policy> {
@@ -1072,11 +993,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Policy entity) {
-      return new PolicyEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1095,11 +1011,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(Report entity) {
-      return new ReportEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface TableDAO extends EntityDAO<Table> {
@@ -1117,11 +1028,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(Table entity) {
-      return new TableEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface LocationDAO extends EntityDAO<Location> {
@@ -1138,11 +1044,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Location entity) {
-      return new LocationEntityInterface(entity).getEntityReference();
     }
 
     default int listPrefixesCount(String table, String nameColumn, String fqn, String service) {
@@ -1221,11 +1122,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "fullyQualifiedName";
     }
-
-    @Override
-    default EntityReference getEntityReference(Pipeline entity) {
-      return new PipelineEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface WebhookDAO extends EntityDAO<Webhook> {
@@ -1245,8 +1141,8 @@ public interface CollectionDAO {
     }
 
     @Override
-    default EntityReference getEntityReference(Webhook entity) {
-      return new WebhookEntityInterface(entity).getEntityReference();
+    default boolean supportsSoftDelete() {
+      return false;
     }
   }
 
@@ -1265,11 +1161,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(TagCategory entity) {
-      return null;
-    }
   }
 
   interface TagDAO extends EntityDAO<Tag> {
@@ -1286,11 +1177,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Tag entity) {
-      return null;
     }
 
     @SqlUpdate("DELETE FROM tag where fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%')")
@@ -1387,11 +1273,6 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM role_entity WHERE defaultRole = TRUE")
     List<String> getDefaultRoles();
-
-    @Override
-    default EntityReference getEntityReference(Role entity) {
-      return new RoleEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -1409,11 +1290,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @Override
-    default EntityReference getEntityReference(Team entity) {
-      return new TeamEntityInterface(entity).getEntityReference();
-    }
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
@@ -1430,11 +1306,6 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() {
       return "fullyQualifiedName";
-    }
-
-    @Override
-    default EntityReference getEntityReference(Topic entity) {
-      return new TopicEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -1582,11 +1453,6 @@ public interface CollectionDAO {
       return "name";
     }
 
-    @Override
-    default EntityReference getEntityReference(User entity) {
-      return new UserEntityInterface(entity).getEntityReference();
-    }
-
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
 
@@ -1709,5 +1575,27 @@ public interface CollectionDAO {
             + "eventType = :eventType AND eventTime >= :timestamp "
             + "ORDER BY eventTime ASC")
     List<String> listWithoutEntityFilter(@Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
+  }
+
+  interface TypeEntityDAO extends EntityDAO<Type> {
+    @Override
+    default String getTableName() {
+      return "type_entity";
+    }
+
+    @Override
+    default Class<Type> getEntityClass() {
+      return Type.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
   }
 }

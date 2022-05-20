@@ -164,7 +164,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
         {isDisplayNameEdit ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
-              className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="displayName"
               id="displayName"
               name="displayName"
@@ -279,7 +279,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const getBotsTokenExpiryDate = () => {
     if (botsTokenExpiry) {
       return (
-        <p className="tw-text-grey-muted tw-mt-2 tw-italic">
+        <p
+          className="tw-text-grey-muted tw-mt-2 tw-italic"
+          data-testid="token-expiry">
           Expires on {moment(botsTokenExpiry).format('ddd Do MMMM, YYYY')}
         </p>
       );
@@ -291,8 +293,8 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const centerLayout = () => {
     if (generateToken) {
       return (
-        <div className="tw-mt-4">
-          <div data-testid="filter-dropdown">
+        <div className="tw-mt-4" data-testid="generate-token-form">
+          <div data-testid="expiry-dropdown">
             <label htmlFor="expiration">{requiredField('Expiration')}</label>
             <Select
               defaultValue={{ label: '7 days', value: '7' }}
@@ -315,7 +317,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               Cancel
             </Button>
             <Button
-              data-testid="confirm-button"
+              data-testid="generate-button"
               size="regular"
               theme="primary"
               type="submit"
@@ -334,6 +336,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               <input
                 disabled
                 className="tw-form-inputs tw-p-1.5"
+                data-testid="token"
                 placeholder="Generate new token..."
                 type="password"
                 value={botsToken}
@@ -345,7 +348,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
         );
       } else {
         return (
-          <div className="tw-no-description tw-text-sm tw-mt-4">
+          <div
+            className="tw-no-description tw-text-sm tw-mt-4"
+            data-testid="no-token">
             No token available
           </div>
         );
@@ -355,7 +360,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getCenterLayout = () => {
     return (
-      <div className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4">
+      <div
+        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4"
+        data-testid="center-panel">
         <div className="tw-flex tw-justify-between tw-items-center">
           <h6 className="tw-mb-2 tw-self-center">
             {generateToken ? 'Generate JWT token' : 'JWT Token'}
@@ -363,6 +370,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
           {!generateToken ? (
             <div className="tw-flex">
               <Button
+                data-testid="generate-token"
                 size="small"
                 theme="primary"
                 variant="outlined"
@@ -372,7 +380,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               {botsToken ? (
                 <Button
                   className="tw-px-2 tw-py-0.5 tw-font-medium tw-ml-2 tw-rounded-md tw-border-error hover:tw-border-error tw-text-error hover:tw-text-error focus:tw-outline-none"
-                  data-testid="delete-button"
+                  data-testid="revoke-button"
                   size="custom"
                   variant="outlined"
                   onClick={() => setIsRevokingToken(true)}>

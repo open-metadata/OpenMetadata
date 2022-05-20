@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -64,7 +65,7 @@ public class RoleEvaluator {
     }
   }
 
-  public boolean hasPermissions(List<EntityReference> roles, Object entity, MetadataOperation operation) {
+  public boolean hasPermissions(List<EntityReference> roles, EntityInterface entity, MetadataOperation operation) {
     // Role based permission
     for (EntityReference roleRef : roles) {
       List<EntityReference> policies = roleToPolicies.get(roleRef.getId());
@@ -77,7 +78,7 @@ public class RoleEvaluator {
     return false;
   }
 
-  public List<MetadataOperation> getAllowedOperations(List<EntityReference> roles, Object entity) {
+  public List<MetadataOperation> getAllowedOperations(List<EntityReference> roles, EntityInterface entity) {
     List<MetadataOperation> list = new ArrayList<>();
     for (EntityReference roleRef : roles) {
       List<EntityReference> policies = roleToPolicies.get(roleRef.getId());

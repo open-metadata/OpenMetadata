@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -320,7 +319,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
-    GlossaryTerm term = getGlossaryTerm(securityContext, create);
+    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
@@ -364,7 +363,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
-    GlossaryTerm term = getGlossaryTerm(securityContext, create);
+    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
@@ -389,25 +388,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Glossary Term Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) {
-    return new GlossaryTerm()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
+    return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withGlossary(create.getGlossary())
         .withParent(create.getParent())
         .withRelatedTerms(create.getRelatedTerms())
         .withReferences(create.getReferences())
         .withReviewers(create.getReviewers())
-        .withTags(create.getTags())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

@@ -21,6 +21,7 @@ import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import {
   JoinedWith,
   Table,
@@ -371,6 +372,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
       key: 'Tier',

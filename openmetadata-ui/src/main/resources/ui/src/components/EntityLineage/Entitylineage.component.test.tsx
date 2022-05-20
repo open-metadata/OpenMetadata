@@ -146,6 +146,7 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
   onNodeMouseEnter: jest.fn(),
   onNodeMouseLeave: jest.fn(),
   onNodeMouseMove: jest.fn(),
+  getUniqueFlowElements: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({

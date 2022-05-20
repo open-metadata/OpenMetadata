@@ -1,0 +1,163 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/tags/tagCategory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tag Category",
+  "description": "This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.TagCategory",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "definitions": {
+    "tagName": {
+      "description": "Name of the tag.",
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 25
+    },
+    "tagCategoryType": {
+      "description": "Type of tag category.",
+      "type": "string",
+      "enum": ["Descriptive", "Classification"],
+      "javaEnums": [
+        {
+          "name": "Descriptive",
+          "description": "Tag category used for describing an entity. Example - column is of of type User.Address."
+        },
+        {
+          "name": "Classification",
+          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive."
+        }
+      ]
+    },
+    "tag": {
+      "javaType": "org.openmetadata.catalog.entity.tags.Tag",
+      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+      "properties": {
+        "id": {
+          "description": "Unique identifier of this entity instance.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "name": {
+          "description": "Name of the tag.",
+          "$ref": "#/definitions/tagName"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this tag category.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "Unique name of the tag of format Category.PrimaryTag.SecondaryTag.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Unique name of the tag category.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Metadata version of the entity.",
+          "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+        },
+        "updatedAt": {
+          "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "updatedBy": {
+          "description": "User who made the update.",
+          "type": "string"
+        },
+        "href": {
+          "description": "Link to the resource corresponding to the tag.",
+          "$ref": "../../type/basic.json#/definitions/href"
+        },
+        "usageCount": {
+          "description": "Count of how many times this tag and children tags are used.",
+          "type": "integer"
+        },
+        "deprecated": {
+          "description": "If the tag is deprecated.",
+          "type": "boolean",
+          "default": false
+        },
+        "deleted": {
+          "description": "When `true` indicates the entity has been soft deleted.",
+          "type": "boolean",
+          "default": false
+        },
+        "changeDescription": {
+          "description": "Change that lead to this version of the entity.",
+          "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+        },
+        "children": {
+          "description": "Tags under this tag group or empty for tags at the leaf level.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tag"
+          }
+        }
+      },
+      "required": ["name", "description"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/definitions/tagName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this tag category.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the tag category.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "categoryType": {
+      "$ref": "#/definitions/tagCategoryType"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to the tag category.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "usageCount": {
+      "description": "Count of how many times the tags from this tag category are used.",
+      "type": "integer"
+    },
+    "children": {
+      "description": "Tags under this category.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tag"
+      }
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["name", "description", "categoryType"],
+  "additionalProperties": false
+}

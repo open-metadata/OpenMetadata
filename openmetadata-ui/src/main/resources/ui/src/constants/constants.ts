@@ -31,6 +31,7 @@ export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';

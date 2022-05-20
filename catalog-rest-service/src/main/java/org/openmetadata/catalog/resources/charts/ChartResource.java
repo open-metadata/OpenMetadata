@@ -271,7 +271,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
-    Chart chart = getChart(securityContext, create);
+    Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, chart, ADMIN | BOT);
   }
 
@@ -314,7 +314,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
       throws IOException {
-    Chart chart = getChart(securityContext, create);
+    Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, chart, ADMIN | BOT | OWNER);
   }
 
@@ -380,19 +380,12 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Chart getChart(SecurityContext securityContext, CreateChart create) {
-    return new Chart()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private Chart getChart(CreateChart create, String user) {
+    return copy(new Chart(), create, user)
         .withService(create.getService())
         .withChartType(create.getChartType())
         .withChartUrl(create.getChartUrl())
         .withTables(create.getTables())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

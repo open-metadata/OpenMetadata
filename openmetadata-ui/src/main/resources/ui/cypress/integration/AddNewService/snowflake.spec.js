@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-  testServiceSampleData,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
@@ -32,7 +28,7 @@ describe('Snowflake Ingestion', () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('TESTSCHEMA');
+        .type('test_schema');
     };
 
     testServiceCreationAndIngestion(
@@ -41,6 +37,5 @@ describe('Snowflake Ingestion', () => {
       addIngestionInput
     );
 
-    testServiceSampleData('TESTDB', 'TESTSCHEMA', 'PERSONS');
   });
 });

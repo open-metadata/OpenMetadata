@@ -26,12 +26,9 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.services.StorageService;
-import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.storage.StorageServiceResource.StorageServiceList;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.StorageServiceType;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -48,12 +45,12 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
     CreateStorageService createService =
         new CreateStorageService().withName("s3").withServiceType(StorageServiceType.S3);
     StorageService service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    AWS_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
+    AWS_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
 
     // Create GCP storage service, GCS
     createService.withName("gs").withServiceType(StorageServiceType.GCS);
     service = storageServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
-    GCP_STORAGE_SERVICE_REFERENCE = new StorageServiceEntityInterface(service).getEntityReference();
+    GCP_STORAGE_SERVICE_REFERENCE = service.getEntityReference();
   }
 
   @Test
@@ -72,23 +69,15 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public CreateStorageService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
-    return new CreateStorageService()
-        .withName(name)
-        .withServiceType(StorageServiceType.S3)
-        .withOwner(owner)
-        .withDescription(description);
+  public CreateStorageService createRequest(String name) {
+    return new CreateStorageService().withName(name).withServiceType(StorageServiceType.S3);
   }
 
   @Override
   public void validateCreatedEntity(
       StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        getPrincipal(authHeaders),
-        createRequest.getOwner());
+        service, createRequest.getDescription(), getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
   }
 
@@ -98,27 +87,22 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   }
 
   @Override
-  public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
-    return new StorageServiceEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<StorageService> validateGetWithDifferentFields(StorageService service, boolean byName)
+  public StorageService validateGetWithDifferentFields(StorageService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(service);
+    return service;
   }
 
   @Override

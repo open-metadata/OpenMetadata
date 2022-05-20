@@ -27,9 +27,6 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        job: [ 0, 1, 2, 3 ]
     environment: cypress
     steps:
       - name: Checkout
@@ -74,6 +71,22 @@ jobs:
           CYPRESS_REDSHIFT_USERNAME: ${{ secrets.CYPRESS_REDSHIFT_USERNAME }}
           CYPRESS_REDSHIFT_PASSWORD: ${{ secrets.CYPRESS_REDSHIFT_PASSWORD }}
           CYPRESS_REDSHIFT_DATABASE: ${{ secrets.CYPRESS_REDSHIFT_DATABASE }}
+          CYPRESS_METABASE_USERNAME: ${{ secrets.CYPRESS_METABASE_USERNAME }}
+          CYPRESS_METABASE_PASSWORD: ${{ secrets.CYPRESS_METABASE_PASSWORD }}
+          CYPRESS_METABASE_DB_SERVICE_NAME: ${{ secrets.CYPRESS_METABASE_DB_SERVICE_NAME }}
+          CYPRESS_METABASE_HOST_PORT: ${{ secrets.CYPRESS_METABASE_HOST_PORT }}
+          CYPRESS_SUPERSET_USERNAME: ${{ secrets.CYPRESS_SUPERSET_USERNAME }}
+          CYPRESS_SUPERSET_PASSWORD: ${{ secrets.CYPRESS_SUPERSET_PASSWORD }}
+          CYPRESS_SUPERSET_HOST_PORT: ${{ secrets.CYPRESS_SUPERSET_HOST_PORT }}
+          CYPRESS_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.CYPRESS_KAFKA_BOOTSTRAP_SERVERS }}
+          CYPRESS_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.CYPRESS_KAFKA_SCHEMA_REGISTRY_URL }}
+          CYPRESS_GLUE_ACCESS_KEY: ${{ secrets.CYPRESS_GLUE_ACCESS_KEY }}
+          CYPRESS_GLUE_SECRET_KEY: ${{ secrets.CYPRESS_GLUE_SECRET_KEY }}
+          CYPRESS_GLUE_AWS_REGION: ${{ secrets.CYPRESS_GLUE_AWS_REGION }}
+          CYPRESS_GLUE_ENDPOINT: ${{ secrets.CYPRESS_GLUE_ENDPOINT }}
+          CYPRESS_GLUE_STORAGE_SERVICE: ${{ secrets.CYPRESS_GLUE_STORAGE_SERVICE }}
+          CYPRESS_GLUE_PIPELINE_SERVICE: ${{ secrets.CYPRESS_GLUE_PIPELINE_SERVICE }}
+
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

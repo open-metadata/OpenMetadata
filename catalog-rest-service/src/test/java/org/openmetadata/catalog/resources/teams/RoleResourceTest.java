@@ -43,13 +43,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResource.RoleList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -63,15 +60,15 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public void setupRoles(TestInfo test) throws HttpResponseException {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     DATA_CONSUMER_ROLE =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_CONSUMER_ROLE_REFERENCE = new RoleEntityInterface(DATA_CONSUMER_ROLE).getEntityReference();
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER_ROLE_REFERENCE = DATA_CONSUMER_ROLE.getEntityReference();
 
     DATA_STEWARD_ROLE =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
-    DATA_STEWARD_ROLE_REFERENCE = new RoleEntityInterface(DATA_STEWARD_ROLE).getEntityReference();
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+    DATA_STEWARD_ROLE_REFERENCE = DATA_STEWARD_ROLE.getEntityReference();
 
     ROLE1 = roleResourceTest.createEntity(roleResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    ROLE1_REFERENCE = new RoleEntityInterface(ROLE1).getEntityReference();
+    ROLE1_REFERENCE = ROLE1.getEntityReference();
   }
 
   @Test
@@ -177,7 +174,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  public EntityInterface<Role> validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
+  public Role validateGetWithDifferentFields(Role role, boolean byName) throws HttpResponseException {
     // Assign two arbitrary users this role for testing.
     if (role.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
@@ -207,7 +204,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
     role =
         byName
-            ? getEntityByName(role.getName(), null, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(role.getName(), null, null, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicies(), role.getUsers());
@@ -222,36 +219,25 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     TestUtils.validateEntityReferences(role.getPolicies());
     TestUtils.validateEntityReferences(role.getTeams(), true);
     TestUtils.validateEntityReferences(role.getUsers(), true);
-    return getEntityInterface(role);
+    return role;
   }
 
   @Override
-  public CreateRole createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateRole()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withPolicies(DATA_CONSUMER_ROLE.getPolicies());
+  public CreateRole createRequest(String name) {
+    return new CreateRole().withName(name).withPolicies(DATA_CONSUMER_ROLE.getPolicies());
   }
 
   @Override
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(role), createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(role, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEntityReferenceList(role.getPolicies(), createRequest.getPolicies());
   }
 
   @Override
   public void compareEntities(Role expected, Role updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(updated), expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    validateCommonEntityFields(updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
-  }
-
-  @Override
-  public EntityInterface<Role> getEntityInterface(Role entity) {
-    return new RoleEntityInterface(entity);
   }
 
   @Override

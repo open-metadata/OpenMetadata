@@ -27,10 +27,7 @@ import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import {
-  getExplorePathWithSearch,
-  TERM_ADMIN,
-} from '../../constants/constants';
+import { TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { Ownership } from '../../enums/mydata.enum';
 import { Role } from '../../generated/entity/teams/role';
@@ -41,15 +38,16 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
+  getExploreLinkByFilter,
   getNonDeletedTeams,
-  getOwnerIds,
 } from '../../utils/CommonUtils';
+import { filterEntityAssets } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
-import Avatar from '../common/avatar/Avatar';
 import Description from '../common/description/Description';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
@@ -198,7 +196,7 @@ const Users = ({
           {isDisplayNameEdit ? (
             <div className="tw-flex tw-items-center tw-gap-1">
               <input
-                className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -528,12 +526,15 @@ const Users = ({
               <img
                 alt="profile"
                 className="tw-w-full"
+                referrerPolicy="no-referrer"
                 src={userData.profile?.images?.image}
               />
             </div>
           ) : (
-            <Avatar
-              name={userData?.displayName || userData.name}
+            <ProfilePicture
+              displayName={userData?.displayName || userData.name}
+              id={userData?.id || ''}
+              name={userData?.name || ''}
               textClass="tw-text-5xl"
               width="112"
             />
@@ -610,14 +611,6 @@ const Users = ({
     }
   };
 
-  const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
-      filter,
-      AppState.userDetails,
-      AppState.nonSecureUserDetails
-    ).join()}`;
-  };
-
   useEffect(() => {
     fetchMoreFeed(isInView as boolean, paging, isFeedLoading);
   }, [isInView, paging, isFeedLoading]);
@@ -636,20 +629,26 @@ const Users = ({
   }, [userData]);
 
   const getRightPanel = useCallback(() => {
+    const ownData = filterEntityAssets(userData?.owns || []);
+
     return (
       <div className="tw-mt-4" data-testid="right-pannel">
         <EntityList
-          entityList={userData?.owns as unknown as FormatedTableData[]}
+          entityList={ownData as unknown as FormatedTableData[]}
           headerText={
             <div className="tw-flex tw-justify-between tw-items-center">
               My Data
-              {userData?.owns?.length ? (
+              {ownData.length ? (
                 <Link
                   className="tw-ml-1"
                   data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.OWNER,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({userData?.owns?.length})</span>
+                    View All <span>({ownData.length})</span>
                   </span>
                 </Link>
               ) : null}
@@ -668,7 +667,11 @@ const Users = ({
                 <Link
                   className="tw-ml-1"
                   data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
+                  to={getExploreLinkByFilter(
+                    Ownership.FOLLOWERS,
+                    AppState.userDetails,
+                    AppState.nonSecureUserDetails
+                  )}>
                   <span className="link-text tw-font-normal tw-text-xs">
                     View All <span>({userData?.follows?.length})</span>
                   </span>

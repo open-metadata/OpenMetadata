@@ -98,7 +98,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           AWS Access Key ID.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-access-key-id"
           id="aws-access-key-id"
           name="aws-access-key-id"
@@ -118,7 +118,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           AWS Secret Access Key.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-secret-access-key-id"
           id="aws-secret-access-key-id"
           name="aws-secret-access-key-id"
@@ -136,7 +136,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           AWS Region.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-region"
           id="aws-region"
           name="aws-region"
@@ -156,7 +156,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           AWS Session Token.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="aws-session-token"
           id="aws-session-token"
           name="aws-session-token"
@@ -175,7 +175,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           EndPoint URL for the AWS.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="endpoint-url"
           id="endpoint-url"
           name="endpoint-url"
@@ -195,7 +195,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           Name of the bucket where the dbt files are stored.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-bucket-name"
           id="dbt-bucket-name"
           name="dbt-bucket-name"
@@ -214,7 +214,7 @@ export const DBTS3Config: FunctionComponent<Props> = ({
           Path of the folder where the dbt files are stored.
         </p>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-object-prefix"
           id="dbt-object-prefix"
           name="dbt-object-prefix"

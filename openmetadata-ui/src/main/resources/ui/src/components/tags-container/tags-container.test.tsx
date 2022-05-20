@@ -36,6 +36,16 @@ const tagListWithTier = [
 const onCancel = jest.fn();
 const onSelectionChange = jest.fn();
 
+jest.mock('../../utils/UserDataUtils', () => {
+  return {
+    fetchAllUsers: jest.fn(),
+    fetchUserProfilePic: jest.fn(),
+    getUserDataFromOidc: jest.fn(),
+    getUserProfilePic: jest.fn(),
+    matchUserDetails: jest.fn(),
+  };
+});
+
 jest.mock('../tags/tags', () => {
   return jest.fn().mockReturnValue(<p>tags</p>);
 });

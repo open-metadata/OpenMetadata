@@ -119,4 +119,16 @@ public final class CatalogExceptionMessage {
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
   }
+
+  public static String invalidEntity(String entity) {
+    return String.format("Invalid entity %s", entity);
+  }
+
+  public static String unknownCustomField(String fieldName) {
+    return String.format("Unknown custom field %s", fieldName);
+  }
+
+  public static String jsonValidationError(String fieldName, String validationMessages) {
+    return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
+  }
 }

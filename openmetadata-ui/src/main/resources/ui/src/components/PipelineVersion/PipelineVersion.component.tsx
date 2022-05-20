@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { isEven } from '../../utils/CommonUtils';
@@ -141,6 +142,8 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',

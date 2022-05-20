@@ -1,0 +1,25 @@
+source:
+  type: sample-entity
+  config:
+    no_of_services: 1
+    no_of_databases: 100
+    no_of_tables: 100
+    no_of_columns: 5
+    no_of_dashboards: 100
+    no_of_charts: 10
+    no_of_topics: 100
+    generate_tables: 'false'
+    generate_dashboards: 'false'
+    generate_topics: 'true'
+    host_port: ''
+    service_type: MySQL
+    service_name: MySQL
+    scheme: local_mysql
+sink:
+  type: metadata-rest
+  config: {}
+metadata_server:
+  type: metadata-server
+  config:
+    api_endpoint: http://localhost:8585/api
+    auth_provider_type: no-auth

@@ -1,0 +1,234 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/pipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline",
+  "description": "This schema defines the Pipeline entity. A pipeline enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Pipeline",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "definitions": {
+    "statusType": {
+      "javaType": "org.openmetadata.catalog.type.StatusType",
+      "description": "Enum defining the possible Status.",
+      "type": "string",
+      "enum": ["Successful", "Failed", "Pending"],
+      "javaEnums": [
+        {
+          "name": "Successful"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Pending"
+        }
+      ]
+    },
+    "taskStatus": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Status",
+      "description": "This schema defines a time series of the status of a Pipeline or Task.",
+      "properties": {
+        "name": {
+          "description": "Name of the Task.",
+          "type": "string"
+        },
+        "executionStatus": {
+          "description": "Status at a specific execution date.",
+          "$ref": "#/definitions/statusType"
+        }
+      },
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Task",
+      "properties": {
+        "name": {
+          "description": "Name that identifies this task instance uniquely.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of this Task.",
+          "type": "string"
+        },
+        "taskUrl": {
+          "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
+          "type": "string",
+          "format": "uri"
+        },
+        "downstreamTasks": {
+          "description": "All the tasks that are downstream of this task.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
+        "taskType": {
+          "description": "Type of the Task. Usually refers to the class it implements.",
+          "type": "string"
+        },
+        "taskSQL": {
+          "description": "SQL used in the task. Can be used to determine the lineage.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "startDate": {
+          "description": "start date for the task.",
+          "type": "string"
+        },
+        "endDate": {
+          "description": "end date for the task.",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags for this task.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "pipelineStatus": {
+      "description": "Series of pipeline executions, its status and task status.",
+      "type": "object",
+      "properties": {
+        "executionDate": {
+          "description": "Date where the job was executed.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "executionStatus": {
+          "description": "Status at a specific execution date.",
+          "$ref": "#/definitions/statusType"
+        },
+        "taskStatus": {
+          "description": "Series of task executions and its status.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/taskStatus"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies a pipeline instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of this Pipeline.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "pipelineUrl": {
+      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
+      "type": "string",
+      "format": "uri"
+    },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline.",
+      "type": "integer"
+    },
+    "pipelineLocation": {
+      "description": "Pipeline Code Location.",
+      "type": "string"
+    },
+    "startDate": {
+      "description": "Start date of the workflow.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "tasks": {
+      "description": "All the tasks that are part of pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/task"
+      },
+      "default": null
+    },
+    "pipelineStatus": {
+      "description": "Series of pipeline executions and its status.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/pipelineStatus"
+      },
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this Pipeline.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this pipeline.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this pipeline is hosted in.",
+      "$ref": "../services/pipelineService.json#/definitions/pipelineServiceType"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "service"],
+  "additionalProperties": false
+}
