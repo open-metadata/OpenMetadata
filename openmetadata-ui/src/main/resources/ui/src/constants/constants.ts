@@ -61,15 +61,16 @@ export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
-const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-const PLAEHOLDER_ROUTE_VERSION = ':version';
-const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
-const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
-const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
-const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
-const PLACEHOLDER_USER_NAME = ':username';
-const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
+export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
+export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
+export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
+export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
+export const PLACEHOLDER_USER_NAME = ':username';
+export const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -212,6 +213,8 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
+  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
+  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -415,6 +418,15 @@ export const getBotsPath = (botsName: string) => {
   return path;
 };
 
+export const getMlModelPath = (mlModelFqn: string, tab = '') => {
+  let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -427,7 +439,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
-  { name: 'Bots', to: '/bots', disabled: false },
+  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },

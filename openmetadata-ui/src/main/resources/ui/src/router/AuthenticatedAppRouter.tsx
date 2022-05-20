@@ -33,6 +33,7 @@ import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component'
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import GlossaryPageV1 from '../pages/GlossaryPage/GlossaryPageV1.component';
+import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import RolesPage from '../pages/RolesPage/RolesPage.component';
@@ -140,6 +141,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
+      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={AddGlossaryPage}
