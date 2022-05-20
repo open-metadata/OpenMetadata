@@ -12,15 +12,7 @@
  */
 
 import { searchEntity, visitEntityTab } from '../../common/common';
-import {
-  FOLLOWING_TITLE,
-  MYDATA_SUMMARY_OPTIONS,
-  MY_DATA_TITLE,
-  NO_SEARCHED_TERMS,
-  RECENT_SEARCH_TITLE,
-  RECENT_VIEW_TITLE,
-  SEARCH_TERMS,
-} from '../../constants/constants';
+import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_TERMS } from '../../constants/constants';
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -37,7 +29,7 @@ describe('MyData page should work', () => {
       .invoke('text')
       .then((text) => {
         cy.clickOnLogo();
-        cy.get(`[title="${text}"]`).should('be.visible').click();
+        cy.get(`[title="${text}"]`).first().should('be.visible').click();
         cy.get('[data-testid="inactive-link"]')
           .invoke('text')
           .then((newText) => {
@@ -77,10 +69,10 @@ describe('MyData page should work', () => {
       .click();
 
     // click on the 1st result and go to entity details page and follow the entity
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+    cy.get('[data-testid="table-data-card"]').contains(termObj.term).should('be.visible').click();
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
-    // got to manage tab and search for logged in user and set the owner
+    // go to manage tab and search for logged in user and set the owner
     cy.get('[data-testid="Manage"]').should('be.visible').click();
 
     cy.get(
@@ -123,7 +115,6 @@ describe('MyData page should work', () => {
     cy.contains(RECENT_VIEW_TITLE).should('be.visible');
     cy.contains(MY_DATA_TITLE).should('be.visible');
     cy.contains(FOLLOWING_TITLE).should('be.visible');
-    cy.get('[data-testid="onboarding"]').should('be.visible');
 
     Object.values(MYDATA_SUMMARY_OPTIONS).forEach((value) => {
       cy.get(
@@ -185,6 +176,7 @@ describe('MyData page should work', () => {
       .children()
       .should('have.length', 9);
 
+    cy.clickOnLogo();
     cy.get('[data-testid="my-data-total-count"]')
       .invoke('text')
       .then((text) => {
