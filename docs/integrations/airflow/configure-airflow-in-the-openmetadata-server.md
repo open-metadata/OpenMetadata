@@ -14,7 +14,7 @@ This can be done either by using our custom Docker [image](https://hub.docker.co
 
 ## Configuration
 
-The OpenMetadata server takes all its configurations from a YAML file. You can find them in our [repo](https://github.com/open-metadata/OpenMetadata/tree/main/conf). In either `openmetadata-security.yaml` or `openmetadata.yaml`, update the `airflowConfiguration` section accordingly.
+The OpenMetadata server takes all its configurations from a YAML file. You can find them in our [repo](https://github.com/open-metadata/OpenMetadata/tree/main/conf). In `openmetadata.yaml`, update the `airflowConfiguration` section accordingly.
 
 {% code title="openmetadata.yaml" %}
 ```
