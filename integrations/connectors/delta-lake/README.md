@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Find Services under the Settings Menu](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
 Select Delta Lake as the service type and click _Next._
 
-![Select your Service type](<../../../.gitbook/assets/image (1).png>)
+![Select your Service type](<../../../.gitbook/assets/image (56).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
@@ -59,7 +59,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (38).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (29).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
@@ -151,7 +151,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (3).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (24).png>)
 
 <details>
 

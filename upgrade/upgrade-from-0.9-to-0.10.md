@@ -8,8 +8,8 @@ The 0.10.x release contains backward incompatible changes this guide will help y
 
 {% tabs %}
 {% tab title="Docker" %}
-{% content-ref url="upgrade-on-docker/backup-metadata.md" %}
-[backup-metadata.md](upgrade-on-docker/backup-metadata.md)
+{% content-ref url="upgrade-on-bare-metal/backup-metadata.md" %}
+[backup-metadata.md](upgrade-on-bare-metal/backup-metadata.md)
 {% endcontent-ref %}
 {% endtab %}
 
@@ -20,8 +20,8 @@ The 0.10.x release contains backward incompatible changes this guide will help y
 {% endtab %}
 
 {% tab title="Bare Metal" %}
-{% content-ref url="upgrade-on-bare-metal/backup-metadata.md" %}
-[backup-metadata.md](upgrade-on-bare-metal/backup-metadata.md)
+{% content-ref url="upgrade-on-docker/backup-metadata.md" %}
+[backup-metadata.md](upgrade-on-docker/backup-metadata.md)
 {% endcontent-ref %}
 {% endtab %}
 {% endtabs %}

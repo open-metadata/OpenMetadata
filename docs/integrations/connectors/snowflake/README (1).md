@@ -39,13 +39,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
@@ -61,7 +61,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Postgres services that you might be ingesting metadata from.
 
-![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (6) (1) (1).png>)
+![Provide a Name and a description for your Service](<../../../../.gitbook/assets/image (25).png>)
 
 ### 5. Configure the Service Connection
 
@@ -157,7 +157,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (21) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (94).png>)
 
 <details>
 

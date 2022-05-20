@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -131,7 +131,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1).png>)
 
 <details>
 

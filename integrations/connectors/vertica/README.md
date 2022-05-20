@@ -39,13 +39,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Services Page](<../../../docs/.gitbook/assets/image (44) (2).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (127).png>)
 
 ### 3. Select the Service Type
 
@@ -163,7 +163,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![](<../../../.gitbook/assets/image (101).png>)
+![](<../../../.gitbook/assets/image (101) (1).png>)
 
 <details>
 
@@ -197,7 +197,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../docs/.gitbook/assets/image (43) (2).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (126).png>)
 
 ### 9. Workflow Deployment Error
 

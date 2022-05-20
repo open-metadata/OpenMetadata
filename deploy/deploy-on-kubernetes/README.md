@@ -80,6 +80,25 @@ elasticsearch-0                   1/1     Running   0          4m56s
 mysql-0                           1/1     Running   0          4m56s
 ```
 
+{% hint style="success" %}
+Helm Chart for OpenMetadata Dependencies uses the following helm charts -
+
+* [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/8.8.23) (helm chart version 8.8.23)
+* [ElasticSearch](https://artifacthub.io/packages/helm/elastic/elasticsearch/7.10.2) (helm chart version 7.10.2)
+* [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.5.3) (helm chart version 8.5.3)
+
+If you want to customise helm values for the dependencies as per your cluster, you can follow the above links and update your custom helm values.yaml.
+{% endhint %}
+
+{% hint style="warning" %}
+Airflow uses DAGs and Logs for persistence volumes with Kubernetes Executor.&#x20;
+
+Make sure your kubernetes cluster storage provisioner has persistent volumes capability of ReadWriteMany Access Mode. Modify the Helm Values for airflow as per your requirement here.
+
+_This is not required if you are deploying on kubernetes cluster created by minkube or docker desktop._\
+Check the storage providers compatibility [here](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes).
+{% endhint %}
+
 Next, deploy OpenMetadata by running the following command.
 
 ```

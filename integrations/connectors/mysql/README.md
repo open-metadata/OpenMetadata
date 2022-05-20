@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 From the dropdown menu, select Dashboard Services. Select Looker as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (3) (1).png>)
+![](<../../../.gitbook/assets/image (24) (1).png>)
 
 ### 4. Name and Describe your Service
 
@@ -131,7 +131,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1).png>)
 
 <details>
 
