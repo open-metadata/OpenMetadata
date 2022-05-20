@@ -28,6 +28,7 @@ dev = {
     "twisted",
     "wheel",
     "click",
+    "pydantic[email]==1.8.2",
 }
 
 setup(
@@ -38,7 +39,7 @@ setup(
     description="These are the generated Python classes from JSON Schema",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     package_dir={"": "src"},
     zip_safe=False,
     use_incremental=True,

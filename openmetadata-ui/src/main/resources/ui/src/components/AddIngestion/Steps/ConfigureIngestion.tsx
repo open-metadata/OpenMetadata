@@ -70,10 +70,26 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
+  const getDebugLogToggle = () => {
+    return (
+      <Field>
+        <div className="tw-flex tw-gap-1">
+          <label>Enable Debug Log</label>
+          <ToggleSwitchV1
+            checked={enableDebugLog}
+            handleCheck={handleEnableDebugLog}
+            testId="enable-debug-log"
+          />
+        </div>
+        <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
+        {getSeparator('')}
+      </Field>
+    );
+  };
+
   const getDatabaseFieldToggles = () => {
     return (
       <>
-        {getSeparator('')}
         <div>
           <Field>
             <div className="tw-flex tw-gap-1">
@@ -118,18 +134,7 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Enable Debug Log</label>
-              <ToggleSwitchV1
-                checked={enableDebugLog}
-                handleCheck={handleEnableDebugLog}
-                testId="enable-debug-log"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">Enable debug logging</p>
-            {getSeparator('')}
-          </Field>
+          {getDebugLogToggle()}
           {!isNil(markDeletedTables) && (
             <Field>
               <div className="tw-flex tw-gap-1">
@@ -195,6 +200,7 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.TABLE}
             />
+            {getSeparator('')}
             {getDatabaseFieldToggles()}
           </Fragment>
         );
@@ -224,23 +230,29 @@ const ConfigureIngestion = ({
               showSeparator={false}
               type={FilterPatternEnum.CHART}
             />
+            {getSeparator('')}
+            {getDebugLogToggle()}
           </Fragment>
         );
 
       case ServiceCategory.MESSAGING_SERVICES:
         return (
-          <FilterPattern
-            checked={showTopicFilter}
-            excludePattern={topicFilterPattern.excludes ?? []}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleChecked={(value) =>
-              handleShowFilter(value, FilterPatternEnum.TOPIC)
-            }
-            includePattern={topicFilterPattern.includes ?? []}
-            showSeparator={false}
-            type={FilterPatternEnum.TOPIC}
-          />
+          <Fragment>
+            <FilterPattern
+              checked={showTopicFilter}
+              excludePattern={topicFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.TOPIC)
+              }
+              includePattern={topicFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.TOPIC}
+            />
+            {getSeparator('')}
+            {getDebugLogToggle()}
+          </Fragment>
         );
       default:
         return <></>;
@@ -286,7 +298,7 @@ const ConfigureIngestion = ({
             process usage data.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="query-log-duration"
             id="query-log-duration"
             name="query-log-duration"
@@ -307,7 +319,7 @@ const ConfigureIngestion = ({
             Absolute file path required.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="stage-file-location"
             id="stage-file-location"
             name="stage-file-location"
@@ -327,7 +339,7 @@ const ConfigureIngestion = ({
             Configuration to set the limit for query logs.
           </p>
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="result-limit"
             id="result-limit"
             name="result-limit"
@@ -337,6 +349,7 @@ const ConfigureIngestion = ({
           />
           {getSeparator('')}
         </Field>
+        {getDebugLogToggle()}
       </>
     );
   };
@@ -353,7 +366,7 @@ const ConfigureIngestion = ({
               Name that identifies this pipeline instance uniquely.
             </p>
             <input
-              className="tw-form-inputs tw-px-3 tw-py-1"
+              className="tw-form-inputs tw-form-inputs-padding"
               data-testid="name"
               id="name"
               name="name"
@@ -366,6 +379,7 @@ const ConfigureIngestion = ({
         </div>
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
+        {getDebugLogToggle()}
         <div>
           <Field>
             <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">

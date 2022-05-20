@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -207,7 +208,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 5,
     },
   ];
-  const extraInfo = [
+  const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
@@ -220,6 +221,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
       key: 'Tier',

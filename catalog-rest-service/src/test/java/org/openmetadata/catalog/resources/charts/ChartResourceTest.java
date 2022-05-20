@@ -33,12 +33,10 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -82,8 +80,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public EntityInterface<Chart> validateGetWithDifferentFields(Chart chart, boolean byName)
-      throws HttpResponseException {
+  public Chart validateGetWithDifferentFields(Chart chart, boolean byName) throws HttpResponseException {
     String fields = "";
     chart =
         byName
@@ -100,18 +97,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(chart);
+    return chart;
   }
 
   @Override
-  public CreateChart createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateChart()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withService(getContainer())
-        .withChartType(ChartType.Area);
+  public CreateChart createRequest(String name) {
+    return new CreateChart().withName(name).withService(getContainer()).withChartType(ChartType.Area);
   }
 
   @Override
@@ -120,12 +111,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
+  public EntityReference getContainer(Chart entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(chart),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        chart, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
   }
@@ -133,16 +126,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertReference(expected.getService(), patched.getService());
-  }
-
-  @Override
-  public EntityInterface<Chart> getEntityInterface(Chart chart) {
-    return new ChartEntityInterface(chart);
   }
 
   @Override

@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
-import { EntityFieldThreads, EntityTags } from 'Models';
+import { EntityFieldThreads, EntityTags, ExtraInfo } from 'Models';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -22,6 +22,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -202,7 +203,7 @@ const PipelineDetails = ({
     },
   ];
 
-  const extraInfo = [
+  const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
@@ -215,6 +216,7 @@ const PipelineDetails = ({
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
       key: 'Tier',

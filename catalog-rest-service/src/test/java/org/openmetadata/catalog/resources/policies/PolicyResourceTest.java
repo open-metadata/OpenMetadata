@@ -42,8 +42,6 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.LocationRepository;
-import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
@@ -52,7 +50,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -75,32 +72,19 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Override
-  public CreatePolicy createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreatePolicy()
-        .withName(name)
-        .withPolicyType(PolicyType.Lifecycle)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreatePolicy createRequest(String name) {
+    return new CreatePolicy().withName(name).withPolicyType(PolicyType.Lifecycle);
   }
 
   @Override
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
     validateCommonEntityFields(
-        getEntityInterface(policy),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        policy, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
   }
 
   @Override
   public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders) {}
-
-  @Override
-  public EntityInterface<Policy> getEntityInterface(Policy entity) {
-    return new PolicyEntityInterface(entity);
-  }
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
@@ -201,7 +185,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     change.getFieldsDeleted().add(new FieldChange().withName("policyUrl").withOldValue(uri));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    EntityReference locationReference = new LocationRepository.LocationEntityInterface(location).getEntityReference();
+    EntityReference locationReference = location.getEntityReference();
 
     // Add new field location
     origJson = JsonUtils.pojoToJson(policy);
@@ -212,8 +196,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Override
-  public EntityInterface<Policy> validateGetWithDifferentFields(Policy policy, boolean byName)
-      throws HttpResponseException {
+  public Policy validateGetWithDifferentFields(Policy policy, boolean byName) throws HttpResponseException {
     String fields = "";
     policy =
         byName
@@ -230,7 +213,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     // Field location is set during creation - tested elsewhere
     assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(policy);
+    return policy;
   }
 
   private CreatePolicy createAccessControlPolicyWithRules(String name, List<Rule> rules) {

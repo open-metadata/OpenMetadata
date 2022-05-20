@@ -17,6 +17,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
 } from '../../axiosAPIs/ingestionPipelineAPI';
@@ -55,6 +56,20 @@ const AddServicePage = () => {
 
   const handleAddIngestion = (value: boolean) => {
     setAddIngestion(value);
+  };
+
+  const onAirflowStatusCheck = (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
   };
 
   const onAddServiceSave = (data: DataObj) => {
@@ -176,6 +191,7 @@ const AddServicePage = () => {
         slashedBreadcrumb={slashedBreadcrumb}
         onAddIngestionSave={onAddIngestionSave}
         onAddServiceSave={onAddServiceSave}
+        onAirflowStatusCheck={onAirflowStatusCheck}
         onIngestionDeploy={onIngestionDeploy}
       />
     </PageContainerV1>

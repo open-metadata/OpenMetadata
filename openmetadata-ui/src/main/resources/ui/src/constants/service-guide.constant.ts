@@ -28,11 +28,17 @@ export const addServiceGuide = [
   },
 ];
 
+export const addServiceGuideWOAirflow = {
+  title: 'Service Created Successfully',
+  description:
+    'The <Service Name> has been created successfully. Visit the newly created service to take a look at the details. Ensure that you have Airflow set up correctly before heading to ingest metadata.',
+};
+
 const schedulingIngestionGuide = {
   step: 3,
   title: 'Schedule for Ingestion',
   description:
-    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
+    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.',
 };
 
 export const addMetadataIngestionGuide = [

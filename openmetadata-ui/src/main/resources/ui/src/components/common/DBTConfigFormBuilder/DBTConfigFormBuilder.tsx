@@ -191,7 +191,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           Available sources to fetch DBT catalog and manifest files.
         </p>
         <select
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-source"
           id="dbt-source"
           name="dbt-source"

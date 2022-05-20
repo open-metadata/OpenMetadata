@@ -37,7 +37,10 @@ import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import { shouldTestConnection } from '../../utils/ServiceUtils';
+import {
+  getTestConnectionType,
+  shouldTestConnection,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
@@ -83,7 +86,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
     const updatedFormData = formatFormDataForSubmit(formData);
 
     return new Promise<void>((resolve, reject) => {
-      TestConnection(updatedFormData, 'Database')
+      TestConnection(updatedFormData, getTestConnectionType(serviceCategory))
         .then((res) => {
           // This api only responds with status 200 on success
           // No data sent on api success

@@ -19,6 +19,7 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
+import Searchbar from '../../common/searchbar/Searchbar';
 import { Field } from '../../Field/Field';
 import { SelectServiceTypeProps } from './Steps.interface';
 
@@ -32,26 +33,40 @@ const SelectServiceType = ({
   onNext,
 }: SelectServiceTypeProps) => {
   const [category, setCategory] = useState('');
+  const [connectorSearchTerm, setConnectorSearchTerm] = useState('');
+  const [selectedConnectors, setSelectedConnectors] = useState<string[]>([]);
+
+  const handleConnectorSearchTerm = (value: string) => {
+    setConnectorSearchTerm(value);
+    setSelectedConnectors(
+      serviceTypes[serviceCategory].filter((c) =>
+        c.toLowerCase().includes(value.toLowerCase())
+      )
+    );
+  };
 
   useEffect(() => {
     const allCategory = Object.values(ServiceCategory);
-    setCategory(
-      allCategory.includes(serviceCategory) ? serviceCategory : allCategory[0]
-    );
+    const selectedCategory = allCategory.includes(serviceCategory)
+      ? serviceCategory
+      : allCategory[0];
+    setCategory(selectedCategory);
+    setSelectedConnectors(serviceTypes[selectedCategory]);
   }, [serviceCategory]);
 
   return (
     <div>
       <Field>
         <select
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="service-category"
           id="serviceCategory"
           name="serviceCategory"
           value={category}
-          onChange={(e) =>
-            serviceCategoryHandler(e.target.value as ServiceCategory)
-          }>
+          onChange={(e) => {
+            setConnectorSearchTerm('');
+            serviceCategoryHandler(e.target.value as ServiceCategory);
+          }}>
           {Object.values(ServiceCategory).map((option, i) => (
             <option key={i} value={option}>
               {startCase(option)}
@@ -61,11 +76,20 @@ const SelectServiceType = ({
       </Field>
 
       <Field className="tw-mt-7">
+        <Field>
+          <Searchbar
+            removeMargin
+            placeholder="Search for connector..."
+            searchValue={connectorSearchTerm}
+            typingInterval={500}
+            onSearch={handleConnectorSearchTerm}
+          />
+        </Field>
         <div className="tw-flex">
           <div
             className="tw-grid tw-grid-cols-6 tw-grid-flow-row tw-gap-4 tw-mt-4"
             data-testid="select-service">
-            {serviceTypes[serviceCategory]?.map((type) => (
+            {selectedConnectors.map((type) => (
               <div
                 className={classNames(
                   'tw-flex tw-flex-col tw-items-center tw-relative tw-p-2 tw-w-24 tw-cursor-pointer tw-border tw-rounded-md',

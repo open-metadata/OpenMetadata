@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo } from 'react';
@@ -20,7 +21,7 @@ import loginBG from '../../assets/img/login-bg.png';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Loader from '../../components/Loader/Loader';
 import LoginButton from '../../components/LoginButton/LoginButton';
-import { ROUTES } from '../../constants/constants';
+import { oidcTokenKey, ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import LoginCarousel from './LoginCarousel';
@@ -32,6 +33,25 @@ const SigninPage = () => {
   const isAlreadyLoggedIn = useMemo(() => {
     return isAuthDisabled || !isEmpty(appState.userDetails);
   }, [isAuthDisabled, appState.userDetails]);
+
+  const isTokenExpired = () => {
+    const token = localStorage.getItem(oidcTokenKey);
+    if (token) {
+      try {
+        const { exp } = jwtDecode<JwtPayload>(token);
+        if (exp) {
+          if (Date.now() < exp * 1000) {
+            // Token is valid
+            return false;
+          }
+        }
+      } catch (error) {
+        // ignore error
+      }
+    }
+
+    return true;
+  };
 
   const handleSignIn = () => {
     onLoginHandler && onLoginHandler();
@@ -90,7 +110,7 @@ const SigninPage = () => {
   // If user is neither logged in or nor security is disabled
   // invoke logout handler to clean-up any slug storage
   useEffect(() => {
-    if (!isAlreadyLoggedIn) {
+    if (!isAlreadyLoggedIn && isTokenExpired()) {
       onLogoutHandler();
     }
   }, []);

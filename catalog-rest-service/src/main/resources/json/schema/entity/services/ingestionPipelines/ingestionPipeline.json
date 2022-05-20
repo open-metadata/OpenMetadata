@@ -4,6 +4,8 @@
   "title": "IngestionPipeline",
   "description": "Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "pipelineType": {
       "description": "Type of Pipeline - metadata, usage",

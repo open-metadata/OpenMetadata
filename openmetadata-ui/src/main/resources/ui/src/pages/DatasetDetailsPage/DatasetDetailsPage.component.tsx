@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
@@ -60,13 +60,14 @@ import {
   getTableTabPath,
   getVersionPath,
 } from '../../constants/constants';
-import { ColumnTestType } from '../../enums/columnTest.enum';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
   Column,
+  ColumnTestType,
   Table,
   TableData,
   TableJoins,
@@ -79,7 +80,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
@@ -99,7 +99,6 @@ import {
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -301,10 +300,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           setFollowers(followers);
           setDeleted(deleted);
           setSlashedTableName([
-            {
-              name: startCase(ServiceCategory.DATABASE_SERVICES),
-              url: getServicesWithTabPath(ServiceCategory.DATABASE_SERVICES),
-            },
             {
               name: service.name,
               url: service.name
@@ -803,7 +798,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const handleAddColumnTestCase = (data: ColumnTest) => {
+  const handleAddColumnTestCase = (data: CreateColumnTest) => {
     addColumnTestCase(tableDetails.id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {

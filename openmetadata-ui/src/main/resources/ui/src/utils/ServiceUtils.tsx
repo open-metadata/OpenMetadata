@@ -28,6 +28,7 @@ import {
   addMetadataIngestionGuide,
   addProfilerIngestionGuide,
   addServiceGuide,
+  addServiceGuideWOAirflow,
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
@@ -74,12 +75,12 @@ import {
   VERTICA,
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
+import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { PipelineType } from '../generated/operations/pipelines/airflowPipeline';
 import { ServiceResponse } from '../interface/service.interface';
 
 export const serviceTypeLogo = (type: string) => {
@@ -338,37 +339,6 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getAirflowPipelineTypes = (
-  serviceType: string,
-  onlyMetaData = false
-): Array<PipelineType> | undefined => {
-  switch (serviceType) {
-    case DatabaseServiceType.Redshift:
-    case DatabaseServiceType.BigQuery:
-    case DatabaseServiceType.Snowflake:
-    case DatabaseServiceType.Clickhouse:
-    case DatabaseServiceType.Mssql:
-      return onlyMetaData
-        ? [PipelineType.Metadata]
-        : [PipelineType.Metadata, PipelineType.QueryUsage];
-
-    // need to add additional config feild to support trino
-    // case DatabaseServiceType.Trino:
-    case DatabaseServiceType.Hive:
-    case DatabaseServiceType.Mysql:
-    case DatabaseServiceType.Postgres:
-    case DatabaseServiceType.Vertica:
-    case DatabaseServiceType.MariaDB:
-    case DatabaseServiceType.SingleStore:
-    case DatabaseServiceType.SQLite:
-    case DatabaseServiceType.AzureSQL:
-      return [PipelineType.Metadata];
-
-    default:
-      return;
-  }
-};
-
 export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
   switch (serviceCategory) {
     case ServiceCategory.DATABASE_SERVICES:
@@ -509,7 +479,8 @@ export const getServiceIngestionStepGuide = (
   serviceName: string,
   ingestionType: IngestionPipelineType,
   showDeployTitle: boolean,
-  isUpdated = false
+  isUpdated: boolean,
+  isAirflowSetup = true
 ) => {
   let guide;
   if (isIngestion) {
@@ -532,14 +503,16 @@ export const getServiceIngestionStepGuide = (
       }
     }
   } else {
-    guide = addServiceGuide.find((item) => item.step === step);
+    guide =
+      !isAirflowSetup && step === 4
+        ? addServiceGuideWOAirflow
+        : addServiceGuide.find((item) => item.step === step);
   }
 
   const getTitle = (title: string) => {
-    const update =
-      isUpdated && showDeployTitle
-        ? title.replace('Added', 'Updated & Deployed')
-        : title.replace('Added', 'Updated');
+    const update = showDeployTitle
+      ? title.replace('Added', 'Updated & Deployed')
+      : title.replace('Added', 'Updated');
     const newTitle = showDeployTitle
       ? title.replace('Added', 'Added & Deployed')
       : title;
@@ -593,4 +566,45 @@ export const shouldTestConnection = (
     serviceType !== DatabaseServiceType.SampleData &&
     serviceCategory !== ServiceCategory.PIPELINE_SERVICES
   );
+};
+
+export const getTestConnectionType = (serviceCat: ServiceCategory) => {
+  switch (serviceCat) {
+    case ServiceCategory.MESSAGING_SERVICES:
+      return ConnectionType.Messaging;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return ConnectionType.Dashboard;
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return ConnectionType.Database;
+  }
+};
+
+export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
+  let serviceCat;
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      serviceCat = 'database';
+
+      break;
+    case ServiceCategory.MESSAGING_SERVICES:
+      serviceCat = 'messaging';
+
+      break;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      serviceCat = 'dashboard';
+
+      break;
+
+    case ServiceCategory.PIPELINE_SERVICES:
+      serviceCat = 'pipeline';
+
+      break;
+    default:
+      serviceCat = '';
+
+      break;
+  }
+
+  return [serviceCat, 'service'].join(' ');
 };

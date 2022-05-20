@@ -4,6 +4,8 @@
   "title": "User",
   "description": "This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.teams.User",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "authenticationMechanism": {
       "type": "object",
@@ -34,6 +36,10 @@
     "name": {
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
       "description": "Used for user biography.",

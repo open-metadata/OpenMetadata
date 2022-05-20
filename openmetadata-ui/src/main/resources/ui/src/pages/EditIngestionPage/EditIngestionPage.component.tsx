@@ -16,6 +16,7 @@ import { capitalize, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  checkAirflowStatus,
   deployIngestionPipelineById,
   getIngestionPipelineByFqn,
   updateIngestionPipeline,
@@ -74,6 +75,7 @@ const EditIngestionPage = () => {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     return new Promise<void>((resolve, reject) => {
@@ -164,6 +166,7 @@ const EditIngestionPage = () => {
       airflowConfig,
       description,
       displayName,
+      loggerLevel,
       name,
       owner,
       pipelineType,
@@ -174,6 +177,7 @@ const EditIngestionPage = () => {
       airflowConfig,
       description,
       displayName,
+      loggerLevel,
       name,
       owner,
       pipelineType,
@@ -185,9 +189,7 @@ const EditIngestionPage = () => {
       return updateIngestionPipeline(updateData as CreateIngestionPipeline)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            if (!ingestionData.deployed) {
-              onIngestionDeploy();
-            }
+            onIngestionDeploy();
             resolve();
           } else {
             throw jsonData['api-error-messages']['update-ingestion-error'];
@@ -203,6 +205,33 @@ const EditIngestionPage = () => {
     });
   };
 
+  const onAirflowStatusCheck = (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
+  };
+
+  const fetchAirflowStatusCheck = () => {
+    return new Promise<void>((resolve) => {
+      onAirflowStatusCheck()
+        .then(() => {
+          setIsAirflowRunning(true);
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
@@ -215,7 +244,7 @@ const EditIngestionPage = () => {
         ? activeIngestionStep >= 3
         : activeIngestionStep >= 2;
 
-    return ingestion && !showIngestionButton && !ingestionData.deployed;
+    return ingestion && !showIngestionButton;
   };
 
   useEffect(() => {
@@ -256,7 +285,8 @@ const EditIngestionPage = () => {
             '',
             ingestionType as PipelineType,
             isDeployed(),
-            true
+            true,
+            isAirflowRunning
           )}>
           <div className="tw-form-container">
             <AddIngestion
@@ -267,6 +297,7 @@ const EditIngestionPage = () => {
               heading={`Edit ${capitalize(ingestionType)} Ingestion`}
               ingestionAction={ingestionAction}
               ingestionProgress={ingestionProgress}
+              isAirflowSetup={isAirflowRunning}
               isIngestionCreated={isIngestionCreated}
               isIngestionDeployed={isIngestionDeployed}
               pipelineType={ingestionType as PipelineType}
@@ -275,6 +306,7 @@ const EditIngestionPage = () => {
               setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
               showDeployButton={showIngestionButton}
               status={FormSubmitType.EDIT}
+              onAirflowStatusCheck={onAirflowStatusCheck}
               onIngestionDeploy={onIngestionDeploy}
               onSuccessSave={goToService}
               onUpdateIngestion={onEditIngestionSave}
@@ -286,7 +318,9 @@ const EditIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchAirflowStatusCheck().finally(() => {
+      fetchData();
+    });
   }, [serviceCategory, serviceFQN]);
 
   return <PageContainerV1>{renderEditIngestionPage()}</PageContainerV1>;

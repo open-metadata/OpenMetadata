@@ -17,8 +17,8 @@ import { capitalize } from 'lodash';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -157,7 +157,11 @@ const UserCard = ({
       data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.displayName} />
+          <ProfilePicture
+            displayName={item.displayName || item.name}
+            id={item.id || ''}
+            name={item.name || ''}
+          />
         ) : (
           <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}

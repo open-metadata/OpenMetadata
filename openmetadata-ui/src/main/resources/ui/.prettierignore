@@ -40,3 +40,10 @@ swagger.html
 
 # antlr
 src/antlr/generated/
+
+# Generated TS
+src/generated/
+
+# cypress
+**/*.spec.js
+cypress/

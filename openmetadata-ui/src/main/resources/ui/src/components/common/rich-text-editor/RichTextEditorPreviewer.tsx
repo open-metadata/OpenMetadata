@@ -15,8 +15,10 @@ import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 // Markdown Parser and plugin imports
 import MarkdownParser from 'react-markdown';
+import { Link } from 'react-router-dom';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import { isExternalUrl } from '../../../utils/StringsUtils';
 import { BlurLayout } from './BlurLayout';
 import { PreviewerProp } from './RichTextEditor.interface';
 
@@ -95,6 +97,14 @@ const RichTextEditorPreviewer = ({
                 {children}
               </code>
             );
+          },
+          a: ({ children, ...props }) => {
+            const href = props.href;
+            if (isExternalUrl(href)) {
+              return <a {...props}>{children}</a>;
+            } else {
+              return <Link to={props.href || ''}>{children}</Link>;
+            }
           },
         }}
         rehypePlugins={[rehypeRaw]}

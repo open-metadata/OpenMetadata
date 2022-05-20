@@ -14,18 +14,15 @@
 package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bot;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.bots.BotResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class BotRepository extends EntityRepository<Bot> {
@@ -39,12 +36,8 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public EntityInterface<Bot> getEntityInterface(Bot entity) {
-    return new BotEntityInterface(entity);
-  }
-
-  @Override
   public void prepare(Bot entity) throws IOException {
+    setFullyQualifiedName(entity);
     User user = daoCollection.userDAO().findEntityById(entity.getBotUser().getId(), Include.ALL);
     entity.getBotUser().withName(user.getName()).withDisplayName(user.getDisplayName());
   }
@@ -63,7 +56,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public EntityRepository<Bot>.EntityUpdater getUpdater(Bot original, Bot updated, Operation operation) {
+  public EntityUpdater getUpdater(Bot original, Bot updated, Operation operation) {
     return new BotUpdater(original, updated, operation);
   }
 
@@ -79,119 +72,6 @@ public class BotRepository extends EntityRepository<Bot> {
     return refs.isEmpty()
         ? null
         : daoCollection.userDAO().findEntityReferenceById(UUID.fromString(refs.get(0)), Include.ALL);
-  }
-
-  public static class BotEntityInterface extends EntityInterface<Bot> {
-    public BotEntityInterface(Bot entity) {
-      super(Entity.BOT, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public Bot getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return null;
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Bot withHref(URI href) {
-      return entity.withHref(href);
-    }
   }
 
   public class BotUpdater extends EntityUpdater {

@@ -21,10 +21,11 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import {
+  checkAirflowStatus,
   deleteIngestionPipelineById,
+  deployIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-  updateIngestionPipeline,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
@@ -32,6 +33,7 @@ import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
@@ -51,7 +53,7 @@ import {
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
 import { Pipeline } from '../../generated/entity/data/pipeline';
@@ -115,6 +117,7 @@ const ServicePage: FunctionComponent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
+  const [isAirflowRunning, setIsAirflowRunning] = useState(false);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -191,6 +194,10 @@ const ServicePage: FunctionComponent = () => {
       placeholderText: serviceDetails?.owner?.displayName || '',
       isLink: serviceDetails?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        serviceDetails?.owner?.type === OwnerType.USER
+          ? serviceDetails?.owner?.name
+          : undefined,
     },
   ];
 
@@ -288,33 +295,9 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
-  const deployIngestion = (data: IngestionPipeline) => {
-    const {
-      airflowConfig,
-      description,
-      displayName,
-      name,
-      owner,
-      pipelineType,
-      service,
-      source,
-    } = data;
-    const updateData = {
-      airflowConfig: {
-        ...airflowConfig,
-        forceDeploy: true,
-      },
-      description,
-      displayName,
-      name,
-      owner,
-      pipelineType,
-      service,
-      sourceConfig: source.sourceConfig,
-    };
-
+  const deployIngestion = (id: string) => {
     return new Promise<void>((resolve, reject) => {
-      return updateIngestionPipeline(updateData as CreateIngestionPipeline)
+      return deployIngestionPipelineById(id)
         .then((res: AxiosResponse) => {
           if (res.data) {
             resolve();
@@ -487,6 +470,20 @@ const ServicePage: FunctionComponent = () => {
       .catch(() => {
         setIsloading(false);
       });
+  };
+
+  const getAirflowStatus = () => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
   };
 
   const getOtherDetails = (paging?: string) => {
@@ -723,8 +720,14 @@ const ServicePage: FunctionComponent = () => {
     }
 
     if (isIngestionEnable) {
-      // getDatabaseServices();
-      getAllIngestionWorkflows();
+      getAirflowStatus()
+        .then(() => {
+          setIsAirflowRunning(true);
+          getAllIngestionWorkflows();
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        });
     }
   }, []);
 
@@ -839,6 +842,34 @@ const ServicePage: FunctionComponent = () => {
 
     getAllIngestionWorkflows(pagingString);
     setIngestionCurrentPage(activePage ?? 1);
+  };
+
+  const getIngestionTab = () => {
+    if (!isAirflowRunning) {
+      return <ErrorPlaceHolderIngestion />;
+    } else if (isUndefined(airflowEndpoint)) {
+      return <Loader />;
+    } else {
+      return (
+        <div data-testid="ingestion-container">
+          <Ingestion
+            isRequiredDetailsAvailable
+            airflowEndpoint={airflowEndpoint}
+            currrentPage={ingestionCurrentPage}
+            deleteIngestion={deleteIngestionById}
+            deployIngestion={deployIngestion}
+            ingestionList={ingestions}
+            paging={ingestionPaging}
+            pagingHandler={ingestionPagingHandler}
+            serviceCategory={serviceName as ServiceCategory}
+            serviceDetails={serviceDetails as DataObj}
+            serviceList={serviceList}
+            serviceName={serviceFQN}
+            triggerIngestion={triggerIngestionById}
+          />
+        </div>
+      );
+    }
   };
 
   useEffect(() => {
@@ -973,28 +1004,7 @@ const ServicePage: FunctionComponent = () => {
                   </Fragment>
                 )}
 
-                {activeTab === 2 &&
-                  (isUndefined(airflowEndpoint) ? (
-                    <Loader />
-                  ) : (
-                    <div data-testid="ingestion-container">
-                      <Ingestion
-                        isRequiredDetailsAvailable
-                        airflowEndpoint={airflowEndpoint}
-                        currrentPage={ingestionCurrentPage}
-                        deleteIngestion={deleteIngestionById}
-                        deployIngestion={deployIngestion}
-                        ingestionList={ingestions}
-                        paging={ingestionPaging}
-                        pagingHandler={ingestionPagingHandler}
-                        serviceCategory={serviceName as ServiceCategory}
-                        serviceDetails={serviceDetails as DataObj}
-                        serviceList={serviceList}
-                        serviceName={serviceFQN}
-                        triggerIngestion={triggerIngestionById}
-                      />
-                    </div>
-                  ))}
+                {activeTab === 2 && getIngestionTab()}
 
                 {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
                   <ServiceConfig

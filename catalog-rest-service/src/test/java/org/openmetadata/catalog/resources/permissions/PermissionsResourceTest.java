@@ -42,8 +42,8 @@ import org.openmetadata.catalog.util.TestUtils;
 class PermissionsResourceTest extends CatalogApplicationTest {
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
-  private static final String DATA_STEWARD_USER_NAME = "puser-data-steward";
-  private static final String DATA_CONSUMER_USER_NAME = "puser-data-consumer";
+  private static final String DATA_STEWARD_USER_NAME = "user-data-steward";
+  private static final String DATA_CONSUMER_USER_NAME = "user-data-consumer";
 
   @BeforeAll
   static void setup() throws IOException {
@@ -51,7 +51,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
     UserResourceTest userResourceTest = new UserResourceTest();
 
     Role dataStewardRole =
-        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_STEWARD_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     userResourceTest.createEntity(
         userResourceTest
             .createRequest(DATA_STEWARD_USER_NAME, "", "", null)
@@ -59,7 +59,7 @@ class PermissionsResourceTest extends CatalogApplicationTest {
         ADMIN_AUTH_HEADERS);
 
     Role dataConsumerRole =
-        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
+        roleResourceTest.getEntityByName(DATA_CONSUMER_ROLE_NAME, null, RoleResource.FIELDS, ADMIN_AUTH_HEADERS);
     userResourceTest.createEntity(
         userResourceTest
             .createRequest(DATA_CONSUMER_USER_NAME, "", "", null)

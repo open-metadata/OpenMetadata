@@ -79,7 +79,7 @@ const Searchbar = ({
           icon={searchIcon}
         />
         <input
-          className="tw-form-inputs tw-relative tw-px-3 tw-py-1 tw-pl-8"
+          className="tw-form-inputs tw-relative tw-form-inputs-padding tw-pl-8"
           data-testid="searchbar"
           placeholder={placeholder}
           type="text"

@@ -121,7 +121,7 @@ describe('Test Explore component', () => {
     const pageContainer = await findByTestId(container, 'PageLayout');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
-    const tabs = await findAllByTestId(container, 'tab');
+    const tabs = await findAllByTestId(container, /tab/i);
 
     expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();

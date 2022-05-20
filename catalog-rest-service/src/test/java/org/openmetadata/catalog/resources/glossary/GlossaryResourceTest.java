@@ -35,15 +35,12 @@ import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
-import org.openmetadata.catalog.jdbi3.GlossaryRepository.GlossaryEntityInterface;
-import org.openmetadata.catalog.jdbi3.GlossaryTermRepository.GlossaryTermEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -64,11 +61,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest("g1", "", "", null);
     GLOSSARY1 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_REF = new GlossaryEntityInterface(GLOSSARY1).getEntityReference();
+    GLOSSARY1_REF = GLOSSARY1.getEntityReference();
 
     createGlossary = glossaryResourceTest.createRequest("g2", "", "", null);
     GLOSSARY2 = glossaryResourceTest.createAndCheckEntity(createGlossary, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_REF = new GlossaryEntityInterface(GLOSSARY2).getEntityReference();
+    GLOSSARY2_REF = GLOSSARY2.getEntityReference();
 
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
@@ -78,7 +75,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withGlossary(GLOSSARY1_REF)
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY1_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY1_TERM1).getEntityReference();
+    GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
     GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
 
@@ -88,7 +85,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withRelatedTerms(List.of(GLOSSARY1_TERM1_REF))
             .withGlossary(GLOSSARY2_REF);
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
-    GLOSSARY2_TERM1_REF = new GlossaryTermEntityInterface(GLOSSARY2_TERM1).getEntityReference();
+    GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
     GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
   }
@@ -128,12 +125,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public CreateGlossary createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateGlossary()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+  public CreateGlossary createRequest(String name) {
+    return new CreateGlossary().withName(name);
   }
 
   @Override
@@ -141,10 +134,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       Glossary createdEntity, CreateGlossary createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(createdEntity),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Entity specific validation
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
@@ -154,10 +144,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void compareEntities(Glossary expected, Glossary patched, Map<String, String> authHeaders)
       throws HttpResponseException {
     validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
+        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
 
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
@@ -165,13 +152,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public EntityInterface<Glossary> getEntityInterface(Glossary entity) {
-    return new GlossaryEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<Glossary> validateGetWithDifferentFields(Glossary entity, boolean byName)
-      throws HttpResponseException {
+  public Glossary validateGetWithDifferentFields(Glossary entity, boolean byName) throws HttpResponseException {
     String fields = "";
     entity =
         byName
@@ -185,7 +166,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             ? getEntityByName(entity.getName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(entity);
+    return entity;
   }
 
   @Override

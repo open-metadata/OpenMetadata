@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
+import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
 import {
   EntityLineage,
   EntityReference,
@@ -71,3 +71,5 @@ export interface SelectedEdge {
   source: EntityReference;
   target: EntityReference;
 }
+
+export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;

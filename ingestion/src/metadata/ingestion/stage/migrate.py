@@ -32,6 +32,7 @@ from metadata.ingestion.source.migrate import (
     DatabaseServiceWrapper,
     MessagingServiceWrapper,
     PolicyWrapper,
+    TableWrapper,
     TagWrapper,
 )
 
@@ -43,7 +44,7 @@ file_dict = {}
 def open_files(dir_path):
     file_dict.update(
         {
-            "Table": open(f"{dir_path}/table.json", "w"),
+            "TableWrapper": open(f"{dir_path}/table.json", "w"),
             "User": open(f"{dir_path}/user.json", "w"),
             "Topic": open(f"{dir_path}/topic.json", "w"),
             "Pipeline": open(f"{dir_path}/pipeline.json", "w"),
@@ -64,7 +65,6 @@ def write_record(record):
     logger.warning(f"Write record not implemented for type {type(record)}")
 
 
-@write_record.register(Table)
 @write_record.register(User)
 @write_record.register(Topic)
 @write_record.register(Pipeline)
@@ -78,34 +78,14 @@ def _(record):
     file.write("\n")
 
 
+@write_record.register(TableWrapper)
+@write_record.register(TagWrapper)
+@write_record.register(PolicyWrapper)
+@write_record.register(MessagingServiceWrapper)
 @write_record.register(DatabaseServiceWrapper)
 def _(record):
     file = file_dict.get(type(record).__name__)
-    json_obj = json.dumps(record.database_service_dict)
-    file.write(json_obj)
-    file.write("\n")
-
-
-@write_record.register(PolicyWrapper)
-def _(record):
-    file = file_dict.get(type(record).__name__)
-    json_obj = json.dumps(record.policy_dict)
-    file.write(json_obj)
-    file.write("\n")
-
-
-@write_record.register(TagWrapper)
-def _(record):
-    file = file_dict.get(type(record).__name__)
-    json_obj = json.dumps(record.tag_dict)
-    file.write(json_obj)
-    file.write("\n")
-
-
-@write_record.register(MessagingServiceWrapper)
-def _(record):
-    file = file_dict.get(type(record).__name__)
-    json_obj = json.dumps(record.messaging_service_dict)
+    json_obj = json.dumps(record.data_dict)
     file.write(json_obj)
     file.write("\n")
 

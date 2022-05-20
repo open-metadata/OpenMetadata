@@ -64,6 +64,7 @@ import {
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -194,6 +195,10 @@ const DatabaseDetails: FunctionComponent = () => {
         database?.owner?.displayName || database?.owner?.name || '',
       isLink: database?.owner?.type === 'team',
       openInNewTab: false,
+      profileName:
+        database?.owner?.type === OwnerType.USER
+          ? database?.owner?.name
+          : undefined,
     },
   ];
 
@@ -717,7 +722,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 'tableBody-row',
                                 !isEven(index + 1) ? 'odd-row' : null
                               )}
-                              data-testid="tabale-column"
+                              data-testid="table-column"
                               key={index}>
                               <td className="tableBody-cell">
                                 <Link

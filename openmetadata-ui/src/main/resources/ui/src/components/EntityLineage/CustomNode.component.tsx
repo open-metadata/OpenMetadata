@@ -13,7 +13,8 @@
 
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleProps, Position } from 'react-flow-renderer';
+import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 
 const handleStyles = {
@@ -29,23 +30,97 @@ const getHandle = (
   isConnectable: HandleProps['isConnectable'],
   isNewNode = false
 ) => {
+  const getLeftRightHandleStyles = () => {
+    return {
+      opacity: 0,
+      borderRadius: '0px',
+      height: '162%',
+    };
+  };
+
+  const getTopBottomHandleStyles = () => {
+    return {
+      opacity: 0,
+      borderRadius: '0px',
+      width: '110%',
+    };
+  };
+
   if (nodeType === 'output') {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Left}
-        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
-        type="target"
-      />
+      <Fragment>
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{ ...handleStyles, left: '-14px' } as CSSProperties}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{
+            ...getLeftRightHandleStyles(),
+            marginLeft: '-10px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
+          }}
+          type="target"
+        />
+      </Fragment>
     );
   } else if (nodeType === 'input') {
     return (
-      <Handle
-        isConnectable={isConnectable}
-        position={Position.Right}
-        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
-        type="source"
-      />
+      <Fragment>
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{ ...handleStyles, right: '-14px' } as CSSProperties}
+          type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{
+            ...getLeftRightHandleStyles(),
+            marginRight: '-10px',
+          }}
+          type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
+          }}
+          type="target"
+        />
+      </Fragment>
     );
   } else {
     return (
@@ -74,24 +149,63 @@ const getHandle = (
           }
           type="source"
         />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Left}
+          style={{
+            ...getLeftRightHandleStyles(),
+            marginLeft: '-10px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Right}
+          style={{
+            ...getLeftRightHandleStyles(),
+            marginRight: '-10px',
+          }}
+          type="source"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Bottom}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginBottom: '-6px',
+          }}
+          type="target"
+        />
+        <Handle
+          isConnectable={isConnectable}
+          position={Position.Top}
+          style={{
+            ...getTopBottomHandleStyles(),
+            marginTop: '-6px',
+          }}
+          type="target"
+        />
       </Fragment>
     );
   }
 };
 
-/* eslint-disable-next-line */
-const CustomNode = (props: any) => {
+const CustomNode = (props: NodeProps) => {
+  const { data, type, isConnectable, selected } = props;
   /* eslint-disable-next-line */
-  const { data, type, isConnectable } = props;
-  /* eslint-disable-next-line */
-  const { label, columns, isNewNode } = data;
+  const { label, columns, isNewNode, removeNodeHandler, isEditMode } = data;
 
   return (
     <div className="tw-relative nowheel ">
       {getHandle(type, isConnectable, isNewNode)}
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')} data-testid="node-label">
-        {label}
+        {label}{' '}
+        {selected && isEditMode
+          ? getNodeRemoveButton(() => {
+              removeNodeHandler?.(props);
+            })
+          : null}
       </div>
 
       {columns?.length ? (
