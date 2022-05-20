@@ -47,58 +47,21 @@ We are currently using:
 * `pylint` & `black` in the CI validations, so make sure to review your PRs for any warnings you generated.
 * `black` & `isort` in the pre-commit hooks.
 
-## Run Integration Tests
+If you're just developing on the Ingestion side, you might not need to run the server from Intellij and the simple docker approach might be good enough. In these scenarios, you can:
 
-### Run MySQL test
-
-Run the following commands from the top-level directory
+At least once, build the images fully:
 
 ```
-python3 -m venv /tmp/venv
-source /tmp/venv/bin/activate
-pip install -r ingestion/requirements.txt
-pip install -e ingestion
-pip install pytest
-pip install pytest-docker
-cd ingestion/tests/integration/mysql
-pytest -s -c /dev/null
+sh docker/run_local_docker.sh 
 ```
 
-### Run MsSQL test
+Which will package the server code. Afterward, if the modifications only impact the ingestion code and you need to refresh the ingestion container, you can run:
 
 ```
-cd ingestion
-source env/bin/activate
-cd tests/integration/mssql
-pytest -s -c /dev/null
+cd docker/local-metadata
+docker compose down -v && docker compose up --build
 ```
 
-### Run Postgres test
+## Running tests
 
-```
-cd ingestion
-source env/bin/activate
-cd tests/integration/postgres
-pytest -s -c /dev/null
-```
-
-### Run LDAP test
-
-```
-python3 -m venv /tmp/venv
-source /tmp/venv/bin/activate
-pip install -r ingestion/requirements.txt
-pip install -e ingestion
-pip install pytest
-pip install pytest-docker
-cd ingestion/tests/integration/ldap
-pytest -s -c /dev/null
-```
-
-### Run Hive test
-
-```
-python3 -m venv /tmp/venv
-source /tmp/venv/bin/activate
-pip install -r inges
-```
+You can validate the environment by running `make coverage` from the root directory. Note that from some of the tests, having the OpenMetadata server instance up is required as they interact with the API.
