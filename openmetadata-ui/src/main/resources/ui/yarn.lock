@@ -1127,16 +1127,15 @@
     scroll-smooth "^1.1.0"
     scrollparent "^2.0.1"
 
-"@deuex-solutions/redoc@2.0.0-rc.32":
-  version "2.0.0-rc.32"
-  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.32.tgz#95d3a635d98cb12659930a518fd63ab4892cd52d"
-  integrity sha512-CfUBNAD/ONTEqD0J8WTlgM8qxBF4MnFT5kzKX6uX+VWrZURtHprnYNXQmH/W828GZlxxE2QJdPCwcz5Behcu1A==
+"@deuex-solutions/redoc@2.0.0-rc.33":
+  version "2.0.0-rc.33"
+  resolved "https://registry.yarnpkg.com/@deuex-solutions/redoc/-/redoc-2.0.0-rc.33.tgz#f9955a42f38c32a620d35b22baa88ed5a15965c9"
+  integrity sha512-U7VBKvwY+YB1gtPD7BaLVwDuOaN4RXrd/xjDBz83dkbvyWtOlDjRPS8Lt1IZ1CxIs2nDc3L3PuCJ3HHC7TEhUg==
   dependencies:
     ajv "^6.4.0"
     ajv-errors "^1.0.0"
     brace "^0.11.1"
     classnames "^2.2.6"
-    cookie-storage "^6.1.0"
     decko "^1.2.0"
     dompurify "^2.0.7"
     eventemitter3 "^4.0.0"
