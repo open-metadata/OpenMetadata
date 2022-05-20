@@ -77,7 +77,7 @@ const CustomControls: FC<ControlProps> = ({
   return (
     <div
       className={classNames(
-        'controls-container tw-flex tw-gap-x-2 tw-z-50',
+        'controls-container tw-flex tw-gap-x-2 tw-z-10',
         className
       )}
       style={style}>
