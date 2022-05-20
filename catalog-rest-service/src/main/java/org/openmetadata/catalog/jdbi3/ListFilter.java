@@ -73,7 +73,7 @@ public class ListFilter {
 
   public String getWebhookCondition() {
     String webhookStatus = queryParams.get("status");
-    return webhookStatus == null ? "" : getStatusPrefixCondition(webhookStatus);
+    return webhookStatus == null ? "" : getStatusPrefixCondition(escape(webhookStatus));
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {

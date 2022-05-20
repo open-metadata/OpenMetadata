@@ -123,7 +123,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include).addQueryParam("status", statusParam);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("status", statusParam);
     return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
