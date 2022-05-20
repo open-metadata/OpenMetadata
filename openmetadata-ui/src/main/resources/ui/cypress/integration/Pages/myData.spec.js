@@ -171,7 +171,7 @@ describe('MyData page should work', () => {
     checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.pipelines);
   });
 
-  it('Listing Recent search terms with redirection should work properly', () => {
+  it.skip('Listing Recent search terms with redirection should work properly', () => {
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
 
     checkRecentlySearchElement(SEARCH_TERMS.trino_etl.term);
@@ -180,7 +180,7 @@ describe('MyData page should work', () => {
     checkRecentlySearchElement(SEARCH_TERMS.sales_dashboard.term);
   });
 
-  it('My data, following & feed section should work properly', () => {
+  it.skip('My data, following & feed section should work properly', () => {
     const termArr = Object.values(SEARCH_TERMS);
 
     termArr.forEach((term) => {

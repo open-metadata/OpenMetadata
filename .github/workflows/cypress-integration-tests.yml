@@ -17,7 +17,7 @@ name: Cypress Integration Tests
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 concurrency:
@@ -27,6 +27,7 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    container: cypress/browsers:node12.18.3-chrome87-ff82
     strategy:
       matrix:
         job: [0, 1]
