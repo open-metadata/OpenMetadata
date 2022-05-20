@@ -42,6 +42,9 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
 
+      - name: Set up Python
+        run: sudo apt-get install python3-pip
+
       - name: Generating Data Models
         run: make install_dev generate
 
