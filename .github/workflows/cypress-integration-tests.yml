@@ -27,6 +27,9 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job: [0, 1]
     environment: cypress
     steps:
       - name: Checkout
