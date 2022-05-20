@@ -134,7 +134,7 @@ def _(
             f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
         )
 
-    if None in (service_name, database_name, schema_name):
+    if not database_name or not schema_name:
         es_result = metadata.es_search_from_service(
             entity_type=Table,
             service_name=service_name,
