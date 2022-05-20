@@ -22,20 +22,12 @@ export const MYDATA_SUMMARY_OPTIONS = {
 };
 
 export const SEARCH_TERMS = {
-  raw_product_catalog: {
-    term: 'raw_product_catalog',
-    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  trino_etl: {
+    term: 'Trino ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
-  raw_customer: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
-  fact_session: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
-  sales: { term: 'sales', entity: MYDATA_SUMMARY_OPTIONS.topics },
-  orders: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
-  eta_predictions_performance: {
-    term: 'ETA Predictions Performance',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
-  },
-  video_game_sales: {
-    term: 'Video Game Sales',
+  sales_dashboard: {
+    term: 'Sales Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   unicode_test: {
@@ -46,7 +38,18 @@ export const SEARCH_TERMS = {
     term: 'Snowflake ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
+  shop_products: {
+    term: 'shop_products',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+  },
+  orders: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
   hive_etl: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+  raw_product_catalog: {
+    term: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  },
+  raw_customer: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  fact_session: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
 };
 
 export const DELETE_ENTITY = {
