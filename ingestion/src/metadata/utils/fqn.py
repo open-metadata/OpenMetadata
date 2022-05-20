@@ -9,10 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Handle FQN building and splitting logic
+Handle FQN building and splitting logic.
+Filter information has been taken from the
+ES indexes definitions
 """
 import re
-from typing import List, Type, TypeVar
+from typing import List, Optional, Type, TypeVar
 
 from antlr4 import *
 from pydantic import BaseModel
@@ -26,11 +28,19 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
+from metadata.utils.elasticsearch import get_entity_from_es_result
 
 T = TypeVar("T", bound=BaseModel)
 
 fqdn_build_registry = class_register()
+
+
+class FQNBuildingException(Exception):
+    """
+    Raise for inconsistencies when building the FQN
+    """
 
 
 def split(s: str) -> List[str]:
@@ -78,7 +88,7 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
-def build(entity_type: Type[T], **kwargs) -> str:
+def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[str]:
     """
     Given an Entity T, build the FQN of that Entity
     based on its required pieces. For example,
@@ -88,43 +98,123 @@ def build(entity_type: Type[T], **kwargs) -> str:
         - schema
         - and table names.
 
+    :param metadata: OpenMetadata Client
     :param entity_type: Pydantic Entity model
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
     fn = fqdn_build_registry.registry.get(entity_type.__name__)
     if not fn:
-        raise ValueError("Invalid Type")
-    return fn(**kwargs)
+        raise FQNBuildingException(
+            f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
+        )
+    return fn(metadata, **kwargs)
 
 
 @fqdn_build_registry.add(Table)
 def _(
-    *, service_name: str, database_name: str, schema_name: str, table_name: str
-) -> str:
+    metadata: OpenMetadata,
+    *,
+    service_name: str,
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    table_name: str,
+) -> Optional[str]:
+    """
+    Building logic for tables
+    :param metadata: OMeta client
+    :param service_name: Service Name to filter
+    :param database_name: DB name or None
+    :param schema_name: Schema name or None
+    :param table_name: Table name
+    :return:
+    """
+    if not service_name or not table_name:
+        raise FQNBuildingException(
+            f"Service Name and Table Name should be informed, but got service=`{service_name}`, table=`{table_name}`"
+        )
+
+    if None in (service_name, database_name, schema_name):
+        es_result = metadata.es_search_from_service(
+            entity_type=Table,
+            service_name=service_name,
+            filters={
+                "database": database_name,
+                "database_schema": schema_name,
+                "name": table_name,
+            },
+        )
+        entity: Optional[Table] = get_entity_from_es_result(entity_list=es_result)
+        return str(entity.fullyQualifiedName.__root__) if entity else None
+
     return _build(service_name, database_name, schema_name, table_name)
 
 
 @fqdn_build_registry.add(DatabaseSchema)
-def _(*, service_name: str, database_name: str, schema_name: str) -> str:
+def _(
+    _: OpenMetadata,  # ES Search not enabled for Schemas
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+) -> str:
+    if not service_name or not database_name or not schema_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, db=`{database_name}`, schema=`{schema_name}`"
+        )
     return _build(service_name, database_name, schema_name)
 
 
 @fqdn_build_registry.add(Database)
-def _(*, service_name: str, database_name: str) -> str:
+def _(
+    _: OpenMetadata,  # ES Search not enabled for Databases
+    *,
+    service_name: str,
+    database_name: str,
+) -> str:
+    if not service_name or not database_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``"
+        )
     return _build(service_name, database_name)
 
 
 @fqdn_build_registry.add(Dashboard)
-def _(*, service_name: str, dashboard_name: str) -> str:
+def _(
+    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    dashboard_name: str,
+) -> str:
+    if not service_name or not dashboard_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, dashboard=`{dashboard_name}``"
+        )
     return _build(service_name, dashboard_name)
 
 
 @fqdn_build_registry.add(Tag)
-def _(*, tag_category_name: str, tag_name: str) -> str:
+def _(
+    _: OpenMetadata,  # ES Index not necessary for Tag FQN building
+    *,
+    tag_category_name: str,
+    tag_name: str,
+) -> str:
+    if not tag_category_name or not tag_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got category=`{tag_category_name}`, tag=`{tag_name}``"
+        )
     return _build(tag_category_name, tag_name)
 
 
 @fqdn_build_registry.add(DataModel)
-def _(*, database_name: str, schema_name: str, model_name: str) -> str:
-    return _build(database_name, schema_name, model_name)
+def _(
+    metadata: OpenMetadata,
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    model_name: str,
+) -> str:
+
+    return _build(service_name, database_name, schema_name, model_name)

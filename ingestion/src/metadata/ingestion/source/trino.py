@@ -102,6 +102,7 @@ class TrinoSource(SQLSource):
                 yield from self.fetch_views(self.inspector, schema)
             if self.source_config.markDeletedTables:
                 schema_fqdn = fqn.build(
+                    self.metadata,
                     entity_type=DatabaseSchema,
                     service_name=self.config.serviceName,
                     database_name=self.service_connection.catalog,

@@ -93,6 +93,7 @@ class AmundsenSource(Source[Entity]):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = config.serviceConnection.__root__.config
 
         neo4j_config = Neo4JConfig(
@@ -191,6 +192,7 @@ class AmundsenSource(Source[Entity]):
                 columns.append(col)
 
             table_fqn = fqn.build(
+                self.metadata,
                 entity_type=Table,
                 service_name=service_name,
                 database_name=database.name.__root__,
@@ -283,8 +285,7 @@ class AmundsenSource(Source[Entity]):
     def get_database_service_or_create(
         self, service_name: str, service_type: str
     ) -> DatabaseService:
-        metadata = OpenMetadata(self.metadata_config)
-        service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+        service = self.metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
         if service is not None:
             return service
         else:
@@ -296,7 +297,7 @@ class AmundsenSource(Source[Entity]):
                 ),
                 "connection": {"config": {}},
             }
-            created_service = metadata.create_or_update(
+            created_service = self.metadata.create_or_update(
                 CreateDatabaseServiceRequest(**service)
             )
             return created_service

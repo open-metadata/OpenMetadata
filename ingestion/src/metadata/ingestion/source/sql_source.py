@@ -251,6 +251,7 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         Mark the record as scanned and update the database_source_state
         """
         table_fqn = fqn.build(
+            self.metadata,
             entity_type=Table,
             service_name=self.config.serviceName,
             database_name=str(table_schema_and_db.database.name.__root__),
@@ -487,11 +488,12 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         upstream=upstream_nodes,
                     )
                     model_fqdn = fqn.build(
+                        self.metadata,
                         entity_type=DataModel,
                         database_name=database,
                         schema_name=schema,
                         model_name=model_name,
-                    ).lower()
+                    )
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -504,11 +506,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                 try:
                     _, database, table = node.split(".", 2)
                     # TODO: FIXME
-                    table_fqn = get_fqdn(
-                        Table,
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
                         service_name=self.config.serviceName,
+                        database_name=database,
+                        schema_name=None,
                         table_name=table,
-                    ).lower()
+                    )
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
@@ -518,14 +523,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, database, schema, table_name):
-        # TODO: FIXME
         table_fqn = fqn.build(
-            entity_type=DataModel,
+            self.metadata,
+            entity_type=Table,
             service_name=self.config.serviceName,
             database_name=database,
             schema_name=schema,
             table_name=table_name,
-        ).lower()
+        )
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model

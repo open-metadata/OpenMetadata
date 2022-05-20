@@ -176,6 +176,7 @@ class SnowflakeSource(SQLSource):
             table_entity.tags.append(
                 TagLabel(
                     tagFQN=fqn.build(
+                        self.metadata,
                         entity_type=Tag,
                         tag_category_name=tags.category_name.name.__root__,
                         tag_name=tags.category_details.name.__root__,

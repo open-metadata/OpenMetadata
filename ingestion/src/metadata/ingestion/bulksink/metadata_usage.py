@@ -11,7 +11,7 @@
 
 import json
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -31,6 +31,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.helpers import _get_formmated_table_name
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_lineage import ingest_lineage_by_query
 
 logger = ingestion_logger()
 
@@ -71,8 +72,11 @@ class MetadataUsageBulkSink(BulkSink):
 
     def ingest_sql_queries_lineage(self, queries, database):
         for query in queries:
-            self.metadata.ingest_lineage_by_query(
-                query=query.query, service_name=self.service_name, database=database
+            ingest_lineage_by_query(
+                self.metadata,
+                query=query.query,
+                service_name=self.service_name,
+                database=database,
             )
 
     def write_records(self) -> None:
@@ -91,14 +95,14 @@ class MetadataUsageBulkSink(BulkSink):
                     table_usage.database, table_usage.database_schema, table_usage.table
                 )
             else:
-                es_result = self.metadata.search_entities_using_es(
+                es_result = self.metadata.es_search_from_service(
+                    entity_type=Table,
                     service_name=self.service_name,
-                    table_obj={
+                    filters={
                         "database": table_usage.database,
                         "database_schema": None,
                         "name": table_usage.table,
                     },
-                    search_index="table_search_index",
                 )
                 table_entities = es_result
             for table_entity in table_entities:
@@ -238,8 +242,9 @@ class MetadataUsageBulkSink(BulkSink):
 
     def __get_table_entity(
         self, database_name: str, database_schema: str, table_name: str
-    ) -> List[Table]:
+    ) -> Optional[List[Table]]:
         table_fqn = fqn.build(
+            self.metadata,
             entity_type=Table,
             service_name=self.service_name,
             database_name=database_name,
@@ -250,14 +255,14 @@ class MetadataUsageBulkSink(BulkSink):
         table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
         if table_entity:
             return [table_entity]
-        es_result = self.metadata.search_entities_using_es(
+        es_result = self.metadata.es_search_from_service(
+            entity_type=Table,
             service_name=self.service_name,
-            table_obj={
+            filters={
                 "database": database_name,
                 "database_schema": database_schema,
                 "name": table_name,
             },
-            search_index="table_search_index",
         )
         return es_result
 
