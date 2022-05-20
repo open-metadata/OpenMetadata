@@ -19,10 +19,7 @@ Before proceeding, ensure that you have installed the node and yarn with the ver
 Using the command below, spin up the server locally from the directory.`openmetadata-dist/target/openmetadata-*-SNAPSHOT`.
 
 ```shell
-# # Non-secure mode
 ./bin/openmetadata-server-start.sh conf/openmetadata.yaml
-# # Secure mode
-./bin/openmetadata-server-start.sh conf/openmetadata-security.yaml
 ```
 
 > Since typescript is heavily used in the OpenMetadata project, we generate the typescript types and the interface from JSON schema. We use the `QuickType` tool to generate the typescript types and interfaces. You can view the complete instructions [here](https://docs.open-metadata.org/developer/build-code-and-run-tests/generate-typescript-types-from-json-schema)
