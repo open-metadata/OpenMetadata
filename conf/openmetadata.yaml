@@ -178,7 +178,8 @@ airflowConfiguration:
       scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
       clientId:  ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
     google:
-      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
+      credentials:
+        gcsConfig: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
       audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
     okta:
       clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
