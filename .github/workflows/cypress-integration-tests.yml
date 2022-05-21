@@ -49,9 +49,6 @@ jobs:
 
       - name: Set up Docker
         uses: docker-practice/actions-setup-docker@master
-        run: |
-          set -x    
-          docker version
 
       - name: Set up Python
         run: apt-get update && apt-get install -y python3-pip git docker && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
