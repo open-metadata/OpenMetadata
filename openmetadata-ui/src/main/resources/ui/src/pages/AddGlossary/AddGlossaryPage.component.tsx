@@ -6,10 +6,10 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

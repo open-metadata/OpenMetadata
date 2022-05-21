@@ -24,7 +24,6 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
-  getGlossaryPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -37,6 +36,7 @@ import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
+import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
