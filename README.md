@@ -2,6 +2,8 @@
     <img src="./docs/.gitbook/assets/openmetadata-banner.png" align="center" alt="OpenMetadata" height="350"/>
   <hr />
 
+test
+
 [![Build Status](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/open-metadata/OpenMetadata/actions/workflows/maven-build.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=open-metadata_OpenMetadata&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=open-metadata_OpenMetadata)
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg)](https://github.com/open-metadata/OpenMetadata/releases)
@@ -12,7 +14,7 @@
 
 </div>
 
-- [What is OpenMetadata?](#what-is-openmetadata )
+- [What is OpenMetadata?](#what-is-openmetadata)
 - [Features](#features)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
@@ -22,10 +24,12 @@
 - [License](#license)
 
 # What is OpenMetadata?
+
 [OpenMetadata](https://open-metadata.org/) is an Open Standard for Metadata. A Single place to Discover, Collaborate, and Get your data right.
 <img src="https://user-images.githubusercontent.com/1417689/129423079-d21cbf3f-786f-4d4a-b6c3-b66feca234b8.png"  width="800">
 
 OpenMetadata includes the following:
+
 - **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
 
 - **Metadata store** - stores metadata graph that connects data assets, user, and tool generated metadata.
@@ -48,8 +52,8 @@ Take a look and play with sample data at [http://sandbox.open-metadata.org](http
 
 [<img src="./docs/.gitbook/assets/demo-button.png" height="50"/>](http://sandbox.open-metadata.org)
 
-
 ## Install and run OpenMetadata
+
 Get up and running in few minutes. See the OpenMetadata documentation for [installation instructions](https://docs.open-metadata.org/deploy/local-deployment).
 
 ## Documentation and Support
@@ -66,11 +70,12 @@ We're here to help - and make OpenMetadata even better!
 
 We ❤️ all contributions, big and small! Check out our [CONTRIBUTING](./CONTRIBUTING.md) guide to get started and let us know how we can help.
 
-Don't want to miss anything? Give the project a ⭐ 🚀 
+Don't want to miss anything? Give the project a ⭐ 🚀
 
 Big thanks to all of you who already support us!
 
 [![Stargazers repo roster for @open-metadata/OpenMetadata](https://reporoster.com/stars/open-metadata/OpenMetadata)](https://github.com/open-metadata/OpenMetadata/stargazers)
 
 ## License
+
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
