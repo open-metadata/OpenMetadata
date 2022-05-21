@@ -48,7 +48,7 @@ jobs:
           maven-version: 3.8.5
 
       - name: Set up Python
-        run: apt-get update && apt-get install -y python3-pip git sudo && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+        run: apt-get update && apt-get install -y python3-pip git sudo lsb-release && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
       - name: Set up Docker
         uses: docker-practice/actions-setup-docker@master
