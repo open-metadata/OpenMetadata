@@ -116,7 +116,7 @@
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
-    "cypress:run:record": "cypress run --record --parallel"
+    "cypress:run:record": "cypress run --parallel"
   },
   "browserslist": {
     "production": [

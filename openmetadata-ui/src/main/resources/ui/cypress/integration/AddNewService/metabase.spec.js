@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Metabase Ingestion', () => {
-  it('add and ingest data', () => {
+  it.skip('add and ingest data', () => {
     goToAddNewServicePage();
 
     // Select Dashboard services

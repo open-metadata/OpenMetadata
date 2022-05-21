@@ -14,7 +14,7 @@
 import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Snowflake Ingestion', () => {
-  it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
+  it.skip('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
     goToAddNewServicePage();
     const connectionInput = () => {
       cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
@@ -36,6 +36,5 @@ describe('Snowflake Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
-
   });
 });

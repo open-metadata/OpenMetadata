@@ -14,7 +14,7 @@
 import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Kafka Ingestion', () => {
-  it('add and ingest data', () => {
+  it.skip('add and ingest data', () => {
     goToAddNewServicePage();
 
     // Select Dashboard services
@@ -26,7 +26,7 @@ describe('Kafka Ingestion', () => {
       );
       cy.get('#root_schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
-      )
+      );
     };
 
     const addIngestionInput = () => {
