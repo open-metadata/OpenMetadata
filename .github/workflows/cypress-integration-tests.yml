@@ -17,7 +17,7 @@ name: Cypress Integration Tests
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 concurrency:
