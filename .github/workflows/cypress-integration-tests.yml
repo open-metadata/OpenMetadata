@@ -43,7 +43,7 @@ jobs:
           distribution: 'adopt'
 
       - name: Set up Python
-        run: apt-get update && apt-get install -y python3-pip git docker
+        run: apt-get update && apt-get install -y python3-pip git docker && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
       - name: Generating Data Models
         run: make install_dev generate
