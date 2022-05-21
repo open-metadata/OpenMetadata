@@ -55,6 +55,7 @@ public final class JsonUtils {
   public static final String FIELD_TYPE_ANNOTATION = "@om-field-type";
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
+  public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
 
@@ -270,8 +271,7 @@ public final class JsonUtils {
       return Collections.emptyList();
     }
 
-    String fileName = Paths.get(jsonSchemaFile).getFileName().toString();
-    String jsonNamespace = fileName.replace(" ", "").replace(".json", "");
+    String jsonNamespace = getSchemaName(jsonSchemaFile);
 
     List<Type> types = new ArrayList<>();
     Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
@@ -308,11 +308,8 @@ public final class JsonUtils {
       return null;
     }
 
-    String fileName = Paths.get(jsonSchemaFile).getFileName().toString();
-    String entityName = fileName.replace(" ", "").replace(".json", "");
-
-    String namespaceFile = Paths.get(jsonSchemaFile).getParent().getFileName().toString();
-    String namespace = namespaceFile.replace(" ", "").replace(".json", "");
+    String entityName = getSchemaName(jsonSchemaFile);
+    String namespace = getSchemaGroup(jsonSchemaFile);
 
     String description = String.valueOf(node.get("description"));
     return new Type()
@@ -323,5 +320,16 @@ public final class JsonUtils {
         .withDescription(description)
         .withDisplayName(entityName)
         .withSchema(node.toPrettyString());
+  }
+
+  /** Given a json schema file name .../json/schema/entity/data/table.json - return table */
+  private static String getSchemaName(String path) {
+    String fileName = Paths.get(path).getFileName().toString();
+    return fileName.replace(" ", "").replace(JSON_FILE_EXTENSION, "");
+  }
+
+  /** Given a json schema file name .../json/schema/entity/data/table.json - return data */
+  private static String getSchemaGroup(String path) {
+    return Paths.get(path).getParent().getFileName().toString();
   }
 }

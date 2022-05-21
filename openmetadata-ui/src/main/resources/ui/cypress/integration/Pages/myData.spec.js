@@ -21,15 +21,26 @@ describe('MyData page should work', () => {
 
   const checkRecentlyViewElement = (index, tab) => {
     visitEntityTab(tab);
-    cy.wait(100); // to prevent from flicky behaviour, if page is not loaded it will wait for 100ms else it will continue testing
-    cy.get('[data-testid="table-data-card"]').eq(index).should('be.visible');
+    cy.intercept(
+      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
+    ).as('searchApi');
+    cy.wait('@searchApi');
+
+    cy.get('[data-testid="table-data-card"]')
+      .eq(index)
+      .should('be.visible')
+      .scrollIntoView();
+
     cy.get('[data-testid="table-link"]').eq(index).should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
       .then((text) => {
         cy.clickOnLogo();
-        cy.get(`[title="${text}"]`).first().should('be.visible').click();
+        cy.get(`[data-testid="Recently Viewed-${text}"]`)
+          .contains(text)
+          .should('be.visible')
+          .click();
         cy.get('[data-testid="inactive-link"]')
           .invoke('text')
           .then((newText) => {
@@ -58,18 +69,23 @@ describe('MyData page should work', () => {
   };
 
   const followAndOwnTheEntity = (termObj) => {
+    cy.intercept(
+      '/api/v1/search/query?q=*&from=0&size=10&sort_order=desc&index=*'
+    ).as('searchApi');
     // search for the term and redirect to the respective entity tab
     searchEntity(termObj.term);
+
     cy.get(`[data-testid="${termObj.entity}-tab"]`)
       .should('be.visible')
-      .click();
-    cy.get(`[data-testid="${termObj.entity}-tab"]`)
-      .should('be.visible')
-      .should('have.class', 'active')
       .click();
 
+    cy.get(`[data-testid="${termObj.entity}-tab"]`)
+      .should('be.visible')
+      .should('have.class', 'active');
+
+    cy.wait('@searchApi');
     // click on the 1st result and go to entity details page and follow the entity
-    cy.get('[data-testid="table-data-card"]').contains(termObj.term).should('be.visible').click();
+    cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
@@ -107,6 +123,8 @@ describe('MyData page should work', () => {
           .contains(`Started to follow ${termObj.entity.slice(0, -1)}`)
           .should('be.visible');
       });
+
+    cy.clickOnLogo();
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -139,7 +157,7 @@ describe('MyData page should work', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
   });
 
-  it('Listing entity in Recent views section with redirection should work properly', () => {
+  it.skip('Listing entity in Recent views section with redirection should work properly', () => {
     // checking for table entity
     checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.tables);
 
@@ -156,18 +174,19 @@ describe('MyData page should work', () => {
   it('Listing Recent search terms with redirection should work properly', () => {
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
 
-    checkRecentlySearchElement(SEARCH_TERMS.eta_predictions_performance.term);
+    checkRecentlySearchElement(SEARCH_TERMS.trino_etl.term);
     checkRecentlySearchElement(SEARCH_TERMS.fact_session.term);
     checkRecentlySearchElement(SEARCH_TERMS.hive_etl.term);
-    checkRecentlySearchElement(SEARCH_TERMS.sales.term);
+    checkRecentlySearchElement(SEARCH_TERMS.sales_dashboard.term);
   });
 
-  it('My data, following & feed section should work properly', () => {
+  it.skip('My data, following & feed section should work properly', () => {
     const termArr = Object.values(SEARCH_TERMS);
 
     termArr.forEach((term) => {
       followAndOwnTheEntity(term);
     });
+    cy.clickOnLogo();
 
     cy.get('[data-testid="my-data-container"]')
       .children()

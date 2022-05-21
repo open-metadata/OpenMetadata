@@ -27,16 +27,16 @@ import org.openmetadata.catalog.util.JsonUtils;
 /** Type registry used for storing Types in OpenMetadata and customFields of entity types. */
 @Slf4j
 public class TypeRegistry {
-  /** Type map used for extending entities with customFields */
-  public static final Map<String, Type> TYPES = new ConcurrentHashMap<>();
+  /** Type map used for storing both Field Types and Entity Types */
+  protected static final Map<String, Type> TYPES = new ConcurrentHashMap<>();
 
   /** Custom field map (fully qualified customFieldName) to (customField) */
-  public static final Map<String, CustomField> CUSTOM_FIELDS = new ConcurrentHashMap<>();
+  protected static final Map<String, CustomField> CUSTOM_FIELDS = new ConcurrentHashMap<>();
 
   /** Custom field map (fully qualified customFieldName) to (jsonSchema) */
-  public static final Map<String, JsonSchema> CUSTOM_FIELD_SCHEMAS = new ConcurrentHashMap<>();
+  protected static final Map<String, JsonSchema> CUSTOM_FIELD_SCHEMAS = new ConcurrentHashMap<>();
 
-  public static final TypeRegistry INSTANCE = new TypeRegistry();
+  private static final TypeRegistry INSTANCE = new TypeRegistry();
 
   private TypeRegistry() {
     /* Singleton instance */
@@ -54,10 +54,6 @@ public class TypeRegistry {
     for (CustomField field : type.getCustomFields()) {
       TypeRegistry.instance().addCustomField(type.getName(), field.getName(), field);
     }
-  }
-
-  public void getType(String typeName) {
-    TYPES.get(typeName);
   }
 
   public static void removeType(String typeName) {
