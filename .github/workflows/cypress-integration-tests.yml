@@ -51,7 +51,6 @@ jobs:
         uses: cypress-io/github-action@v2
         with:
           install: false
-          record: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: "http://localhost:8585"
           browser: chrome
