@@ -24,8 +24,7 @@ describe('MyData page should work', () => {
     cy.goToHomePage();
   });
 
-  const checkRecentlyViewElement = (tab) => {
-    visitEntityTab(tab);
+  const checkRecentlyViewElement = () => {
     cy.intercept(
       '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
     ).as('searchApi');
@@ -148,32 +147,22 @@ describe('MyData page should work', () => {
 
   it('onClick of table should redirect to tables tab in explore page', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.tables);
+    checkRecentlyViewElement();
   });
 
   it('onClick of topics should redirect to topics tab in explore page', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.topics);
+    checkRecentlyViewElement();
   });
 
   it('onClick of dashboards should redirect to dashboards tab in explore page', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.dashboards);
+    checkRecentlyViewElement();
   });
 
   it('onClick of pipelines should redirect to pipelines tab in explore page', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
-  });
-
-  it('Listing entity in Recent views section with redirection should work properly', () => {
-    // checking for table entity
-    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.tables);
-
-    // checking for topic entity
-    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.topics);
-
-    // checking for dashboard entity
-    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.dashboards);
-
-    // checking for pipeline entity
-    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.pipelines);
+    checkRecentlyViewElement();
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
