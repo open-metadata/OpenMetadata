@@ -47,11 +47,11 @@ jobs:
         with:
           maven-version: 3.8.5
 
+      - name: Set up Python
+        run: apt-get update && apt-get install -y python3-pip git sudo && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
       - name: Set up Docker
         uses: docker-practice/actions-setup-docker@master
-
-      - name: Set up Python
-        run: apt-get update && apt-get install -y python3-pip git docker && update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 
       - name: Generating Data Models
         run: make install_dev generate
