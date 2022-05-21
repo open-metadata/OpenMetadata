@@ -52,6 +52,46 @@ export const SEARCH_TERMS = {
   fact_session: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
 };
 
+export const SEARCH_ENTITY_TABLE = {
+  table_1: { term: 'raw_customer', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  table_2: { term: 'fact_session', entity: MYDATA_SUMMARY_OPTIONS.tables },
+  table_3: {
+    term: 'raw_product_catalog',
+    entity: MYDATA_SUMMARY_OPTIONS.tables,
+  },
+};
+
+export const SEARCH_ENTITY_TOPIC = {
+  topic_1: {
+    term: 'shop_products',
+    entity: MYDATA_SUMMARY_OPTIONS.topics,
+  },
+  topic_2: { term: 'orders', entity: MYDATA_SUMMARY_OPTIONS.topics },
+};
+
+export const SEARCH_ENTITY_DASHBOARD = {
+  dashboard_1: {
+    term: 'Sales Dashboard',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+  dashboard_2: {
+    term: 'Unicode Test',
+    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
+  },
+};
+
+export const SEARCH_ENTITY_PIPELINE = {
+  pipeline_1: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+  pipeline_2: {
+    term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+  pipeline_3: {
+    term: 'Trino ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+};
+
 export const DELETE_ENTITY = {
   table: {
     term: 'fact_line_item',

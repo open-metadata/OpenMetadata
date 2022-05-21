@@ -12,7 +12,12 @@
  */
 
 import { searchEntity, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_TERMS } from '../../constants/constants';
+import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC, SEARCH_TERMS } from '../../constants/constants';
+
+const tables = Object.values(SEARCH_ENTITY_TABLE);
+const topics = Object.values(SEARCH_ENTITY_TOPIC);
+const dashboards = Object.values(SEARCH_ENTITY_DASHBOARD);
+const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
   beforeEach(() => {
@@ -181,12 +186,32 @@ describe('MyData page should work', () => {
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
-    const termArr = Object.values(SEARCH_TERMS);
-
-    termArr.forEach((term) => {
-      followAndOwnTheEntity(term);
+    tables.forEach((table) => {
+      followAndOwnTheEntity(table);
     });
-    cy.clickOnLogo();
+  });
+
+  it('My data, following & feed section should work properly for topic entity', () => {
+    topics.forEach((topic) => {
+      followAndOwnTheEntity(topic);
+    });
+  });
+
+  it('My data, following & feed section should work properly for dashboard entity', () => {
+    dashboards.forEach((dashboard) => {
+      followAndOwnTheEntity(dashboard);
+    });
+  });
+
+  it('My data, following & feed section should work properly for pipeline entity', () => {
+    pipelines.forEach((pipeline) => {
+      followAndOwnTheEntity(pipeline);
+    });
+  });
+
+  it('My data and following section, CTA should work properly', () => {
+    const totalCount =
+      tables.length + pipelines.length + dashboards.length + topics.length;
 
     cy.get('[data-testid="my-data-container"]')
       .children()
@@ -195,24 +220,31 @@ describe('MyData page should work', () => {
       .children()
       .should('have.length', 9);
 
-    cy.clickOnLogo();
     cy.get('[data-testid="my-data-total-count"]')
       .invoke('text')
       .then((text) => {
-        expect(text).equal(`(${termArr.length})`);
+        expect(text).equal(`(${totalCount})`);
+      });
+    cy.get('[data-testid="following-data-total-count"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal(`(${totalCount})`);
       });
 
-    cy.get('[data-testid="my-data-total-count"]').click();
+    cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
+
+    cy.intercept(
+      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
+    ).as('searchApi');
+    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
 
     cy.get('[data-testid="following-data-total-count"]')
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal(`(${termArr.length})`);
-      });
+      .should('be.visible')
+      .click();
 
-    cy.get('[data-testid="following-data-total-count"]').click();
+    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
   });
