@@ -12,7 +12,7 @@
  */
 
 import { searchEntity, visitEntityTab } from '../../common/common';
-import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC, SEARCH_TERMS } from '../../constants/constants';
+import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
 
 const tables = Object.values(SEARCH_ENTITY_TABLE);
 const topics = Object.values(SEARCH_ENTITY_TOPIC);
@@ -24,7 +24,7 @@ describe('MyData page should work', () => {
     cy.goToHomePage();
   });
 
-  const checkRecentlyViewElement = (index, tab) => {
+  const checkRecentlyViewElement = (tab) => {
     visitEntityTab(tab);
     cy.intercept(
       '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
@@ -32,11 +32,11 @@ describe('MyData page should work', () => {
     cy.wait('@searchApi');
 
     cy.get('[data-testid="table-data-card"]')
-      .eq(index)
+      .first()
       .should('be.visible')
       .scrollIntoView();
 
-    cy.get('[data-testid="table-link"]').eq(index).should('be.visible').click();
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
@@ -164,25 +164,25 @@ describe('MyData page should work', () => {
 
   it('Listing entity in Recent views section with redirection should work properly', () => {
     // checking for table entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.tables);
+    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.tables);
 
     // checking for topic entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.topics);
+    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.topics);
 
     // checking for dashboard entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.dashboards);
+    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.dashboards);
 
     // checking for pipeline entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.pipelines);
+    checkRecentlyViewElement(MYDATA_SUMMARY_OPTIONS.pipelines);
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
 
-    checkRecentlySearchElement(SEARCH_TERMS.trino_etl.term);
-    checkRecentlySearchElement(SEARCH_TERMS.fact_session.term);
-    checkRecentlySearchElement(SEARCH_TERMS.hive_etl.term);
-    checkRecentlySearchElement(SEARCH_TERMS.sales_dashboard.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_TABLE.table_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_TOPIC.topic_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_DASHBOARD.dashboard_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_PIPELINE.pipeline_1.term);
   });
 
   it('My data, following & feed section should work properly for table entity', () => {
