@@ -280,8 +280,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Override
   public void validateCreatedEntity(Topic topic, CreateTopic createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        topic, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertReference(createRequest.getService(), topic.getService());
     // TODO add other fields
     TestUtils.validateTags(createRequest.getTags(), topic.getTags());
@@ -290,8 +288,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   @Override
   public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertReference(expected.getService(), expected.getService());
     // TODO add other fields
     TestUtils.validateTags(expected.getTags(), updated.getTags());

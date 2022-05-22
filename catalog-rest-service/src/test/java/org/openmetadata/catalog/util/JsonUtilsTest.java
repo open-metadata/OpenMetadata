@@ -46,7 +46,7 @@ class JsonUtilsTest {
     users.add(user2);
     teamJson.add("id", teamId).add("name", "finance").add("users", users);
 
-    Team original = EntityUtil.validate(teamId, teamJson.build().toString(), Team.class);
+    Team original = JsonUtils.readValue(teamJson.build().toString(), Team.class);
     JsonPatchBuilder patchBuilder = Json.createPatchBuilder();
 
     // Add two users to the team

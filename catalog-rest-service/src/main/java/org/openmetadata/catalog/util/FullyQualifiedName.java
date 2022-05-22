@@ -56,7 +56,7 @@ public class FullyQualifiedName {
   }
 
   private static class SplitListener extends FqnBaseListener {
-    List<String> list = new ArrayList<>();
+    final List<String> list = new ArrayList<>();
 
     public String[] split() {
       return list.toArray(new String[0]);

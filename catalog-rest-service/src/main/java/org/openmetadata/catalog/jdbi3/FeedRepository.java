@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -213,7 +214,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public ThreadCount getThreadsCount(String link, boolean isResolved) throws IOException {
+  public ThreadCount getThreadsCount(String link, boolean isResolved) {
     ThreadCount threadCount = new ThreadCount();
     List<List<String>> result;
     List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
@@ -512,20 +513,12 @@ public class FeedRepository {
   }
 
   public static class FilteredThreads {
-    List<Thread> threads;
-    int totalCount;
+    @Getter private final List<Thread> threads;
+    @Getter private final int totalCount;
 
     public FilteredThreads(List<Thread> threads, int totalCount) {
       this.threads = threads;
       this.totalCount = totalCount;
-    }
-
-    public List<Thread> getThreads() {
-      return threads;
-    }
-
-    public int getTotalCount() {
-      return totalCount;
     }
   }
 }

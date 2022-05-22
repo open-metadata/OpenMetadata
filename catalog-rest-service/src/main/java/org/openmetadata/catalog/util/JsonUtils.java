@@ -16,11 +16,9 @@ package org.openmetadata.catalog.util;
 import static org.openmetadata.catalog.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.networknt.schema.JsonSchema;
@@ -45,7 +43,6 @@ import javax.json.JsonPatch;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
-import javax.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
@@ -54,7 +51,6 @@ import org.openmetadata.catalog.entity.type.Category;
 public final class JsonUtils {
   public static final String FIELD_TYPE_ANNOTATION = "@om-field-type";
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
-  public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory = JsonSchemaFactory.getInstance(VersionFlag.V7);
@@ -210,20 +206,12 @@ public final class JsonUtils {
     }
   }
 
-  public static String jsonToString(String json) {
-    return String.valueOf(JsonStringEncoder.getInstance().quoteAsString(json));
-  }
-
   public static JsonSchema getJsonSchema(String schema) {
     return schemaFactory.getSchema(schema);
   }
 
   public static JsonNode valueToTree(Object object) {
     return OBJECT_MAPPER.valueToTree(object);
-  }
-
-  public static ObjectNode createObject() {
-    return OBJECT_MAPPER.createObjectNode();
   }
 
   public static boolean hasAnnotation(JsonNode jsonNode, String annotation) {

@@ -117,9 +117,6 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
   @Override
   public void validateCreatedEntity(
       DatabaseSchema schema, CreateDatabaseSchema createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        schema, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-
     // Validate service
     assertNotNull(schema.getServiceType());
     assertReference(createRequest.getDatabase(), schema.getDatabase());
@@ -130,8 +127,6 @@ public class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchem
 
   @Override
   public void compareEntities(DatabaseSchema expected, DatabaseSchema updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Validate service
     assertReference(expected.getDatabase(), updated.getDatabase());
     assertEquals(
