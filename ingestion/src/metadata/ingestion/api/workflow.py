@@ -226,3 +226,45 @@ class Workflow:
         else:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
+
+
+    def log_flow_status(self) -> int:
+        from prefect import get_run_logger
+
+        logger = get_run_logger()
+        logger.info("Source Status: %s", self.source.get_status().as_string())
+        if hasattr(self, "stage"):
+            logger.info("Stage Status: %s", self.stage.get_status().as_string())
+        if hasattr(self, "sink"):
+            logger.info("Sink Status: %s", self.sink.get_status().as_string())
+        if hasattr(self, "bulk_sink"):
+            logger.info("Bulk Sink Status: %s", self.bulk_sink.get_status().as_string())
+
+
+def prefect_ingestion(config: str):
+    """
+    Run metadata ingestion using Prefect. Requires a JSON string as input.
+
+    Follow the documentation for guidance on:
+    - installing and configuring Prefect,
+    - running metadata ingestion flows locally and on schedule.
+
+    Usage:
+
+    from prefect import flow
+    from metadata.ingestion.api.workflow import prefect_ingestion
+
+
+    @flow
+    def metadata_ingestion_workflow(config: str):
+        prefect_ingestion(config)
+
+    """
+    import json
+
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.log_flow_status()
+    workflow.stop()

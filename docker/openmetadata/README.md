@@ -1,0 +1,3 @@
+This docker-compose file contains only components related to OpenMetadata without an ingestion framework. This configuration is intended to be a lightweight alternative - users can choose how to orchestrate their metadata ingestion workflows, whether this is a specific workflow orchestration platform, self-hosted scheduler, or simple CLI jobs scheduled with CRON. This way, OpenMetadata can be deployed separately from the ingestion engine, allowing greater flexibility and easier maintenance. 
+
+Follow the metadata ingestion documentation for guidance on choosing and configuring a workflow orchestration engine suitable for your use case. 
