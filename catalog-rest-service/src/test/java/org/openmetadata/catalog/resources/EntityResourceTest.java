@@ -1167,7 +1167,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K create = createRequest(test).withExtension(jsonNode);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Now set the entity custom field with an unknown field
+    // Now set the entity custom field with an unknown field name
     jsonNode.set("stringC", mapper.convertValue("string", JsonNode.class)); // Unknown field
     assertResponse(
         () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),

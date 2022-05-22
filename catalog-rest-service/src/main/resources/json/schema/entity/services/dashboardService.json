@@ -93,7 +93,7 @@
     },
     "description": {
       "description": "Description of a dashboard service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
       "$ref": "#/definitions/dashboardConnection"
