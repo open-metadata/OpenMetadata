@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
+import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -70,6 +71,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tags")
 public class TagResource {
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";

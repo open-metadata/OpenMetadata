@@ -254,6 +254,8 @@ const ExplorePage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
+    setSearchResult(undefined);
+    setIsLoadingForData(true);
     fetchData([
       {
         queryString: searchText,

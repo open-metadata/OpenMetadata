@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

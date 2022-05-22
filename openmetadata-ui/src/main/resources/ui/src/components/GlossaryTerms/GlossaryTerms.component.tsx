@@ -6,14 +6,14 @@ import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getAddGlossaryTermsPath,
-  getGlossaryTermsPath,
-  TITLE_FOR_NON_ADMIN_ACTION,
-} from '../../constants/constants';
+import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { getNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getAddGlossaryTermsPath,
+  getGlossaryTermsPath,
+} from '../../utils/RouterUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
