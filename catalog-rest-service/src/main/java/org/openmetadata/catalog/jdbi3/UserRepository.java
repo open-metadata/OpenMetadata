@@ -23,7 +23,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -55,14 +54,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityReference getOriginalOwner(User entity) throws IOException {
+  public EntityReference getOriginalOwner(User entity) {
     // For User entity, the entity and the owner are the same
     return entity.getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException {
+  public void prepare(User user) {
     setFullyQualifiedName(user);
   }
 
@@ -114,12 +113,6 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public UserUpdater getUpdater(User original, User updated, Operation operation) {
     return new UserUpdater(original, updated, operation);
-  }
-
-  @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException {
-    User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
-    return setFields(user, fields);
   }
 
   @Override

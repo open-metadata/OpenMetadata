@@ -793,8 +793,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(user, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
@@ -820,8 +818,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(expected, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());
     assertEquals(expected.getTimezone(), expected.getTimezone());

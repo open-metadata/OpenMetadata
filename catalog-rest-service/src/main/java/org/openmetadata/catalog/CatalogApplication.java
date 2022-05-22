@@ -31,7 +31,6 @@ import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.SQLException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import javax.ws.rs.container.ContainerRequestFilter;
@@ -78,7 +77,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, SQLException {
+          InvocationTargetException, IOException {
     final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
 
     SqlLogger sqlLogger =
@@ -191,12 +190,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
-      authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
+      authorizer =
+          Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
-            ((Class<ContainerRequestFilter>) Class.forName(filterClazzName))
+            Class.forName(filterClazzName)
+                .asSubclass(ContainerRequestFilter.class)
                 .getConstructor(AuthenticationConfiguration.class)
                 .newInstance(authenticationConfiguration);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
@@ -204,8 +205,8 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
-      authorizer = NoopAuthorizer.class.getConstructor().newInstance();
-      ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
+      authorizer = new NoopAuthorizer();
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration);
       environment.jersey().register(filter);
     }
   }
@@ -256,12 +257,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static class ManagedShutdown implements Managed {
 
     @Override
-    public void start() throws Exception {
+    public void start() {
       LOG.info("Starting the application");
     }
 
     @Override
-    public void stop() throws Exception {
+    public void stop() throws InterruptedException {
       EventPubSub.shutdown();
       LOG.info("Stopping the application");
     }

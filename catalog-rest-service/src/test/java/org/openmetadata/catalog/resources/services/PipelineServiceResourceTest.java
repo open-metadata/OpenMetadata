@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URI;
@@ -224,8 +223,6 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   @Override
   public void validateCreatedEntity(
       PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        service, createRequest.getDescription(), getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
