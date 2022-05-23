@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { SearchResponse } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -25,11 +24,6 @@ import React, {
 } from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getUserSuggestions,
-} from '../../axiosAPIs/miscAPI';
 import { getCategory } from '../../axiosAPIs/tagAPI';
 import {
   FQN_SEPARATOR_CHAR,
@@ -39,13 +33,12 @@ import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import {
-  formatTeamsAndUsersResponse,
-  formatTeamsResponse,
-  formatUsersResponse,
-} from '../../utils/APIUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  searchFormattedUsersAndTeams,
+  suggestFormattedUsersAndTeams,
+} from '../../utils/UserDataUtils';
 import CardListItem from '../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItem.interface';
 import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
@@ -168,28 +161,40 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
       setIsUserLoading(true);
-      const promises = [
-        getSearchedUsers(searchQuery, from),
-        getSearchedTeams(searchQuery, from),
-      ];
-      Promise.allSettled(promises)
-        .then(
-          ([resUsers, resTeams]: Array<
-            PromiseSettledResult<SearchResponse>
-          >) => {
-            const users =
-              resUsers.status === 'fulfilled'
-                ? formatUsersResponse(resUsers.value.data.hits.hits)
-                : [];
-            const teams =
-              resTeams.status === 'fulfilled'
-                ? formatTeamsResponse(resTeams.value.data.hits.hits)
-                : [];
-            setListOwners(getOwnerList(users, teams));
-          }
-        )
+      // const promises = [
+      //   getSearchedUsers(searchQuery, from),
+      //   getSearchedTeams(searchQuery, from),
+      // ];
+      // Promise.allSettled(promises)
+      //   .then(
+      //     ([resUsers, resTeams]: Array<
+      //       PromiseSettledResult<SearchResponse>
+      //     >) => {
+      //       const users =
+      //         resUsers.status === 'fulfilled'
+      //           ? formatUsersResponse(resUsers.value.data.hits.hits)
+      //           : [];
+      //       const teams =
+      //         resTeams.status === 'fulfilled'
+      //           ? formatTeamsResponse(resTeams.value.data.hits.hits)
+      //           : [];
+      //       setListOwners(getOwnerList(users, teams));
+      //     }
+      //   )
+      //   .catch(() => {
+      //     // console.log('Failed to fetch search results: ', err);
+      //     setListOwners([]);
+      //   })
+      //   .finally(() => {
+      //     setIsUserLoading(false);
+      //   });
+
+      searchFormattedUsersAndTeams(searchQuery, from)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
         .catch(() => {
-          // console.log('Failed to fetch search results: ', err);
           setListOwners([]);
         })
         .finally(() => {
@@ -202,17 +207,29 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getOwnerSuggestion = useCallback(
     (searchText = '') => {
       setIsUserLoading(true);
-      getUserSuggestions(searchText)
-        .then((res: AxiosResponse) => {
-          const { users, teams } = formatTeamsAndUsersResponse(
-            res.data.suggest['table-suggest'][0].options
-          );
+      // getUserSuggestions(searchText)
+      //   .then((res: AxiosResponse) => {
+      //     const { users, teams } = formatTeamsAndUsersResponse(
+      //       res.data.suggest['table-suggest'][0].options
+      //     );
+      //     setListOwners(getOwnerList(users, teams));
+      //   })
+      //   .catch(() => {
+      //     setListOwners(getOwnerList());
+      //   })
+      //   .finally(() => setIsUserLoading(false));
+
+      suggestFormattedUsersAndTeams(searchText)
+        .then((res) => {
+          const { users, teams } = res;
           setListOwners(getOwnerList(users, teams));
         })
         .catch(() => {
-          setListOwners(getOwnerList());
+          setListOwners([]);
         })
-        .finally(() => setIsUserLoading(false));
+        .finally(() => {
+          setIsUserLoading(false);
+        });
     },
     [setListOwners, setIsUserLoading]
   );
@@ -381,7 +398,8 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   }, [currentTier]);
 
   useEffect(() => {
-    setListOwners(getOwnerList());
+    // setListOwners(getOwnerList());
+    debounceOnSearch(searchText);
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
   useEffect(() => {
@@ -390,8 +408,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   useEffect(() => {
     if (!listVisible) {
-      setSearchText('');
-      setListOwners(getOwnerList());
+      // setSearchText('');
+      // setListOwners(getOwnerList());
+      handleOwnerSearch('');
     }
   }, [listVisible]);
 

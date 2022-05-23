@@ -253,6 +253,11 @@ declare module 'Models' {
     description?: string;
   };
 
+  export type SearchedUsersAndTeams = {
+    users: FormattedUsersData[];
+    teams: FormattedTeamsData[];
+  };
+
   export type TagOption = {
     fqn: string;
     source: string;

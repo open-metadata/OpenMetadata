@@ -14,7 +14,7 @@
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -30,7 +30,6 @@ import {
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
@@ -141,9 +140,7 @@ const EntityPageInfo = ({
   };
 
   const getFollowers = () => {
-    const list = entityFollowers
-      .map((follower) => getFollowerDetail(follower.id))
-      .filter(Boolean);
+    const list = cloneDeep(entityFollowers);
 
     return (
       <div
@@ -173,7 +170,7 @@ const EntityPageInfo = ({
         ) : (
           <p>{entityName} doesn&#39;t have any followers yet</p>
         )}
-        {list.length > FOLLOWERS_VIEW_CAP && (
+        {list.length > 0 && (
           <p
             className="link-text tw-text-sm tw-py-2"
             onClick={() => setIsViewMore(true)}>

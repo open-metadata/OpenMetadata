@@ -16,7 +16,6 @@ import { compare } from 'fast-json-patch';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -82,7 +81,6 @@ const DashboardDetails = ({
   dashboardUrl,
   dashboardTags,
   dashboardDetails,
-  users,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   tagUpdateHandler,
@@ -111,7 +109,6 @@ const DashboardDetails = ({
   paging,
   fetchFeedHandler,
 }: DashboardDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -433,12 +430,6 @@ const DashboardDetails = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);

@@ -23,7 +23,9 @@ import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { getAllTopics } from '../../axiosAPIs/topicsAPI';
+import { getUsers } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
@@ -52,6 +54,8 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
+  const [countUsers, setCountUsers] = useState<number>();
+  const [countTeams, setCountTeams] = useState<number>();
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
@@ -80,6 +84,12 @@ const MyDataPage = () => {
   };
   const setDashboardCount = (count = 0) => {
     setCountDashboards(count);
+  };
+  const setUserCount = (count = 0) => {
+    setCountUsers(count);
+  };
+  const setTeamCount = (count = 0) => {
+    setCountTeams(count);
   };
 
   const fetchData = (fetchService = false) => {
@@ -151,6 +161,38 @@ const MyDataPage = () => {
           jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountDashboards(0);
+      });
+
+    getUsers('', 0)
+      .then((res) => {
+        if (res.data) {
+          setUserCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setUserCount(0);
+      });
+
+    getTeams('', 0)
+      .then((res) => {
+        if (res.data) {
+          setTeamCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTeamCount(0);
       });
 
     if (fetchService) {
@@ -342,14 +384,18 @@ const MyDataPage = () => {
       !isUndefined(countTables) &&
       !isUndefined(countTopics) &&
       !isUndefined(countDashboards) &&
-      !isUndefined(countPipelines) ? (
+      !isUndefined(countPipelines) &&
+      !isUndefined(countTeams) &&
+      !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
             countDashboards={countDashboards}
             countPipelines={countPipelines}
             countServices={countServices}
             countTables={countTables}
+            countTeams={countTeams}
             countTopics={countTopics}
+            countUsers={countUsers}
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}

@@ -17,7 +17,6 @@ import { isNil } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo } from 'Models';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -77,7 +76,6 @@ const PipelineDetails = ({
   descriptionUpdateHandler,
   entityLineage,
   followers,
-  users,
   followPipelineHandler,
   unfollowPipelineHandler,
   tagUpdateHandler,
@@ -107,7 +105,6 @@ const PipelineDetails = ({
   pipelineStatus,
   isPipelineStatusLoading,
 }: PipeLineDetailsProp) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -345,12 +342,6 @@ const PipelineDetails = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);

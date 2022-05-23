@@ -15,7 +15,6 @@ import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -91,7 +90,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  users,
   usageSummary,
   joins,
   tableType,
@@ -132,7 +130,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   paging,
   fetchFeedHandler,
 }: DatasetDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -524,12 +521,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);

@@ -48,6 +48,8 @@ const MyData: React.FC<MyDataProps> = ({
   countServices,
   countTables,
   countTopics,
+  countTeams,
+  countUsers,
   ownedData,
   followedData,
   feedData,
@@ -109,7 +111,9 @@ const MyData: React.FC<MyDataProps> = ({
           countPipelines={countPipelines}
           countServices={countServices}
           countTables={countTables}
+          countTeams={countTeams}
           countTopics={countTopics}
+          countUsers={countUsers}
         />
         <div className="tw-filter-seperator" />
         <RecentlyViewed />

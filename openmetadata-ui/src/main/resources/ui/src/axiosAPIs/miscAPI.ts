@@ -107,16 +107,25 @@ export const getInitialUsers: Function = (): Promise<AxiosResponse> => {
     `/search/query?q=*&from=0&size=5&index=${SearchIndex.USER}`
   );
 };
+export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
+  return APIClient.get(
+    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
+  );
+};
+
+export const getSuggestedUsers = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
+};
+
+export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
+};
+
 export const getUserSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {
   return APIClient.get(
     `/search/suggest?q=${term}&index=${SearchIndex.USER},${SearchIndex.TEAM}`
-  );
-};
-export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
   );
 };
 

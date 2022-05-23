@@ -13,13 +13,23 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getSuggestedTeams,
+  getSuggestedUsers,
+} from '../axiosAPIs/miscAPI';
 import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SettledStatus } from '../enums/axios.enum';
 // import { API_RES_MAX_SIZE } from '../constants/constants';
 import { User } from '../generated/entity/teams/user';
+import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
@@ -143,4 +153,65 @@ export const getUserProfilePic = (userId?: string, username?: string) => {
   }
 
   return profile;
+};
+
+export const searchFormattedUsersAndTeams = (
+  searchQuery = WILD_CARD_CHAR,
+  from = 1
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSearchedUsers(searchQuery, from),
+      getSearchedTeams(searchQuery, from),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(resUsers.value.data.hits.hits)
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(resTeams.value.data.hits.hits)
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
+};
+
+export const suggestFormattedUsersAndTeams = (
+  searchQuery: string
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSuggestedUsers(searchQuery),
+      getSuggestedTeams(searchQuery),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<AxiosResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(
+                  resUsers.value.data.suggest['table-suggest'][0].options
+                )
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(
+                  resTeams.value.data.suggest['table-suggest'][0].options
+                )
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
 };

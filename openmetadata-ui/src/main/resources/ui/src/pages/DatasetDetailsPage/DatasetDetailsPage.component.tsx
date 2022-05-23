@@ -1021,7 +1021,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
-          users={AppState.users}
           version={currentVersion}
           versionHandler={versionHandler}
         />

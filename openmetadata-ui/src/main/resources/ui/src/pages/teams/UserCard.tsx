@@ -190,7 +190,7 @@ const UserCard = ({
                 }}>
                 {item.displayName}
               </p>
-              {item.name && (
+              {item.name && item.name !== item.displayName && (
                 <p
                   className={classNames(
                     isActionVisible ? 'tw-truncate tw-w-32' : null
