@@ -55,13 +55,12 @@ def _create_lineage_by_table_name(
     try:
         from_table = str(from_table).replace("<default>", "")
         to_table = str(to_table).replace("<default>", "")
-        # TODO: FIXME
         from_fqdn = fqn.build(
             metadata,
             entity_type=Table,
             service_name=service_name,
             database_name=database,
-            schema_name=None,
+            schema_name=None,  # TODO: Split table name
             table_name=_get_formmated_table_name(str(from_table)),
         )
         from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
@@ -74,13 +73,12 @@ def _create_lineage_by_table_name(
             )
         else:
             multiple_from_fqns = [from_entity]
-        # TODO: FIXME
         to_fqdn = fqn.build(
             metadata,
             entity_type=Table,
             service_name=service_name,
             database_name=database,
-            schema_name=None,
+            schema_name=None,  # TODO: Split table name
             table_name=_get_formmated_table_name(str(to_table)),
         )
         to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)

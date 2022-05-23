@@ -505,12 +505,11 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    # TODO: FIXME
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=database,
+                        database_name=None,  # issue-5093 Read proper schema and db from manifest
                         schema_name=None,
                         table_name=table,
                     )
