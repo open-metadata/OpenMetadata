@@ -17,7 +17,6 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -79,14 +76,8 @@ public class FeedResource {
   private final FeedRepository dao;
   private final Authorizer authorizer;
 
-  private static List<String> getAllowedFields() {
-    JsonPropertyOrder propertyOrder = Thread.class.getAnnotation(JsonPropertyOrder.class);
-    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
-  }
-
-  public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
+  public static void addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
-    return threads;
   }
 
   public static Thread addHref(UriInfo uriInfo, Thread thread) {
@@ -186,8 +177,7 @@ public class FeedResource {
     } else { // Forward paging or first page
       threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
     }
-    threads.getData().forEach(thread -> addHref(uriInfo, thread));
-
+    addHref(uriInfo, threads.getData());
     return threads;
   }
 
@@ -257,8 +247,7 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
-          Boolean isResolved)
-      throws IOException {
+          Boolean isResolved) {
     return dao.getThreadsCount(entityLink, isResolved);
   }
 

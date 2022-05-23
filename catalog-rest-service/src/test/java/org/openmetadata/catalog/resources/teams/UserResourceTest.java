@@ -44,19 +44,28 @@ import static org.openmetadata.catalog.util.TestUtils.validateAlphabeticalOrderi
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.auth0.jwk.JwkException;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Predicate;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -70,19 +79,18 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.RoleRepository.RoleEntityInterface;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
+import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -104,12 +112,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER1 =
         userResourceTest.createEntity(
             userResourceTest.createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER1 = new UserEntityInterface(USER1).getEntityReference();
+    USER_OWNER1 = USER1.getEntityReference();
 
     USER2 =
         userResourceTest.createEntity(
             userResourceTest.createRequest(test, 1).withRoles(List.of(DATA_CONSUMER_ROLE.getId())), ADMIN_AUTH_HEADERS);
-    USER_OWNER2 = new UserEntityInterface(USER2).getEntityReference();
+    USER_OWNER2 = USER2.getEntityReference();
 
     USER_WITH_DATA_STEWARD_ROLE =
         userResourceTest.createEntity(
@@ -127,7 +135,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = new TeamEntityInterface(TEAM1).getEntityReference();
+    TEAM_OWNER1 = TEAM1.getEntityReference();
   }
 
   @Test
@@ -144,7 +152,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     List<Role> roles = roleResourceTest.listEntities(Collections.emptyMap(), ADMIN_AUTH_HEADERS).getData();
     Role nonDefaultRole = roles.stream().filter(role -> !role.getDefaultRole()).findAny().orElseThrow();
-    EntityReference nonDefaultRoleRef = new RoleEntityInterface(nonDefaultRole).getEntityReference();
+    EntityReference nonDefaultRoleRef = nonDefaultRole.getEntityReference();
 
     // Find a default role
     EntityReference defaultRoleRef = getDefaultRole();
@@ -167,7 +175,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Change the default roles and make sure the change is reflected in all users
     Role newDefaultRole = roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1000), ADMIN_AUTH_HEADERS);
-    EntityReference newDefaultRoleRef = new RoleEntityInterface(newDefaultRole).getEntityReference();
+    EntityReference newDefaultRoleRef = newDefaultRole.getEntityReference();
     String defaultRoleJson = JsonUtils.pojoToJson(newDefaultRole);
     newDefaultRole.setDefaultRole(true);
     roleResourceTest.patchEntity(newDefaultRole.getId(), defaultRoleJson, newDefaultRole, ADMIN_AUTH_HEADERS);
@@ -188,25 +196,25 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Role role1 =
         roleResourceTest.createEntity(
             roleResourceTest.createRequest("teamDefaultRole1", "", "", null), ADMIN_AUTH_HEADERS);
-    EntityReference role1Ref = new RoleEntityInterface(role1).getEntityReference();
+    EntityReference role1Ref = role1.getEntityReference();
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     Team team1 =
         teamResourceTest.createEntity(
             teamResourceTest.createRequest(test, 1).withDefaultRoles(List.of(role1.getId())), ADMIN_AUTH_HEADERS);
-    EntityReference team1Ref = new TeamEntityInterface(team1).getEntityReference();
+    EntityReference team1Ref = team1.getEntityReference();
 
     // Create team2 with defaultRole role2
     Role role2 =
         roleResourceTest.createEntity(
             roleResourceTest.createRequest("teamDefaultRole2", "", "", null), ADMIN_AUTH_HEADERS);
-    EntityReference role2Ref = new RoleEntityInterface(role2).getEntityReference();
+    EntityReference role2Ref = role2.getEntityReference();
 
     Team team2 =
         teamResourceTest.createEntity(
             teamResourceTest.createRequest(test, 2).withDefaultRoles(List.of(role1.getId(), role2.getId())),
             ADMIN_AUTH_HEADERS);
-    EntityReference team2Ref = new TeamEntityInterface(team2).getEntityReference();
+    EntityReference team2Ref = team2.getEntityReference();
 
     // user1 has defaultRole
     // Add user1 to team1 to inherit default of roles of team1(role1)
@@ -538,25 +546,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     EntityReference team1 =
-        new TeamEntityInterface(
-                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
-            .getEntityReference();
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
     EntityReference team2 =
-        new TeamEntityInterface(
-                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
-            .getEntityReference();
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
     EntityReference team3 =
-        new TeamEntityInterface(
-                teamResourceTest.createEntity(teamResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS))
-            .getEntityReference();
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 3), ADMIN_AUTH_HEADERS).getEntityReference();
     List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     EntityReference role1 =
-        new RoleEntityInterface(
-                roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS))
-            .getEntityReference();
+        roleResourceTest.createEntity(roleResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getEntityReference();
 
     //
     // Add previously absent attributes
@@ -588,9 +588,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
 
     EntityReference role2 =
-        new RoleEntityInterface(
-                roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS))
-            .getEntityReference();
+        roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
 
     origJson = JsonUtils.pojoToJson(user);
     user.withRoles(Arrays.asList(role2))
@@ -669,6 +667,60 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         entityNotFound("user", user.getId()));
   }
 
+  @Test
+  void put_generateToken_bot_user_200_ok(TestInfo test)
+      throws HttpResponseException, MalformedURLException, JwkException {
+    User user =
+        createEntity(
+            createRequest(test, 6)
+                .withName("ingestion-bot-jwt")
+                .withDisplayName("ingestion-bot-jwt")
+                .withEmail("ingestion-bot-jwt@email.com")
+                .withIsBot(true),
+            authHeaders("ingestion-bot-jwt@email.com"));
+    JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
+    TestUtils.put(
+        getResource(String.format("users/generateToken/%s", user.getId())),
+        JWTTokenExpiry.Seven,
+        OK,
+        ADMIN_AUTH_HEADERS);
+    user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(user.getAuthenticationMechanism());
+    JWTAuthMechanism jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertNotNull(jwtAuthMechanism.getJWTToken());
+    DecodedJWT jwt = decodedJWT(jwtAuthMechanism.getJWTToken());
+    Date date = jwt.getExpiresAt();
+    long daysBetween = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60 * 24));
+    assertTrue(daysBetween >= 6);
+    assertEquals("ingestion-bot-jwt", jwt.getClaims().get("sub").asString());
+    assertEquals(true, jwt.getClaims().get("isBot").asBoolean());
+    TestUtils.put(getResource(String.format("users/revokeToken/%s", user.getId())), User.class, OK, ADMIN_AUTH_HEADERS);
+    jwtAuthMechanism =
+        TestUtils.get(
+            getResource(String.format("users/token/%s", user.getId())), JWTAuthMechanism.class, ADMIN_AUTH_HEADERS);
+    assertEquals(StringUtils.EMPTY, jwtAuthMechanism.getJWTToken());
+  }
+
+  private DecodedJWT decodedJWT(String token) throws MalformedURLException, JwkException, HttpResponseException {
+    DecodedJWT jwt;
+    try {
+      jwt = JWT.decode(token);
+    } catch (JWTDecodeException e) {
+      throw new AuthenticationException("Invalid token", e);
+    }
+
+    // Check if expired
+    // if the expiresAt set to null, treat it as never expiring token
+    if (jwt.getExpiresAt() != null
+        && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+      throw new AuthenticationException("Expired token!");
+    }
+
+    return jwt;
+  }
+
   @SneakyThrows
   private User createUserAndCheckRoles(
       CreateUser create, List<EntityReference> expectedRoles, List<EntityReference> expectedInheritedRoles) {
@@ -687,7 +739,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  public EntityInterface<User> validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
+  public User validateGetWithDifferentFields(User user, boolean byName) throws HttpResponseException {
     String fields = "";
     user =
         byName
@@ -702,20 +754,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             : getEntity(user.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(user.getProfile(), user.getRoles(), user.getTeams(), user.getFollows(), user.getOwns());
     validateAlphabeticalOrdering(user.getTeams(), EntityUtil.compareEntityReference);
-    return getEntityInterface(user);
+    return user;
   }
 
   @Override
-  public CreateUser createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateUser createRequest(String name) {
     // user part of the email should be less than 64 in length
     String emailUser = nullOrEmpty(name) ? UUID.randomUUID().toString() : name;
     emailUser = emailUser.length() > 64 ? emailUser.substring(0, 64) : emailUser;
-    return new CreateUser()
-        .withName(name)
-        .withEmail(emailUser + "@open-metadata.org")
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withProfile(PROFILE);
+    return new CreateUser().withName(name).withEmail(emailUser + "@open-metadata.org").withProfile(PROFILE);
   }
 
   @Override
@@ -746,12 +793,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(user),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        Entity.getEntityReference(user));
-
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
@@ -777,12 +818,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(expected),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        Entity.getEntityReference(expected));
-
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());
     assertEquals(expected.getTimezone(), expected.getTimezone());
@@ -795,11 +830,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
-  }
-
-  @Override
-  public EntityInterface<User> getEntityInterface(User entity) {
-    return new UserEntityInterface(entity);
   }
 
   @Override
@@ -827,6 +857,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     if (roleResourceTest.getDefaultRoles().size() == 0) {
       return null;
     }
-    return new RoleEntityInterface(roles.get(0)).getEntityReference();
+    return roles.get(0).getEntityReference();
   }
 }

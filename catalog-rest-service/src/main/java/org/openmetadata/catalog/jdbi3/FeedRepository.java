@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
+import static org.openmetadata.catalog.type.Relationship.CREATED;
+import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
+import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +30,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -83,13 +89,7 @@ public class FeedRepository {
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
-    dao.relationshipDAO()
-        .insert(
-            createdByUser.getId().toString(),
-            thread.getId().toString(),
-            Entity.USER,
-            Entity.THREAD,
-            Relationship.CREATED.ordinal());
+    dao.relationshipDAO().insert(createdByUser.getId(), thread.getId(), Entity.USER, Entity.THREAD, CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
@@ -99,17 +99,13 @@ public class FeedRepository {
             about.getFullyQualifiedFieldValue(), // to FQN
             Entity.THREAD, // From type
             about.getFullyQualifiedFieldType(), // to Type
-            Relationship.IS_ABOUT.ordinal());
+            IS_ABOUT.ordinal(),
+            null);
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
     if (entityOwner != null) {
       dao.relationshipDAO()
-          .insert(
-              thread.getId().toString(),
-              entityOwner.getId().toString(),
-              Entity.THREAD,
-              entityOwner.getType(),
-              Relationship.ADDRESSED_TO.ordinal());
+          .insert(thread.getId(), entityOwner.getId(), Entity.THREAD, entityOwner.getType(), ADDRESSED_TO.ordinal());
     }
 
     // Add mentions to field relationship table
@@ -151,7 +147,8 @@ public class FeedRepository {
                         thread.getId().toString(),
                         mention.getFullyQualifiedFieldType(),
                         Entity.THREAD,
-                        Relationship.MENTIONED_IN.ordinal()));
+                        Relationship.MENTIONED_IN.ordinal(),
+                        null));
   }
 
   @Transaction
@@ -178,13 +175,7 @@ public class FeedRepository {
       }
     }
     if (!relationAlreadyExists) {
-      dao.relationshipDAO()
-          .insert(
-              fromUser.getId().toString(),
-              thread.getId().toString(),
-              Entity.USER,
-              Entity.THREAD,
-              Relationship.REPLIED_TO.ordinal());
+      dao.relationshipDAO().insert(fromUser.getId(), thread.getId(), Entity.USER, Entity.THREAD, REPLIED_TO.ordinal());
     }
 
     // Add mentions into field relationship table
@@ -219,11 +210,11 @@ public class FeedRepository {
 
   public EntityReference getOwnerOfPost(Post post) {
     User fromUser = dao.userDAO().findEntityByName(post.getFrom());
-    return Entity.getEntityReference(fromUser);
+    return fromUser.getEntityReference();
   }
 
   @Transaction
-  public ThreadCount getThreadsCount(String link, boolean isResolved) throws IOException {
+  public ThreadCount getThreadsCount(String link, boolean isResolved) {
     ThreadCount threadCount = new ThreadCount();
     List<List<String>> result;
     List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
@@ -233,7 +224,7 @@ public class FeedRepository {
       result =
           dao.feedDAO()
               .listCountByEntityLink(
-                  StringUtils.EMPTY, Entity.THREAD, StringUtils.EMPTY, Relationship.IS_ABOUT.ordinal(), isResolved);
+                  StringUtils.EMPTY, Entity.THREAD, StringUtils.EMPTY, IS_ABOUT.ordinal(), isResolved);
     } else {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);
@@ -253,7 +244,7 @@ public class FeedRepository {
                     entityLink.getFullyQualifiedFieldValue(),
                     Entity.THREAD,
                     entityLink.getFullyQualifiedFieldType(),
-                    Relationship.IS_ABOUT.ordinal(),
+                    IS_ABOUT.ordinal(),
                     isResolved);
       }
     }
@@ -333,7 +324,7 @@ public class FeedRepository {
                         limit + 1,
                         time,
                         isResolved,
-                        Relationship.IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal());
           } else {
             jsons =
                 dao.feedDAO()
@@ -343,7 +334,7 @@ public class FeedRepository {
                         limit + 1,
                         time,
                         isResolved,
-                        Relationship.IS_ABOUT.ordinal());
+                        IS_ABOUT.ordinal());
           }
           threads = JsonUtils.readObjects(jsons, Thread.class);
           total =
@@ -352,7 +343,7 @@ public class FeedRepository {
                       entityLink.getFullyQualifiedFieldValue(),
                       entityLink.getFullyQualifiedFieldType(),
                       isResolved,
-                      Relationship.IS_ABOUT.ordinal());
+                      IS_ABOUT.ordinal());
         }
       } else {
         FilteredThreads filteredThreads;
@@ -474,7 +465,7 @@ public class FeedRepository {
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<EntityReference> teams =
         EntityUtil.populateEntityReferences(
-            dao.relationshipDAO().findFromEntity(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM));
+            dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM), Entity.TEAM);
     List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
     if (teamNames.isEmpty()) {
       teamNames = List.of(StringUtils.EMPTY);
@@ -522,20 +513,12 @@ public class FeedRepository {
   }
 
   public static class FilteredThreads {
-    List<Thread> threads;
-    int totalCount;
+    @Getter private final List<Thread> threads;
+    @Getter private final int totalCount;
 
     public FilteredThreads(List<Thread> threads, int totalCount) {
       this.threads = threads;
       this.totalCount = totalCount;
-    }
-
-    public List<Thread> getThreads() {
-      return threads;
-    }
-
-    public int getTotalCount() {
-      return totalCount;
     }
   }
 }

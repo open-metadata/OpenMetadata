@@ -235,7 +235,7 @@ const CreateUser = ({
           {requiredField('Email')}
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="email"
           id="email"
           name="email"
@@ -256,7 +256,7 @@ const CreateUser = ({
           Display Name
         </label>
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="displayName"
           id="displayName"
           name="displayName"

@@ -12,6 +12,7 @@
  */
 
 export enum FilterPatternEnum {
+  DATABASE = 'database',
   SCHEMA = 'schema',
   TABLE = 'table',
   CHART = 'chart',

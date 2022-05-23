@@ -25,23 +25,23 @@ import { DBT_SOURCES, GCS_CONFIG } from './DBTFormEnum';
 
 export const DBTSources: Array<DropDownListItem> = [
   {
-    name: 'None',
+    name: 'No Config Source',
     value: '',
   },
   {
-    name: 'DBT Local Config Source',
+    name: 'Local Config Source',
     value: DBT_SOURCES.local,
   },
   {
-    name: 'DBT HTTP Config Source',
+    name: 'HTTP Config Source',
     value: DBT_SOURCES.http,
   },
   {
-    name: 'DBT S3 Config Source',
+    name: 'S3 Config Source',
     value: DBT_SOURCES.s3,
   },
   {
-    name: 'DBT GCS Config Source',
+    name: 'GCS Config Source',
     value: DBT_SOURCES.gcs,
   },
 ];

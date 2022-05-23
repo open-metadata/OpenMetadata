@@ -15,6 +15,7 @@ import {
   fireEvent,
   getAllByTestId,
   getByTestId,
+  queryByTestId,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -81,5 +82,52 @@ describe('Test DropDownList Component', () => {
     );
 
     expect(MockOnSelect).toBeCalledTimes(1);
+  });
+
+  it('On search, show no result placeholder', () => {
+    const { container } = render(
+      <DropDownList
+        showEmptyList
+        showSearchBar
+        dropDownList={dropDownList}
+        listGroups={listGroups}
+        value=""
+        onSelect={MockOnSelect}
+      />
+    );
+    const searchbar = getByTestId(container, 'searchInputText');
+
+    fireEvent.change(searchbar, {
+      target: {
+        value: 'test X',
+      },
+    });
+
+    const noMatchElement = getByTestId(container, 'empty-list');
+
+    expect(noMatchElement).toBeInTheDocument();
+  });
+
+  it('On search, do not show dropdown if no result matched', () => {
+    const { container } = render(
+      <DropDownList
+        showSearchBar
+        dropDownList={dropDownList}
+        listGroups={listGroups}
+        value=""
+        onSelect={MockOnSelect}
+      />
+    );
+    const searchbar = getByTestId(container, 'searchInputText');
+
+    fireEvent.change(searchbar, {
+      target: {
+        value: 'test X',
+      },
+    });
+
+    const dropdownElement = queryByTestId(container, 'dropdown-list');
+
+    expect(dropdownElement).not.toBeInTheDocument();
   });
 });

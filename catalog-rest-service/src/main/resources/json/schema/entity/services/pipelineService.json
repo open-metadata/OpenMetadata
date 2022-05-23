@@ -4,6 +4,9 @@
   "title": "Pipeline Service",
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.PipelineService",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+
   "definitions": {
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
@@ -34,13 +37,17 @@
       "description": "Name that identifies this pipeline service.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "serviceType": {
       "description": "Type of pipeline service such as Airflow or Prefect...",
       "$ref": "#/definitions/pipelineServiceType"
     },
     "description": {
       "description": "Description of a pipeline service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",

@@ -48,6 +48,7 @@ import {
 } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
+import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import { AddIngestionProps } from './addIngestion.interface';
 import ConfigureIngestion from './Steps/ConfigureIngestion';
 import ScheduleInterval from './Steps/ScheduleInterval';
@@ -61,10 +62,18 @@ const AddIngestion = ({
   serviceData,
   serviceCategory,
   showSuccessScreen = true,
+  ingestionProgress = 0,
+  isIngestionCreated = false,
+  isIngestionDeployed = false,
+  ingestionAction = '',
+  showDeployButton,
+  isAirflowSetup,
   setActiveIngestionStep,
+  onIngestionDeploy,
   onUpdateIngestion,
   onSuccessSave,
   onAddIngestionSave,
+  onAirflowStatusCheck,
   handleCancelClick,
   handleViewServiceClick,
 }: AddIngestionProps) => {
@@ -76,6 +85,7 @@ const AddIngestion = ({
   }, [isDatabaseService, pipelineType]);
 
   const [saveState, setSaveState] = useState<LoadingState>('initial');
+  const [showDeployModal, setShowDeployModal] = useState(false);
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
   );
@@ -83,14 +93,19 @@ const AddIngestion = ({
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
-  const [startDate, setStartDate] = useState(
+  const [startDate] = useState(
     data?.airflowConfig.startDate ?? getCurrentDate()
   );
-  const [endDate, setEndDate] = useState(data?.airflowConfig?.endDate ?? '');
+  const [endDate] = useState(data?.airflowConfig?.endDate ?? '');
 
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
       (data?.source.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
+    )
+  );
+  const [showDatabaseFilter, setShowDatabaseFilter] = useState(
+    !isUndefined(
+      (data?.source.sourceConfig.config as ConfigClass)?.databaseFilterPattern
     )
   );
   const [showSchemaFilter, setShowSchemaFilter] = useState(
@@ -158,12 +173,17 @@ const AddIngestion = ({
       true
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
-    isUndefined(data?.loggerLevel) ?? data?.loggerLevel === LogLevels.Debug
+    data?.loggerLevel === LogLevels.Debug
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
       (data?.source.sourceConfig.config as ConfigClass)
         ?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN
+    );
+  const [databaseFilterPattern, setDatabaseFilterPattern] =
+    useState<FilterPattern>(
+      (data?.source.sourceConfig.config as ConfigClass)
+        ?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
     );
   const [schemaFilterPattern, setSchemaFilterPattern] = useState<FilterPattern>(
     (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
@@ -218,6 +238,10 @@ const AddIngestion = ({
         });
 
         break;
+      case FilterPatternEnum.DATABASE:
+        setDatabaseFilterPattern({ ...databaseFilterPattern, includes: value });
+
+        break;
       case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, includes: value });
 
@@ -249,6 +273,10 @@ const AddIngestion = ({
         });
 
         break;
+      case FilterPatternEnum.DATABASE:
+        setDatabaseFilterPattern({ ...databaseFilterPattern, excludes: value });
+
+        break;
       case FilterPatternEnum.SCHEMA:
         setSchemaFilterPattern({ ...schemaFilterPattern, excludes: value });
 
@@ -276,6 +304,10 @@ const AddIngestion = ({
     switch (type) {
       case FilterPatternEnum.DASHBOARD:
         setShowDashboardFilter(value);
+
+        break;
+      case FilterPatternEnum.DATABASE:
+        setShowDatabaseFilter(value);
 
         break;
       case FilterPatternEnum.SCHEMA:
@@ -321,7 +353,11 @@ const AddIngestion = ({
     setActiveIngestionStep(prevStep);
   };
 
-  const getFilterPatternData = (data: FilterPattern) => {
+  const getFilterPatternData = (data: FilterPattern, isVisible: boolean) => {
+    if (!isVisible) {
+      return undefined;
+    }
+
     const { includes, excludes } = data;
 
     const filterPattern =
@@ -336,6 +372,64 @@ const AddIngestion = ({
     return filterPattern;
   };
 
+  const getMetadataIngestionFields = () => {
+    switch (serviceCategory) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        const DatabaseConfigData = {
+          ...(showDBTConfig
+            ? escapeBackwardSlashChar({ dbtConfigSource } as ConfigClass)
+            : undefined),
+        };
+
+        return {
+          enableDataProfiler: enableDataProfiler,
+          generateSampleData: ingestSampleData,
+          includeViews: includeView,
+          databaseFilterPattern: getFilterPatternData(
+            databaseFilterPattern,
+            showDatabaseFilter
+          ),
+          schemaFilterPattern: getFilterPatternData(
+            schemaFilterPattern,
+            showSchemaFilter
+          ),
+          tableFilterPattern: getFilterPatternData(
+            tableFilterPattern,
+            showTableFilter
+          ),
+          markDeletedTables,
+          ...DatabaseConfigData,
+          type: ConfigType.DatabaseMetadata,
+        };
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return {
+          topicFilterPattern: getFilterPatternData(
+            topicFilterPattern,
+            showTopicFilter
+          ),
+          type: ConfigType.MessagingMetadata,
+        };
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return {
+          chartFilterPattern: getFilterPatternData(
+            chartFilterPattern,
+            showChartFilter
+          ),
+          dashboardFilterPattern: getFilterPatternData(
+            dashboardFilterPattern,
+            showDashboardFilter
+          ),
+          type: ConfigType.DashboardMetadata,
+        };
+      }
+      default: {
+        return {};
+      }
+    }
+  };
+
   const getConfigData = (type: PipelineType): ConfigClass => {
     switch (type) {
       case PipelineType.Usage: {
@@ -348,30 +442,16 @@ const AddIngestion = ({
       }
       case PipelineType.Profiler: {
         return {
-          fqnFilterPattern: getFilterPatternData(fqnFilterPattern),
+          fqnFilterPattern: getFilterPatternData(
+            fqnFilterPattern,
+            showFqnFilter
+          ),
           type: profilerIngestionType,
         };
       }
       case PipelineType.Metadata:
       default: {
-        const DatabaseConfigData = {
-          markDeletedTables: isDatabaseService ? markDeletedTables : undefined,
-          ...(showDBTConfig
-            ? escapeBackwardSlashChar({ dbtConfigSource } as ConfigClass)
-            : undefined),
-        };
-
-        return {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
-          includeViews: includeView,
-          schemaFilterPattern: getFilterPatternData(schemaFilterPattern),
-          tableFilterPattern: getFilterPatternData(tableFilterPattern),
-          chartFilterPattern: getFilterPatternData(chartFilterPattern),
-          dashboardFilterPattern: getFilterPatternData(dashboardFilterPattern),
-          topicFilterPattern: getFilterPatternData(topicFilterPattern),
-          ...DatabaseConfigData,
-        };
+        return getMetadataIngestionFields();
       }
     }
   };
@@ -382,7 +462,6 @@ const AddIngestion = ({
         startDate: startDate as unknown as Date,
         endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
-        forceDeploy: true,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
@@ -402,10 +481,9 @@ const AddIngestion = ({
     };
 
     if (onAddIngestionSave) {
-      setSaveState('waiting');
+      setShowDeployModal(true);
       onAddIngestionSave(ingestionDetails)
         .then(() => {
-          setSaveState('success');
           if (showSuccessScreen) {
             handleNext();
           } else {
@@ -416,7 +494,7 @@ const AddIngestion = ({
           // ignore since error is displayed in toast in the parent promise
         })
         .finally(() => {
-          setTimeout(() => setSaveState('initial'), 500);
+          setTimeout(() => setShowDeployModal(false), 500);
         });
     }
   };
@@ -445,6 +523,7 @@ const AddIngestion = ({
 
       if (onUpdateIngestion) {
         setSaveState('waiting');
+        setShowDeployModal(true);
         onUpdateIngestion(updatedData, data, data.id as string, data.name)
           .then(() => {
             setSaveState('success');
@@ -454,9 +533,19 @@ const AddIngestion = ({
               onSuccessSave?.();
             }
           })
-          .finally(() => setTimeout(() => setSaveState('initial'), 500));
+          .finally(() => {
+            setTimeout(() => setSaveState('initial'), 500);
+            setTimeout(() => setShowDeployModal(false), 500);
+          });
       }
     }
+  };
+
+  const handleDeployClick = () => {
+    setShowDeployModal(true);
+    onIngestionDeploy?.().finally(() => {
+      setTimeout(() => setShowDeployModal(false), 500);
+    });
   };
 
   const handleScheduleIntervalDeployClick = () => {
@@ -465,6 +554,26 @@ const AddIngestion = ({
     } else {
       updateIngestion();
     }
+  };
+
+  const getSuccessMessage = () => {
+    const updateMessage = showDeployButton
+      ? 'has been updated, but failed to deploy'
+      : 'has been updated and deployed successfully';
+    const createMessage = showDeployButton
+      ? 'has been created, but failed to deploy'
+      : 'has been created and deployed successfully';
+
+    return (
+      <span>
+        <span className="tw-mr-1 tw-font-semibold">
+          &quot;{ingestionName}&quot;
+        </span>
+        <span>
+          {status === FormSubmitType.ADD ? createMessage : updateMessage}
+        </span>
+      </span>
+    );
   };
 
   return (
@@ -484,6 +593,7 @@ const AddIngestion = ({
           <ConfigureIngestion
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
+            databaseFilterPattern={databaseFilterPattern}
             description={description}
             enableDataProfiler={enableDataProfiler}
             enableDebugLog={enableDebugLog}
@@ -514,6 +624,7 @@ const AddIngestion = ({
             serviceCategory={serviceCategory}
             showChartFilter={showChartFilter}
             showDashboardFilter={showDashboardFilter}
+            showDatabaseFilter={showDatabaseFilter}
             showFqnFilter={showFqnFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
@@ -545,15 +656,12 @@ const AddIngestion = ({
 
         {activeIngestionStep === 3 && (
           <ScheduleInterval
-            endDate={endDate as string}
-            handleEndDateChange={(value: string) => setEndDate(value)}
             handleRepeatFrequencyChange={(value: string) =>
               setRepeatFrequency(value)
             }
-            handleStartDateChange={(value: string) => setStartDate(value)}
             repeatFrequency={repeatFrequency}
-            startDate={startDate as string}
             status={saveState}
+            submitButtonLabel={isUndefined(data) ? 'Add & Deploy' : 'Submit'}
             onBack={handlePrev}
             onDeploy={handleScheduleIntervalDeployClick}
           />
@@ -561,10 +669,25 @@ const AddIngestion = ({
 
         {activeIngestionStep > 3 && handleViewServiceClick && (
           <SuccessScreen
+            handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
+            isAirflowSetup={isAirflowSetup}
             name={ingestionName}
+            showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
+            successMessage={getSuccessMessage()}
+            onCheckAirflowStatus={onAirflowStatusCheck}
+          />
+        )}
+
+        {showDeployModal && (
+          <DeployIngestionLoaderModal
+            action={ingestionAction}
+            ingestionName={ingestionName}
+            isDeployed={isIngestionDeployed}
+            isIngestionCreated={isIngestionCreated}
+            progress={ingestionProgress}
           />
         )}
       </div>

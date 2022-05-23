@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.airflow;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -49,7 +48,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
 
   @SneakyThrows
   @Override
-  public String authenticate() throws IOException {
+  public String authenticate() {
     AirflowAuthRequest authRequest =
         AirflowAuthRequest.builder().username(this.username).password(this.password).build();
     String authPayload = JsonUtils.pojoToJson(authRequest);
@@ -160,9 +159,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return response;
       }
     } catch (Exception e) {
-      throw PipelineServiceClientException.byMessage("Failed to get REST status.", e.getMessage());
+      throw new PipelineServiceClientException("Failed to get REST status.");
     }
-    throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s", response.body()));
+    throw new PipelineServiceClientException("Failed to get REST status.");
   }
 
   @Override

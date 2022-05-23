@@ -25,16 +25,21 @@ import { DataObj } from '../../interface/service.interface';
 
 export interface AddIngestionProps {
   activeIngestionStep: number;
+  isAirflowSetup: boolean;
   pipelineType: PipelineType;
   heading: string;
+  ingestionAction?: string;
   status: FormSubmitType;
   data?: IngestionPipeline;
   serviceCategory: ServiceCategory;
   serviceData: DataObj;
   showSuccessScreen?: boolean;
+  showDeployButton?: boolean;
   setActiveIngestionStep: (step: number) => void;
   handleCancelClick: () => void;
   onAddIngestionSave?: (ingestion: CreateIngestionPipeline) => Promise<void>;
+  onIngestionDeploy?: () => Promise<void>;
+  onAirflowStatusCheck: () => Promise<void>;
   onUpdateIngestion?: (
     data: IngestionPipeline,
     oldData: IngestionPipeline,
@@ -43,6 +48,9 @@ export interface AddIngestionProps {
     triggerIngestion?: boolean
   ) => Promise<void>;
   onSuccessSave?: () => void;
+  isIngestionDeployed?: boolean;
+  isIngestionCreated?: boolean;
+  ingestionProgress?: number;
   handleViewServiceClick?: () => void;
 }
 
@@ -50,6 +58,7 @@ export interface ConfigureIngestionProps {
   ingestionName: string;
   description?: string;
   serviceCategory: ServiceCategory;
+  databaseFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
   schemaFilterPattern: FilterPattern;
   tableFilterPattern: FilterPattern;
@@ -62,6 +71,7 @@ export interface ConfigureIngestionProps {
   enableDebugLog: boolean;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
+  showDatabaseFilter: boolean;
   showDashboardFilter: boolean;
   showSchemaFilter: boolean;
   showTableFilter: boolean;
@@ -92,10 +102,7 @@ export type ScheduleIntervalProps = {
   status: LoadingState;
   repeatFrequency: string;
   handleRepeatFrequencyChange: (value: string) => void;
-  startDate: string;
-  handleStartDateChange: (value: string) => void;
-  endDate: string;
-  handleEndDateChange: (value: string) => void;
+  submitButtonLabel: string;
   onBack: () => void;
   onDeploy: () => void;
 };

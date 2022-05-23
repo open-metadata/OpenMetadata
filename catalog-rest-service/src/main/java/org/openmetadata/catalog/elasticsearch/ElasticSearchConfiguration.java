@@ -14,108 +14,20 @@
 package org.openmetadata.catalog.elasticsearch;
 
 import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
 
 public class ElasticSearchConfiguration {
-
-  @NotEmpty private String host;
-
-  @NotEmpty private Integer port;
-
-  private String username;
-
-  private String password;
-
-  private String scheme;
-
-  private String truststorePath;
-
-  private String truststorePassword;
-
-  private Integer connectionTimeoutSecs = 5;
-
-  private Integer socketTimeoutSecs = 60;
-
-  private Integer batchSize = 10;
-
-  public String getHost() {
-    return host;
-  }
-
-  public void setHost(String host) {
-    this.host = host;
-  }
-
-  public Integer getPort() {
-    return port;
-  }
-
-  public void setPort(Integer port) {
-    this.port = port;
-  }
-
-  public String getUsername() {
-    return username;
-  }
-
-  public void setUsername(String username) {
-    this.username = username;
-  }
-
-  public String getPassword() {
-    return password;
-  }
-
-  public void setPassword(String password) {
-    this.password = password;
-  }
-
-  public String getScheme() {
-    return scheme;
-  }
-
-  public void setScheme(String scheme) {
-    this.scheme = scheme;
-  }
-
-  public String getTruststorePath() {
-    return truststorePath;
-  }
-
-  public void setTruststorePath(String truststorePath) {
-    this.truststorePath = truststorePath;
-  }
-
-  public String getTruststorePassword() {
-    return truststorePassword;
-  }
-
-  public void setTruststorePassword(String truststorePassword) {
-    this.truststorePassword = truststorePassword;
-  }
-
-  public Integer getConnectionTimeoutSecs() {
-    return connectionTimeoutSecs;
-  }
-
-  public void setConnectionTimeoutSecs(Integer connectionTimeoutSecs) {
-    this.connectionTimeoutSecs = connectionTimeoutSecs;
-  }
-
-  public Integer getSocketTimeoutSecs() {
-    return socketTimeoutSecs;
-  }
-
-  public void setSocketTimeoutSecs(Integer socketTimeoutSecs) {
-    this.socketTimeoutSecs = socketTimeoutSecs;
-  }
-
-  public Integer getBatchSize() {
-    return batchSize;
-  }
-
-  public void setBatchSize(Integer batchSize) {
-    this.batchSize = batchSize;
-  }
+  @NotEmpty @Getter @Setter private String host;
+  @NotEmpty @Getter @Setter private Integer port;
+  @Getter @Setter private String username;
+  @Getter @Setter private String password;
+  @Getter @Setter private String scheme;
+  @Getter @Setter private String truststorePath;
+  @Getter @Setter private String truststorePassword;
+  @Getter @Setter private Integer connectionTimeoutSecs = 5;
+  @Getter @Setter private Integer socketTimeoutSecs = 60;
+  @Getter @Setter private Integer batchSize = 10;
 
   @Override
   public String toString() {

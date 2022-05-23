@@ -28,11 +28,17 @@ export const addServiceGuide = [
   },
 ];
 
+export const addServiceGuideWOAirflow = {
+  title: 'Service Created Successfully',
+  description:
+    'The <Service Name> has been created successfully. Visit the newly created service to take a look at the details. Ensure that you have Airflow set up correctly before heading to ingest metadata.',
+};
+
 const schedulingIngestionGuide = {
   step: 3,
   title: 'Schedule for Ingestion',
   description:
-    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.',
+    'Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC.',
 };
 
 export const addMetadataIngestionGuide = [
@@ -45,8 +51,8 @@ export const addMetadataIngestionGuide = [
   {
     step: 2,
     title: 'Configure DBT Model',
-    description: `A DBT model provides transformation logic that creates a table from raw data. While lineage tells us broadly what data a table was generated from. A DBT model provides specifics. 
-    OpenMetadata includes an integration for DBT that enables you to see what models are being used to generate tables.`,
+    description: `A DBT model provides transformation logic that creates a table from raw data. Lineage traces the path of data across tables, but a DBT model provides specifics. 
+    Select the  required DBT source provider and fill in the mandatory fields. Integrate with DBT from OpenMetadata to view the models used to generate tables.`,
   },
   {
     ...schedulingIngestionGuide,
@@ -63,8 +69,9 @@ export const addUsageIngestionGuide = [
   {
     step: 1,
     title: 'Add Usage Ingestion',
-    description: `We can create a workflow that will obtain the query log and table creation information from the underlying database and feed it to OpenMetadata. 
-    The Usage Ingestion will be in charge of obtaining this data.`,
+    description: `Usage ingestion can be configured and deployed after a metadata ingestion has been set up. The usage ingestion workflow obtains the query log 
+    and table creation details from the underlying database and feeds it to OpenMetadata. Metadata and usage can have only one pipeline for a database service. 
+    Define the Query Log Duration (in days), Stage File Location, and Result Limit to start.`,
   },
   {
     ...schedulingIngestionGuide,
@@ -81,8 +88,8 @@ export const addProfilerIngestionGuide = [
   {
     step: 1,
     title: 'Add Profiler Ingestion',
-    description: `After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
-    This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.`,
+    description: `A profiler workflow can be configured and deployed after a metadata ingestion has been set up. Multiple profiler pipelines can be set up for the same database service. 
+    The pipeline feeds the Profiler tab of the Table entity, and also runs the tests configured for that entity. Add a Name, FQN, and define the filter pattern to start.`,
   },
   { ...schedulingIngestionGuide },
   {

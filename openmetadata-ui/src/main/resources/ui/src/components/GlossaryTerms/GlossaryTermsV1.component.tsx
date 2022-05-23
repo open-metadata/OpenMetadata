@@ -385,15 +385,10 @@ const GlossaryTermsV1 = ({
   };
 
   const getTabPaneButton = () => {
-    switch (activeTab) {
-      case 1: {
-        return relatedTerms.length ? AddRelatedTermButton() : undefined;
-      }
-      case 3: {
-        return glossaryTerm.reviewers?.length ? AddReviewerButton() : undefined;
-      }
-      default:
-        return;
+    if (activeTab === 1) {
+      return relatedTerms.length ? AddRelatedTermButton() : undefined;
+    } else {
+      return;
     }
   };
 
@@ -407,7 +402,7 @@ const GlossaryTermsV1 = ({
           {isSynonymsEditing ? (
             <div className="tw-flex tw-items-center tw-gap-1">
               <input
-                className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
                 data-testid="synonyms"
                 id="synonyms"
                 name="synonyms"

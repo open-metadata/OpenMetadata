@@ -1,0 +1,17 @@
+source:
+  type: hive
+  serviceName: local_hive
+  serviceConnection:
+    config:
+      type: Hive
+      hostPort: localhost:10000
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

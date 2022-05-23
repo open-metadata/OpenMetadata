@@ -19,13 +19,14 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionArguments,
     ConnectionOptions,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
@@ -61,6 +62,10 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
+    KafkaConnection,
+)
+from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     DeltaLakeClient,
     DynamoClient,
@@ -85,16 +90,14 @@ class SourceConnectionException(Exception):
     """
 
 
-def create_generic_connection(connection, verbose: bool = False):
+def create_generic_connection(connection, verbose: bool = False) -> Engine:
     """
     Generic Engine creation from connection object
     :param connection: JSON Schema connection model
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-    options = connection.connectionOptions
-    if not options:
-        options = ConnectionOptions()
+    options = connection.connectionOptions or ConnectionOptions()
 
     engine = create_engine(
         get_connection_url(connection),
@@ -109,7 +112,7 @@ def create_generic_connection(connection, verbose: bool = False):
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient]:
+) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient, KafkaClient]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -118,15 +121,15 @@ def get_connection(
 
 @get_connection.register
 def _(connection: DatabricksConnection, verbose: bool = False):
-    args = connection.connectionArguments
-    if not args:
-        connection.connectionArguments = dict()
-        connection.connectionArguments["http_path"] = connection.httpPath
+    if connection.httpPath:
+        if not connection.connectionArguments:
+            connection.connectionArguments = ConnectionArguments()
+        connection.connectionArguments.http_path = connection.httpPath
     return create_generic_connection(connection, verbose)
 
 
 @get_connection.register
-def _(connection: SnowflakeConnection, verbose: bool = False):
+def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
     if connection.privateKey:
 
         from cryptography.hazmat.backends import default_backend
@@ -161,7 +164,7 @@ def _(connection: SnowflakeConnection, verbose: bool = False):
 
 
 @get_connection.register
-def _(connection: BigQueryConnection, verbose: bool = False):
+def _(connection: BigQueryConnection, verbose: bool = False) -> Engine:
     """
     Prepare the engine and the GCS credentials
     :param connection: BigQuery connection
@@ -173,7 +176,7 @@ def _(connection: BigQueryConnection, verbose: bool = False):
 
 
 @get_connection.register
-def _(connection: DynamoDBConnection, verbose: bool = False):
+def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
     from metadata.utils.aws_client import AWSClient
 
     dynomo_connection = AWSClient(connection.awsConfig).get_dynomo_client()
@@ -181,7 +184,7 @@ def _(connection: DynamoDBConnection, verbose: bool = False):
 
 
 @get_connection.register
-def _(connection: GlueConnection, verbose: bool = False):
+def _(connection: GlueConnection, verbose: bool = False) -> GlueClient:
     from metadata.utils.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_client()
@@ -189,7 +192,7 @@ def _(connection: GlueConnection, verbose: bool = False):
 
 
 @get_connection.register
-def _(connection: SalesforceConnection, verbose: bool = False):
+def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClient:
     from simple_salesforce import Salesforce
 
     salesforce_connection = SalesforceClient(
@@ -200,6 +203,68 @@ def _(connection: SalesforceConnection, verbose: bool = False):
         )
     )
     return salesforce_connection
+
+
+@get_connection.register
+def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient:
+    import pyspark
+    from delta import configure_spark_with_delta_pip
+
+    builder = (
+        pyspark.sql.SparkSession.builder.appName(connection.appName)
+        .enableHiveSupport()
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+        .config(
+            "spark.sql.catalog.spark_catalog",
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        )
+    )
+    if connection.metastoreHostPort:
+        builder.config(
+            "hive.metastore.uris",
+            f"thrift://{connection.metastoreHostPort}",
+        )
+    elif connection.metastoreFilePath:
+        builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
+
+    deltalake_connection = DeltaLakeClient(
+        configure_spark_with_delta_pip(builder).getOrCreate()
+    )
+    return deltalake_connection
+
+
+@get_connection.register
+def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
+    """
+    Prepare Kafka Admin Client and Schema Registry Client
+    """
+    from confluent_kafka.admin import AdminClient, ConfigResource
+    from confluent_kafka.avro import AvroConsumer
+    from confluent_kafka.schema_registry.schema_registry_client import (
+        Schema,
+        SchemaRegistryClient,
+    )
+
+    admin_client_config = connection.consumerConfig
+    admin_client_config["bootstrap.servers"] = connection.bootstrapServers
+    admin_client = AdminClient(admin_client_config)
+
+    schema_registry_client = None
+    consumer_client = None
+    if connection.schemaRegistryURL:
+        connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
+        schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
+        admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
+        admin_client_config["group.id"] = "openmetadata-consumer-1"
+        admin_client_config["auto.offset.reset"] = "earliest"
+        admin_client_config["enable.auto.commit"] = False
+        consumer_client = AvroConsumer(admin_client_config)
+
+    return KafkaClient(
+        admin_client=admin_client,
+        schema_registry_client=schema_registry_client,
+        consumer_client=consumer_client,
+    )
 
 
 def create_and_bind_session(engine: Engine) -> Session:
@@ -214,15 +279,17 @@ def create_and_bind_session(engine: Engine) -> Session:
 
 @timeout(seconds=120)
 @singledispatch
-def test_connection(connection: Engine) -> None:
+def test_connection(connection) -> None:
     """
+    Default implementation is the engine to test.
+
     Test that we can connect to the source using the given engine
-    :param engine: Engine to test
+    :param connection: Engine to test
     :return: None or raise an exception if we cannot connect
     """
     try:
-        with connection.connect() as _:
-            pass
+        with connection.connect() as conn:
+            conn.execute(ConnTestFn())
     except OperationalError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
@@ -291,43 +358,17 @@ def _(connection: SalesforceClient) -> None:
         )
 
 
-@get_connection.register
-def _(connection: DeltaLakeConnection, verbose: bool = False):
-    import pyspark
-    from delta import configure_spark_with_delta_pip
-
-    builder = (
-        pyspark.sql.SparkSession.builder.appName(connection.appName)
-        .enableHiveSupport()
-        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
-        .config(
-            "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-        )
-    )
-    if connection.metastoreHostPort:
-        builder.config(
-            "hive.metastore.uris",
-            f"thrift://{connection.metastoreHostPort}",
-        )
-    elif connection.metastoreFilePath:
-        builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
-
-    deltalake_connection = DeltaLakeClient(
-        configure_spark_with_delta_pip(builder).getOrCreate()
-    )
-    return deltalake_connection
-
-
 @test_connection.register
 def _(connection: KafkaClient) -> None:
-    from confluent_kafka.admin import AdminClient
+    """
+    Test AdminClient.
 
+    If exists, test the Schema Registry client as well.
+    """
     try:
-        if isinstance(connection.client, AdminClient):
-            return connection.client.list_topics().topics
-        else:
-            return connection.client.get_subjects()
+        _ = connection.admin_client.list_topics().topics
+        if connection.schema_registry_client:
+            _ = connection.schema_registry_client.get_subjects()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

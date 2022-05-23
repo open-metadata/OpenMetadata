@@ -356,7 +356,6 @@ const TagsPage = () => {
     updateTag(currentCategory?.name, editTag?.name, {
       name: editTag?.name,
       description: updatedHTML,
-      associatedTags: editTag?.associatedTags,
     })
       .then((res: AxiosResponse) => {
         if (res.data) {

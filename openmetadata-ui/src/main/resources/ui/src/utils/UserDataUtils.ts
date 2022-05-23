@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
-import { isEmpty, isEqual } from 'lodash';
+import { AxiosError, AxiosResponse } from 'axios';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
 import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getTeams } from '../axiosAPIs/teamsAPI';
-import { getUsers } from '../axiosAPIs/userAPI';
+import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 // import { API_RES_MAX_SIZE } from '../constants/constants';
 import { User } from '../generated/entity/teams/user';
 import { getImages } from './CommonUtils';
@@ -54,6 +54,7 @@ const getAllRoles = (): void => {
 };
 
 export const fetchAllUsers = () => {
+  AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
   getAllTeams();
   getAllRoles();
@@ -93,4 +94,53 @@ export const matchUserDetails = (
 
 export const isCurrentUserAdmin = () => {
   return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
+};
+
+export const fetchUserProfilePic = (userId?: string, username?: string) => {
+  let promise;
+
+  if (userId) {
+    promise = getUserById(userId, 'profile');
+  } else if (username) {
+    promise = getUserByName(username, 'profile');
+  } else {
+    return;
+  }
+
+  AppState.updateProfilePicsLoading(userId, username);
+
+  promise
+    .then((res) => {
+      const userData = res.data as User;
+      const profile = userData.profile?.images?.image512 || '';
+
+      AppState.updateUserProfilePic(userData.id, userData.name, profile);
+    })
+    .catch((err: AxiosError) => {
+      // ignore exception
+      AppState.updateUserProfilePic(
+        userId,
+        username,
+        err.response?.status === 404 ? '' : undefined
+      );
+    })
+    .finally(() => {
+      AppState.removeProfilePicsLoading(userId, username);
+    });
+};
+
+export const getUserProfilePic = (userId?: string, username?: string) => {
+  let profile;
+  if (userId || username) {
+    profile = AppState.getUserProfilePic(userId, username);
+
+    if (
+      isUndefined(profile) &&
+      !AppState.isProfilePicLoading(userId, username)
+    ) {
+      fetchUserProfilePic(userId, username);
+    }
+  }
+
+  return profile;
 };

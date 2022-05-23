@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { Fragment } from 'react';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
@@ -36,7 +37,7 @@ interface OwnerWidgetProps {
   ownerName: string;
   entityType?: string;
   statusOwner: Status;
-  owner: string;
+  owner?: EntityReference;
   listOwners: {
     name: string;
     value: string;
@@ -160,13 +161,14 @@ const OwnerWidget = ({
               {listVisible && (
                 <DropDownList
                   horzPosRight
+                  showEmptyList
                   controlledSearchStr={ownerSearchText}
                   dropDownList={listOwners}
                   groupType="tab"
                   isLoading={isListLoading}
                   listGroups={getOwnerGroup()}
                   showSearchBar={isCurrentUserAdmin()}
-                  value={owner}
+                  value={owner?.id || ''}
                   onSearchTextChange={handleSearchOwnerDropdown}
                   onSelect={handleOwnerSelection}
                 />

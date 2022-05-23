@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URI;
@@ -35,17 +34,13 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.DashboardConnection;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -127,12 +122,11 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                 .withName("connection")
                 .withOldValue(dashboardConnection)
                 .withNewValue(dashboardConnection1));
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
   @Override
-  public CreateDashboardService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateDashboardService createRequest(String name) {
     try {
       return new CreateDashboardService()
           .withName(name)
@@ -143,9 +137,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                       new SupersetConnection()
                           .withHostPort(new URI("http://localhost:8080"))
                           .withUsername("admin")
-                          .withPassword("admin")))
-          .withOwner(owner)
-          .withDescription(description);
+                          .withPassword("admin")));
     } catch (URISyntaxException e) {
       e.printStackTrace();
     }
@@ -155,11 +147,6 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   @Override
   public void validateCreatedEntity(
       DashboardService service, CreateDashboardService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
     DashboardConnection expectedConnection = createRequest.getConnection();
     DashboardConnection actualConnection = service.getConnection();
@@ -172,27 +159,22 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   }
 
   @Override
-  public EntityInterface<DashboardService> getEntityInterface(DashboardService entity) {
-    return new DashboardServiceEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<DashboardService> validateGetWithDifferentFields(DashboardService service, boolean byName)
+  public DashboardService validateGetWithDifferentFields(DashboardService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(service);
+    return service;
   }
 
   @Override
@@ -237,17 +219,17 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+    SUPERSET_REFERENCE = dashboardService.getEntityReference();
 
     createDashboardService.withName("looker").withServiceType(DashboardServiceType.Looker);
     dashboardService = new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
-    LOOKER_REFERENCE = new DashboardServiceEntityInterface(dashboardService).getEntityReference();
+    LOOKER_REFERENCE = dashboardService.getEntityReference();
     CHART_REFERENCES = new ArrayList<>();
     ChartResourceTest chartResourceTest = new ChartResourceTest();
     for (int i = 0; i < 3; i++) {
       CreateChart createChart = chartResourceTest.createRequest(test, i).withService(SUPERSET_REFERENCE);
       Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
-      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
+      CHART_REFERENCES.add(chart.getEntityReference());
     }
   }
 }

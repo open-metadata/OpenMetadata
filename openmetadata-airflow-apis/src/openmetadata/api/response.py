@@ -42,7 +42,8 @@ class ApiResponse:
 
     @staticmethod
     def success(response_obj: Union[Optional[dict], Optional[list]] = None):
-        return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_obj or {})
+        response_body = response_obj if response_obj is not None else {}
+        return ApiResponse.standard_response(ApiResponse.STATUS_OK, response_body)
 
     @staticmethod
     def error(status, error):

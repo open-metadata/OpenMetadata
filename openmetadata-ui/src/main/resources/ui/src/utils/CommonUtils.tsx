@@ -42,7 +42,9 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../generated/entity/teams/user';
+import { getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
+import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -157,7 +159,7 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
         count > 1 ? noun : noun.slice(0, noun.length - 1)
       }`;
     } else {
-      return `${countString} ${noun}${count !== 1 ? suffix : ''}`;
+      return `${countString} ${noun}${count > 1 ? suffix : ''}`;
     }
   }
 };
@@ -620,6 +622,30 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity: EntityReference) => {
+export const getEntityName = (entity?: EntityReference) => {
   return entity?.displayName || entity?.name || '';
+};
+
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
+  } else {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata from OpenMetadata.`;
+  }
+};
+
+export const getExploreLinkByFilter = (
+  filter: Ownership,
+  userDetails: User,
+  nonSecureUserDetails: User
+) => {
+  return getExplorePathWithInitFilters(
+    '',
+    undefined,
+    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
+  );
 };

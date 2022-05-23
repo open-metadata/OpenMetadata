@@ -335,7 +335,6 @@ def test_glue():
                     "awsRegion": "aws region",
                     "endPointURL": "https://glue.<region_name>.amazonaws.com/",
                 },
-                "database": "local_glue_db",
                 "storageServiceName": "storage_name",
                 "pipelineServiceName": "pipeline_name",
             }
@@ -704,7 +703,6 @@ def test_snowflake():
         "serviceConnection": {
             "config": {
                 "type": "Snowflake",
-                "hostPort": "account.region.service.snowflakecomputing.com",
                 "username": "username",
                 "password": "password",
                 "database": "database_name",

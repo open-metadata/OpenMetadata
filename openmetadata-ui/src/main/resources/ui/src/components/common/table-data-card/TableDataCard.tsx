@@ -22,8 +22,11 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CurrentTourPageType } from '../../../enums/tour.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import { TableType } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
@@ -32,7 +35,7 @@ import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
   name: string;
-  owner?: string;
+  owner?: EntityReference;
   description?: string;
   tableType?: TableType;
   id?: string;
@@ -53,7 +56,7 @@ type Props = {
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
-  owner = '',
+  owner,
   description,
   id,
   tier = '',
@@ -80,7 +83,12 @@ const TableDataCard: FunctionComponent<Props> = ({
   };
 
   const OtherDetails: Array<ExtraInfo> = [
-    { key: 'Owner', value: owner, avatarWidth: '16' },
+    {
+      key: 'Owner',
+      value: getEntityName(owner),
+      avatarWidth: '16',
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+    },
     { key: 'Tier', value: getTier() },
   ];
   if (indexType !== SearchIndex.DASHBOARD && usage !== undefined) {
@@ -139,7 +147,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         <div className="tw-flex tw-items-center">
           <img
             alt=""
-            className="tw-inline tw-h-5 tw-w-5"
+            className="tw-inline tw-h-5"
             src={serviceTypeLogo(serviceType || '')}
           />
           <h6 className="tw-flex tw-items-center tw-m-0 tw-text-base tw-pl-2">

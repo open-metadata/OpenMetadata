@@ -4,6 +4,8 @@
   "title": "CreateUserRequest",
   "description": "Request to create User entity",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.teams.CreateUser",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
 
   "properties": {
     "name": {
@@ -11,7 +13,7 @@
     },
     "description": {
       "description": "Used for user biography.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'",

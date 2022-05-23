@@ -14,13 +14,19 @@ from dataclasses import dataclass, field
 from typing import Iterable, List
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -47,59 +53,14 @@ class MetadataSourceStatus(SourceStatus):
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
-    def scanned_table(self, table_name: str) -> None:
-        """scanned table method
+    def scanned_entity(self, entity_class_name: str, entity_name: str) -> None:
+        """scanned entity method
 
         Args:
-            table_name (str):
+            entity_name (str):
         """
-        self.success.append(table_name)
-        logger.info("Table Scanned: %s", table_name)
-
-    def scanned_topic(self, topic_name: str) -> None:
-        """scanned topic method
-
-        Args:
-            topic_name (str):
-        """
-        self.success.append(topic_name)
-        logger.info("Topic Scanned: %s", topic_name)
-
-    def scanned_dashboard(self, dashboard_name: str) -> None:
-        """scanned dashboard method
-
-        Args:
-            dashboard_name (str)
-        """
-        self.success.append(dashboard_name)
-        logger.info("Dashboard Scanned: %s", dashboard_name)
-
-    def scanned_team(self, team_name: str) -> None:
-        """scanned team method
-
-        Args:
-            team_name (str)
-        """
-        self.success.append(team_name)
-        logger.info("Team Scanned: %s", team_name)
-
-    def scanned_user(self, user_name: str) -> None:
-        """scanned user method
-
-        Args:
-            user_name (str)
-        """
-        self.success.append(user_name)
-        logger.info("User Scanned: %s", user_name)
-
-    def scanned_glossary_term(self, glossary_term: str) -> None:
-        """scanned glossary method
-
-        Args:
-            glossary_term (str)
-        """
-        self.success.append(glossary_term)
-        logger.info("Glossary Term Scanned: %s", glossary_term)
+        self.success.append(entity_name)
+        logger.info("%s Scanned: %s", entity_class_name, entity_name)
 
     # pylint: disable=unused-argument
     def filtered(
@@ -159,180 +120,111 @@ class MetadataSource(Source[Entity]):
         raise NotImplementedError("Create Method not implemented")
 
     def next_record(self) -> Iterable[Entity]:
-        yield from self.fetch_table()
-        yield from self.fetch_topic()
-        yield from self.fetch_dashboard()
-        yield from self.fetch_pipeline()
-        yield from self.fetch_users()
-        yield from self.fetch_teams()
-        yield from self.fetch_glossary_terms()
-
-    def fetch_table(self) -> Table:
-        """Fetch table method
-
-        Returns:
-            Table
-        """
         if self.service_connection.includeTables:
-            after = None
-            while True:
-                table_entities = self.metadata.list_entities(
-                    entity=Table,
-                    fields=[
-                        "columns",
-                        "tableConstraints",
-                        "usageSummary",
-                        "owner",
-                        "tags",
-                        "followers",
-                    ],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for table in table_entities.entities:
-                    self.status.scanned_table(table.name.__root__)
-                    yield table
-                if table_entities.after is None:
-                    break
-                after = table_entities.after
-
-    def fetch_topic(self) -> Topic:
-        """fetch topic method
-
-        Returns:
-            Topic
-        """
+            yield from self.fetch_entities(
+                entity_class=Table,
+                fields=[
+                    "columns",
+                    "tableConstraints",
+                    "usageSummary",
+                    "owner",
+                    "tags",
+                    "followers",
+                ],
+            )
         if self.service_connection.includeTopics:
-            after = None
-            while True:
-                topic_entities = self.metadata.list_entities(
-                    entity=Topic,
-                    fields=["owner", "tags", "followers"],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for topic in topic_entities.entities:
-                    self.status.scanned_topic(topic.name.__root__)
-                    yield topic
-                if topic_entities.after is None:
-                    break
-                after = topic_entities.after
-
-    def fetch_dashboard(self) -> Dashboard:
-        """fetch dashboard method
-
-        Returns:
-            Dashboard:
-        """
+            yield from self.fetch_entities(
+                entity_class=Topic,
+                fields=["owner", "tags", "followers"],
+            )
         if self.service_connection.includeDashboards:
-            after = None
-            while True:
-                dashboard_entities = self.metadata.list_entities(
-                    entity=Dashboard,
-                    fields=[
-                        "owner",
-                        "tags",
-                        "followers",
-                        "charts",
-                        "usageSummary",
-                    ],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for dashboard in dashboard_entities.entities:
-                    self.status.scanned_dashboard(dashboard.name)
-                    yield dashboard
-                if dashboard_entities.after is None:
-                    break
-                after = dashboard_entities.after
+            yield from self.fetch_entities(
+                entity_class=Dashboard,
+                fields=[
+                    "owner",
+                    "tags",
+                    "followers",
+                    "charts",
+                    "usageSummary",
+                ],
+            )
 
-    def fetch_pipeline(self) -> Pipeline:
-        """fetch pipeline method
-
-        Returns:
-            Pipeline:
-        """
         if self.service_connection.includePipelines:
-            after = None
-            while True:
-                pipeline_entities = self.metadata.list_entities(
-                    entity=Pipeline,
-                    fields=["owner", "tags", "followers", "tasks"],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for pipeline in pipeline_entities.entities:
-                    self.status.scanned_dashboard(pipeline.name)
-                    yield pipeline
-                if pipeline_entities.after is None:
-                    break
-                after = pipeline_entities.after
-
-    def fetch_users(self) -> User:
-        """fetch users method
-
-        Returns:
-            User:
-        """
+            yield from self.fetch_entities(
+                entity_class=Pipeline,
+                fields=["owner", "tags", "followers", "tasks"],
+            )
         if self.service_connection.includeUsers:
-            after = None
-            while True:
-                user_entities = self.metadata.list_entities(
-                    entity=User,
-                    fields=["teams", "roles"],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for user in user_entities.entities:
-                    self.status.scanned_user(user.name)
-                    yield user
-                if user_entities.after is None:
-                    break
-                after = user_entities.after
+            yield from self.fetch_entities(
+                entity_class=User,
+                fields=["teams", "roles"],
+            )
 
-    def fetch_teams(self) -> Team:
-        """fetch teams method
-
-        Returns:
-            Team:
-        """
         if self.service_connection.includeTeams:
-            after = None
-            while True:
-                team_entities = self.metadata.list_entities(
-                    entity=Team,
-                    fields=["users", "owns"],
-                    after=after,
-                    limit=self.service_connection.limitRecords,
-                )
-                for team in team_entities.entities:
-                    self.status.scanned_team(team.name)
-                    yield team
-                if team_entities.after is None:
-                    break
-                after = team_entities.after
+            yield from self.fetch_entities(
+                entity_class=Team,
+                fields=["users", "owns"],
+            )
 
-    def fetch_glossary_terms(self) -> GlossaryTerm:
-        """fetch glossary terms method
-
-        Returns:
-            GlossaryTerm:
-        """
         if self.service_connection.includeGlossaryTerms:
+            yield from self.fetch_entities(
+                entity_class=GlossaryTerm,
+                fields=[],
+            )
+            yield from self.fetch_entities(
+                entity_class=Glossary,
+                fields=["owner", "tags", "reviewers", "usageCount"],
+            )
+
+        if self.service_connection.includePolicy:
+            yield from self.fetch_entities(
+                entity_class=Policy,
+                fields=[],
+            )
+        if self.service_connection.includeTags:
+            yield from self.fetch_entities(
+                entity_class=TagCategory,
+                fields=[],
+            )
+
+        if self.service_connection.includeMessagingServices:
+            yield from self.fetch_entities(
+                entity_class=MessagingService,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includeDatabaseServices:
+            yield from self.fetch_entities(
+                entity_class=DatabaseService,
+                fields=["owner"],
+            )
+
+        if self.service_connection.includePipelineServices:
+            yield from self.fetch_entities(
+                entity_class=PipelineService,
+                fields=["owner"],
+            )
+
+    def fetch_entities(self, entity_class, fields):
+        try:
             after = None
             while True:
-                glossary_term_entities = self.metadata.list_entities(
-                    entity=GlossaryTerm,
-                    fields=[],
+                entities_list = self.metadata.list_entities(
+                    entity=entity_class,
+                    fields=fields,
                     after=after,
                     limit=self.service_connection.limitRecords,
                 )
-                for glossary_term in glossary_term_entities.entities:
-                    self.status.scanned_team(glossary_term.name)
-                    yield glossary_term
-                if glossary_term_entities.after is None:
+                for entity in entities_list.entities:
+                    self.status.scanned_entity(entity_class.__name__, entity.name)
+                    yield entity
+                if entities_list.after is None:
                     break
-                after = glossary_term_entities.after
+                after = entities_list.after
+
+        except Exception as err:
+            logger.debug(err)
+            logger.error(f"Fetching entities failed for {entity_class.__name__}")
 
     def get_status(self) -> SourceStatus:
         return self.status

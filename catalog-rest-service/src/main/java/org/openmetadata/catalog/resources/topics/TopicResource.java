@@ -59,8 +59,10 @@ import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.topic.TopicSampleData;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/topics")
@@ -95,7 +97,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     }
   }
 
-  static final String FIELDS = "owner,followers,tags";
+  static final String FIELDS = "owner,followers,tags,sampleData";
 
   @GET
   @Operation(
@@ -273,7 +275,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
 
@@ -316,8 +318,22 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
+  }
+
+  @PUT
+  @Path("/{id}/sampleData")
+  @Operation(summary = "Add sample data", tags = "topics", description = "Add sample data to the topic.")
+  public Topic addSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid TopicSampleData sampleData)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    Topic topic = dao.addSampleData(UUID.fromString(id), sampleData);
+    return addHref(uriInfo, topic);
   }
 
   @PUT
@@ -382,11 +398,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Topic getTopic(SecurityContext securityContext, CreateTopic create) {
-    return new Topic()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private Topic getTopic(CreateTopic create, String user) {
+    return copy(new Topic(), create, user)
         .withService(create.getService())
         .withPartitions(create.getPartitions())
         .withSchemaText(create.getSchemaText())
@@ -398,9 +411,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

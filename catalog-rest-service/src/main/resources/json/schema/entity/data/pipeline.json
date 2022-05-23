@@ -4,6 +4,8 @@
   "title": "Pipeline",
   "description": "This schema defines the Pipeline entity. A pipeline enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Pipeline",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "statusType": {
       "javaType": "org.openmetadata.catalog.type.StatusType",
@@ -56,7 +58,7 @@
         },
         "description": {
           "description": "Description of this Task.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "taskUrl": {
           "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
@@ -96,7 +98,7 @@
           "default": null
         }
       },
-      "required": ["id", "name"],
+      "required": ["name"],
       "additionalProperties": false
     },
     "pipelineStatus": {
@@ -142,7 +144,7 @@
     },
     "description": {
       "description": "Description of this Pipeline.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

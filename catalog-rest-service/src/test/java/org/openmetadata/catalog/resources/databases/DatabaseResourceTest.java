@@ -38,11 +38,9 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateDatabaseSchema;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -109,16 +107,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public EntityInterface<Database> validateGetWithDifferentFields(Database database, boolean byName)
-      throws HttpResponseException {
+  public Database validateGetWithDifferentFields(Database database, boolean byName) throws HttpResponseException {
     // Add a schema if it already does not exist
     if (database.getDatabaseSchemas() == null) {
-      EntityInterface<Database> entityInterface = getEntityInterface(database);
       DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
       CreateDatabaseSchema create =
-          databaseSchemaResourceTest
-              .createRequest("schema", "", "", null)
-              .withDatabase(entityInterface.getEntityReference());
+          databaseSchemaResourceTest.createRequest("schema", "", "", null).withDatabase(database.getEntityReference());
       databaseSchemaResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
@@ -141,16 +135,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     TestUtils.validateEntityReferences(database.getDatabaseSchemas(), true);
     assertListNotEmpty(database.getDatabaseSchemas());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(database);
+    return database;
   }
 
   @Override
-  public CreateDatabase createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateDatabase()
-        .withName(name)
-        .withDescription(description)
-        .withOwner(owner)
-        .withService(getContainer());
+  public CreateDatabase createRequest(String name) {
+    return new CreateDatabase().withName(name).withService(getContainer());
   }
 
   @Override
@@ -159,38 +149,24 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public void validateCreatedEntity(Database database, CreateDatabase createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(database),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
+  public EntityReference getContainer(Database entity) {
+    return entity.getService();
+  }
 
+  @Override
+  public void validateCreatedEntity(Database database, CreateDatabase createRequest, Map<String, String> authHeaders) {
     // Validate service
     assertNotNull(database.getServiceType());
     assertReference(createRequest.getService(), database.getService());
     assertEquals(
-        FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName()),
-        database.getFullyQualifiedName());
+        FullyQualifiedName.add(database.getService().getName(), database.getName()), database.getFullyQualifiedName());
   }
 
   @Override
   public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-    // Validate service
     assertReference(expected.getService(), updated.getService());
     assertEquals(
-        FullyQualifiedName.add(updated.getService().getFullyQualifiedName(), updated.getName()),
-        updated.getFullyQualifiedName());
-  }
-
-  @Override
-  public EntityInterface<Database> getEntityInterface(Database entity) {
-    return new DatabaseEntityInterface(entity);
+        FullyQualifiedName.add(updated.getService().getName(), updated.getName()), updated.getFullyQualifiedName());
   }
 
   @Override

@@ -19,33 +19,31 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.topics.TopicResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.topic.CleanupPolicy;
-import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.type.topic.TopicSampleData;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
   private static final String TOPIC_UPDATE_FIELDS = "owner,tags";
   private static final String TOPIC_PATCH_FIELDS = "owner,tags";
 
-  public static String getFQN(Topic topic) {
-    return (topic != null && topic.getService() != null)
-        ? FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(Topic topic) {
+    topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getName(), topic.getName()));
   }
 
   public TopicRepository(CollectionDAO dao) {
@@ -62,9 +60,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void prepare(Topic topic) throws IOException {
     MessagingService messagingService = Entity.getEntity(topic.getService(), Fields.EMPTY_FIELDS, Include.ALL);
-    topic.setService(new MessagingServiceEntityInterface(messagingService).getEntityReference());
+    topic.setService(messagingService.getEntityReference());
     topic.setServiceType(messagingService.getServiceType());
-    topic.setFullyQualifiedName(getFQN(topic));
+    setFullyQualifiedName(topic);
     topic.setOwner(Entity.getEntityReference(topic.getOwner()));
     topic.setTags(addDerivedTags(topic.getTags()));
   }
@@ -98,17 +96,13 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
+    topic.setSampleData(fields.contains("sampleData") ? getSampleData(topic) : null);
     return topic;
   }
 
   @Override
-  public EntityRepository<Topic>.EntityUpdater getUpdater(Topic original, Topic updated, Operation operation) {
+  public TopicUpdater getUpdater(Topic original, Topic updated, Operation operation) {
     return new TopicUpdater(original, updated, operation);
-  }
-
-  @Override
-  public EntityInterface<Topic> getEntityInterface(Topic entity) {
-    return new TopicEntityInterface(entity);
   }
 
   private EntityReference getService(Topic topic) throws IOException {
@@ -122,142 +116,22 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  public static class TopicEntityInterface extends EntityInterface<Topic> {
-    public TopicEntityInterface(Topic entity) {
-      super(Entity.TOPIC, entity);
-    }
+  private TopicSampleData getSampleData(Topic topic) throws IOException {
+    return JsonUtils.readValue(
+        daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
+        TopicSampleData.class);
+  }
 
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
+  @Transaction
+  public Topic addSampleData(UUID topicId, TopicSampleData sampleData) throws IOException {
+    // Validate the request content
+    Topic topic = daoCollection.topicDAO().findEntityById(topicId);
 
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : TopicRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public Topic getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Topic withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
+    daoCollection
+        .entityExtensionDAO()
+        .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
+    setFields(topic, Fields.EMPTY_FIELDS);
+    return topic.withSampleData(sampleData);
   }
 
   public class TopicUpdater extends EntityUpdater {
@@ -267,28 +141,25 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Topic origTopic = original.getEntity();
-      Topic updatedTopic = updated.getEntity();
-      recordChange("maximumMessageSize", origTopic.getMaximumMessageSize(), updatedTopic.getMaximumMessageSize());
-      recordChange(
-          "minimumInSyncReplicas", origTopic.getMinimumInSyncReplicas(), updatedTopic.getMinimumInSyncReplicas());
-      recordChange("partitions", origTopic.getPartitions(), updatedTopic.getPartitions());
-      recordChange("replicationFactor", origTopic.getReplicationFactor(), updatedTopic.getReplicationFactor());
-      recordChange("retentionTime", origTopic.getRetentionTime(), updatedTopic.getRetentionTime());
-      recordChange("retentionSize", origTopic.getRetentionSize(), updatedTopic.getRetentionSize());
-      recordChange("schemaText", origTopic.getSchemaText(), updatedTopic.getSchemaText());
-      recordChange("schemaType", origTopic.getSchemaType(), updatedTopic.getSchemaType());
-      recordChange("topicConfig", origTopic.getTopicConfig(), updatedTopic.getTopicConfig());
-      updateCleanupPolicies(origTopic, updatedTopic);
+      recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
+      recordChange("minimumInSyncReplicas", original.getMinimumInSyncReplicas(), updated.getMinimumInSyncReplicas());
+      recordChange("partitions", original.getPartitions(), updated.getPartitions());
+      recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
+      recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
+      recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
+      recordChange("schemaText", original.getSchemaText(), updated.getSchemaText());
+      recordChange("schemaType", original.getSchemaType(), updated.getSchemaType());
+      recordChange("topicConfig", original.getTopicConfig(), updated.getTopicConfig());
+      updateCleanupPolicies(original, updated);
     }
 
-    private void updateCleanupPolicies(Topic origTopic, Topic updatedTopic) throws JsonProcessingException {
+    private void updateCleanupPolicies(Topic original, Topic updated) throws JsonProcessingException {
       List<CleanupPolicy> added = new ArrayList<>();
       List<CleanupPolicy> deleted = new ArrayList<>();
       recordListChange(
           "cleanupPolicies",
-          origTopic.getCleanupPolicies(),
-          updatedTopic.getCleanupPolicies(),
+          original.getCleanupPolicies(),
+          updated.getCleanupPolicies(),
           added,
           deleted,
           CleanupPolicy::equals);

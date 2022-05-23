@@ -11,6 +11,10 @@
 
 """
 Test airflow lineage backend
+
+These tests should be run with Airflow 2.1.4
+Other airflow versions require a different way to
+mock the DAG and Task runs.
 """
 
 from datetime import datetime, timedelta
@@ -301,3 +305,126 @@ class AirflowLineageTest(TestCase):
         self.assertIn("group1.task1", {task.name for task in pipeline.tasks})
         self.assertIn("group1.task2", {task.name for task in pipeline.tasks})
         self.assertIn("end", {task.name for task in pipeline.tasks})
+
+    def test_clean_tasks(self):
+        """
+        Check that we can safely remove tasks from a Pipeline
+        """
+
+        with DAG(
+            "clean_test",
+            description="A lineage test DAG",
+            schedule_interval=timedelta(days=1),
+            start_date=datetime(2021, 1, 1),
+        ) as dag:
+            t1 = BashOperator(  # Using BashOperator as a random example
+                task_id="task1",
+                bash_command="date",
+            )
+
+            t2 = BashOperator(  # Using BashOperator as a random example
+                task_id="task2",
+                bash_command="sleep 5",
+            )
+
+            t1 >> t2
+
+            self.backend.send_lineage(
+                operator=dag.get_task("task1"),
+                context={
+                    "dag": dag,
+                    "task": dag.get_task("task1"),
+                    "task_instance": TaskInstance(
+                        task=dag.get_task("task1"),
+                        execution_date=datetime.strptime(
+                            "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        state="running",
+                    ),
+                },
+            )
+
+            self.backend.send_lineage(
+                operator=dag.get_task("task2"),
+                context={
+                    "dag": dag,
+                    "task": dag.get_task("task2"),
+                    "task_instance": TaskInstance(
+                        task=dag.get_task("task2"),
+                        execution_date=datetime.strptime(
+                            "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        state="running",
+                    ),
+                },
+            )
+
+        pipeline = self.metadata.get_by_name(
+            entity=Pipeline, fqdn="local_airflow_3.clean_test", fields=["tasks"]
+        )
+        self.assertIsNotNone(pipeline)
+        self.assertIn("task1", {task.name for task in pipeline.tasks})
+        self.assertIn("task2", {task.name for task in pipeline.tasks})
+
+        with DAG(
+            "clean_test",
+            description="A lineage test DAG",
+            schedule_interval=timedelta(days=1),
+            start_date=datetime(2021, 1, 1),
+        ) as dag:
+            t1 = BashOperator(
+                task_id="task1",
+                bash_command="date",
+            )
+
+            renamed_task = BashOperator(
+                task_id="new_task2",
+                bash_command="sleep 5",
+            )
+
+            t1 >> renamed_task
+
+            self.backend.send_lineage(
+                operator=dag.get_task("task1"),
+                context={
+                    "dag": dag,
+                    "task": dag.get_task("task1"),
+                    "task_instance": TaskInstance(
+                        task=dag.get_task("task1"),
+                        execution_date=datetime.strptime(
+                            "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        state="running",
+                    ),
+                },
+            )
+
+            self.backend.send_lineage(
+                operator=dag.get_task("new_task2"),
+                context={
+                    "dag": dag,
+                    "task": dag.get_task("new_task2"),
+                    "task_instance": TaskInstance(
+                        task=dag.get_task("new_task2"),
+                        execution_date=datetime.strptime(
+                            "2022-03-15T08:13:45", "%Y-%m-%dT%H:%M:%S"
+                        ),
+                        state="running",
+                    ),
+                },
+            )
+
+        pipeline: Pipeline = self.metadata.get_by_name(
+            entity=Pipeline, fqdn="local_airflow_3.clean_test", fields=["tasks"]
+        )
+        self.assertIsNotNone(pipeline)
+        self.assertIn("task1", {task.name for task in pipeline.tasks})
+        self.assertIn("new_task2", {task.name for task in pipeline.tasks})
+        self.assertNotIn("task2", {task.name for task in pipeline.tasks})
+
+        self.metadata.delete(
+            entity=Pipeline,
+            entity_id=pipeline.id,
+            recursive=True,
+            hard_delete=True,
+        )

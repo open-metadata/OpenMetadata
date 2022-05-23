@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URI;
@@ -35,14 +34,11 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -79,7 +75,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             .withServiceType(PipelineServiceType.Airflow)
             .withPipelineUrl(new URI("http://localhost:0"));
     PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+    AIRFLOW_REFERENCE = pipelineService.getEntityReference();
 
     // Create Prefect pipeline service
     createPipeline
@@ -87,7 +83,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         .withServiceType(PipelineServiceType.Prefect)
         .withPipelineUrl(new URI("http://localhost:0"));
     pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+    PREFECT_REFERENCE = pipelineService.getEntityReference();
   }
 
   @BeforeAll
@@ -216,25 +212,17 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public CreatePipelineService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreatePipelineService createRequest(String name) {
     return new CreatePipelineService()
         .withName(name)
         .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
         .withPipelineUrl(PIPELINE_SERVICE_URL)
-        .withDescription(description)
-        .withOwner(owner)
         .withIngestionSchedule(null);
   }
 
   @Override
   public void validateCreatedEntity(
       PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
 
     Schedule expectedIngestion = createRequest.getIngestionSchedule();
@@ -251,27 +239,22 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
   }
 
   @Override
-  public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
-    return new PipelineServiceEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<PipelineService> validateGetWithDifferentFields(PipelineService service, boolean byName)
+  public PipelineService validateGetWithDifferentFields(PipelineService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(service);
+    return service;
   }
 
   @Override

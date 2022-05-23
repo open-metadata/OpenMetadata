@@ -51,7 +51,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.PipelineStatus;
-import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -60,7 +59,6 @@ import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Status;
 import org.openmetadata.catalog.type.StatusType;
 import org.openmetadata.catalog.type.Task;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -90,14 +88,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Override
-  public CreatePipeline createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreatePipeline()
-        .withName(name)
-        .withService(getContainer())
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner)
-        .withTasks(TASKS);
+  public CreatePipeline createRequest(String name) {
+    return new CreatePipeline().withName(name).withService(getContainer()).withTasks(TASKS);
   }
 
   @Override
@@ -106,13 +98,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Override
+  public EntityReference getContainer(Pipeline entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(Pipeline pipeline, CreatePipeline createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(pipeline),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertNotNull(pipeline.getServiceType());
     assertReference(createRequest.getService(), pipeline.getService());
     validateTasks(createRequest.getTasks(), pipeline.getTasks());
@@ -138,20 +130,10 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   @Override
   public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     validateTasks(expected.getTasks(), updated.getTasks());
     TestUtils.validateTags(expected.getTags(), updated.getTags());
-  }
-
-  @Override
-  public EntityInterface<Pipeline> getEntityInterface(Pipeline entity) {
-    return new PipelineEntityInterface(entity);
   }
 
   @Override
@@ -206,7 +188,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     create.setTasks(List.of(task));
     Pipeline created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = created.getTasks().get(0);
-    assertTrue(actualTask.getName().equals("ta.sk"));
+    assertEquals("ta.sk", actualTask.getName());
   }
 
   @Test
@@ -259,6 +241,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     change = getChangeDescription(pipeline.getVersion());
     // create a request with same tasks we shouldn't see any change
     updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    // create new request with few tasks removed
+    updatedTasks.remove(taskEmptyDesc);
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("tasks").withOldValue(List.of(taskEmptyDesc)));
+    updateAndCheckEntity(request.withTasks(updatedTasks), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = getPipeline(pipeline.getId(), "tasks", ADMIN_AUTH_HEADERS);
+    validateTasks(pipeline.getTasks(), updatedTasks);
   }
 
   @Test
@@ -484,16 +473,28 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS,
             MINOR_UPDATE,
             change);
-    // TODO update this once task removal is figured out
-    // remove a task
-    // TASKS.remove(0);
-    // change = getChangeDescription(pipeline.getVersion()).withFieldsUpdated(singletonList("tasks"));
-    // updateAndCheckEntity(request.withTasks(TASKS), OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(3, pipeline.getTasks().size());
+
+    List<Task> new_tasks = new ArrayList<>();
+    for (int i = 1; i < 3; i++) { // remove task0
+      Task task =
+          new Task()
+              .withName("task" + i)
+              .withDescription("description")
+              .withDisplayName("displayName")
+              .withTaskUrl(new URI("http://localhost:0"));
+      new_tasks.add(task);
+    }
+    request.setTasks(new_tasks);
+    change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withNewValue(new_tasks).withOldValue(TASKS));
+    pipeline = updateEntity(request, OK, ADMIN_AUTH_HEADERS);
+    assertEquals(2, pipeline.getTasks().size());
   }
 
   @Override
-  public EntityInterface<Pipeline> validateGetWithDifferentFields(Pipeline pipeline, boolean byName)
-      throws HttpResponseException {
+  public Pipeline validateGetWithDifferentFields(Pipeline pipeline, boolean byName) throws HttpResponseException {
     String fields = "";
     pipeline =
         byName
@@ -515,7 +516,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(pipeline);
+    return pipeline;
   }
 
   public static Pipeline getPipeline(UUID id, String fields, Map<String, String> authHeaders)

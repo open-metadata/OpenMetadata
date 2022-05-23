@@ -143,7 +143,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const getUserName = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
     return currentUser?.displayName || currentUser?.name || TERM_USER;
@@ -151,7 +151,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const getUserData = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
     const name = currentUser?.displayName || currentUser?.name || TERM_USER;
@@ -199,7 +199,7 @@ const Appbar: React.FC = (): JSX.Element => {
             {teams.map((t, i) => (
               <p key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>
-                  {t.displayName}
+                  {t.displayName || t.name}
                 </Link>
               </p>
             ))}

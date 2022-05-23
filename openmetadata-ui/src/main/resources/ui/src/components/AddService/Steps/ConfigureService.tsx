@@ -37,7 +37,7 @@ const ConfigureService = ({
         </label>
 
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="service-name"
           id="serviceName"
           name="serviceName"

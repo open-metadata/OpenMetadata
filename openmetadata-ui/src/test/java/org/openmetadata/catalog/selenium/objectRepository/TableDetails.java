@@ -19,11 +19,11 @@ public class TableDetails {
   By selectUser = By.xpath("//div[@data-testid=\"list-item\"]");
   By saveManage = By.cssSelector("[data-testid='saveManageTab']");
   By follow = By.cssSelector("button[data-testid='follow-button']");
-  By schema = By.xpath("[data-testid='Schema']");;
-  By lineage = By.cssSelector("[data-testid='Lineage']");;
+  By schema = By.xpath("[data-testid='Schema']");
+  By lineage = By.cssSelector("[data-testid='Lineage']");
   By lineageComponents = By.cssSelector("[data-testid='node-label']");
   By profiler = By.cssSelector("[data-testid='Profiler']");
-  By sampleData = By.cssSelector("[data-testid='Sample Data']");;
+  By sampleData = By.cssSelector("[data-testid='Sample Data']");
   By selectTier1 = By.xpath("(//div[@data-testid='card-list'])[1]");
   By tier1 = By.xpath("(/h4[@class='tw-text-base tw-mb-0']");
   By addTagTextBox = By.xpath("//input[@data-testid='associatedTagName']");

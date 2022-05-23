@@ -17,7 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -170,7 +170,6 @@ const Explore: React.FC<ExploreProps> = ({
     setIsFilterSet(false);
 
     handleFilterChange({
-      ...filters,
       ...updatedFilter,
       ...(isForceClear ? {} : queryParamFilters),
     });
@@ -414,6 +413,8 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
+      setIsEntityLoading(true);
+      setData([]);
       handlePathChange(tabsInfo[selectedTab - 1].path);
       resetFilters();
       history.push({
@@ -451,7 +452,7 @@ const Explore: React.FC<ExploreProps> = ({
                   className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
                     tabDetail.tab
                   )}`}
-                  data-testid="tab"
+                  data-testid={`${lowerCase(tabDetail.label)}-tab`}
                   key={index}
                   onClick={() => {
                     onTabChange(tabDetail.tab);
@@ -483,7 +484,6 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
-    handleFilterChange(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(
       searchQuery
@@ -496,6 +496,7 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentPage(1);
     if (!isMounting.current) {
       fetchCount();
+      handleFilterChange(filterObject);
     }
   }, [tab]);
 

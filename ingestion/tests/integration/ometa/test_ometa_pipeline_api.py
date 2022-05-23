@@ -340,8 +340,14 @@ class OMetaPipelineTest(TestCase):
 
         pipeline = self.metadata.create_or_update(data=create_pipeline)
 
-        updated_pipeline = self.metadata.clean_pipeline_tasks(
+        self.metadata.clean_pipeline_tasks(
             pipeline=pipeline, task_ids=["task3", "task4"]
+        )
+
+        updated_pipeline = self.metadata.get_by_name(
+            entity=Pipeline,
+            fqdn="test-service-pipeline.pipeline-test",
+            fields=["tasks"],
         )
 
         assert len(updated_pipeline.tasks) == 2

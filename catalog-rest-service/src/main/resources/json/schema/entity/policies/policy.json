@@ -4,6 +4,8 @@
   "title": "Policy",
   "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.policies.Policy",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "policyType": {
       "javaType": "org.openmetadata.catalog.type.PolicyType",
@@ -53,7 +55,7 @@
     },
     "description": {
       "description": "A short description of the Policy, comprehensible to regular users.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this Policy.",

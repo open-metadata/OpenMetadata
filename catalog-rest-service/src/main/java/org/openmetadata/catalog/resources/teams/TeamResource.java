@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -268,7 +267,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
-    Team team = getTeam(ct, securityContext);
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team, ADMIN | BOT);
   }
 
@@ -286,7 +285,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
-    Team team = getTeam(ct, securityContext);
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team, ADMIN | BOT | OWNER);
   }
 
@@ -337,17 +336,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
-    return new Team()
-        .withId(UUID.randomUUID())
-        .withName(ct.getName())
-        .withDescription(ct.getDescription())
-        .withDisplayName(ct.getDisplayName())
+  private Team getTeam(CreateTeam ct, String user) {
+    return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
-        .withOwner(ct.getOwner())
         .withIsJoinable(ct.getIsJoinable())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))
         .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
   }

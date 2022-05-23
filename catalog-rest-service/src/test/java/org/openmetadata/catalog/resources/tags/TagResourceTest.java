@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -45,12 +46,12 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.tags.CreateTag;
+import org.openmetadata.catalog.api.tags.CreateTagCategory;
+import org.openmetadata.catalog.api.tags.CreateTagCategory.TagCategoryType;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
-import org.openmetadata.catalog.type.CreateTag;
-import org.openmetadata.catalog.type.CreateTagCategory;
-import org.openmetadata.catalog.type.CreateTagCategory.TagCategoryType;
-import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
@@ -438,7 +439,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   private TagCategory createAndCheckCategory(CreateTagCategory create, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags");
     TagCategory tagCategory = TestUtils.post(target, create, TagCategory.class, authHeaders);
     TagCategory category =
@@ -452,7 +453,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   private Tag createPrimaryTag(String category, CreateTag create, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category);
 
     // Ensure POST returns the primary tag as expected
@@ -472,7 +473,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   private Tag createSecondaryTag(String category, String primaryTag, CreateTag create, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category + "/" + primaryTag);
 
     // Ensure POST returns the secondary tag as expected
@@ -492,7 +493,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   @SneakyThrows
   private void updateCategory(String category, CreateTagCategory update, Map<String, String> authHeaders) {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     WebTarget target = getResource("tags/" + category);
 
     // Ensure PUT returns the updated tag category
@@ -506,7 +507,7 @@ public class TagResourceTest extends CatalogApplicationTest {
 
   private void updatePrimaryTag(String category, String primaryTag, CreateTag update, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     String parentHref = getResource("tags/" + category).getUri().toString();
     WebTarget target = getResource("tags/" + category + "/" + primaryTag);
 
@@ -526,7 +527,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   private void updateSecondaryTag(
       String category, String primaryTag, String secondaryTag, CreateTag update, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = getPrincipalName(authHeaders);
     String parentHref = getResource("tags/" + category + "/" + primaryTag).getUri().toString();
     WebTarget target = getResource("tags/" + category + "/" + primaryTag + "/" + secondaryTag);
 

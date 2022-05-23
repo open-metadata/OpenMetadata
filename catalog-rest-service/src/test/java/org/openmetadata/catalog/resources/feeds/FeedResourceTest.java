@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -121,7 +122,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withDescription("Team2 description")
             .withUsers(List.of(USER2.getId()));
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
-    EntityReference TEAM2_REF = new EntityReference().withId(TEAM2.getId()).withType(Entity.TEAM);
+    EntityReference TEAM2_REF = TEAM2.getEntityReference();
+
     CreateTable createTable2 = tableResourceTest.createRequest(test);
     createTable2.withName("table2").withOwner(TEAM2_REF);
     TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
@@ -780,6 +782,6 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
     assertEquals(expected.getMessage(), patched.getMessage());
     assertEquals(expected.getResolved(), patched.getResolved());
-    assertEquals(TestUtils.getPrincipal(authHeaders), patched.getUpdatedBy());
+    assertEquals(getPrincipalName(authHeaders), patched.getUpdatedBy());
   }
 }

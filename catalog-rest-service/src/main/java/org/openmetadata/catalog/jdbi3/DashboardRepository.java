@@ -20,7 +20,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,13 +27,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -54,15 +50,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Dashboard dashboard) {
-    return (dashboard != null && dashboard.getService() != null)
-        ? FullyQualifiedName.add(dashboard.getService().getFullyQualifiedName(), dashboard.getName())
-        : null;
-  }
-
   @Override
-  public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
-    return new DashboardEntityInterface(entity);
+  public void setFullyQualifiedName(Dashboard dashboard) {
+    dashboard.setFullyQualifiedName(FullyQualifiedName.add(dashboard.getService().getName(), dashboard.getName()));
   }
 
   @Override
@@ -96,7 +86,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private void populateService(Dashboard dashboard) throws IOException {
     DashboardService service = getService(dashboard.getService().getId(), dashboard.getService().getType());
-    dashboard.setService(new DashboardServiceEntityInterface(service).getEntityReference());
+    dashboard.setService(service.getEntityReference());
     dashboard.setServiceType(service.getServiceType());
   }
 
@@ -119,7 +109,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void prepare(Dashboard dashboard) throws IOException {
     populateService(dashboard);
-    dashboard.setFullyQualifiedName(getFQN(dashboard));
+    setFullyQualifiedName(dashboard);
     populateOwner(dashboard.getOwner()); // Validate owner
     dashboard.setTags(addDerivedTags(dashboard.getTags()));
     dashboard.setCharts(getCharts(dashboard.getCharts()));
@@ -188,162 +178,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return chartRefs.isEmpty() ? null : chartRefs;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
-      throws JsonProcessingException {
-    // Remove all charts associated with this dashboard
-    deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
-
-    // Add relationship from dashboard to chart
-    if (updated.getCharts() != null) {
-      for (EntityReference chart : updated.getCharts()) {
-        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
-    }
-    List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
-    List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getCharts());
-    updater.recordChange("charts", origChartIds, updatedChartIds);
-  }
-
-  public static class DashboardEntityInterface extends EntityInterface<Dashboard> {
-    public DashboardEntityInterface(Dashboard entity) {
-      super(Entity.DASHBOARD, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : DashboardRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public Dashboard getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Dashboard withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
     public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
@@ -360,8 +194,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
 
       // Add relationship from dashboard to chart
-      List<EntityReference> updatedCharts = listOrEmpty(updated.getEntity().getCharts());
-      List<EntityReference> origCharts = listOrEmpty(original.getEntity().getCharts());
+      List<EntityReference> updatedCharts = listOrEmpty(updated.getCharts());
+      List<EntityReference> origCharts = listOrEmpty(original.getCharts());
       for (EntityReference chart : updatedCharts) {
         addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
       }

@@ -1,5 +1,6 @@
 {
 	"topics": [{
+			"id": "c95f7521-79ff-47ec-bdb1-57b72dafa620",
 			"name": "customer_events",
 			"description": "Kafka topic to capture the customer events such as location updates or profile updates",
 			"partitions": 56,
@@ -11,6 +12,7 @@
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}"
 		},
 		{
+			"id": "21fc6b93-ba08-482e-aa04-ef2266723594",
 			"name": "product_events",
 			"description": "Kafka topic to capture the product events. This topic will get updates on products decription, price etc.",
 			"partitions": 128,
@@ -22,6 +24,7 @@
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Product\",\"fields\":[{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"sku\",\"type\":\"string\"},{\"name\":\"barcode\",\"type\":\"string\"},{\"name\":\"shop_id\",\"type\":\"int\"}]}"
 		},
 		{
+			"id": "59874709-7fa3-4971-9bdc-8ff27240df1a",
 			"name": "shop_updates",
 			"description": "Kafka topic to get any shop updates such as new products, location",
 			"partitions": 16,
@@ -33,6 +36,7 @@
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Shop\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"domain\",\"type\":\"string\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"}]}"
 		},
 		{
+			"id": "982c4580-5574-40da-8f80-56697b93c8b2",
 			"name": "shop_products",
 			"description": "Kafka topic to get products in a shop. This is constantly updating",
 			"partitions": 128,
@@ -44,6 +48,7 @@
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Shop Products\",\"fields\":[{\"name\":\"prodcut_id\",\"type\":\"int\"},{\"name\":\"product_variant_id\",\"type\":\"int\"},{\"name\":\"shop_id\",\"type\":\"int\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"product_title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"quantity\",\"type\":\"int\"},{\"name\":\"product_vendor\",\"type\":\"int\"},{\"name\":\"fulfillable_quantity\",\"type\":\"int\"},{\"name\":\"fulfilment_service\",\"type\":\"string\"}]}"
 		},
 		{
+			"id": "0a0d4154-21f5-4f97-a5d2-18e13d3ac46e",
 			"name": "orders",
 			"description": "All the order events on our online store",
 			"partitions": 128,
@@ -55,6 +60,7 @@
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"order_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"shipping_address_id\",\"type\":\"int\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"total_price\",\"type\":\"double\"},{\"name\":\"discount_code\",\"type\":\"string\"},{\"name\":\"processed_at\",\"type\":\"int\"}]}"
 		},
 		{
+			"id": "127e911e-8a41-40f5-8eec-35e71fdb9f38",
 			"name": "sales",
 			"description": "All sales related events gets captured in this topic",
 			"partitions": 128,

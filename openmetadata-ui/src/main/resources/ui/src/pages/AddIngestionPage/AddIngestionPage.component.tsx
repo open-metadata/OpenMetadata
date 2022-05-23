@@ -12,21 +12,31 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize } from 'lodash';
+import { capitalize, startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addIngestionPipeline,
+  checkAirflowStatus,
+  deployIngestionPipelineById,
   getIngestionPipelineByFqn,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  DEPLOYED_PROGRESS_VAL,
+  getServiceDetailsPath,
+  INGESTION_PROGRESS_END_VAL,
+  INGESTION_PROGRESS_START_VAL,
+} from '../../constants/constants';
 import { FormSubmitType } from '../../enums/form.enum';
+import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -34,7 +44,11 @@ import { PipelineType } from '../../generated/entity/services/ingestionPipelines
 import { DataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getServiceIngestionStepGuide } from '../../utils/ServiceUtils';
+import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import {
+  getServiceIngestionStepGuide,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
@@ -45,6 +59,18 @@ const AddIngestionPage = () => {
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsloading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [ingestionProgress, setIngestionProgress] = useState(0);
+  const [isIngestionCreated, setIsIngestionCreated] = useState(false);
+  const [isIngestionDeployed, setIsIngestionDeployed] = useState(false);
+  const [ingestionAction, setIngestionAction] = useState(
+    IngestionActionMessage.CREATING
+  );
+  const [ingestionId, setIngestionId] = useState('');
+  const [showIngestionButton, setShowIngestionButton] = useState(false);
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
+  const [isAirflowRunning, setIsAirflowRunning] = useState(true);
 
   const fetchServiceDetails = () => {
     getServiceByFQN(serviceCategory, serviceFQN)
@@ -68,12 +94,39 @@ const AddIngestionPage = () => {
       .finally(() => setIsloading(false));
   };
 
+  const onIngestionDeploy = (id?: string) => {
+    return new Promise<void>((resolve) => {
+      setIsIngestionCreated(true);
+      setIngestionProgress(INGESTION_PROGRESS_END_VAL);
+      setIngestionAction(IngestionActionMessage.DEPLOYING);
+
+      deployIngestionPipelineById(id ?? ingestionId)
+        .then(() => {
+          setIsIngestionDeployed(true);
+          setShowIngestionButton(false);
+          setIngestionProgress(DEPLOYED_PROGRESS_VAL);
+          setIngestionAction(IngestionActionMessage.DEPLOYED);
+        })
+        .catch((err: AxiosError) => {
+          setShowIngestionButton(true);
+          setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
+          showErrorToast(
+            err || jsonData['api-error-messages']['deploy-ingestion-error']
+          );
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const onAddIngestionSave = (data: CreateIngestionPipeline) => {
+    setIngestionProgress(INGESTION_PROGRESS_START_VAL);
+
     return new Promise<void>((resolve, reject) => {
       return addIngestionPipeline(data)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            resolve();
+            setIngestionId(res.data.id);
+            onIngestionDeploy(res.data.id).finally(() => resolve());
           } else {
             showErrorToast(
               jsonData['api-error-messages']['create-ingestion-error']
@@ -115,11 +168,67 @@ const AddIngestionPage = () => {
     });
   };
 
+  const onAirflowStatusCheck = (): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      checkAirflowStatus()
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            reject();
+          }
+        })
+        .catch(() => reject());
+    });
+  };
+
+  const fetchAirflowStatusCheck = () => {
+    return new Promise<void>((resolve) => {
+      onAirflowStatusCheck()
+        .then(() => {
+          setIsAirflowRunning(true);
+        })
+        .catch(() => {
+          setIsAirflowRunning(false);
+        })
+        .finally(() => resolve());
+    });
+  };
+
   const goToService = () => {
     history.push(
       getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
     );
   };
+
+  const isDeployed = () => {
+    const ingestion =
+      ingestionType === PipelineType.Metadata
+        ? activeIngestionStep >= 3
+        : activeIngestionStep >= 2;
+
+    return ingestion && !showIngestionButton;
+  };
+
+  useEffect(() => {
+    setSlashedBreadcrumb([
+      {
+        name: startCase(serviceCategory),
+        url: getServicesWithTabPath(serviceCategory),
+      },
+      {
+        name: serviceData?.name || '',
+        url: getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions'),
+        imgSrc: serviceTypeLogo(serviceData?.serviceType || ''),
+        activeTitle: true,
+      },
+      {
+        name: `Add ${capitalize(ingestionType)} Ingestion`,
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, [serviceCategory, ingestionType, serviceData]);
 
   const renderAddIngestionPage = () => {
     if (isLoading) {
@@ -134,13 +243,17 @@ const AddIngestionPage = () => {
       return (
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
           layout={PageLayoutType['2ColRTL']}
           rightPanel={getServiceIngestionStepGuide(
             activeIngestionStep,
             true,
             `${serviceData?.name || ''}_${ingestionType}`,
             '',
-            ingestionType as PipelineType
+            ingestionType as PipelineType,
+            isDeployed(),
+            false,
+            isAirflowRunning
           )}>
           <div className="tw-form-container">
             <AddIngestion
@@ -148,12 +261,20 @@ const AddIngestionPage = () => {
               handleCancelClick={goToService}
               handleViewServiceClick={goToService}
               heading={`Add ${capitalize(ingestionType)} Ingestion`}
+              ingestionAction={ingestionAction}
+              ingestionProgress={ingestionProgress}
+              isAirflowSetup={isAirflowRunning}
+              isIngestionCreated={isIngestionCreated}
+              isIngestionDeployed={isIngestionDeployed}
               pipelineType={ingestionType as PipelineType}
               serviceCategory={serviceCategory as ServiceCategory}
               serviceData={serviceData as DataObj}
               setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+              showDeployButton={showIngestionButton}
               status={FormSubmitType.ADD}
               onAddIngestionSave={onAddIngestionSave}
+              onAirflowStatusCheck={onAirflowStatusCheck}
+              onIngestionDeploy={onIngestionDeploy}
             />
           </div>
         </PageLayout>
@@ -162,7 +283,9 @@ const AddIngestionPage = () => {
   };
 
   useEffect(() => {
-    fetchServiceDetails();
+    fetchAirflowStatusCheck().finally(() => {
+      fetchServiceDetails();
+    });
   }, [serviceCategory, serviceFQN]);
 
   return <PageContainerV1>{renderAddIngestionPage()}</PageContainerV1>;
