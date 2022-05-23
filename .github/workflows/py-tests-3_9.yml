@@ -49,13 +49,13 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev
+        librdkafka-dev unixodbc-dev libevent-dev antlr4
 
     - name: Install open-metadata dependencies
       run: |
         python3 -m venv env
         source env/bin/activate
-        make install_test install_dev install_antlr_cli generate install_all
+        make install_test install_dev generate install_all
 
     - name: Start Server and Ingest Sample Data
       env:
