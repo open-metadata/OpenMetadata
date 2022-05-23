@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
@@ -72,6 +75,7 @@ from metadata.utils.connection_clients import (
     GlueClient,
     KafkaClient,
     MetabaseClient,
+    PowerBiClient,
     RedashClient,
     SalesforceClient,
     SupersetClient,
@@ -518,3 +522,10 @@ def _(connection: TableauClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+
+
+@get_connection.register
+def _(connection: PowerBIConnection, verbose: bool = False):
+    from metadata.utils.powerbi_client import PowerBiApiClient
+
+    return PowerBiClient(PowerBiApiClient(connection))

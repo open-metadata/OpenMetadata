@@ -5,15 +5,19 @@ source:
     config:
       clientId: client_id
       clientSecret: client_secret
-      redirectURI: http://localhost:8585/callback
       hostPort: https://analysis.windows.net/powerbi
+      tenantId: tenant_id
       scope:
-      - scope
-      - https://analysis.windows.net/powerbi/api/App.Read.All
-      credentials: path
+        - https://analysis.windows.net/powerbi/api/.default
       type: PowerBI
   sourceConfig:
-    config: {}
+    config:
+      chartFilterPattern:
+        includes:
+          - Total Revenue
+      dashboardFilterPattern:
+        excludes:
+          - Retail Analysis
 sink:
   type: metadata-rest
   config: {}

@@ -40,7 +40,6 @@ logger = ingestion_logger()
 
 class PowerbiSource(Source[Entity]):
     """Powerbi entity class
-
     Args:
         config:
         metadata_config:
@@ -70,7 +69,6 @@ class PowerbiSource(Source[Entity]):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Instantiate object
-
         Args:
             config_dict:
             metadata_config:
