@@ -49,8 +49,8 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.helpers import get_dashboard_service_or_create
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -93,6 +93,7 @@ class AmundsenSource(Source[Entity]):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
+        self.metadata = OpenMetadata(self.metadata_config)
         self.service_connection = config.serviceConnection.__root__.config
 
         neo4j_config = Neo4JConfig(
@@ -190,19 +191,20 @@ class AmundsenSource(Source[Entity]):
                 col = Column(**parsed_string)
                 columns.append(col)
 
-            fqn = get_fqdn(
-                Table,
-                service_name,
-                database.name.__root__,
-                database_schema.name.__root__,
-                table["name"],
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=database.name.__root__,
+                schema_name=database_schema.name.__root__,
+                table_name=table["name"],
             )
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],
                 tableType="Regular",
                 description=table["description"],
-                fullyQualifiedName=fqn,
+                fullyQualifiedName=table_fqn,
                 columns=columns,
             )
 
@@ -283,8 +285,7 @@ class AmundsenSource(Source[Entity]):
     def get_database_service_or_create(
         self, service_name: str, service_type: str
     ) -> DatabaseService:
-        metadata = OpenMetadata(self.metadata_config)
-        service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+        service = self.metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
         if service is not None:
             return service
         else:
@@ -296,7 +297,7 @@ class AmundsenSource(Source[Entity]):
                 ),
                 "connection": {"config": {}},
             }
-            created_service = metadata.create_or_update(
+            created_service = self.metadata.create_or_update(
                 CreateDatabaseServiceRequest(**service)
             )
             return created_service

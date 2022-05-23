@@ -12,6 +12,8 @@
  */
 
 import classNames from 'classnames';
+import Emoji from 'quill-emoji';
+import 'quill-emoji/dist/quill-emoji.css';
 import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
@@ -34,6 +36,7 @@ import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
+Quill.register('modules/emoji', Emoji);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
@@ -76,6 +79,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
+        'emoji-toolbar': true,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,

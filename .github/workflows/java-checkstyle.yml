@@ -22,12 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   java-checkstyle:
-    runs-on: ${{matrix.os}}
-
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
