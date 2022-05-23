@@ -143,6 +143,7 @@ class FQNBuildTest(TestCase):
             database_name=self.db_reference.name,
             schema_name=None,
             table_name=self.entity.name.__root__,
+            retries=5,
         )
 
         self.assertEqual("test-service-table-fqn.test-db.test-schema.test", table_fqn)
@@ -154,6 +155,7 @@ class FQNBuildTest(TestCase):
             database_name=None,
             schema_name=None,
             table_name=self.entity.name.__root__,
+            retries=5,
         )
 
         self.assertEqual("test-service-table-fqn.test-db.test-schema.test", table_fqn)

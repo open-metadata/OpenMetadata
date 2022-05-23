@@ -80,7 +80,7 @@ class ESMixin(Generic[T]):
         :param retries: Times to retry
         :return: List of Entities or None
         """
-        times = min(1, retries)  # Try at least once
+        times = max(1, retries)  # Try at least once
         while times:
             entity_list = self._search_es_entity(
                 entity_type=entity_type, query_string=query_string
