@@ -97,11 +97,30 @@ def get_table_names(self, connection, schema=None, **kw):
             tables.append(row[1])
         else:
             tables.append(row[0])
-    return tables
+    views = get_view_names(self, connection, schema)
+    return [table for table in tables if table not in views]
+
+
+def get_view_names(self, connection, schema=None, **kw):
+    query = "SHOW VIEWS"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    view_in_schema = connection.execute(query)
+    views = []
+    for row in view_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            views.append(row[1])
+        else:
+            views.append(row[0])
+    return views
 
 
 HiveDialect.get_columns = get_columns
 HiveDialect.get_table_names = get_table_names
+HiveDialect.get_view_names = get_view_names
 
 
 class HiveSource(SQLSource):

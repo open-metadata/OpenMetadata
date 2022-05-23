@@ -56,6 +56,10 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_lineage import (
+    _create_lineage_by_table_name,
+    ingest_lineage_by_query,
+)
 
 logger = ingestion_logger()
 
@@ -233,7 +237,8 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if db_schema_and_table.table.viewDefinition is not None:
-                lineage_status = self.metadata.ingest_lineage_by_query(
+                lineage_status = ingest_lineage_by_query(
+                    self.metadata,
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
                     database=db_schema_and_table.database.name.__root__,
@@ -576,7 +581,8 @@ class MetadataRestSink(Sink[Entity]):
             for from_table_name in parser.tables:
                 if "." not in from_table_name:
                     from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
-                self.metadata._create_lineage_by_table_name(
+                _create_lineage_by_table_name(
+                    self.metadata,
                     from_table_name,
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,
