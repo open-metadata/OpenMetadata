@@ -84,7 +84,6 @@ class MetadataUsageBulkSink(BulkSink):
         table_usage_map = {}
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
-            table_entities = []
             self.service_name = table_usage.service_name
             if "." in table_usage.table:
                 (
@@ -95,7 +94,7 @@ class MetadataUsageBulkSink(BulkSink):
                     table_usage.database, table_usage.database_schema, table_usage.table
                 )
             else:
-                es_result = self.metadata.es_search_from_service(
+                table_entities = self.metadata.es_search_from_service(
                     entity_type=Table,
                     service_name=self.service_name,
                     filters={
@@ -104,8 +103,7 @@ class MetadataUsageBulkSink(BulkSink):
                         "name": table_usage.table,
                     },
                 )
-                table_entities = es_result
-            for table_entity in table_entities:
+            for table_entity in table_entities or []:
                 if table_entity is not None:
                     if not table_usage_map.get(table_entity.id.__root__):
                         table_usage_map[table_entity.id.__root__] = {
