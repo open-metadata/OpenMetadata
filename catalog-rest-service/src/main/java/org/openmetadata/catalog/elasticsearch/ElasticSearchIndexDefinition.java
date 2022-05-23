@@ -526,10 +526,13 @@ class DashboardESIndex extends ElasticSearchIndex {
       dashboard.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
 
-    for (EntityReference chart : dashboard.getCharts()) {
-      chartNames.add(chart.getDisplayName());
-      chartDescriptions.add(chart.getDescription());
+    if (dashboard.getCharts() != null) {
+      for (EntityReference chart : dashboard.getCharts()) {
+        chartNames.add(chart.getDisplayName());
+        chartDescriptions.add(chart.getDescription());
+      }
     }
+
     ParseTags parseTags = new ParseTags(tags);
     String description = dashboard.getDescription() != null ? dashboard.getDescription() : "";
     String displayName = dashboard.getDisplayName() != null ? dashboard.getDisplayName() : "";
