@@ -20,10 +20,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
-class DruidSource(SQLSource):
+class DruidSource(CommonDbSourceService):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""

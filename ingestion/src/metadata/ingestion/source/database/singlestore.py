@@ -20,10 +20,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
-class SinglestoreSource(SQLSource):
+class SinglestoreSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 

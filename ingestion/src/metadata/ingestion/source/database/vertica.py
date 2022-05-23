@@ -28,7 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.sql_queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_PRIMARY_KEYS,
@@ -218,7 +218,7 @@ VerticaDialect.get_view_definition = (
 )
 
 
-class VerticaSource(SQLSource):
+class VerticaSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 

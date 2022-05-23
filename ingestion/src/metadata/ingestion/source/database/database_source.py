@@ -52,8 +52,6 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         pass
 
-    # Comment TO-REMOVE
-    # New method added to code more module
     @abstractmethod
     def get_schemas(self, inspector: Inspector) -> str:
         """
@@ -70,10 +68,8 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         pass
 
-    # Comment TO-REMOVE
-    # renamed _get_table_description in sql souce
     @abstractmethod
-    def get_table_description(
+    def _get_table_description(
         self, schema: str, table_name: str, table_type: str, inspector: Inspector
     ) -> str:
         """
@@ -81,25 +77,19 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         pass
 
-    # Comment TO-REMOVE
-    # renamed _is_partition in sql souce
     @abstractmethod
-    def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
+    def _is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
         """
         Method to check if the table is partitioned table
         """
         pass
 
-    # Comment TO-REMOVE
-    # renamed _get_data_model in sql souce
     @abstractmethod
-    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
+    def _get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
         pass
 
-    # Comment TO-REMOVE
-    # renamed fetch_sample_data in sql souce
     @abstractmethod
-    def get_sample_data(self, schema: str, table_name: str) -> Optional[TableData]:
+    def fetch_sample_data(self, schema: str, table_name: str) -> Optional[TableData]:
         """
         Method to fetch sample data form table
         """
@@ -113,7 +103,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_columns(
+    def _get_columns(
         self, schema: str, table_name: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
@@ -121,7 +111,14 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         pass
 
-    def _get_database_entity(self, database: Optional[str]) -> Database:
+    @abstractmethod
+    def get_view_definition(table_type, table_name, schema, inspector) -> Optional[str]:
+        """
+        Method to fetch view definition
+        """
+        pass
+
+    def _get_database(self, database: Optional[str]) -> Database:
         if not database:
             database = "default"
         return Database(
@@ -131,7 +128,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
             ),
         )
 
-    def _get_schema_entity(self, schema: str, database: Database) -> DatabaseSchema:
+    def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:
         return DatabaseSchema(
             name=schema,
             database=database.service,
@@ -169,23 +166,24 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
     def _get_table_entity(
         self, schema: str, table_name: str, table_type: str, inspector: Inspector
     ) -> Table:
-        description = self.get_table_description(
-            schema, table_name, table_type, inspector
-        )
+        description = self._get_table_description(schema, table_name, inspector)
         self.table_constraints = None
-        table_columns = self.get_columns(schema, table_name, table_type, inspector)
+        table_columns = self._get_columns(schema, table_name, inspector)
         table_entity = Table(
             id=uuid.uuid4(),
             name=table_name,
             tableType=table_type,
             description=description,
             columns=table_columns,
+            viewDefinition=self.get_view_definition(
+                table_type, table_name, schema, inspector
+            ),
         )
         if self.table_constraints:
             table_entity.tableConstraints = self.table_constraints
         try:
             if self.source_config.generateSampleData:
-                table_data = self.get_sample_data(schema, table_name)
+                table_data = self.fetch_sample_data(schema, table_name)
                 if table_data:
                     table_entity.sampleData = table_data
         # Catch any errors during the ingestion and continue
@@ -211,7 +209,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         Scrape an SQL schema and prepare Database and Table
         OpenMetadata Entities
         """
-        for table_name, table_type in self.get_table_names(schema):
+        for table_name, table_type in self.get_table_names(schema, inspector):
             try:
                 schema, table_name = self.standardize_schema_table_names(
                     schema, table_name
@@ -225,7 +223,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
                     )
                     continue
 
-                if self.is_partition(table_name, schema, inspector):
+                if self._is_partition(table_name, schema, inspector):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table is partition",
@@ -236,16 +234,16 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
                     schema, table_name, table_type, inspector
                 )
 
-                database = self._get_database_entity(self.service_connection.database)
+                database = self._get_database(self.service_connection.database)
                 # check if we have any model to associate with
-                table_entity.dataModel = self.get_data_model(
+                table_entity.dataModel = self._get_data_model(
                     database.name.__root__, schema, table_name
                 )
 
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
-                    database_schema=self._get_schema_entity(schema, database),
+                    database_schema=self._get_schema(schema, database),
                 )
                 self.register_record(table_schema_and_db)
                 yield table_schema_and_db

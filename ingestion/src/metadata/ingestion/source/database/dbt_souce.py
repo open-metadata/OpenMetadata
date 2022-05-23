@@ -30,12 +30,12 @@ logger = ometa_logger()
 
 class DBTSource:
     def __init__(self):
-        dbt_details = get_dbt_details(self.config.sourceConfig.config.dbtConfigSource)
+        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
         self.dbt_catalog = dbt_details[0] if dbt_details else None
         self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.data_models: dict = {}
 
-    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
+    def _get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
         table_fqn = get_fqdn(DataModel, database, schema, table_name).lower()
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]

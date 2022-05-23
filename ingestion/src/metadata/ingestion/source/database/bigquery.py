@@ -9,9 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
-import traceback
-import uuid
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine.reflection import Inspector
@@ -37,15 +35,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.source.database.sql_source import (
-    SQLSource,
-    _get_table_description,
-)
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -88,7 +80,7 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-class BigquerySource(SQLSource):
+class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
         self.connection_config: BigQueryConnection = (
@@ -130,6 +122,10 @@ class BigquerySource(SQLSource):
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[0], segments[1]
+
+    def prepare(self):
+        self.service_connection.database = self.service_connection.projectId
+        return super().prepare()
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         partition_details = self.inspector.get_indexes(table, schema)
@@ -176,100 +172,22 @@ class BigquerySource(SQLSource):
             ),
         )
 
-    def next_record(self) -> Iterable[Entity]:
-        for inspector in self.get_databases():
-            schema_names = inspector.get_schema_names()
-            for schema in schema_names:
-                # clear any previous source database state
-                try:
-                    self.database_source_state.clear()
-                    if filter_by_schema(
-                        self.source_config.schemaFilterPattern, schema_name=schema
-                    ):
-                        self.status.filter(schema, "Schema pattern not allowed")
-                        continue
-
-                    if self.source_config.includeTables:
-                        yield from self.fetch_tables(inspector, schema)
-
-                    if self.source_config.includeViews:
-                        yield from self.fetch_views(inspector, schema)
-                    if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.projectId}.{schema}"
-                        yield from self.delete_tables(schema_fqdn)
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(err)
-
-    def fetch_views(
-        self, inspector: Inspector, schema: str
-    ) -> Iterable[OMetaDatabaseAndTable]:
-        """
-        Get all views in the SQL schema and prepare
-        Database & Table OpenMetadata Entities
-        """
-        for view_name in inspector.get_view_names(schema):
+    def get_view_definition(
+        self, table_type: str, table_name: str, schema: str, inspector: Inspector
+    ) -> Optional[str]:
+        if table_type == "View":
+            view_definition = ""
             try:
-                schema, view_name = self.standardize_schema_table_names(
-                    schema, view_name
+                print(f"{self.service_connection.projectId}.{schema}.{table_name}")
+                view_definition = inspector.get_view_definition(
+                    f"{self.service_connection.projectId}.{schema}.{table_name}"
                 )
-
-                if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=view_name
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{view_name}",
-                        "View pattern not allowed",
-                    )
-                    continue
-                try:
-                    view_definition = inspector.get_view_definition(
-                        f"{self.service_connection.projectId}.{schema}.{view_name}"
-                    )
-
-                    view_definition = (
-                        "" if view_definition is None else str(view_definition)
-                    )
-                except NotImplementedError:
-                    view_definition = ""
-
-                table = Table(
-                    id=uuid.uuid4(),
-                    name=view_name,
-                    tableType="View",
-                    description=_get_table_description(schema, view_name, inspector)
-                    or "",
-                    # This will be generated in the backend!! #1673
-                    columns=self._get_columns(schema, view_name, inspector),
-                    viewDefinition=view_definition,
+                view_definition = (
+                    "" if view_definition is None else str(view_definition)
                 )
-                if self.source_config.generateSampleData:
-                    table_data = self.fetch_sample_data(schema, view_name)
-                    table.sampleData = table_data
-
-                try:
-                    if self.source_config.enableDataProfiler:
-                        profile = self.run_profiler(table=table, schema=schema)
-                        table.tableProfile = [profile] if profile else None
-                # Catch any errors during the profile runner and continue
-                except Exception as err:
-                    logger.error(err)
-
-                database = self._get_database(self.service_connection.database)
-                table_schema_and_db = OMetaDatabaseAndTable(
-                    table=table,
-                    database=database,
-                    database_schema=self._get_schema(schema, database),
-                )
-
-                self.register_record(table_schema_and_db)
-
-                yield table_schema_and_db
-            # Catch any errors and continue the ingestion
-            except Exception as err:  # pylint: disable=broad-except
-                logger.error(err)
-                self.status.warnings.append(f"{self.config.serviceName}.{view_name}")
-                continue
+            except NotImplementedError:
+                view_definition = ""
+            return view_definition
 
     def parse_raw_data_type(self, raw_data_type):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

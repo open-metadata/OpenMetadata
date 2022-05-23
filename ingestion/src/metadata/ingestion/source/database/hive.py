@@ -24,7 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 complex_data_types = ["struct", "map", "array", "union"]
 
@@ -123,7 +123,7 @@ HiveDialect.get_table_names = get_table_names
 HiveDialect.get_view_names = get_view_names
 
 
-class HiveSource(SQLSource):
+class HiveSource(CommonDbSourceService):
     def prepare(self):
         self.service_connection.database = "default"
         return super().prepare()

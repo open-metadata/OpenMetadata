@@ -12,7 +12,6 @@
 from collections import namedtuple
 from typing import Iterable
 
-import psycopg2
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
@@ -30,7 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -40,7 +39,7 @@ TableKey = namedtuple("TableKey", ["schema", "table_name"])
 logger = ingestion_logger()
 
 
-class PostgresSource(SQLSource):
+class PostgresSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
         self.pgconn = self.engine.raw_connection()

@@ -21,14 +21,11 @@ from metadata.generated.schema.entity.services.connections.database.mssqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -36,7 +33,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MssqlSource(SQLSource):
+class MssqlSource(CommonDbSourceService):
     """MSSQL Source class
 
     Args:

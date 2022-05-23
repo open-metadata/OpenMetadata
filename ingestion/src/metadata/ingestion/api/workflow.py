@@ -18,10 +18,14 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.metadataService import MetadataService
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingConnection,
+)
+from metadata.generated.schema.entity.services.metadataService import MetadataConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -155,14 +159,14 @@ class Workflow:
         return cls(config)
 
     # TODO TOTEST
-    def _get_source_dir(self, type):
-        if type == DatabaseService:
+    def _get_source_dir(self, connection_type: type) -> str:
+        if connection_type == DatabaseConnection:
             return "database"
-        elif type == MessagingService:
+        elif connection_type == MessagingConnection:
             return "messaging"
-        elif type == MetadataService:
+        elif connection_type == MetadataConnection:
             return "metadata"
-        elif type == DashboardService:
+        elif connection_type == DashboardConnection:
             return "dashboard"
 
     def execute(self):

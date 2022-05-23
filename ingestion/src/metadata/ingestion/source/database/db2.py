@@ -19,7 +19,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
 @reflection.cache
@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 )
 
 
-class Db2Source(SQLSource):
+class Db2Source(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 

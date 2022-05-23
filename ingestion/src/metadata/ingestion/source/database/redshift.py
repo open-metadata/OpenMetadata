@@ -25,6 +25,9 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
+from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
+    RedshiftConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -32,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -421,14 +424,10 @@ def _get_column_info(
 
 
 PGDialect._get_column_info = _get_column_info
-# pylint: disable=useless-super-delegation
-from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
-    RedshiftConnection,
-)
 
 
 # pylint: disable=useless-super-delegation
-class RedshiftSource(SQLSource):
+class RedshiftSource(CommonDbSourceService):
     """
     Redshift source cloass
 

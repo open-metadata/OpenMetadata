@@ -15,9 +15,7 @@ from typing import Iterable
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
-from sqlalchemy import exc, schema, text
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util as sa_util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
@@ -33,7 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -167,7 +165,7 @@ RequestsTransport.execute = execute
 ClickHouseDialect.get_view_definition = get_view_definition
 
 
-class ClickhouseSource(SQLSource):
+class ClickhouseSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 

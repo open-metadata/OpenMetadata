@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
 class STRUCT(String):
@@ -121,7 +121,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 DatabricksDialect.get_columns = get_columns
 
 
-class DatabricksSource(SQLSource):
+class DatabricksSource(CommonDbSourceService):
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)

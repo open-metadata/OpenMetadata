@@ -8,6 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+
+from sqlalchemy.engine.reflection import Inspector
+
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
@@ -18,10 +22,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
-class MariadbSource(SQLSource):
+class MariadbSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
@@ -35,3 +39,10 @@ class MariadbSource(SQLSource):
             )
 
         return cls(config, metadata_config)
+
+    def get_schemas(self, inspector: Inspector) -> str:
+        return (
+            inspector.get_schema_names()
+            if not self.service_connection.database
+            else [self.service_connection.database]
+        )

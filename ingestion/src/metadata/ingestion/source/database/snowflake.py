@@ -39,7 +39,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.ingestion.source.database.sql_source import SQLSource
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
@@ -57,7 +57,7 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger = ingestion_logger()
 
 
-class SnowflakeSource(SQLSource):
+class SnowflakeSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 

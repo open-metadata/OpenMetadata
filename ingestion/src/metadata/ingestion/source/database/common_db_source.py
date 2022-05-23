@@ -23,18 +23,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import Session
 
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Constraint,
-    ConstraintType,
-    DataModel,
-    DataType,
-    ModelType,
-    Table,
-    TableConstraint,
-    TableData,
-    TableProfile,
-)
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -46,28 +35,17 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.ingestion.source.database.database_source import DatabaseSourceService
 from metadata.ingestion.source.database.dbt_souce import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
-from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
     test_connection,
 )
-from metadata.utils.dbt_config import get_dbt_details
-from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.fqdn_generator import get_fqdn
 
 logger = ometa_logger()
 
@@ -98,16 +76,12 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-
         self.config = config
-        # It will be one of the Unions. We don't know the specific type here.
-        self.service_connection = self.config.serviceConnection.__root__.config
-
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-
+        # It will be one of the Unions. We don't know the specific type here.
+        self.service_connection = self.config.serviceConnection.__root__.config
         self.status = SQLSourceStatus()
 
         self.metadata_config = metadata_config
@@ -126,6 +100,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
         self.table_constraints = None
         self.database_source_state = set()
         self.profile_date = datetime.now()
+        super().__init__()
 
     def prepare(self):
         self._parse_data_model()
@@ -139,7 +114,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
     ) -> Tuple[str, str]:
         return schema, table
 
-    def get_sample_data(self, schema: str, table: str) -> Optional[TableData]:
+    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
         """
         Get some sample data from the source to be added
         to the Table Entities
@@ -169,28 +144,44 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
         for schema in inspector.get_schema_names():
             yield schema
 
-    # TODO
-    # INCLUDE VIEWS DESC LOGIC
-    def get_table_description(
-        self, schema: str, table_name: str, table_type: str, inspector: Inspector
+    def _get_table_description(
+        self, schema: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema)
         # Catch any exception without breaking the ingestion
         except Exception as err:  # pylint: disable=broad-except
-            logger.error(f"Table Description Error : {err}")
+            logger.warning(f"Table Description Error : {str(err)}")
         else:
             description = table_info["text"]
-        return description, "Regular"
+        return description
 
-    def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
+    def _is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
         self.inspector = inspector
         return False
 
     def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
-        for table in inspector.get_table_names(schema):
-            yield table
+        if self.source_config.includeTables:
+            for table in inspector.get_table_names(schema):
+                yield table, "Regular"
+        if self.source_config.includeViews:
+            for view in inspector.get_view_names(schema):
+                yield view, "View"
+
+    def get_view_definition(
+        self, table_type: str, table_name: str, schema: str, inspector: Inspector
+    ) -> Optional[str]:
+        if table_type == "View":
+            view_definition = ""
+            try:
+                view_definition = inspector.get_view_definition(table_name, schema)
+                view_definition = (
+                    "" if view_definition is None else str(view_definition)
+                )
+            except NotImplementedError:
+                view_definition = ""
+            return view_definition
 
     def test_connection(self) -> None:
         """
