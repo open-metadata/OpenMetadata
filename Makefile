@@ -165,14 +165,14 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 
 .PHONY: core_py_antlr
 core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
-	antlr -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
 
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
-	antlr -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
 
 .PHONY: install_antlr_cli
-install_antlr_cli:  ## Install antlr CLI
-	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr
-	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr
-	chmod 755 /usr/local/bin/antlr
+install_antlr_cli:  ## Install antlr CLI locally
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	chmod 755 /usr/local/bin/antlr4
