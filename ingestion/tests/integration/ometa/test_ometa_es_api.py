@@ -131,6 +131,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             service_name=self.service.name.__root__,
             filters={"name": self.entity.name.__root__},
+            retries=10,
         )
 
         # We get the created table back
@@ -144,6 +145,7 @@ class OMetaESTest(TestCase):
                 "name": self.entity.name.__root__,
                 "database": self.db_reference.name,
             },
+            retries=10,
         )
 
         self.assertIsNotNone(res)
