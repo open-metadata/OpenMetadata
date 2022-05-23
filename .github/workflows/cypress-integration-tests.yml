@@ -43,8 +43,8 @@ jobs:
 
       - name: Generating Data Models
         run: |
-        sudo apt-get install -y antlr4
-        make install_dev generate
+          sudo apt-get install -y antlr4
+          make install_dev generate
 
       - name: Start Server and Ingest Sample Data
         env:
