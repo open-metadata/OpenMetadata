@@ -413,6 +413,8 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
+      setIsEntityLoading(true);
+      setData([]);
       handlePathChange(tabsInfo[selectedTab - 1].path);
       resetFilters();
       history.push({

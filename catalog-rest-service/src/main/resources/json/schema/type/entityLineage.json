@@ -20,7 +20,7 @@
           "$ref": "basic.json#/definitions/uuid"
         },
         "description": {
-          "type": "string"
+          "$ref": "basic.json#/definitions/markdown"
         }
       },
       "additionalProperties": false
@@ -39,7 +39,7 @@
           "$ref": "entityReference.json"
         },
         "description": {
-          "type": "string"
+          "$ref": "basic.json#/definitions/markdown"
         }
       },
       "additionalProperties": false

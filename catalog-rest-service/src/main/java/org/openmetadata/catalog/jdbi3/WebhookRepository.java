@@ -36,7 +36,6 @@ import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
@@ -63,12 +62,12 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public Webhook setFields(Webhook entity, Fields fields) throws IOException {
+  public Webhook setFields(Webhook entity, Fields fields) {
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(Webhook entity) throws IOException {
+  public void prepare(Webhook entity) {
     setFullyQualifiedName(entity);
   }
 
@@ -144,11 +143,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       LOG.info("Webhook publisher deleted for {}", publisher.getWebhook().getName());
     }
     webhookPublisherMap.remove(id);
-  }
-
-  @Transaction
-  public boolean delete(String id) {
-    return daoCollection.webhookDAO().delete(id) > 0;
   }
 
   /**

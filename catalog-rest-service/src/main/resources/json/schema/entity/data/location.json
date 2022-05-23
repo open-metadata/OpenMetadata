@@ -54,7 +54,7 @@
     },
     "description": {
       "description": "Description of a location.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

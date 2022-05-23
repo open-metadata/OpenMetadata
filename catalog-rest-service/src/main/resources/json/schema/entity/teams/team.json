@@ -24,7 +24,7 @@
     },
     "description": {
       "description": "Description of the team.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

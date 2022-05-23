@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of this report instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

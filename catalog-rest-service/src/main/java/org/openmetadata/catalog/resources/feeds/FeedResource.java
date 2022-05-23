@@ -76,9 +76,8 @@ public class FeedResource {
   private final FeedRepository dao;
   private final Authorizer authorizer;
 
-  public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
+  public static void addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
-    return threads;
   }
 
   public static Thread addHref(UriInfo uriInfo, Thread thread) {
@@ -178,8 +177,7 @@ public class FeedResource {
     } else { // Forward paging or first page
       threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
     }
-    threads.getData().forEach(thread -> addHref(uriInfo, thread));
-
+    addHref(uriInfo, threads.getData());
     return threads;
   }
 
@@ -249,8 +247,7 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
-          Boolean isResolved)
-      throws IOException {
+          Boolean isResolved) {
     return dao.getThreadsCount(entityLink, isResolved);
   }
 

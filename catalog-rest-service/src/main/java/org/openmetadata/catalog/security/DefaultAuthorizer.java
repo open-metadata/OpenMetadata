@@ -47,7 +47,7 @@ public class DefaultAuthorizer implements Authorizer {
   private String principalDomain;
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());

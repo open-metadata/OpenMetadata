@@ -136,8 +136,7 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
+          String date) {
     // TODO add href
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;

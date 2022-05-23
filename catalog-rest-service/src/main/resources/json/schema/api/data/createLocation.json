@@ -22,7 +22,7 @@
     },
     "description": {
       "description": "Description of the location instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "locationType": {
       "$ref": "../../entity/data/location.json#/definitions/locationType"

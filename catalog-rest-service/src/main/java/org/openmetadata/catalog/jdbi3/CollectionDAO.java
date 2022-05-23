@@ -306,7 +306,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
-    int deleteAll(@Bind("id") String id);
+    void deleteAll(@Bind("id") String id);
   }
 
   class EntityVersionPair {
@@ -336,9 +336,23 @@ public interface CollectionDAO {
     }
   }
 
+  class FromEntityReferenceMapper implements RowMapper<EntityReference> {
+    @Override
+    public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
+      return new EntityReference().withId(UUID.fromString(rs.getString("fromId"))).withType(rs.getString("fromEntity"));
+    }
+  }
+
+  class ToEntityReferenceMapper implements RowMapper<EntityReference> {
+    @Override
+    public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
+      return new EntityReference().withId(UUID.fromString(rs.getString("toId"))).withType(rs.getString("toEntity"));
+    }
+  }
+
   interface EntityRelationshipDAO {
-    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      return insert(fromId, toId, fromEntity, toEntity, relation, null);
+    default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
+      insert(fromId, toId, fromEntity, toEntity, relation, null);
     }
 
     default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
@@ -453,7 +467,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation AND toEntity = :toEntity")
-    int deleteFrom(
+    void deleteFrom(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -463,7 +477,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND fromEntity = :fromEntity")
-    int deleteTo(
+    void deleteTo(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -472,7 +486,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
-    int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
   }
 
   interface FeedDAO {
@@ -721,7 +735,7 @@ public interface CollectionDAO {
                 + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, (:json :: jsonb)) "
                 + "ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
         connectionType = POSTGRES)
-    int insert(
+    void insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
         @Bind("fromType") String fromType,
@@ -1379,7 +1393,7 @@ public interface CollectionDAO {
     UsageDetails getLatestUsage(@Bind("id") String id);
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
-    int delete(@Bind("id") String id);
+    void delete(@Bind("id") String id);
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
@@ -1452,9 +1466,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
-    String findByEmail(@Bind("email") String email);
 
     @Override
     default int listCount(ListFilter filter) {
