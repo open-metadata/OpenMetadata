@@ -1,16 +1,16 @@
 # Upgrade from 0.9 to 0.10
 
-The 0.10.x release contains backward incompatible changes this guide will help you to migrate your metadata from 0.9 version to 0.10 version. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
+The 0.10.x release contains backward incompatible changes this guide will help you to migrate your metadata from the 0.9 version to the 0.10 version. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
 
 ## Requirements
 
-* Update the openmetadata-ingestion client to latest available version.
+* Update the openmetadata-ingestion client to the latest available version.
 
 ```
 pip install --upgrade openmetadata-ingestion
 ```
 
-* Backup your metadata. The steps to backup metadata depending on the depending on the method of deployment are defined below:
+* Back up your metadata. The steps to backup metadata depends on the method of deployment are defined below:
 
 {% tabs %}
 {% tab title="Docker" %}
@@ -32,7 +32,7 @@ pip install --upgrade openmetadata-ingestion
 {% endtab %}
 {% endtabs %}
 
-* To migrate the metadata from 0.9 to 0.10 version you need to ingest all the connectors in 0.10 version with the same service name as done in 0.9 version. For example if you have ingested snowflake connector in 0.9 version with service name `Snowflake_Prod` then in 0.10 version you need to ingest the snowflake connector again with name `Snowflake_Prod`.
+* To migrate the metadata from the 0.9 to the 0.10 version you need to ingest all the connectors in the 0.10 version with the same service name as done in the 0.9 version. For example, if you have ingested snowflake connector in 0.9 version with service name `Snowflake_Prod` then in the 0.10 version, you need to ingest the snowflake connector again with the name `Snowflake_Prod`.
 
 ## Metadata Migration <a href="#requirements" id="requirements"></a>
 
@@ -42,7 +42,19 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the YAML Config
+### 1.  Setup your 0.10.1 installation
+
+&#x20;  1\. OpenMetadata 0.9, keep it running as it is with its own MySQL and ES
+
+&#x20;  2\. Install OpenMetadata 0.10.1, make it completely isolated from your 0.9 install new MySQL DB and other ES indexes
+
+&#x20;  3\. Install 0.10.1 connectors
+
+&#x20;  4\. Run ingestion of all your entities using the new connector. Keep the service names the same as your 0.9 installations. Once all the entities are ingested into OpenMetadata 0.10.1.  For example, if you have ingested snowflake connector in 0.9 version with service name `Snowflake_Prod` then in the 0.10 version, you need to ingest the snowflake connector again with the name `Snowflake_Prod`.
+
+&#x20; 5\. Run migration using the newly installed connector
+
+### 2. Define the YAML Config
 
 This is a sample config:
 
@@ -108,7 +120,7 @@ stage:
     dirPath: <Directory Path to store data>
 ```
 
-The data while migrating form 0.9 to 0.10 version needs to be stored in a file directory. in the dirPath field enter a valid file directory path to store the metadata.&#x20;
+The data while migrating from the 0.9 to 0.10 version needs to be stored in a file directory. in the dir Path field enter a valid file directory path to store the metadata.&#x20;
 
 #### BulkSink Configuration
 
