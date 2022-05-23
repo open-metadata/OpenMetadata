@@ -34,10 +34,9 @@ getTypes(){
 
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
     do
-        joblist=($(jobs | wc -l))
+        joblist=$(jobs | wc -l)
         while (( ${joblist} >= 10 ))
             do
-                echo $joblist
                 sleep 1
                 joblist=($(jobs | wc -l))
             done
