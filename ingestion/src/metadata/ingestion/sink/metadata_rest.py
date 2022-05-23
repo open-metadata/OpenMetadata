@@ -582,6 +582,7 @@ class MetadataRestSink(Sink[Entity]):
                 if "." not in from_table_name:
                     from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
                 _create_lineage_by_table_name(
+                    self.metadata,
                     from_table_name,
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,
