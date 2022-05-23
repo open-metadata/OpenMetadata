@@ -412,7 +412,7 @@ const TeamDetails = ({
     if (ownData.length <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>Your team does not have any dataset</p>
+          <p>Your team does not have any assets</p>
           <p>Would like to start adding some?</p>
           <Link to="/explore">
             <Button
