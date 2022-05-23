@@ -4,6 +4,12 @@ The 0.10.x release contains backward incompatible changes this guide will help y
 
 ## Requirements
 
+* Update the openmetadata-ingestion client to latest available version.
+
+```
+pip install --upgrade openmetadata-ingestion
+```
+
 * Backup your metadata. The steps to backup metadata depending on the depending on the method of deployment are defined below:
 
 {% tabs %}
