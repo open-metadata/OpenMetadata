@@ -12,6 +12,7 @@ OpenMetadata being a full stack project, we use the following for development:
 * [Python 3.7 or higher](https://www.python.org/downloads/)
 * [Node >=10.0.0](https://nodejs.org/en/download/)
 * [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
+* [Rpm (Optional, only to run RPM profile with maven)](https://brewinstall.org/install-rpm-on-mac-with-brew/)
 
 Here is a snapshot of a working environment on a Macbook.
 
@@ -47,6 +48,9 @@ v17.3.0
 
 > yarn --version
 1.22.17
+
+> rpm --version
+RPM version 4.17.0
 ```
 
 ### Install pre-commit hooks
