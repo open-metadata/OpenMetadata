@@ -44,6 +44,7 @@ base_requirements = {
     "PyYAML",
     "jsonschema",
     "sqllineage==1.3.3",
+    "antlr4-python3-runtime==4.9.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",

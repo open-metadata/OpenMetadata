@@ -10,9 +10,6 @@
 #  limitations under the License.
 
 
-from sqlalchemy.inspection import inspect
-
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
 )
@@ -22,11 +19,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
-from metadata.utils.filters import filter_by_schema
-from metadata.utils.fqdn_generator import get_fqdn
 
 
 class PinotdbSource(SQLSource):

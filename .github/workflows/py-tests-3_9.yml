@@ -49,7 +49,7 @@ jobs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev
+        librdkafka-dev unixodbc-dev libevent-dev antlr4
 
     - name: Install open-metadata dependencies
       run: |
