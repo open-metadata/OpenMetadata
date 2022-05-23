@@ -157,6 +157,7 @@ class OMetaESTest(TestCase):
                 "database": self.db_reference.name,
                 "database_schema": self.schema_reference.name,
             },
+            retries=10,
         )
 
         self.assertIsNotNone(res)
