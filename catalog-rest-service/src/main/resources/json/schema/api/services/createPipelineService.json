@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of pipeline service entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineServiceType"

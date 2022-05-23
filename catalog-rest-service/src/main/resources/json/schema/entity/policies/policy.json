@@ -55,7 +55,7 @@
     },
     "description": {
       "description": "A short description of the Policy, comprehensible to regular users.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this Policy.",

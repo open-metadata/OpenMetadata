@@ -49,7 +49,6 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
@@ -343,15 +342,6 @@ public final class TestUtils {
     // GET .../users/{userId} shows user as following table
     User user = new UserResourceTest().getEntity(userId, "follows", authHeaders);
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
-  }
-
-  public static String getPrincipal(Map<String, String> authHeaders) {
-    // Get username from the email address
-    if (authHeaders == null) {
-      return null;
-    }
-    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
-    return principal == null ? null : principal.split("@")[0];
   }
 
   // TODO remove this

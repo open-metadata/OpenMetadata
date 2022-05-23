@@ -173,7 +173,7 @@ class MetadataRestSink(Sink[Entity]):
             )
             if db_schema_and_table.table.description is not None:
                 db_schema_and_table.table.description = (
-                    db_schema_and_table.table.description.strip()
+                    db_schema_and_table.table.description.__root__.strip()
                 )
 
             table_request = CreateTableRequest(
@@ -194,7 +194,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_schema_and_table.location is not None:
                 if db_schema_and_table.location.description is not None:
                     db_schema_and_table.location.description = (
-                        db_schema_and_table.location.description.strip()
+                        db_schema_and_table.location.description.__root__.strip()
                     )
                 location_request = CreateLocationRequest(
                     name=db_schema_and_table.location.name,

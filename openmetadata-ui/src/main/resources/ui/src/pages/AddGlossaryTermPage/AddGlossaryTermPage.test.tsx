@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByText, fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import AddGlossaryTermPage from './AddGlossaryTermPage.component';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockReturnValue({
-    glossaryName: 'GlossaryName',
+const mockRedirect = jest.fn((fqn) => fqn);
+
+jest.mock('react-router', () => ({
+  ...jest.requireActual('react-router'),
+  useHistory: () => ({
+    push: jest.fn(),
   }),
+  useParams: jest.fn().mockImplementation(() => ({
+    glossaryName: 'GlossaryName',
+    glossaryTermsFQN: '',
+  })),
 }));
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
@@ -35,8 +42,19 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 });
 
 jest.mock('../../components/AddGlossaryTerm/AddGlossaryTerm.component', () => {
-  return jest.fn().mockReturnValue(<div>AddGlossaryTerm.component</div>);
+  return jest.fn().mockImplementation(({ onCancel, onSave }) => (
+    <div
+      data-testid="add-glossary-term"
+      onClick={onCancel}
+      onMouseDown={onSave}>
+      AddGlossaryTerm.component
+    </div>
+  ));
 });
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getGlossaryPath: jest.fn(),
+}));
 
 jest.mock('../../axiosAPIs/glossaryAPI', () => ({
   addGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -54,5 +72,19 @@ describe('Test AddGlossaryTerm component page', () => {
     );
 
     expect(addGlossaryTerm).toBeInTheDocument();
+  });
+
+  it('Redirect to Glossary on cancel', async () => {
+    (getGlossaryPath as jest.Mock).mockImplementationOnce(mockRedirect);
+    const { findByTestId } = render(<AddGlossaryTermPage />);
+
+    const addGlossaryTerm = await findByTestId('add-glossary-term');
+
+    fireEvent.click(
+      addGlossaryTerm,
+      new MouseEvent('click', { bubbles: true, cancelable: true })
+    );
+
+    expect(mockRedirect).toHaveBeenCalledWith('GlossaryName');
   });
 });

@@ -75,7 +75,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void prepare(Tag entity) throws IOException {
+  public void prepare(Tag entity) {
     String[] split = FullyQualifiedName.split(entity.getFullyQualifiedName());
     String category = split[0];
     daoCollection.tagCategoryDAO().existsByName(category);

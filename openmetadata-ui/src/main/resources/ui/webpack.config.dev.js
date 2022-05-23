@@ -100,6 +100,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/rc-tree'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
+          path.resolve(__dirname, 'node_modules/quill-emoji'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -125,6 +126,7 @@ module.exports = {
         include: [
           path.resolve(__dirname, 'src'),
           path.resolve(__dirname, 'node_modules/slick-carousel'),
+          path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
       // Font files to be handled by file-loader

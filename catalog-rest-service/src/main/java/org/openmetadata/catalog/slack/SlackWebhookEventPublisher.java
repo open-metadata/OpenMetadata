@@ -152,7 +152,7 @@ public class SlackWebhookEventPublisher extends AbstractEventPublisher {
         && changeDescription.getFieldsUpdated() != null
         && !changeDescription.getFieldsUpdated().isEmpty()) {
       for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
-        // when the entity is deleted we will get deleted set as true. We do not need to parse this for slack messages.
+        // when the entity is deleted we will get deleted set as true. We do not need to parse this for Slack messages.
         if (!fieldChange.getName().equals(FIELD_DELETED)) {
           SlackAttachment attachment = new SlackAttachment();
           attachment.setTitle("Updated " + fieldChange.getName());
