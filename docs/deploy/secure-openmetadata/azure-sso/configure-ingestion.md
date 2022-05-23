@@ -69,12 +69,14 @@ Here's an example on adding the authentication details in the ingestion connecto
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "azure",
-      "clientSecret": "wS37Q~w31vXcdKlbIhueKdfKTeXBppL8cq4W",   
-      "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"    
-      "clientId": "5x5550c9-abcd-4d84-e8gh-a7e712346m5",
-      "scopes": [
-         "api://5x5550c9-abcd-4d84-e8gh-a7e712346m5/.default"
-        ]
+      "securityConfig": {
+        "clientSecret": "{your_client_secret}",   
+        "authority": "{your_authority_url}"    
+        "clientId": "{your_client_id}",
+        "scopes": [
+          {your_scopes}
+         ]
+       }
     }
   }
 }

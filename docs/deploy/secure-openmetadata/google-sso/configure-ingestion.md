@@ -55,9 +55,7 @@ Here's an example on adding the authentication details in the ingestion connecto
     "openMetadataServerConfig": {
       "hostPort": "http://localhost:8585/api",
       "authProvider": "auth0",
-      "securityConfig": {
-         "secretKey": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
-      }
+      "secretKey": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
     }
   }
 }

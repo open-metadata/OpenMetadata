@@ -57,9 +57,11 @@ Here's an example on adding the authentication details in the ingestion connecto
     "openMetadataServerConfig": {
     "hostPort": "http://localhost:8585/api",
     "authProvider": "auth0",
-    "clientId": "EKuIYiHmATRF0GrGlnYBLmPIY68KKKnX",
-    "secretKey": "XVTY-nBV0-7BmlPGL5rJxRllWevV57X7RNZZUN8098og6QcXCL6c_09a-2cdQXez",
-    "domain": "dxv-am-oxtha.us.auth0.com"
+    "securityConfig": {
+        "clientId": "{your_client_id}",
+        "secretKey": "{your_client_secret}",
+        "domain": "{your_domain}"    
+      }
     }
   }
 }
