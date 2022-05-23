@@ -38,7 +38,7 @@ getTypes(){
         while (( ${joblist} >= 10 ))
             do
                 sleep 1
-                joblist=($(jobs | wc -l))
+                joblist=$(jobs | wc -l)
             done
         mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
         fileTS=$(echo "$file_with_dir" | sed "s/.json/.ts/g")
