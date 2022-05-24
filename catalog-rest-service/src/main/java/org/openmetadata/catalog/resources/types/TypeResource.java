@@ -99,7 +99,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-          LOG.info("Loading type {} with schema {}", type.getName(), type.getSchema());
+          LOG.info("Loading type {}", type.getName());
           try {
             this.dao.createOrUpdate(null, type);
           } catch (IOException e) {

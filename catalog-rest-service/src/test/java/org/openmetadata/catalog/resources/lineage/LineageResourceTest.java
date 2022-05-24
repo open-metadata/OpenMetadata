@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -78,6 +79,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     }
   }
 
+  @Order(1)
   @Test
   void put_delete_lineage_withAuthorizer(TestInfo test) throws HttpResponseException {
     // Random user cannot update lineage.
@@ -124,6 +126,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
     deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders(userName + "@open-metadata.org"));
   }
 
+  @Order(2)
   @Test
   void put_delete_lineage_200() throws HttpResponseException {
     // Add lineage table4-->table5
@@ -232,6 +235,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
         Entity.TABLE, TABLES.get(4).getId(), TABLES.get(4).getFullyQualifiedName(), 2, 2, new Edge[0], new Edge[0]);
   }
 
+  @Order(3)
   @Test
   void put_lineageWithDetails() throws HttpResponseException {
     // Add column lineage table1.c1 -> table2.c1
