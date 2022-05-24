@@ -33,11 +33,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import {
-  getEntityName,
-  getEntityPlaceHolder,
-  getUserTeams,
-} from '../../utils/CommonUtils';
+import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -73,7 +69,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const [isEdit, setIsEdit] = useState(false);
 
-  const loggedInUserId = AppState.getCurrentUserDetails()?.id;
+  const currentUser = AppState.getCurrentUserDetails();
 
   const mlModelTier = useMemo(() => {
     return getTierTags(mlModelDetail.tags || []) as TagLabel;
@@ -138,9 +134,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const hasEditAccess = () => {
     if (mlModelDetail.owner?.type === 'user') {
-      return mlModelDetail.owner?.id === loggedInUserId;
+      return mlModelDetail.owner?.id === currentUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === mlModelDetail.owner?.id);
+      return Boolean(
+        currentUser?.teams?.some((team) => team.id === mlModelDetail.owner?.id)
+      );
     }
   };
 
@@ -184,7 +182,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const setFollowersData = (followers: Array<EntityReference>) => {
     setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === loggedInUserId)
+      followers.some(({ id }: { id: string }) => id === currentUser?.id)
     );
     setFollowersCount(followers.length);
   };
