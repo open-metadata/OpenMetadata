@@ -380,6 +380,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <th className="tableHead-cell">Name</th>
                 <th className="tableHead-cell">Data Type</th>
                 <th className="tableHead-cell">Description</th>
+                <th className="tableHead-cell">Algorithm</th>
               </tr>
             </thead>
             <tbody className="tableBody">
@@ -396,6 +397,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   </td>
                   <td className="tableBody-cell" data-testid="tableBody-cell">
                     {feature.description}
+                  </td>
+                  <td className="tableBody-cell" data-testid="tableBody-cell">
+                    {feature.featureAlgorithm || '--'}
                   </td>
                 </tr>
               ))}
