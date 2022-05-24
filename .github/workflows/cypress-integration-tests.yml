@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened]
 
 concurrency:
   group: cypress-integration-tests-${{ github.head_ref || github.run_id }}
@@ -27,6 +27,7 @@ concurrency:
 jobs:
   install:
     runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'safe to test')
     strategy:
       matrix:
         job: [0, 1]
@@ -34,6 +35,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 11
         uses: actions/setup-java@v2
