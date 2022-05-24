@@ -30,6 +30,9 @@
       "description": "Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.",
       "oneOf": [
         {
+          "$ref": "backendConnection.json"
+        },
+        {
           "$ref": "../database/mysqlConnection.json"
         },
         {
@@ -42,6 +45,10 @@
           "$ref": "../database/sqliteConnection.json"
         }
       ]
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,

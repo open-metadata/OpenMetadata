@@ -19,13 +19,7 @@
       "description": "Service Type",
       "$ref": "#/definitions/BackendType",
       "default": "Backend"
-    },
-    "hostPort": {
-      "description": "Pipeline Service Management/UI URL.",
-      "type": "string",
-      "format": "uri"
     }
   },
-  "additionalProperties": false,
-  "required": ["hostPort"]
+  "additionalProperties": false
 }
