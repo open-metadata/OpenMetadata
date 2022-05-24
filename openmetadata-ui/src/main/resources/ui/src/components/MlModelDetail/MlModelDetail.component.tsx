@@ -377,7 +377,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageContainer>
-      <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
+      <div
+        className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col"
+        data-testid="mlmodel-details">
         <EntityPageInfo
           isTagEditable
           deleted={mlModelDetail.deleted}
