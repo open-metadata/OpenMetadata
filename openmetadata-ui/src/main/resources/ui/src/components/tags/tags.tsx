@@ -78,7 +78,7 @@ const Tags: FunctionComponent<TagProps> = ({
         getTag(tag, startWith)
       ) : (
         <>
-          {!editable && (tag.description || tag.labelType) ? (
+          {!editable && tag.description ? (
             <PopOver
               html={
                 <div className="tw-text-left tw-p-1">
@@ -90,7 +90,6 @@ const Tags: FunctionComponent<TagProps> = ({
                       />
                     </div>
                   )}
-                  <p>Set as {tag.labelType}</p>
                 </div>
               }
               position="top"

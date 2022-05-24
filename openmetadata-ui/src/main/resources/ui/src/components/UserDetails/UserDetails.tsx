@@ -104,7 +104,7 @@ const UserDetails = ({
         {selectedUserList.length > 0 ? (
           <div
             className="tw-grid xxl:tw-grid-cols-3 lg:tw-grid-cols-2 tw-gap-4"
-            data-testid="user-card-container">
+            data-testid="user-container">
             {selectedUserList.map((user, index) => {
               const User = {
                 displayName: getEntityName(user as unknown as EntityReference),

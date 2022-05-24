@@ -7,7 +7,7 @@ import org.openmetadata.catalog.type.Include;
 
 public class ListFilter {
   private final Include include;
-  Map<String, String> queryParams = new HashMap<>();
+  private final Map<String, String> queryParams = new HashMap<>();
 
   public ListFilter() {
     this(Include.NON_DELETED);

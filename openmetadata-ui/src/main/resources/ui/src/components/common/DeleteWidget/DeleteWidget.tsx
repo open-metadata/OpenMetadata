@@ -12,6 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { startCase } from 'lodash';
 import React, { Fragment, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from '../../../axiosAPIs/miscAPI';
@@ -83,6 +84,10 @@ const DeleteWidget = ({
     }
   };
 
+  const getMessage = (message: string) => {
+    return message.replace('Entity', startCase(entityType));
+  };
+
   const handleOnEntityDeleteConfirm = () => {
     setEntityDeleteState((prev) => ({ ...prev, loading: 'waiting' }));
     deleteEntity(
@@ -96,7 +101,9 @@ const DeleteWidget = ({
           setTimeout(() => {
             handleOnEntityDeleteCancel();
             showSuccessToast(
-              jsonData['api-success-messages']['delete-entity-success']
+              getMessage(
+                jsonData['api-success-messages']['delete-entity-success']
+              )
             );
             if (afterDeleteAction) {
               afterDeleteAction();
@@ -149,7 +156,7 @@ const DeleteWidget = ({
       <div className="tw-mt-1 tw-bg-white" data-testid="danger-zone-container">
         <div className="tw-border tw-border-error-70 tw-rounded tw-mt-3">
           {allowSoftDelete && (
-            <div className="tw-border-b">
+            <div className="tw-border-b" data-testid="soft-delete">
               <DeleteWidgetBody
                 buttonText="Soft delete"
                 description={prepareDeleteMessage(true)}
@@ -160,15 +167,16 @@ const DeleteWidget = ({
               />
             </div>
           )}
-
-          <DeleteWidgetBody
-            buttonText="Delete"
-            description={prepareDeleteMessage()}
-            hasPermission={hasPermission}
-            header={`Delete ${getTitleCase(entityType)} ${entityName}`}
-            isOwner={isAdminUser}
-            onClick={() => handleOnEntityDelete(false)}
-          />
+          <div data-testid="hard-delete">
+            <DeleteWidgetBody
+              buttonText="Delete"
+              description={prepareDeleteMessage()}
+              hasPermission={hasPermission}
+              header={`Delete ${getTitleCase(entityType)} ${entityName}`}
+              isOwner={isAdminUser}
+              onClick={() => handleOnEntityDelete(false)}
+            />
+          </div>
         </div>
       </div>
       {getDeleteModal()}

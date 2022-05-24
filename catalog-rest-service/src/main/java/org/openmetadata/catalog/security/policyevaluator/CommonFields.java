@@ -28,7 +28,6 @@ final class CommonFields {
   static final String ENTITY_TAGS = "entityTags";
   static final String ENTITY_TYPE = "entityType";
   static final String OPERATION = "operation";
-  static final String USER_ROLES = "userRoles";
 
   // By default, if no rule matches, do not grant access.
   static final boolean DEFAULT_ACCESS = false;

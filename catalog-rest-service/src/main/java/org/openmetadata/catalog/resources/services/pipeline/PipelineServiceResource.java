@@ -90,8 +90,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @GET
   @Operation(
+      operationId = "listPipelineService",
       summary = "List pipeline services",
-      tags = "services",
+      tags = "pipelineService",
       description =
           "Get a list of pipeline services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -136,8 +137,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getPipelineServiceByID",
       summary = "Get a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a pipeline service by `id`.",
       responses = {
         @ApiResponse(
@@ -169,8 +171,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getPipelineServiceByFQN",
       summary = "Get pipeline service by name",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a pipeline service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -202,8 +205,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a list of all the versions of a pipeline service identified by `id`",
       responses = {
         @ApiResponse(
@@ -222,8 +226,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a version of the pipeline service by given `id`",
       responses = {
         @ApiResponse(
@@ -250,17 +255,16 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @POST
   @Operation(
+      operationId = "createPipelineService",
       summary = "Create a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Create a new pipeline service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreatePipelineService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -272,17 +276,16 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @PUT
   @Operation(
+      operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreatePipelineService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -295,8 +298,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deletePipelineService",
       summary = "Delete a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {

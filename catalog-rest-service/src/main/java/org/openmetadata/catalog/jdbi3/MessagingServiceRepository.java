@@ -101,9 +101,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      MessagingService origService = original;
-      MessagingService updatedService = updated;
-      recordChange("connection", origService.getConnection(), updatedService.getConnection(), true);
+      recordChange("connection", original.getConnection(), updated.getConnection(), true);
     }
   }
 }

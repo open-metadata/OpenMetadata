@@ -115,6 +115,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listUsers",
       summary = "List users",
       tags = "users",
       description =
@@ -164,6 +165,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllUserVersion",
       summary = "List user versions",
       tags = "users",
       description = "Get a list of all the versions of a user identified by `id`",
@@ -185,6 +187,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getUserByID",
       summary = "Get a user",
       tags = "users",
       description = "Get a user by `id`",
@@ -218,6 +221,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getUserByFQN",
       summary = "Get a user by name",
       tags = "users",
       description = "Get a user by `name`.",
@@ -251,6 +255,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/loggedInUser")
   @Operation(
+      operationId = "getCurrentLoggedInUser",
       summary = "Get current logged in user",
       tags = "users",
       description = "Get the user who is authenticated and is currently logged in.",
@@ -279,6 +284,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificUserVersion",
       summary = "Get a version of the user",
       tags = "users",
       description = "Get a version of the user by given `id`",
@@ -306,6 +312,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @POST
   @Operation(
+      operationId = "createUser",
       summary = "Create a user",
       tags = "users",
       description = "Create a new user.",
@@ -313,7 +320,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
@@ -355,6 +362,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Path("/generateToken/{id}")
   @Operation(
+      operationId = "generateJWTTokenForBotUser",
       summary = "Generate JWT Token for a Bot User",
       tags = "users",
       description = "Generate JWT Token for a Bot User.",
@@ -391,6 +399,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @PUT
   @Path("/revokeToken/{id}")
   @Operation(
+      operationId = "revokeJWTTokenForBotUser",
       summary = "Revoke JWT Token for a Bot User",
       tags = "users",
       description = "Revoke JWT Token for a Bot User.",
@@ -423,6 +432,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/token/{id}")
   @Operation(
+      operationId = "getJWTTokenForBotUser",
       summary = "Get JWT Token for a Bot User",
       tags = "users",
       description = "Get JWT Token for a Bot User.",
@@ -456,6 +466,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchUser",
       summary = "Update a user",
       tags = "users",
       description = "Update an existing user using JsonPatch.",
@@ -508,6 +519,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteUser",
       summary = "Delete a user",
       tags = "users",
       description = "Users can't be deleted but are soft-deleted.",

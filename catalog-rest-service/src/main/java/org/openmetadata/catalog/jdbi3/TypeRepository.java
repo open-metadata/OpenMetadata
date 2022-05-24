@@ -56,7 +56,7 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public void prepare(Type type) throws IOException {
+  public void prepare(Type type) {
     setFullyQualifiedName(type);
     TypeRegistry.instance().validateCustomFields(type);
   }

@@ -312,7 +312,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Override
   public void validateCreatedEntity(GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(entity, request.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertReference(request.getParent(), entity.getParent());
     assertReference(request.getGlossary(), entity.getGlossary());
 
@@ -343,8 +342,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Override
   public void compareEntities(GlossaryTerm expected, GlossaryTerm patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertReference(expected.getGlossary(), patched.getGlossary());
     assertReference(expected.getParent(), patched.getParent());
     assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());

@@ -26,7 +26,7 @@ class SetPermissionAction implements Action {
   }
 
   @Override
-  public void execute(Facts facts) throws Exception {
+  public void execute(Facts facts) {
     facts.put(CommonFields.ALLOW, this.rule.getAllow());
   }
 }

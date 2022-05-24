@@ -2047,9 +2047,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Override
   public void validateCreatedEntity(Table createdEntity, CreateTable createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
@@ -2085,9 +2082,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Override
   public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
-
     // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
     assertColumns(expected.getColumns(), patched.getColumns());

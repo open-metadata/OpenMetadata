@@ -38,7 +38,6 @@ import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
@@ -117,16 +116,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
 
   @Override
   public void validateCreatedEntity(Chart chart, CreateChart createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        chart, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertNotNull(chart.getServiceType());
     assertReference(createRequest.getService(), chart.getService());
   }
 
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertReference(expected.getService(), patched.getService());
   }
 

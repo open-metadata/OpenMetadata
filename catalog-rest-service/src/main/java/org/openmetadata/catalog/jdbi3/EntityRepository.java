@@ -480,7 +480,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate follower
     User user = daoCollection.userDAO().findEntityById(userId);
     if (Boolean.TRUE.equals(user.getDeleted())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
+      throw new IllegalArgumentException(CatalogExceptionMessage.deletedUser(userId));
     }
 
     // Add relationship
@@ -815,11 +815,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public int addRelationship(
-      UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, String json) {
-    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, json, false);
-  }
-
-  public int addRelationship(
       UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
     return addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
   }
@@ -943,12 +938,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getOwner(entity);
   }
 
-  public EntityReference populateOwner(EntityReference owner) throws IOException {
+  public void populateOwner(EntityReference owner) throws IOException {
     if (owner == null) {
-      return null;
+      return;
     }
     EntityReference ref = Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
-    return EntityUtil.copy(ref, owner);
+    EntityUtil.copy(ref, owner);
   }
 
   protected void storeOwner(T entity, EntityReference owner) {
