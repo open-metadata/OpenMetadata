@@ -1,0 +1,23 @@
+source:
+  type: airflowmeta
+  serviceName: airflow_source
+  serviceConnection:
+    config:
+      type: Airflow
+      hostPort: http://localhost:8080
+      connection:
+        type: Mysql
+        username: airflow_user
+        password: airflow_pass
+        database: airflow_db
+        hostPort: localhost:3306
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+sink:
+  type: metadata-rest
+  config: { }
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

@@ -19,7 +19,7 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker

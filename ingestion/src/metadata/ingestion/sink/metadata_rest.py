@@ -127,6 +127,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
+        elif isinstance(record, CreatePipelineRequest):
+            self.write_pipelines_create(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
@@ -359,6 +361,23 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest Location {location.name}")
             logger.error(err)
             self.status.failure(f"Location: {location.name}")
+
+    def write_pipelines_create(self, pipeline: CreatePipelineRequest) -> None:
+        """
+        Proper implementation of write_pipelines.
+        Send the CreatePipelineRequest to the OM API
+        :param pipeline: Create Pipeline Entity
+        """
+        try:
+            created_pipeline = self.metadata.create_or_update(pipeline)
+            logger.info(
+                f"Successfully ingested Pipeline {created_pipeline.displayName}"
+            )
+            self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest pipeline {pipeline.name}")
+            logger.error(err)
+            self.status.failure(f"Pipeline: {pipeline.name}")
 
     def write_pipelines(self, pipeline: Pipeline):
         try:
