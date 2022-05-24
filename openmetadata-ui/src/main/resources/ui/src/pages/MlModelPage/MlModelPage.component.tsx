@@ -98,9 +98,7 @@ const MlModelPage = () => {
             description: description,
           }));
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-description-error']
-          );
+          throw jsonData['api-error-messages']['update-description-error'];
         }
       })
       .catch((err: AxiosError) => {
@@ -122,9 +120,7 @@ const MlModelPage = () => {
             followers: [...(mlModelDetail.followers || []), ...newValue],
           }));
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-follow-error']
-          );
+          throw jsonData['api-error-messages']['update-entity-follow-error'];
         }
       })
       .catch((err: AxiosError) => {
@@ -169,7 +165,7 @@ const MlModelPage = () => {
             tags: res.data.tags,
           }));
         } else {
-          showErrorToast(jsonData['api-error-messages']['update-tags-error']);
+          throw jsonData['api-error-messages']['update-tags-error'];
         }
       })
       .catch((err: AxiosError) => {
@@ -207,6 +203,23 @@ const MlModelPage = () => {
     });
   };
 
+  const updateMlModelFeatures = (updatedMlModel: Mlmodel) => {
+    saveUpdatedMlModelData(updatedMlModel)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setMlModelDetail((preVDetail) => ({
+            ...preVDetail,
+            mlFeatures: res.data.mlFeatures,
+          }));
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
+
   const getMlModelDetail = () => {
     if (!isNil(mlModelDetail) && !isEmpty(mlModelDetail)) {
       return (
@@ -219,6 +232,7 @@ const MlModelPage = () => {
           settingsUpdateHandler={settingsUpdateHandler}
           tagUpdateHandler={onTagUpdate}
           unfollowMlModelHandler={unfollowMlModel}
+          updateMlModelFeatures={updateMlModelFeatures}
         />
       );
     } else {

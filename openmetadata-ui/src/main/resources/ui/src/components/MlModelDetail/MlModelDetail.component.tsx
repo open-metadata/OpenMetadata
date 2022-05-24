@@ -51,6 +51,7 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   descriptionUpdateHandler: (updatedMlModel: Mlmodel) => void;
   setActiveTabHandler: (value: number) => void;
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
+  updateMlModelFeatures: (updatedMlModel: Mlmodel) => void;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
 }
 
@@ -63,6 +64,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   setActiveTabHandler,
   tagUpdateHandler,
   settingsUpdateHandler,
+  updateMlModelFeatures,
 }) => {
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -262,6 +264,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const onFeaturesUpdate = (features: Mlmodel['mlFeatures']) => {
+    updateMlModelFeatures({ ...mlModelDetail, mlFeatures: features });
+  };
+
   const getMlHyperParameters = () => {
     return (
       <div className="tw-flex tw-flex-col tw-mt-2">
@@ -422,7 +428,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
                   />
-                  <MlModelFeaturesList mlFeatures={mlModelDetail.mlFeatures} />
+                  <MlModelFeaturesList
+                    handleFeaturesUpdate={onFeaturesUpdate}
+                    hasEditAccess={hasEditAccess()}
+                    mlFeatures={mlModelDetail.mlFeatures}
+                    owner={mlModelDetail.owner}
+                  />
                 </Fragment>
               )}
               {activeTab === 2 && (
