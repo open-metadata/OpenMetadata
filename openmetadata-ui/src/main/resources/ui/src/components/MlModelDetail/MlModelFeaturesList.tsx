@@ -13,20 +13,30 @@
 
 import classNames from 'classnames';
 import { isUndefined, uniqueId } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { LabelType, State } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getHtmlForNonAdminAction,
 } from '../../utils/CommonUtils';
+import {
+  fetchGlossaryTerms,
+  getGlossaryTermlist,
+} from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
+import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TagsContainer from '../tags-container/tags-container';
+import Tags from '../tags/tags';
 
 interface MlModelFeaturesListProp {
   mlFeatures: Mlmodel['mlFeatures'];
@@ -42,13 +52,24 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   handleFeaturesUpdate,
 }) => {
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>();
+  const [editTag, setEditTag] = useState(false);
+  const [editDescription, setEditDescription] = useState(false);
+  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
+  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const handleCancelEditDescription = () => {
+    setSelectedFeature(undefined);
+    setEditDescription(false);
+  };
+
+  const handleCancelEditTags = () => {
+    setEditTag(false);
     setSelectedFeature(undefined);
   };
 
   const handleDescriptionChange = (value: string) => {
-    if (selectedFeature) {
+    if (selectedFeature && editDescription) {
       const updatedFeatures = mlFeatures?.map((feature) => {
         if (feature.name === selectedFeature.name) {
           return {
@@ -60,10 +81,77 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         }
       });
       handleFeaturesUpdate(updatedFeatures);
-      handleCancelEditDescription();
-    } else {
-      handleCancelEditDescription();
     }
+    handleCancelEditDescription();
+  };
+
+  const handleTagsChange = (selectedTags?: Array<EntityTags>) => {
+    const newSelectedTags = selectedTags?.map((tag) => {
+      return {
+        tagFQN: tag.tagFQN,
+        source: tag.source,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+    });
+    if (newSelectedTags && editTag && selectedFeature) {
+      const updatedFeatures = mlFeatures?.map((feature) => {
+        if (feature.name === selectedFeature.name) {
+          return {
+            ...selectedFeature,
+            tags: newSelectedTags,
+          };
+        } else {
+          return feature;
+        }
+      });
+      handleFeaturesUpdate(updatedFeatures);
+    }
+    handleCancelEditTags();
+  };
+
+  const fetchTagsAndGlossaryTerms = () => {
+    setIsTagLoading(true);
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
+      .then((values) => {
+        let tagsAndTerms: TagOption[] = [];
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
+            return { fqn: tag, source: 'Tag' };
+          });
+        }
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
+          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
+        }
+        setAllTags(tagsAndTerms);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
+      })
+      .catch(() => {
+        setAllTags([]);
+        setTagFetchFailed(true);
+      })
+      .finally(() => {
+        setIsTagLoading(false);
+      });
   };
 
   if (mlFeatures && mlFeatures.length) {
@@ -77,18 +165,76 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
               className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-mb-8"
               key={uniqueId()}>
               <h6 className="tw-font-semibold">{feature.name}</h6>
+              {/* feature name and tags */}
               <div className="tw-grid tw-grid-cols-3">
                 <p className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Type:</span>{' '}
                   <span>{feature.dataType || '--'}</span>
                 </p>
-                <p className="tw-grid tw-grid-cols-2">
+                <div className="tw-grid tw-grid-cols-3">
                   <span className="tw-text-grey-muted">Tags:</span>{' '}
-                  <span>--</span>
-                </p>
+                  <div
+                    className="tw-col-span-2"
+                    data-testid="feature-tags-wrapper"
+                    onClick={() => {
+                      setSelectedFeature(feature);
+                      setEditTag(true);
+                      // Fetch tags and terms only once
+                      if (allTags.length === 0 || tagFetchFailed) {
+                        fetchTagsAndGlossaryTerms();
+                      }
+                    }}>
+                    <NonAdminAction
+                      html={getHtmlForNonAdminAction(Boolean(owner))}
+                      isOwner={hasEditAccess}
+                      permission={Operation.UpdateTags}
+                      position="left"
+                      trigger="click">
+                      <TagsContainer
+                        editable={
+                          selectedFeature?.name === feature.name && editTag
+                        }
+                        isLoading={
+                          isTagLoading &&
+                          selectedFeature?.name === feature.name &&
+                          editTag
+                        }
+                        selectedTags={feature.tags || []}
+                        size="small"
+                        tagList={allTags}
+                        type="label"
+                        onCancel={() => {
+                          handleTagsChange();
+                        }}
+                        onSelectionChange={(tags) => {
+                          handleTagsChange(tags);
+                        }}>
+                        {feature.tags?.length ? (
+                          <button className="tw-ml-1 tw--mt-1 focus:tw-outline-none">
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
+                        ) : (
+                          <span className="tw-text-grey-muted hover:tw-text-primary">
+                            <Tags
+                              className="tw--ml-2"
+                              startWith="+ "
+                              tag="Add tag"
+                              type="outlined"
+                            />
+                          </span>
+                        )}
+                      </TagsContainer>
+                    </NonAdminAction>
+                  </div>
+                </div>
               </div>
               <div className="tw-grid tw-grid-cols-3 tw-mt-2">
-                <p className="tw-grid tw-grid-cols-2">
+                <div className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Description:</span>{' '}
                   <div className="tw-flex">
                     {feature.description ? (
@@ -105,6 +251,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                         className="tw-self-start tw-w-8 tw-h-auto tw-ml-1 focus:tw-outline-none"
                         onClick={() => {
                           setSelectedFeature(feature);
+                          setEditDescription(true);
                         }}>
                         <SVGIcons
                           alt="edit"
@@ -115,7 +262,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       </button>
                     </NonAdminAction>
                   </div>
-                </p>
+                </div>
                 <p className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Algorithm:</span>{' '}
                   <span>{feature.featureAlgorithm || '--'}</span>
@@ -187,7 +334,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             </div>
           ))}
         </div>
-        {!isUndefined(selectedFeature) && (
+        {!isUndefined(selectedFeature) && editDescription && (
           <ModalWithMarkdownEditor
             header={`Edit feature: "${selectedFeature.name}"`}
             placeholder="Enter feature description"
