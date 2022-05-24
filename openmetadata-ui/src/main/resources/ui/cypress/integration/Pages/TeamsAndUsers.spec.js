@@ -141,11 +141,12 @@ describe('TeamsAndUsers page', () => {
       .should('exist');
   });
 
-  it('Add and remove user to team should work properly', () => {
+  it.only('Add and remove user to team should work properly', () => {
     const searchString = 'aaron';
-    cy.intercept('/api/v1/teams/*').as('removeApi');
+
+    cy.intercept({ method: 'GET', url: '/api/v1/*' }).as('user');
+    cy.wait('@user');
     cy.get('[data-testid="add-new-user"]').should('be.visible');
-    cy.intercept('/api/v1/users?team=*').as('user');
     cy.wait('@user');
     cy.get('[data-testid="add-new-user"]').click();
     cy.get('.tw-modal-container').should('be.visible');
