@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { uuid } from '../common/common';
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -106,4 +108,16 @@ export const NEW_TEAM = {
     display_name: 'Service',
     description: 'Service department',
   },
+};
+const id = uuid();
+export const NEW_USER = {
+  email: `test_${id}@gmail.com`,
+  display_name: `Test user ${id}`,
+  description: 'Hello, I am test user',
+};
+
+export const NEW_ADMIN = {
+  email: `test_${id}@gmail.com`,
+  display_name: `Test admin ${id}`,
+  description: 'Hello, I am test admin',
 };

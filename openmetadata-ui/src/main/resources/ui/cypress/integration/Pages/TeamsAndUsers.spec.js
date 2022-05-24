@@ -12,7 +12,7 @@
  */
 
 import { searchEntity } from '../../common/common';
-import { DELETE_TERM, NEW_TEAM, SEARCH_ENTITY_TABLE, TEAMS, TOTAL_SAMPLE_DATA_TEAMS_COUNT } from '../../constants/constants';
+import { DELETE_TERM, NEW_TEAM, NEW_USER, SEARCH_ENTITY_TABLE, TEAMS, TOTAL_SAMPLE_DATA_TEAMS_COUNT } from '../../constants/constants';
 
 describe('TeamsAndUsers page', () => {
   beforeEach(() => {
@@ -382,5 +382,100 @@ describe('TeamsAndUsers page', () => {
           .should('be.visible')
           .contains(name);
       });
+  });
+
+  it.only('Create new user should work properly', () => {
+    cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="users"] > .tw-group').should(
+      'have.class',
+      'activeCategory'
+    );
+
+    cy.get('[data-testid="add-user-button"]').should('be.visible').click();
+    cy.contains('Create User').should('be.visible');
+
+    cy.get('[data-testid="email"]').should('be.visible').type(NEW_USER.email);
+    cy.get('[data-testid="displayName"]')
+      .should('be.visible')
+      .type(NEW_USER.display_name);
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .should('be.visible')
+      .type(NEW_USER.description);
+
+    cy.get(
+      ':nth-child(5) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="Cloud_Infra"]').should('be.visible').click();
+    cy.get('[data-testid="close-dropdown"]').click();
+
+    cy.get(
+      ':nth-child(6) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="Data Consumer"]').should('be.visible').click();
+    cy.get('[data-testid="close-dropdown"]').click();
+
+    cy.get('[data-testid="save-user"]').should('be.visible').click();
+
+    cy.get('[data-testid="searchbar"]')
+      .should('be.visible')
+      .type(NEW_USER.display_name);
+
+    cy.wait(500);
+
+    cy.get('[data-testid="user-card-container"]')
+      .first()
+      .contains(NEW_USER.display_name)
+      .should('exist')
+      .click();
+
+    cy.contains(NEW_USER.display_name).should('exist');
+    cy.contains(NEW_USER.description).should('exist');
+    cy.contains(NEW_USER.email).should('exist');
+  });
+
+  it.only('Delete user should work properly', () => {
+    cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="users"] > .tw-group').should(
+      'have.class',
+      'activeCategory'
+    );
+    cy.get('[data-testid="searchbar"]')
+      .should('be.visible')
+      .type(NEW_USER.display_name);
+
+    cy.wait(500);
+
+    cy.get('[data-testid="user-card-container"]')
+      .first()
+      .contains(NEW_USER.display_name)
+      .should('exist');
+
+    cy.get('[data-testid="remove"] > [data-testid="image"]')
+      .should('not.be.visible')
+      .click();
+
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.contains('Are you sure you want to delete').should('be.visible');
+    cy.get('[data-testid="save-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="searchbar"]')
+      .should('be.visible')
+      .type(NEW_USER.display_name);
+
+    cy.wait(500);
+
+    cy.get('[data-testid="no-data-image"]').should('be.visible');
+    cy.contains('No user available').should('be.visible');
   });
 });
