@@ -45,6 +45,7 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
+import MlModelFeaturesTable from './MlModelFeaturesTable';
 
 interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
@@ -365,57 +366,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     );
   };
 
-  const getMlModelFeatures = () => {
-    if (mlModelDetail.mlFeatures && mlModelDetail.mlFeatures.length) {
-      return (
-        <div className="tw-flex tw-flex-col">
-          <hr className="tw-my-4" />
-          <h6 className="tw-font-medium tw-text-base">Features used</h6>
-          <table
-            className="tw-w-full tw-mt-3"
-            data-testid="hyperparameters-table"
-            id="hyperparameters-table">
-            <thead>
-              <tr className="tableHead-row">
-                <th className="tableHead-cell">Name</th>
-                <th className="tableHead-cell">Data Type</th>
-                <th className="tableHead-cell">Description</th>
-                <th className="tableHead-cell">Algorithm</th>
-              </tr>
-            </thead>
-            <tbody className="tableBody">
-              {mlModelDetail.mlFeatures.map((feature) => (
-                <tr
-                  className={classNames('tableBody-row')}
-                  data-testid="tableBody-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {feature.name}
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {feature.dataType}
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {feature.description}
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {feature.featureAlgorithm || '--'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    } else {
-      return (
-        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No features data available
-        </div>
-      );
-    }
-  };
-
   useEffect(() => {
     setFollowersData(mlModelDetail.followers || []);
   }, [
@@ -469,7 +419,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
                   />
-                  {getMlModelFeatures()}
+                  <MlModelFeaturesTable mlFeatures={mlModelDetail.mlFeatures} />
                 </Fragment>
               )}
               {activeTab === 2 && (
