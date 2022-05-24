@@ -143,11 +143,9 @@ describe('TeamsAndUsers page', () => {
 
   it('Add and remove user to team should work properly', () => {
     const searchString = 'aaron';
-
-    cy.intercept({ method: 'GET', url: '/api/v1/*' }).as('user');
-    cy.wait('@user');
-    cy.get('[data-testid="add-new-user"]').should('be.visible');
-    cy.wait('@user');
+    
+    cy.wait(1000)
+    cy.get('[data-testid="add-new-user"]').should('be.visible'); 
     cy.get('[data-testid="add-new-user"]').click();
     cy.get('.tw-modal-container').should('be.visible');
     cy.get(
