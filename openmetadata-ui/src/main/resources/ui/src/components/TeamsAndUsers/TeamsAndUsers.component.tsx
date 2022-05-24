@@ -87,7 +87,9 @@ const TeamsAndUsers = ({
     return (
       <>
         <div className="tw-mb-8">
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
+          <div
+            className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b"
+            data-testid="add-team-container">
             <p className="tw-heading">Teams</p>
             {hasAccess && (
               <NonAdminAction
@@ -95,7 +97,7 @@ const TeamsAndUsers = ({
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <Button
                   className="tw-h-7 tw-px-2 tw-mb-4"
-                  data-testid="add-teams"
+                  data-testid="add-team-button"
                   size="small"
                   theme="primary"
                   variant="contained"
@@ -110,6 +112,7 @@ const TeamsAndUsers = ({
           {teams.map((team) => (
             <div
               className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+              data-testid={`team-${team.name}`}
               key={team.name}
               onClick={() => {
                 changeCurrentTeam(team.name, false);
@@ -121,6 +124,7 @@ const TeamsAndUsers = ({
                 )}`}>
                 <p
                   className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                  data-testid="team-name"
                   title={team.displayName ?? team.name}>
                   {team.displayName ?? team.name}
                 </p>
@@ -143,7 +147,7 @@ const TeamsAndUsers = ({
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-7 tw-px-2 tw-mb-4"
-                    data-testid="add-teams"
+                    data-testid="add-user-button"
                     size="small"
                     theme="primary"
                     variant="contained"
@@ -156,6 +160,7 @@ const TeamsAndUsers = ({
             {usersData.map((d) => (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+                data-testid={d.name}
                 key={d.name}
                 onClick={() => {
                   changeCurrentTeam(d.name, true);
@@ -167,6 +172,7 @@ const TeamsAndUsers = ({
                   )}`}>
                   <p
                     className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                    data-testid="user-type"
                     title={capitalize(d.name)}>
                     {capitalize(d.name)}
                   </p>

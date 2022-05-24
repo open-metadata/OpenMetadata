@@ -319,7 +319,7 @@ const TeamDetails = ({
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <Button
                   className="tw-h-8 tw-px-2"
-                  data-testid="add-teams"
+                  data-testid="add-user"
                   size="small"
                   theme="primary"
                   variant="contained"
@@ -349,6 +349,7 @@ const TeamDetails = ({
                     <p>Would like to start adding some?</p>
                     <Button
                       className="tw-h-8 tw-rounded tw-my-2"
+                      data-testid="add-new-user"
                       size="small"
                       theme="primary"
                       variant="contained"
@@ -362,7 +363,7 @@ const TeamDetails = ({
               <Fragment>
                 <div
                   className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-                  data-testid="user-card-container">
+                  data-testid="user-data-container">
                   {sortedUser.map((user, index) => {
                     const User = {
                       displayName: user.displayName || user.name,
@@ -467,7 +468,7 @@ const TeamDetails = ({
     ) : (
       <Button
         className="tw-h-8 tw-rounded tw-ml-2"
-        data-testid="delete-team-button"
+        data-testid="leave-team-button"
         size="small"
         theme="primary"
         variant="outlined"
@@ -549,7 +550,7 @@ const TeamDetails = ({
           </div>
         ) : (
           <div className="tw-flex tw-group">
-            <span>{heading}</span>
+            <span data-testid="team-heading">{heading}</span>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <NonAdminAction
