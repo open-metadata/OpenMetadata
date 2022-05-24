@@ -41,7 +41,7 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
-import MlModelFeaturesTable from './MlModelFeaturesTable';
+import MlModelFeaturesList from './MlModelFeaturesList';
 
 interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   mlModelDetail: Mlmodel;
@@ -422,7 +422,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
                   />
-                  <MlModelFeaturesTable mlFeatures={mlModelDetail.mlFeatures} />
+                  <MlModelFeaturesList mlFeatures={mlModelDetail.mlFeatures} />
                 </Fragment>
               )}
               {activeTab === 2 && (
