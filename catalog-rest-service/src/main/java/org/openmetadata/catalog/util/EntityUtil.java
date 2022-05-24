@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -42,6 +43,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -170,6 +172,7 @@ public final class EntityUtil {
     return entity;
   }
 
+  // TODO delete
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -179,6 +182,18 @@ public final class EntityUtil {
       list.sort(compareEntityReference);
     }
     return list;
+  }
+
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
+    if (list == null) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityRelationshipRecord ref : list) {
+      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+    }
+    refs.sort(compareEntityReference);
+    return refs;
   }
 
   public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
