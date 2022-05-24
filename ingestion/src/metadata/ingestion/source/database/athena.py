@@ -9,11 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Iterable
-
-from sqlalchemy.inspection import inspect
-
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
@@ -25,17 +20,14 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.database.sql_source import SQLSource
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_schema
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class AthenaSource(SQLSource):
+class AthenaSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
 
@@ -49,31 +41,3 @@ class AthenaSource(SQLSource):
             )
 
         return cls(config, metadata_config)
-
-    def prepare(self):
-        self.inspector = inspect(self.engine)
-        self.service_connection.database = "default"
-        return super().prepare()
-
-    def next_record(self) -> Iterable[Entity]:
-        for schema in self.inspector.get_schema_names():
-            self.database_source_state.clear()
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_name=schema
-            ):
-                self.status.filter(schema, "Schema pattern not allowed")
-                continue
-
-            if self.source_config.includeTables:
-                yield from self.fetch_tables(self.inspector, schema)
-            if self.source_config.includeViews:
-                yield from self.fetch_views(self.inspector, schema)
-            if self.source_config.markDeletedTables:
-                schema_fqdn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.config.serviceName,
-                    database_name=self.service_connection.database,
-                    schema_name=schema,
-                )
-                yield from self.delete_tables(schema_fqdn)
