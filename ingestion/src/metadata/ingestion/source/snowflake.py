@@ -40,10 +40,10 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.fqdn_generator import get_fqdn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     FETCH_SNOWFLAKE_ALL_TAGS,
@@ -175,10 +175,11 @@ class SnowflakeSource(SQLSource):
             yield tags
             table_entity.tags.append(
                 TagLabel(
-                    tagFQN=get_fqdn(
-                        Tag,
-                        tags.category_name.name.__root__,
-                        tags.category_details.name.__root__,
+                    tagFQN=fqn.build(
+                        self.metadata,
+                        entity_type=Tag,
+                        tag_category_name=tags.category_name.name.__root__,
+                        tag_name=tags.category_details.name.__root__,
                     ),
                     labelType="Automated",
                     state="Suggested",

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.junit.jupiter.api.Test;
 
 class FullyQualifiedNameTest {
@@ -72,5 +73,10 @@ class FullyQualifiedNameTest {
   void test_unquoteName() {
     assertEquals("a", FullyQualifiedName.unquoteName("a")); // Unquoted name remains unquoted
     assertEquals("a.b", FullyQualifiedName.unquoteName("\"a.b\"")); // Leave existing valid quotes
+  }
+
+  @Test
+  void test_invalid() {
+    assertThrows(ParseCancellationException.class, () -> FullyQualifiedName.split("a\""));
   }
 }

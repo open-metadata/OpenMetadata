@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { uuid } from '../common/common';
+
 export const MYDATA_SUMMARY_OPTIONS = {
   tables: 'tables',
   topics: 'topics',
@@ -87,3 +89,35 @@ export const FOLLOWING_TITLE = 'Following';
 
 export const NO_SEARCHED_TERMS = 'No searched terms';
 export const DELETE_TERM = 'DELETE';
+
+export const TOTAL_SAMPLE_DATA_TEAMS_COUNT = 7;
+export const TEAMS = {
+  Cloud_Infra: { name: 'Cloud_Infra', users: 15 },
+  Customer_Support: { name: 'Customer_Support', users: 20 },
+  Data_Platform: { name: 'Data_Platform', users: 16 },
+};
+
+export const NEW_TEAM = {
+  team_1: {
+    name: 'account',
+    display_name: 'Account',
+    description: 'Account department',
+  },
+  team_2: {
+    name: 'service',
+    display_name: 'Service',
+    description: 'Service department',
+  },
+};
+const id = uuid();
+export const NEW_USER = {
+  email: `test_${id}@gmail.com`,
+  display_name: `Test user ${id}`,
+  description: 'Hello, I am test user',
+};
+
+export const NEW_ADMIN = {
+  email: `test_${id}@gmail.com`,
+  display_name: `Test admin ${id}`,
+  description: 'Hello, I am test admin',
+};

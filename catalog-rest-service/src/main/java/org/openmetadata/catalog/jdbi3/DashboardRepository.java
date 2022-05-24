@@ -178,22 +178,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return chartRefs.isEmpty() ? null : chartRefs;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater)
-      throws JsonProcessingException {
-    // Remove all charts associated with this dashboard
-    deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
-
-    // Add relationship from dashboard to chart
-    if (updated.getCharts() != null) {
-      for (EntityReference chart : updated.getCharts()) {
-        addRelationship(updated.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
-      }
-    }
-    List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
-    List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getCharts());
-    updater.recordChange("charts", origChartIds, updatedChartIds);
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class DashboardUpdater extends EntityUpdater {
     public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {

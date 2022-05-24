@@ -61,6 +61,7 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated --set-default-enum-member
+	$(MAKE) py_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
@@ -144,6 +145,7 @@ core_generate:  ## Generate the pydantic models from the JSON Schemas to the ing
 	mkdir -p ingestion-core/src/metadata/generated; \
 	. ingestion-core/venv/bin/activate; \
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
+	$(MAKE) core_py_antlr
 
 .PHONY: core_bump_version_dev
 core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
@@ -160,3 +162,17 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 		python setup.py install sdist bdist_wheel; \
 		twine check dist/*; \
 		twine upload -r testpypi dist/*
+
+.PHONY: core_py_antlr
+core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: py_antlr
+py_antlr:  ## Generate the Python code for parsing FQNs
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: install_antlr_cli
+install_antlr_cli:  ## Install antlr CLI locally
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	chmod 755 /usr/local/bin/antlr4

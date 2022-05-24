@@ -1055,3 +1055,11 @@
   align-items: center;
   height: 40px;
 }
+
+button.ql-emoji {
+  vertical-align: bottom;
+}
+#tab-panel {
+  gap: 4px;
+  margin-top: 8px;
+}

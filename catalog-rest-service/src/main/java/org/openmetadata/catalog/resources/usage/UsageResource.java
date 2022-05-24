@@ -64,6 +64,7 @@ public class UsageResource {
   @Valid
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "getEntityUsageByID",
       summary = "Get usage",
       tags = "usage",
       description = "Get usage details for an entity identified by `id`.",
@@ -104,6 +105,7 @@ public class UsageResource {
   @Valid
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "getEntityUsageByFQN",
       summary = "Get usage by name",
       tags = "usage",
       description = "Get usage details for an entity identified by fully qualified name.",
@@ -136,8 +138,7 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
+          String date) {
     // TODO add href
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -147,6 +148,7 @@ public class UsageResource {
   @POST
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "reportEntityUsageWithID",
       summary = "Report usage",
       tags = "usage",
       description =
@@ -178,6 +180,7 @@ public class UsageResource {
   @POST
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "reportEntityUsageWithFQN",
       summary = "Report usage by name",
       tags = "usage",
       description =
@@ -213,6 +216,7 @@ public class UsageResource {
   @POST
   @Path("/compute.percentile/{entity}/{date}")
   @Operation(
+      operationId = "computeEntityUsagePercentile",
       summary = "Compute percentiles",
       tags = "usage",
       description = "Compute percentile ranking for an entity based on last 30 days of usage.",

@@ -62,6 +62,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import (
     create_and_bind_session,
@@ -70,7 +71,6 @@ from metadata.utils.connections import (
 )
 from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.fqdn_generator import get_fqdn
 
 logger = ometa_logger()
 
@@ -250,16 +250,17 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         """
         Mark the record as scanned and update the database_source_state
         """
-        fqn = get_fqdn(
-            Table,
-            self.config.serviceName,
-            str(table_schema_and_db.database.name.__root__),
-            str(table_schema_and_db.database_schema.name.__root__),
-            str(table_schema_and_db.table.name.__root__),
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=str(table_schema_and_db.database.name.__root__),
+            schema_name=str(table_schema_and_db.database_schema.name.__root__),
+            table_name=str(table_schema_and_db.table.name.__root__),
         )
 
-        self.database_source_state.add(fqn)
-        self.status.scanned(fqn)
+        self.database_source_state.add(table_fqn)
+        self.status.scanned(table_fqn)
 
     def next_record(self) -> Iterable[Entity]:
         for inspector in self.get_databases():
@@ -486,9 +487,13 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = get_fqdn(
-                        DataModel, database, schema, model_name
-                    ).lower()
+                    model_fqdn = fqn.build(
+                        self.metadata,
+                        entity_type=DataModel,
+                        database_name=database,
+                        schema_name=schema,
+                        model_name=model_name,
+                    )
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -500,11 +505,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table_fqn = get_fqdn(
-                        Table,
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
                         service_name=self.config.serviceName,
+                        database_name=None,  # issue-5093 Read proper schema and db from manifest
+                        schema_name=None,
                         table_name=table,
-                    ).lower()
+                    )
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
@@ -514,7 +522,14 @@ class SQLSource(Source[OMetaDatabaseAndTable]):
         return upstream_nodes
 
     def _get_data_model(self, database, schema, table_name):
-        table_fqn = get_fqdn(DataModel, database, schema, table_name).lower()
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=database,
+            schema_name=schema,
+            table_name=table_name,
+        )
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model

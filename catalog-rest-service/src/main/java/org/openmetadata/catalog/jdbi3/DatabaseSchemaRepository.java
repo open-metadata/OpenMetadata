@@ -21,7 +21,7 @@ import java.util.List;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
-import org.openmetadata.catalog.resources.databases.DatabaseResource;
+import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
@@ -36,7 +36,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
-        DatabaseResource.COLLECTION_PATH,
+        DatabaseSchemaResource.COLLECTION_PATH,
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
         dao.databaseSchemaDAO(),

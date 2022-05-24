@@ -181,6 +181,7 @@ class ColumnTypeParser:
         s: str, **kwargs: Any
     ) -> Union[object, Dict[str, object]]:
         s = s.strip()
+        s = s.replace(" ", "")
         if s.startswith("array<"):
             if s[-1] != ">":
                 raise ValueError("expected '>' found: %s" % s)

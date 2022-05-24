@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
@@ -201,7 +202,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
           ADMIN_AUTH_HEADERS);
     }
 
-    String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
+    String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     role =
         byName
             ? getEntityByName(role.getName(), null, null, ADMIN_AUTH_HEADERS)
@@ -229,14 +230,11 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(role, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEntityReferenceList(role.getPolicies(), createRequest.getPolicies());
   }
 
   @Override
   public void compareEntities(Role expected, Role updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
   }
 
