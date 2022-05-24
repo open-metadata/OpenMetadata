@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Description of the pipeline.",
-      "type": "string"
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
     "pipelineType": {
       "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"

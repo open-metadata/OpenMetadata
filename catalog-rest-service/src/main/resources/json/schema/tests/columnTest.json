@@ -62,7 +62,7 @@
     },
     "description": {
       "description": "Description of the testcase.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "columnName": {
       "description": "Name of the column in a table.",

@@ -85,8 +85,6 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlmodel";
-  // Not deleted to ensure the ordinal value of the entities after this remains the same
-  public static final String UNUSED = "unused";
   public static final String BOT = "bot";
   public static final String THREAD = "THREAD";
   public static final String LOCATION = "location";
@@ -146,20 +144,8 @@ public final class Entity {
         entityRepository.getClass().getSimpleName());
   }
 
-  public static void validateEntity(String entityType) {
-    String canonicalEntity = CANONICAL_ENTITY_NAME_MAP.get(entityType.toLowerCase());
-    if (canonicalEntity == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidEntity(entityType));
-    }
-  }
-
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {
     return ref == null ? null : getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
-  }
-
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id)
-      throws IOException {
-    return getEntityReferenceById(entityType, id, Include.NON_DELETED);
   }
 
   public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
@@ -173,7 +159,7 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReferenceByName(
-      @NonNull String entityType, @NonNull String fqn, Include include) throws IOException {
+      @NonNull String entityType, @NonNull String fqn, Include include) {
     EntityDAO<?> dao = DAO_MAP.get(entityType);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
@@ -190,14 +176,14 @@ public final class Entity {
     listOrEmpty(list).forEach(ref -> withHref(uriInfo, ref));
   }
 
-  public static EntityReference withHref(UriInfo uriInfo, EntityReference ref) {
+  public static void withHref(UriInfo uriInfo, EntityReference ref) {
     if (ref == null) {
-      return null;
+      return;
     }
     String entityType = ref.getType();
     EntityRepository<?> entityRepository = getEntityRepository(entityType);
     URI href = entityRepository.getHref(uriInfo, ref.getId());
-    return ref.withHref(href);
+    ref.withHref(href);
   }
 
   public static boolean shouldHaveOwner(@NonNull String entityType) {

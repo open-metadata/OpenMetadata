@@ -359,58 +359,6 @@ export const getUserPath = (username: string) => {
   return path;
 };
 
-export const getGlossaryPath = (fqn?: string) => {
-  let path = ROUTES.GLOSSARY;
-  if (fqn) {
-    path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
-  }
-
-  return path;
-};
-
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
-};
-
-export const getGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
-
-  return path;
-};
-
-export const getAddGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm
-    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
-    : ROUTES.ADD_GLOSSARY_TERMS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
-
-  return path;
-};
-
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
   path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
@@ -439,7 +387,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
-  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
+  { name: 'Bots', to: '/bots', disabled: false },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },

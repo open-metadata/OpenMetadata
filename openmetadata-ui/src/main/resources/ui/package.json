@@ -60,6 +60,7 @@
     "postcss": "^8.3.2",
     "process": "^0.11.10",
     "prop-types": "^15.7.2",
+    "quill-emoji": "^0.2.0",
     "quill-mention": "^3.1.0",
     "quilljs-markdown": "^1.1.10",
     "rc-tree": "^5.4.3",
@@ -116,7 +117,7 @@
     "js-antlr": "PWD=$(echo $PWD) antlr -Dlanguage=JavaScript -o src/antlr/generated $PWD/../../../../../catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
-    "cypress:run:record": "cypress run --record"
+    "cypress:run:record": "cypress run --record --parallel"
   },
   "browserslist": {
     "production": [

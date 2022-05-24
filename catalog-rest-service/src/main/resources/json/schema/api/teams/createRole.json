@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Optional description of the role",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "policies": {
       "description": "Policies that is attached to this role. At least one policy is required.",

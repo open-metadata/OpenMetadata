@@ -138,8 +138,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   public void validateCreatedEntity(
       IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        ingestion, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
     validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSource().getSourceConfig(), ingestion);
   }
@@ -147,8 +145,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   @Override
   public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
     assertEquals(expected.getSource().getSourceConfig(), updated.getSource().getSourceConfig());

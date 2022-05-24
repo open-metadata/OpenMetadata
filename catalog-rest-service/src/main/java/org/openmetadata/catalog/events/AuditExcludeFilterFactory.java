@@ -9,8 +9,8 @@ import org.slf4j.Marker;
 
 @JsonTypeName("audit-exclude-filter-factory")
 public class AuditExcludeFilterFactory implements FilterFactory<ILoggingEvent> {
-  private static Filter<ILoggingEvent> auditFilter =
-      new Filter<ILoggingEvent>() {
+  private static final Filter<ILoggingEvent> auditFilter =
+      new Filter<>() {
         @Override
         public FilterReply decide(final ILoggingEvent event) {
           Marker marker = event.getMarker();

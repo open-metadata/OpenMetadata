@@ -13,7 +13,6 @@
 
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-    <testng.version>7.5</testng.version>
     <!-- Don't upgrade from this version as tests don't work with later version-->
     <selenium.version>4.1.1</selenium.version>
     <skipTests>false</skipTests>

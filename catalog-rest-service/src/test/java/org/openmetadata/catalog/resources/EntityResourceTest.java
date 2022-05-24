@@ -38,6 +38,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermi
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.notAdmin;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ENTITY_NAME_LENGTH_ERROR;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -123,6 +124,7 @@ import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.RoleResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.Column;
@@ -329,12 +331,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Entity specific validate for entity create using PUT
   public void validateUpdatedEntity(T updatedEntity, K request, Map<String, String> authHeaders)
       throws HttpResponseException {
+    validateCommonEntityFields(updatedEntity, request, authHeaders);
     validateCreatedEntity(updatedEntity, request, authHeaders);
   }
 
   protected void validateDeletedEntity(
       K create, T entityBeforeDeletion, T entityAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
+    validateCommonEntityFields(entityAfterDeletion, create, authHeaders);
     validateCreatedEntity(entityAfterDeletion, create, authHeaders);
   }
 
@@ -1167,7 +1171,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     K create = createRequest(test).withExtension(jsonNode);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Now set the entity custom field with an unknown field
+    // Now set the entity custom field with an unknown field name
     jsonNode.set("stringC", mapper.convertValue("string", JsonNode.class)); // Unknown field
     assertResponse(
         () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
@@ -1382,23 +1386,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   /** Helper function to create an entity, submit POST API request and validate response. */
   public final T createAndCheckEntity(K create, Map<String, String> authHeaders, K created) throws IOException {
     // Validate an entity that is created has all the information set in create request
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     T entity = createEntity(create, authHeaders);
 
     assertEquals(updatedBy, entity.getUpdatedBy());
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    validateCommonEntityFields(entity, created, authHeaders);
     validateCreatedEntity(entity, created, authHeaders);
 
     // GET the entity created and ensure it has all the information set in create request
     T getEntity = getEntity(entity.getId(), authHeaders);
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(getEntity.getExtension()));
+    validateCommonEntityFields(entity, created, authHeaders);
     validateCreatedEntity(getEntity, created, authHeaders);
 
     getEntity = getEntityByName(entity.getFullyQualifiedName(), allFields, authHeaders);
     assertEquals(0.1, entity.getVersion()); // First version of the entity
-    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(getEntity.getExtension()));
+    validateCommonEntityFields(entity, created, authHeaders);
     validateCreatedEntity(getEntity, created, authHeaders);
 
     // Validate that change event was created
@@ -1481,6 +1485,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Validate information returned in patch response has the updates
     T returned = patchEntity(updated.getId(), originalJson, updated, authHeaders);
 
+    validateCommonEntityFields(updated, returned, authHeaders);
     compareEntities(updated, returned, authHeaders);
     validateChangeDescription(returned, updateType, expectedChange);
     validateEntityHistory(returned.getId(), updateType, expectedChange, authHeaders);
@@ -1488,6 +1493,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // GET the entity and Validate information returned
     T getEntity = getEntity(returned.getId(), authHeaders);
+    validateCommonEntityFields(updated, returned, authHeaders);
     compareEntities(updated, getEntity, authHeaders);
     validateChangeDescription(getEntity, updateType, expectedChange);
 
@@ -1525,12 +1531,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         entity, originalJson, authHeaders(userName + "@open-metadata.org"), MINOR_UPDATE, change);
   }
 
-  protected final void validateCommonEntityFields(
-      T entity, String expectedDescription, String expectedUpdatedByUser, EntityReference expectedOwner) {
+  protected final void validateCommonEntityFields(T entity, CreateEntity create, Map<String, String> authHeaders) {
     assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
-    assertEquals(expectedDescription, entity.getDescription());
-    assertEquals(expectedUpdatedByUser, entity.getUpdatedBy());
-    assertReference(expectedOwner, entity.getOwner());
+    assertEquals(create.getName(), entity.getName());
+    assertEquals(create.getDisplayName(), entity.getDisplayName());
+    assertEquals(create.getDescription(), entity.getDescription());
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    assertEquals(create.getOwner(), entity.getOwner());
+    assertEquals(getPrincipalName(authHeaders), entity.getUpdatedBy());
+  }
+
+  protected final void validateCommonEntityFields(T expected, T actual, Map<String, String> authHeaders) {
+    assertListNotNull(actual.getId(), actual.getHref(), actual.getFullyQualifiedName());
+    assertEquals(expected.getName(), actual.getName());
+    assertEquals(expected.getDisplayName(), actual.getDisplayName());
+    assertEquals(expected.getDescription(), actual.getDescription());
+    assertEquals(JsonUtils.valueToTree(expected.getExtension()), JsonUtils.valueToTree(actual.getExtension()));
+    assertEquals(expected.getOwner(), actual.getOwner());
+    assertEquals(getPrincipalName(authHeaders), actual.getUpdatedBy());
   }
 
   protected final void validateChangeDescription(T updated, UpdateType updateType, ChangeDescription expectedChange)
@@ -1621,7 +1639,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(entityType, changeEvent.getEntityType());
     assertEquals(entity.getId(), changeEvent.getEntityId());
     assertEquals(entity.getVersion(), changeEvent.getCurrentVersion());
-    assertEquals(TestUtils.getPrincipal(authHeaders), changeEvent.getUserName());
+    assertEquals(SecurityUtil.getPrincipalName(authHeaders), changeEvent.getUserName());
 
     //
     // previous, entity, changeDescription
@@ -1630,7 +1648,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertEquals(EventType.ENTITY_CREATED, changeEvent.getEventType());
       assertEquals(0.1, changeEvent.getPreviousVersion());
       assertNull(changeEvent.getChangeDescription());
-      compareEntities(entity, JsonUtils.readValue((String) changeEvent.getEntity(), entityClass), authHeaders);
+      T changeEventEntity = JsonUtils.readValue((String) changeEvent.getEntity(), entityClass);
+      validateCommonEntityFields(entity, changeEventEntity, authHeaders);
+      compareEntities(entity, changeEventEntity, authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
       assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
@@ -1641,7 +1661,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private void validateDeletedEvent(
       UUID id, long timestamp, EventType expectedEventType, Double expectedVersion, Map<String, String> authHeaders)
       throws IOException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String updatedBy = SecurityUtil.getPrincipalName(authHeaders);
     ResultList<ChangeEvent> changeEvents;
     ChangeEvent changeEvent = null;
 

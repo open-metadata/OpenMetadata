@@ -1,7 +1,6 @@
 package org.openmetadata.catalog.resources.bots;
 
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -20,7 +19,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.bots.BotResource.BotList;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.TestUtils;
 
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
@@ -65,13 +63,11 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   @Override
   public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(entity, request.getDescription(), getPrincipal(authHeaders), null);
     assertReference(request.getBotUser(), entity.getBotUser());
   }
 
   @Override
   public void compareEntities(Bot expected, Bot updated, Map<String, String> authHeaders) throws HttpResponseException {
-    validateCommonEntityFields(updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertReference(expected.getBotUser(), updated.getBotUser());
   }
 
