@@ -141,7 +141,7 @@ describe('TeamsAndUsers page', () => {
       .should('exist');
   });
 
-  it.only('Add and remove user to team should work properly', () => {
+  it('Add and remove user to team should work properly', () => {
     const searchString = 'aaron';
 
     cy.intercept({ method: 'GET', url: '/api/v1/*' }).as('user');
