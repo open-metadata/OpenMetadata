@@ -11,37 +11,11 @@
  *  limitations under the License.
  */
 
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import TeamDetails from './TeamDetails';
-
-const mockTeams = [
-  {
-    id: '8754b53f-15cd-4d9a-af52-bdb3a2abff61',
-    name: 'Cloud_Infra',
-    fullyQualifiedName: 'Cloud_Infra',
-    displayName: 'Cloud_Infra',
-    description: 'This is Cloud_Infra description.',
-    version: 0.3,
-    updatedAt: 1653388025589,
-    updatedBy: 'anonymous',
-    href: 'http://localhost:8585/api/v1/teams/8754b53f-15cd-4d9a-af52-bdb3a2abff61',
-    users: [],
-  },
-  {
-    id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss',
-    name: 'Customer_Support',
-    fullyQualifiedName: 'Customer_Support',
-    displayName: 'Customer_Support',
-    description: 'This is Customer_Support description.',
-    version: 0.3,
-    updatedAt: 1653388025589,
-    updatedBy: 'anonymous',
-    href: 'test',
-    users: [],
-  },
-];
+import { mockTeams, MOCK_USER } from './TeamDetails.mock';
 
 const mockProps = {
   currentTeam: {
@@ -57,26 +31,7 @@ const mockProps = {
     users: [],
   },
   teams: mockTeams,
-  currentTeamUsers: [
-    {
-      id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
-      type: 'user',
-      name: 'aaron_johnson0',
-      fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/users/011bdb24-90a7-4a97-ba66-24002adb2b12',
-    },
-    {
-      id: '2a31e452-2061-4517-af35-0ace16161cde',
-      type: 'user',
-      name: 'aaron_singh2',
-      fullyQualifiedName: 'aaron_singh2',
-      displayName: 'Aaron Singh',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/users/2a31e452-2061-4517-af35-0ace16161cde',
-    },
-  ],
+  currentTeamUsers: MOCK_USER,
   teamUserPagin: { total: 0 },
   currentTeamUserPage: 0,
   teamUsersSearchText: '',
@@ -132,8 +87,46 @@ jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab.component</p>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockReturnValue(<p>TabsPane.component</p>);
+// jest.mock('../common/TabsPane/TabsPane', () => {
+//   return jest.fn().mockImplementation(({ setActiveTab }) => (
+//     <div>
+//       <p>TabsPane.component</p>
+//       <button></button>
+//     </div>
+//   ));
+// });
+
+jest.mock('../../AppState', () => {
+  const mockUser = {
+    id: '011bdb24-90a7-4a97-ba66-24002adb2b12',
+    type: 'user',
+    name: 'aaron_johnson0',
+    fullyQualifiedName: 'aaron_johnson0',
+    displayName: 'Aaron Johnson',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/011bdb24-90a7-4a97-ba66-24002adb2b12',
+    teams: [{ id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss' }],
+  };
+
+  return {
+    getCurrentUserDetails: jest.fn().mockReturnValue(mockUser),
+    userDetails: undefined,
+    nonSecureUserDetails: mockUser,
+  };
+});
+
+jest.mock('../../hooks/authHooks', () => {
+  return {
+    useAuth: jest
+      .fn()
+      .mockReturnValue({ userPermissions: jest.fn().mockReturnValue(true) }),
+  };
+});
+
+jest.mock('../../utils/CommonUtils', () => {
+  return {
+    hasEditAccess: jest.fn().mockReturnValue(true),
+  };
 });
 
 describe('TeamDetails component test', () => {
@@ -143,13 +136,60 @@ describe('TeamDetails component test', () => {
     const teamContainer = await screen.findByTestId('team-details-container');
     const tab = await screen.findByText('TabsPane.component');
     const description = await screen.findByText('Description.component');
-    const header = await screen.findByTestId('header');
+    const teamHeading = await screen.findByTestId('team-heading');
 
     expect(teamContainer).toBeInTheDocument();
     expect(tab).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(
-      within(header).getByText(mockProps.currentTeam.displayName)
-    ).toBeInTheDocument();
+    expect(teamHeading).toBeInTheDocument();
+  });
+
+  it('Join team should be visible if user is not part of selected team', async () => {
+    render(
+      <TeamDetails {...(mockProps as unknown as TeamDetailsProp)} hasAccess />
+    );
+
+    const teamContainer = await screen.findByTestId('team-details-container');
+    const joinTeam = await screen.findByTestId('join-teams');
+
+    expect(teamContainer).toBeInTheDocument();
+    expect(joinTeam).toBeInTheDocument();
+  });
+
+  it('Leave team should be visible if user is part of selected team', async () => {
+    render(
+      <TeamDetails
+        {...(mockProps as unknown as TeamDetailsProp)}
+        hasAccess
+        currentTeam={{
+          id: '8754b53f-15cd-4d9a-af52-bdb3a2abffss',
+          name: 'Customer_Support',
+          fullyQualifiedName: 'Customer_Support',
+          displayName: 'Customer_Support',
+          description: 'This is Customer_Support description.',
+          version: 0.3,
+          updatedAt: 1653388025589,
+          updatedBy: 'anonymous',
+          href: 'test',
+          users: [],
+        }}
+      />
+    );
+
+    const teamContainer = await screen.findByTestId('team-details-container');
+    const leaveTeam = await screen.findByTestId('leave-team-button');
+
+    expect(teamContainer).toBeInTheDocument();
+    expect(leaveTeam).toBeInTheDocument();
+  });
+
+  it('Assests tab should render properly', async () => {
+    render(<TeamDetails {...(mockProps as unknown as TeamDetailsProp)} />);
+
+    const teamContainer = await screen.findByTestId('team-details-container');
+    const joinTeam = await screen.findByTestId('join-teams');
+
+    expect(teamContainer).toBeInTheDocument();
+    expect(joinTeam).toBeInTheDocument();
   });
 });
