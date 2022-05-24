@@ -20,7 +20,12 @@ The backbone of OpenMetadata is the series of JSON schemas defining the Entities
 
 All different parts of the code rely on those definitions. The first step to start developing new connectors is to properly set up your local environment to interact with the Entities.
 
-In the Ingestion Framework, this process is handled with `datamodel-code-generator`, which is able to read JSON schemas and automatically prepare `pydantic` models representing the input definitions. Please, make sure to run `make install_dev generate` from the project root to fill the `ingestion/src/metadata/generated` directory with the required models.
+For the instructions below, there are a couple of commands you'll need to run first to prepare your environment:
+
+1. `make install_dev`
+2. `sudo make install_antlr_cli`
+
+In the Ingestion Framework, this process is handled with `datamodel-code-generator`, which is able to read JSON schemas and automatically prepare `pydantic` models representing the input definitions. Please, make sure to run `make generate` from the project root to fill the `ingestion/src/metadata/generated` directory with the required models.
 
 Once you have generated the sources, you should be able to run the tests and the `metadata` CLI. You can test your setup by running `make coverage` and see if you get any errors.
 
