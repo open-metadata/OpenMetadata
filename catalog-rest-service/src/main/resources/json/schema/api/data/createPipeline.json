@@ -21,9 +21,8 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "pipelineUrl": {
-      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI",
-      "type": "string",
-      "format": "uri"
+      "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI",
+      "type": "string"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline",
