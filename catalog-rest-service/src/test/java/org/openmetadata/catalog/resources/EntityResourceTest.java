@@ -269,7 +269,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
-    new PipelineServiceResourceTest().setupPipelineServices();
+    new PipelineServiceResourceTest().setupPipelineServices(test);
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
 

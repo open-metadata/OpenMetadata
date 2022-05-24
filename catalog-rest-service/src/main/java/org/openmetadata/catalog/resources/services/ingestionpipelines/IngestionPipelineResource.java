@@ -63,6 +63,7 @@ import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConne
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -513,6 +514,14 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                 .withServiceName(messagingService.getName())
                 .withServiceConnection(messagingService.getConnection())
                 .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
+        break;
+      case Entity.PIPELINE_SERVICE:
+        PipelineService pipelineService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
+        source =
+            new Source()
+                .withServiceName(pipelineService.getName())
+                .withServiceConnection(pipelineService.getConnection())
+                .withType(pipelineService.getServiceType().value().toLowerCase(Locale.ROOT));
         break;
       default:
         throw new IllegalArgumentException(

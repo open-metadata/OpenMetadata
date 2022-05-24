@@ -56,9 +56,11 @@ import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
 import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MessagingConnection;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 
@@ -81,6 +83,8 @@ public final class TestUtils {
   public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION;
   public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION;
   public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION;
+
+  public static PipelineConnection AIRFLOW_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
@@ -141,6 +145,9 @@ public final class TestUtils {
   static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
+      AIRFLOW_CONNECTION =
+          new PipelineConnection()
+              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
