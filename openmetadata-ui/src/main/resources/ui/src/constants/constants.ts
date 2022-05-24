@@ -375,7 +375,7 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
-  { name: 'Bots', to: '/bots', disabled: false },
+  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
