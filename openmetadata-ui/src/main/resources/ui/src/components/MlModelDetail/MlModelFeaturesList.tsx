@@ -167,14 +167,14 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
               <h6 className="tw-font-semibold">{feature.name}</h6>
               {/* feature name and tags */}
               <div className="tw-grid tw-grid-cols-3">
-                <p className="tw-grid tw-grid-cols-2">
+                <div className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Type:</span>{' '}
                   <span>{feature.dataType || '--'}</span>
-                </p>
-                <div className="tw-grid tw-grid-cols-3">
+                </div>
+
+                <div className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Tags:</span>{' '}
                   <div
-                    className="tw-col-span-2"
                     data-testid="feature-tags-wrapper"
                     onClick={() => {
                       setSelectedFeature(feature);
@@ -233,6 +233,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   </div>
                 </div>
               </div>
+              {/* description and algorithm */}
               <div className="tw-grid tw-grid-cols-3 tw-mt-2">
                 <div className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Description:</span>{' '}
@@ -263,11 +264,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     </NonAdminAction>
                   </div>
                 </div>
-                <p className="tw-grid tw-grid-cols-2">
+
+                <div className="tw-grid tw-grid-cols-2">
                   <span className="tw-text-grey-muted">Algorithm:</span>{' '}
                   <span>{feature.featureAlgorithm || '--'}</span>
-                </p>
+                </div>
               </div>
+
               <div className="tw-mt-2">
                 <span className="tw-text-grey-muted">Sources:</span>{' '}
                 <table
