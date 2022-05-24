@@ -352,13 +352,13 @@ public interface CollectionDAO {
       insert(fromId, toId, fromEntity, toEntity, relation, null);
     }
 
-    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
-      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
+    default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
                 + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
                 + "ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
@@ -368,7 +368,7 @@ public interface CollectionDAO {
                 + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
                 + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
-    int insert(
+    void insert(
         @Bind("fromId") String fromId,
         @Bind("toId") String toId,
         @Bind("fromEntity") String fromEntity,

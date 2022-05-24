@@ -296,7 +296,9 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   private void addEdge(Table from, Table to, LineageDetails details, Map<String, String> authHeaders)
       throws HttpResponseException {
-    details.setSqlQuery("select *;");
+    if (details != null) {
+      details.setSqlQuery("select *;");
+    }
     EntitiesEdge edge =
         new EntitiesEdge()
             .withFromEntity(from.getEntityReference())

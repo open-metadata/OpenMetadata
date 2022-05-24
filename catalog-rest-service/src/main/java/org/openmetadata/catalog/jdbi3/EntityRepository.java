@@ -485,7 +485,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Add relationship
-    int added = addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
+    addRelationship(userId, entityId, Entity.USER, entityType, Relationship.FOLLOWS);
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(entity.getVersion());
     change
@@ -505,7 +505,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
 
-    return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public final DeleteResponse<T> delete(String updatedBy, String id, boolean recursive, boolean hardDelete)
@@ -807,16 +807,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     dao.update(entity.getId(), JsonUtils.pojoToJson(entity));
   }
 
-  public int addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
-    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, false);
+  public void addRelationship(UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship) {
+    addRelationship(fromId, toId, fromEntity, toEntity, relationship, false);
   }
 
-  public int addRelationship(
+  public void addRelationship(
       UUID fromId, UUID toId, String fromEntity, String toEntity, Relationship relationship, boolean bidirectional) {
-    return addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
+    addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
   }
 
-  public int addRelationship(
+  public void addRelationship(
       UUID fromId,
       UUID toId,
       String fromEntity,
@@ -832,7 +832,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       from = toId;
       to = fromId;
     }
-    return daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
+    daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
   public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
