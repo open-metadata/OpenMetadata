@@ -22,8 +22,8 @@ export const mlModelTabs = [
     path: 'features',
   },
   {
-    name: 'Summary',
-    path: 'summary',
+    name: 'Details',
+    path: 'details',
   },
   {
     name: 'Manage',
@@ -34,7 +34,7 @@ export const mlModelTabs = [
 export const getCurrentMlModelTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'summary':
+    case 'details':
       currentTab = 2;
 
       break;

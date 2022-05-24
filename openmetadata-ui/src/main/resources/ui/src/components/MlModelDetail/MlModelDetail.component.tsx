@@ -69,7 +69,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const [isEdit, setIsEdit] = useState(false);
 
-  const currentUser = AppState.getCurrentUserDetails();
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.nonSecureUserDetails, AppState.userDetails]
+  );
 
   const mlModelTier = useMemo(() => {
     return getTierTags(mlModelDetail.tags || []) as TagLabel;
@@ -155,12 +158,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 1,
     },
     {
-      name: 'Summary',
+      name: 'Details',
       icon: {
-        alt: 'summary',
-        name: 'icon-summary',
+        alt: 'details',
+        name: 'icon-details',
         title: 'Summary',
-        selectedName: 'icon-summarycolor',
+        selectedName: 'icon-detailscolor',
       },
       isProtected: false,
       position: 2,
