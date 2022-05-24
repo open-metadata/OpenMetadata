@@ -669,7 +669,7 @@ const TeamsAndUsersPage = () => {
       .then(() => {
         fetchTeams();
       })
-      .catch((_) => {
+      .catch(() => {
         // ignore exception handling, as its handled in previous promises.
       });
   }, []);
