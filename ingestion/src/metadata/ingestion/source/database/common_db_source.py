@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.ingestion.source.database.database_source import DatabaseSourceService
 from metadata.ingestion.source.database.dbt_souce import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
@@ -46,8 +45,9 @@ from metadata.utils.connections import (
     get_connection,
     test_connection,
 )
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 @dataclass
@@ -123,13 +123,8 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
             query = self.source_config.sampleDataQuery.format(schema, table)
             logger.info(query)
             results = self.connection.execute(query)
-            cols = []
-            for col in results.keys():
-                cols.append(col)
-            rows = []
-            for res in results:
-                row = list(res)
-                rows.append(row)
+            cols = [col for col in results.keys()]
+            rows = [list(res) for res in results]
             return TableData(columns=cols, rows=rows)
         # Catch any errors and continue the ingestion
         except Exception as err:  # pylint: disable=broad-except
@@ -144,7 +139,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
         for schema in inspector.get_schema_names():
             yield schema
 
-    def _get_table_description(
+    def get_table_description(
         self, schema: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
@@ -157,11 +152,13 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
             description = table_info["text"]
         return description
 
-    def _is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
+    def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
         self.inspector = inspector
         return False
 
-    def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
+    def get_table_names(
+        self, schema: str, inspector: Inspector
+    ) -> Optional[Tuple[str, str]]:
         if self.source_config.includeTables:
             for table in inspector.get_table_names(schema):
                 yield table, "Regular"
@@ -172,16 +169,16 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
     def get_view_definition(
         self, table_type: str, table_name: str, schema: str, inspector: Inspector
     ) -> Optional[str]:
+
         if table_type == "View":
-            view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(table_name, schema)
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
                 )
+                return view_definition
             except NotImplementedError:
-                view_definition = ""
-            return view_definition
+                return ""
 
     def test_connection(self) -> None:
         """

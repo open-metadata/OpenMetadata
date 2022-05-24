@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import os
+import traceback
 from typing import Optional, Tuple
 
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
@@ -20,23 +21,28 @@ from sqlalchemy_bigquery._types import (
     _get_transitive_schema_fields,
 )
 
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
@@ -159,7 +165,40 @@ class BigquerySource(CommonDbSourceService):
         else:
             return super().fetch_sample_data(schema, table)
 
-    def _get_database(self, database: Optional[str]) -> Database:
+    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+        try:
+            if (
+                self.source_config.includeTags
+                and "policy_tags" in column
+                and column["policy_tags"]
+            ):
+                self.metadata.create_primary_tag(
+                    category_name=self.service_connection.tagCategoryName,
+                    primary_tag_body=CreateTagRequest(
+                        name=column["policy_tags"],
+                        description="Bigquery Policy Tag",
+                    ),
+                )
+        except APIError:
+            if column["policy_tags"] and self.source_config.includeTags:
+                col_obj.tags = [
+                    TagLabel(
+                        tagFQN=fqn.build(
+                            self.metadata,
+                            entity_type=Tag,
+                            tag_category_name=self.service_connection.tagCategoryName,
+                            tag_name=column["policy_tags"],
+                        ),
+                        labelType="Automated",
+                        state="Suggested",
+                        source="Tag",
+                    )
+                ]
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+
+    def get_database_entity(self, database: Optional[str]) -> Database:
         if not database:
             database = (
                 self.connection_config.projectId
@@ -178,7 +217,6 @@ class BigquerySource(CommonDbSourceService):
         if table_type == "View":
             view_definition = ""
             try:
-                print(f"{self.service_connection.projectId}.{schema}.{table_name}")
                 view_definition = inspector.get_view_definition(
                     f"{self.service_connection.projectId}.{schema}.{table_name}"
                 )

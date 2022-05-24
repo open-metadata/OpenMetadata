@@ -145,7 +145,7 @@ class AtlasSource(Source):
                     db_entity = tbl_entity["relationshipAttributes"][
                         self.config.entity_types["Table"][name]["db"]
                     ]
-                    db = self._get_database(db_entity["displayText"])
+                    db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
                     fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
@@ -198,7 +198,7 @@ class AtlasSource(Source):
                 continue
         return om_cols
 
-    def _get_database(self, database_name: str) -> Database:
+    def get_database_entity(self, database_name: str) -> Database:
         return Database(
             name=database_name,
             service=EntityReference(id=self.service.id, type=self.config.service_type),
@@ -212,7 +212,7 @@ class AtlasSource(Source):
             db_entity = tbl_entity["entities"][0]["relationshipAttributes"][
                 self.config.entity_types["Table"][name]["db"]
             ]
-            db = self._get_database(db_entity["displayText"])
+            db = self.get_database_entity(db_entity["displayText"])
             table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
                 "table"
             ]["displayText"]
@@ -234,7 +234,7 @@ class AtlasSource(Source):
                         self.config.entity_types["Table"][name]["db"]
                     ]
 
-                    db = self._get_database(db_entity["displayText"])
+                    db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]

@@ -79,7 +79,7 @@ class PostgresSource(CommonDbSourceService):
                 except Exception as err:
                     logger.error(f"Failed to Connect: {row[0]} due to error {err}")
 
-    def _get_database(self, database: str) -> Database:
+    def get_database_entity(self, database: str) -> Database:
         if database:
             self.service_connection.database = database
         return Database(
@@ -90,7 +90,7 @@ class PostgresSource(CommonDbSourceService):
     def get_status(self) -> SourceStatus:
         return self.status
 
-    def _is_partition(self, table_name: str, schema: str, inspector) -> bool:
+    def is_partition(self, table_name: str, schema: str, inspector) -> bool:
         cur = self.pgconn.cursor()
         cur.execute(
             """

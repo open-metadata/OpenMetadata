@@ -20,12 +20,12 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.dbt_config import get_dbt_details
-from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 class DBTSource:
@@ -35,8 +35,15 @@ class DBTSource:
         self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.data_models: dict = {}
 
-    def _get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
-        table_fqn = get_fqdn(DataModel, database, schema, table_name).lower()
+    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=database,
+            schema_name=schema,
+            table_name=table_name,
+        )
         if table_fqn in self.data_models:
             model = self.data_models[table_fqn]
             return model
@@ -89,9 +96,13 @@ class DBTSource:
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = get_fqdn(
-                        DataModel, database, schema, model_name
-                    ).lower()
+                    model_fqdn = fqn.build(
+                        self.metadata,
+                        entity_type=DataModel,
+                        database_name=database,
+                        schema_name=schema,
+                        model_name=model_name,
+                    )
                     self.data_models[model_fqdn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -103,11 +114,14 @@ class DBTSource:
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     _, database, table = node.split(".", 2)
-                    table_fqn = get_fqdn(
-                        Table,
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
                         service_name=self.config.serviceName,
+                        database_name=None,  # issue-5093 Read proper schema and db from manifest
+                        schema_name=None,
                         table_name=table,
-                    ).lower()
+                    )
                     upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(

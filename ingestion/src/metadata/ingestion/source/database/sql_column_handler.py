@@ -17,7 +17,6 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
@@ -25,19 +24,17 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     TableConstraint,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
-from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 class SqlColumnHandler:
-    def fetch_tags(self, schema: str, table_name: str, column_name: str = "") -> List:
-        return []
+    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+        if self.source_config.includeTags:
+            logger.info("Fetching tags not implemeneted for this connector")
+            self.source_config.includeTags = False
 
     def _get_display_datatype(
         self,
@@ -82,59 +79,6 @@ class SqlColumnHandler:
                     arr_data_type = ColumnTypeParser.get_column_type(arr_data_type[0])
                 data_type_display = column["type"]
         return data_type_display, arr_data_type, parsed_string
-
-    def _apply_tags(
-        self, om_column: Column, schema: str, table: str, column: dict
-    ) -> None:
-        om_column.tags = []
-        tag_category_list = self.fetch_tags(
-            schema=schema, table_name=table, column_name=column["name"]
-        )
-        for tags in tag_category_list:
-            om_column.tags.append(
-                TagLabel(
-                    tagFQN=get_fqdn(
-                        Tag,
-                        tags.category_name.name.__root__,
-                        tags.category_details.name.__root__,
-                    ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Tag",
-                )
-            )
-
-    def _apply_policy_tags(self, column: dict, col_obj: Column) -> None:
-        try:
-            if (
-                hasattr(self.config, "enable_policy_tags")
-                and "policy_tags" in column
-                and column["policy_tags"]
-            ):
-                self.metadata.create_primary_tag(
-                    category_name=self.service_connection.tagCategoryName,
-                    primary_tag_body=CreateTagRequest(
-                        name=column["policy_tags"],
-                        description="Bigquery Policy Tag",
-                    ),
-                )
-        except APIError:
-            if column["policy_tags"] and self.service_connection.enablePolicyTagImport:
-                col_obj.tags = [
-                    TagLabel(
-                        tagFQN=get_fqdn(
-                            Tag,
-                            self.service_connection.tagCategoryName,
-                            column["policy_tags"],
-                        ),
-                        labelType="Automated",
-                        state="Suggested",
-                        source="Tag",
-                    )
-                ]
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(err)
 
     def _get_columns_with_constraints(
         self, schema: str, table: str, inspector: Inspector
@@ -181,7 +125,7 @@ class SqlColumnHandler:
             ]
         return Column(**parsed_string)
 
-    def _get_columns(
+    def get_columns(
         self, schema: str, table: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
@@ -239,17 +183,16 @@ class SqlColumnHandler:
                         children=children,
                         arrayDataType=arr_data_type,
                     )
-                    self._apply_tags(om_column, schema, table, column)
                 else:
                     col_obj = self._process_complex_col_type(
                         column=column, parsed_string=parsed_string
                     )
-                    self._apply_policy_tags(column=column, col_obj=col_obj)
                     om_column = col_obj
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")
                 continue
+            self.fetch_tags(column=column, col_obj=om_column)
             table_columns.append(om_column)
         return table_columns
 

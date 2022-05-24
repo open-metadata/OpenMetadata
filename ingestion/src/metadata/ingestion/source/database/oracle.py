@@ -12,9 +12,6 @@
 # This import verifies that the dependencies are available.
 from typing import Optional
 
-import cx_Oracle  # noqa: F401
-import pydantic
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleConnection,
@@ -48,7 +45,7 @@ class OracleSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def _get_database(self, database: Optional[str]) -> Database:
+    def get_database_entity(self, database: Optional[str]) -> Database:
         if not database:
             database = self.service_connection.oracleServiceName
         return Database(

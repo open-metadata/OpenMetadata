@@ -162,11 +162,11 @@ class Workflow:
     def _get_source_dir(self, connection_type: type) -> str:
         if connection_type == DatabaseConnection:
             return "database"
-        elif connection_type == MessagingConnection:
+        if connection_type == MessagingConnection:
             return "messaging"
-        elif connection_type == MetadataConnection:
+        if connection_type == MetadataConnection:
             return "metadata"
-        elif connection_type == DashboardConnection:
+        if connection_type == DashboardConnection:
             return "dashboard"
 
     def execute(self):

@@ -34,13 +34,13 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.ingestion.ometa.utils import ometa_logger
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
-from metadata.utils.fqdn_generator import get_fqdn
+from metadata.utils.logger import ingestion_logger
 
-logger = ometa_logger()
+logger = ingestion_logger()
 
 
 @dataclass  # type: ignore[misc]
@@ -69,7 +69,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _get_table_description(
+    def get_table_description(
         self, schema: str, table_name: str, table_type: str, inspector: Inspector
     ) -> str:
         """
@@ -78,14 +78,14 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
+    def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
         """
         Method to check if the table is partitioned table
         """
         pass
 
     @abstractmethod
-    def _get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
+    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
         pass
 
     @abstractmethod
@@ -103,7 +103,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def _get_columns(
+    def get_columns(
         self, schema: str, table_name: str, inspector: Inspector
     ) -> Optional[List[Column]]:
         """
@@ -118,17 +118,28 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         pass
 
-    def _get_database(self, database: Optional[str]) -> Database:
-        if not database:
-            database = "default"
+    @abstractmethod
+    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+        """
+        Method to fetch tags associated with table
+        """
+        pass
+
+    def get_database_entity(self, database_name: Optional[str]) -> Database:
+        """
+        Method to get database enetity from db name
+        """
         return Database(
-            name=database,
+            name=database_name if database_name else "default",
             service=EntityReference(
                 id=self.service.id, type=self.service_connection.type.value
             ),
         )
 
-    def _get_schema(self, schema: str, database: Database) -> DatabaseSchema:
+    def get_schema_entity(self, schema: str, database: Database) -> DatabaseSchema:
+        """
+        Method to get DatabaseSchema enetity from schema name and database entity
+        """
         return DatabaseSchema(
             name=schema,
             database=database.service,
@@ -138,10 +149,13 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         )
 
     def next_record(self) -> Iterable[Entity]:
+        """
+        Method to fetch all tables, views & mark deleet tables
+        """
         for inspector in self.get_databases():
             for schema in self.get_schemas(inspector):
-                # clear any previous source database state
                 try:
+                    # clear any previous source database state
                     self.database_source_state.clear()
                     if filter_by_schema(
                         self.source_config.schemaFilterPattern, schema_name=schema
@@ -152,12 +166,15 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
                     if self.source_config.includeTables:
                         yield from self.fetch_tables(inspector, schema)
 
-                    # Comment TO-REMOVE
-                    # Removed fetch view in order to unify
-
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
-                        yield from self.delete_tables(schema_fqdn)
+                        schema_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=DatabaseSchema,
+                            service_name=self.config.serviceName,
+                            database_name=self.service_connection.database,
+                            schema_name=schema,
+                        )
+                        yield from self.delete_tables(schema_fqn)
 
                 except Exception as err:
                     logger.debug(traceback.format_exc())
@@ -166,9 +183,12 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
     def _get_table_entity(
         self, schema: str, table_name: str, table_type: str, inspector: Inspector
     ) -> Table:
-        description = self._get_table_description(schema, table_name, inspector)
+        """
+        Method to get table entity
+        """
+        description = self.get_table_description(schema, table_name, inspector)
         self.table_constraints = None
-        table_columns = self._get_columns(schema, table_name, inspector)
+        table_columns = self.get_columns(schema, table_name, inspector)
         table_entity = Table(
             id=uuid.uuid4(),
             name=table_name,
@@ -200,8 +220,6 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
             logger.error(err)
         return table_entity
 
-    # TODO
-    # include views logic
     def fetch_tables(
         self, inspector: Inspector, schema: str
     ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
@@ -222,8 +240,7 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
                         "Table pattern not allowed",
                     )
                     continue
-
-                if self._is_partition(table_name, schema, inspector):
+                if self.is_partition(table_name, schema, inspector):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table is partition",
@@ -234,16 +251,16 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
                     schema, table_name, table_type, inspector
                 )
 
-                database = self._get_database(self.service_connection.database)
+                database = self.get_database_entity(self.service_connection.database)
                 # check if we have any model to associate with
-                table_entity.dataModel = self._get_data_model(
+                table_entity.dataModel = self.get_data_model(
                     database.name.__root__, schema, table_name
                 )
 
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
-                    database_schema=self._get_schema(schema, database),
+                    database_schema=self.get_schema_entity(schema, database),
                 )
                 self.register_record(table_schema_and_db)
                 yield table_schema_and_db
@@ -288,16 +305,17 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         """
         Mark the record as scanned and update the database_source_state
         """
-        fqn = get_fqdn(
-            Table,
-            self.config.serviceName,
-            str(table_schema_and_db.database.name.__root__),
-            str(table_schema_and_db.database_schema.name.__root__),
-            str(table_schema_and_db.table.name.__root__),
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=str(table_schema_and_db.database.name.__root__),
+            schema_name=str(table_schema_and_db.database_schema.name.__root__),
+            table_name=str(table_schema_and_db.table.name.__root__),
         )
 
-        self.database_source_state.add(fqn)
-        self.status.scanned(fqn)
+        self.database_source_state.add(table_fqn)
+        self.status.scanned(table_fqn)
 
     def _build_database_state(self, schema_fqdn: str) -> List[EntityReference]:
         after = None
@@ -313,6 +331,9 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         return tables
 
     def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+        """
+        Returns Deleted tables
+        """
         database_state = self._build_database_state(schema_fqdn)
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:

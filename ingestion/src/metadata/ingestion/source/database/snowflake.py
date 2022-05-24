@@ -123,13 +123,8 @@ class SnowflakeSource(CommonDbSourceService):
                 query = self.source_config.sampleDataQuery.format(schema, f'"{table}"')
                 logger.info(query)
                 results = self.connection.execute(query)
-                cols = []
-                for col in results.keys():
-                    cols.append(col)
-                rows = []
-                for res in results:
-                    row = list(res)
-                    rows.append(row)
+                cols = [col for col in results.keys()]
+                rows = [list(res) for res in results]
                 return TableData(columns=cols, rows=rows)
             except Exception as err:
                 logger.error(err)
@@ -205,7 +200,7 @@ class SnowflakeSource(CommonDbSourceService):
                     continue
                 if entity_type == "VIEW" and not self.source_config.includeViews:
                     continue
-                table_columns = self._get_columns(schema, table_name, inspector)
+                table_columns = self.get_columns(schema, table_name, inspector)
                 view_definition = inspector.get_view_definition(table_name, schema)
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -227,11 +222,11 @@ class SnowflakeSource(CommonDbSourceService):
                 if self.source_config.enableDataProfiler:
                     profile = self.run_profiler(table=table_entity, schema=schema)
                     table_entity.tableProfile = [profile] if profile else None
-                database = self._get_database(self.service_connection.database)
+                database = self.get_database_entity(self.service_connection.database)
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
-                    database_schema=self._get_schema(schema, database),
+                    database_schema=self.get_schema_entity(schema, database),
                 )
                 self.register_record(table_schema_and_db)
                 yield table_schema_and_db

@@ -97,7 +97,7 @@ class PrestoSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def _get_database(self, _) -> Database:
+    def get_database_entity(self, _) -> Database:
         return Database(
             name=self.service_connection.catalog,
             service=EntityReference(

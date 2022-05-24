@@ -3,10 +3,7 @@ import re
 import uuid
 from typing import Any, Dict, Iterable, List, Optional
 
-import pyspark
-from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
-from pyspark.sql.catalog import Table as pyTable
 from pyspark.sql.types import ArrayType, MapType, StructType
 from pyspark.sql.utils import AnalysisException, ParseException
 
@@ -30,7 +27,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -142,7 +139,7 @@ class DeltalakeSource(Source[Entity]):
                         viewDefinition=view_definition,
                     )
 
-                database = self._get_database()
+                database = self.get_database_entity()
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,
@@ -155,7 +152,7 @@ class DeltalakeSource(Source[Entity]):
                     "{}.{}".format(self.config.serviceName, table.name)
                 )
 
-    def _get_database(self) -> Database:
+    def get_database_entity(self) -> Database:
         return Database(
             id=uuid.uuid4(),
             name=DEFAULT_DATABASE,

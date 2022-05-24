@@ -45,7 +45,6 @@ class SourceStatus(Status):
         self.failures.append({key: reason})
 
 
-@dataclass  # type: ignore[misc]
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod
@@ -66,13 +65,6 @@ class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     def get_status(self) -> SourceStatus:
         pass
 
-    @abstractmethod
-    def test_connection(self) -> None:
-        pass
-
-
-@dataclass  # type: ignore[misc]
-class DashboardSourceService(Source, metaclass=ABCMeta):
     @abstractmethod
     def test_connection(self) -> None:
         pass
