@@ -145,23 +145,23 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const tabs = [
     {
-      name: 'Summary',
-      icon: {
-        alt: 'summary',
-        name: 'icon-summary',
-        title: 'Summary',
-        selectedName: 'icon-summarycolor',
-      },
-      isProtected: false,
-      position: 1,
-    },
-    {
       name: 'Features',
       icon: {
         alt: 'features',
         name: 'icon-features',
         title: 'Features',
         selectedName: 'icon-featurescolor',
+      },
+      isProtected: false,
+      position: 1,
+    },
+    {
+      name: 'Summary',
+      icon: {
+        alt: 'summary',
+        name: 'icon-summary',
+        title: 'Summary',
+        selectedName: 'icon-summarycolor',
       },
       isProtected: false,
       position: 2,
@@ -262,8 +262,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlHyperParameters = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-3">
-        <hr className="tw-my-4" />
+      <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
         <table
           className="tw-w-full tw-mt-3"
@@ -370,6 +369,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     if (mlModelDetail.mlFeatures && mlModelDetail.mlFeatures.length) {
       return (
         <div className="tw-flex tw-flex-col">
+          <hr className="tw-my-4" />
           <h6 className="tw-font-medium tw-text-base">Features used</h6>
           <table
             className="tw-w-full tw-mt-3"
@@ -465,11 +465,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                     onDescriptionEdit={onDescriptionEdit}
                     onDescriptionUpdate={onDescriptionUpdate}
                   />
-                  {getMlHyperParameters()}
-                  {getMlModelStore()}
+                  {getMlModelFeatures()}
                 </Fragment>
               )}
-              {activeTab === 2 && <div>{getMlModelFeatures()}</div>}
+              {activeTab === 2 && (
+                <div>
+                  {getMlHyperParameters()}
+                  {getMlModelStore()}
+                </div>
+              )}
               {activeTab === 3 && !mlModelDetail.deleted && (
                 <div>
                   <ManageTabComponent

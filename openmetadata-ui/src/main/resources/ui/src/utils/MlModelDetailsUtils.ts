@@ -18,12 +18,12 @@ ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNE
 
 export const mlModelTabs = [
   {
-    name: 'Summary',
-    path: 'summary',
-  },
-  {
     name: 'Features',
     path: 'features',
+  },
+  {
+    name: 'Summary',
+    path: 'summary',
   },
   {
     name: 'Manage',
@@ -34,7 +34,7 @@ export const mlModelTabs = [
 export const getCurrentMlModelTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'features':
+    case 'summary':
       currentTab = 2;
 
       break;
@@ -43,8 +43,7 @@ export const getCurrentMlModelTab = (tab: string) => {
 
       break;
 
-    case 'summary':
-    default:
+    case 'features':
       currentTab = 1;
 
       break;
