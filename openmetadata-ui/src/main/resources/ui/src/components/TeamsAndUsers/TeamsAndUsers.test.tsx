@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
 import TeamsAndUsers from './TeamsAndUsers.component';
+import { MOCK_SELECTED_TEAM } from './TeamsAndUsers.mock';
 
 const mockProps: TeamsAndUsersProps = {
   hasAccess: false,
@@ -29,7 +30,7 @@ const mockProps: TeamsAndUsersProps = {
   selectedUserList: [],
   bots: [],
   teams: [],
-  currentTeam: undefined,
+  currentTeam: MOCK_SELECTED_TEAM,
   currentTeamUsers: [],
   teamUserPagin: { total: 0 },
   currentTeamUserPage: 0,
@@ -99,6 +100,10 @@ jest.mock('../../pages/teams/AddUsersModal', () => {
   return jest.fn().mockReturnValue(<div>AddUsersModal.component</div>);
 });
 
+jest.mock('../Loader/Loader', () => {
+  return jest.fn().mockReturnValue(<div>Loader.component</div>);
+});
+
 describe('TeamsAndUsers component test', () => {
   it('TeamsAndUsers component should render properly', async () => {
     render(<TeamsAndUsers {...mockProps} />, {
@@ -138,5 +143,60 @@ describe('TeamsAndUsers component test', () => {
     expect(PageLayout).toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
     expect(addUser).toBeInTheDocument();
+  });
+
+  it('addUserModal component with name should be visible', async () => {
+    render(
+      <TeamsAndUsers
+        {...mockProps}
+        isAddingUsers
+        currentTeam={{ ...MOCK_SELECTED_TEAM, displayName: undefined }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const PageLayout = await screen.findByTestId('PageLayout');
+    const leftPanel = await screen.findByTestId('left-panel-content');
+    const addUser = await screen.findByText('AddUsersModal.component');
+
+    expect(PageLayout).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(addUser).toBeInTheDocument();
+  });
+
+  it('CTA Should work properly', async () => {
+    render(<TeamsAndUsers {...mockProps} hasAccess />, {
+      wrapper: MemoryRouter,
+    });
+
+    const PageLayout = await screen.findByTestId('PageLayout');
+    const leftPanel = await screen.findByTestId('left-panel-content');
+    const addTeam = await screen.findByTestId('add-team-button');
+    const addUser = await screen.findByTestId('add-user-button');
+
+    fireEvent.click(addTeam);
+
+    expect(PageLayout).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(addTeam).toBeInTheDocument();
+    expect(addUser).toBeInTheDocument();
+  });
+
+  it('Loading should be visible if provided true', async () => {
+    render(<TeamsAndUsers {...mockProps} isRightPannelLoading />, {
+      wrapper: MemoryRouter,
+    });
+
+    const PageLayout = await screen.findByTestId('PageLayout');
+    const leftPanel = await screen.findByTestId('left-panel-content');
+    const addUser = await screen.findByText('Loader.component');
+
+    expect(PageLayout).toBeInTheDocument();
+    expect(leftPanel).toBeInTheDocument();
+    expect(addUser).toBeInTheDocument();
+    expect(screen.queryByText('TeamDetails.component')).not.toBeInTheDocument();
+    expect(screen.queryByText('UserDetails.component')).not.toBeInTheDocument();
   });
 });
