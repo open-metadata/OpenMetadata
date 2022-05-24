@@ -14,19 +14,18 @@ Airflow source to extract metadata from OM UI
 import sys
 import traceback
 from dataclasses import dataclass, field
-from typing import Iterable, List, cast
+from typing import Any, Iterable, List, Optional, cast
 
+from airflow.models import BaseOperator
 from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import (
-    SerializedBaseOperator,
-    SerializedDAG,
-)
+from airflow.serialization.serialized_objects import SerializedDAG
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -40,10 +39,12 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
@@ -90,7 +91,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(self.metadata_config)
         self.status = AirflowSourceStatus()
-        self.service = self.metadata.get_service_or_create(
+        self.service: PipelineService = self.metadata.get_service_or_create(
             entity=PipelineService, config=config
         )
 
@@ -149,7 +150,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
             )
-            for task in cast(Iterable[SerializedBaseOperator], dag.task)
+            for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
     def fetch_pipeline(
@@ -173,15 +174,85 @@ class AirflowSource(Source[CreatePipelineRequest]):
             service=EntityReference(id=self.service.id, type="pipelineService"),
         )
 
+    @staticmethod
+    def parse_xlets(xlet: List[Any]) -> Optional[List[str]]:
+        """
+        Parse airflow xlets for 2.1.4. E.g.,
+
+        [{'__var': {'tables': ['sample_data.ecommerce_db.shopify.fact_order']},
+        '__type': 'dict'}]
+
+        :param xlet: airflow v2 xlet dict
+        :return: table FQN list or None
+        """
+        if len(xlet) and isinstance(xlet[0], dict):
+            tables = xlet[0].get("__var").get("tables")
+            if tables and isinstance(tables, list):
+                return tables
+
+        return None
+
+    def get_inlets(self, task: BaseOperator) -> Optional[List[str]]:
+        """
+        Get inlets from serialised operator
+        :param task: SerializedBaseOperator
+        :return: maybe an inlet list
+        """
+        inlets = task.get_inlet_defs()
+        try:
+            return self.parse_xlets(inlets)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warn(f"Error trying to parse inlets - {err}")
+            return None
+
+    def get_outlets(self, task: BaseOperator) -> Optional[List[str]]:
+        """
+        Get outlets from serialised operator
+        :param task: SerializedBaseOperator
+        :return: maybe an inlet list
+        """
+        outlets = task.get_outlet_defs()
+        try:
+            return self.parse_xlets(outlets)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warn(f"Error trying to parse outlets - {err}")
+            return None
+
     def fetch_lineage(
-        self, serialized_dag: SerializedDagModel
+        self, serialized_dag: SerializedDagModel, pipeline_entity: Pipeline
     ) -> Iterable[AddLineageRequest]:
         """
-
+        Parse xlets and add lineage between Pipelines and Tables
         :param serialized_dag: SerializedDAG from airflow metadata DB
+        :param pipeline_entity: Pipeline we just ingested
         :return: Lineage from inlets and outlets
         """
-        pass
+        dag: SerializedDAG = serialized_dag.dag
+
+        for task in dag.tasks:
+            for table_fqn in self.get_inlets(task) or []:
+                table_entity = self.metadata.get_by_name(entity=Table, fqdn=table_fqn)
+                yield AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=table_entity.id, type="table"),
+                        toEntity=EntityReference(
+                            id=pipeline_entity.id, type="pipeline"
+                        ),
+                    )
+                )
+
+            for table_fqn in self.get_outlets(task) or []:
+                table_entity = self.metadata.get_by_name(entity=Table, fqdn=table_fqn)
+                yield AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=pipeline_entity.id, type="pipeline"
+                        ),
+                        toEntity=EntityReference(id=table_entity.id, type="table"),
+                    )
+                )
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -196,7 +267,16 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     yield from self.fetch_pipeline(serialized_dag)
 
                     if self.source_config.includeLineage:
-                        yield from self.fetch_lineage(serialized_dag)
+                        pipeline_entity: Pipeline = self.metadata.get_by_name(
+                            entity=Pipeline,
+                            fqdn=fqn.build(
+                                self.metadata,
+                                entity_type=Pipeline,
+                                service_name=self.service.name.__root__,
+                                pipeline_name=serialized_dag.dag_id,
+                            ),
+                        )
+                        yield from self.fetch_lineage(serialized_dag, pipeline_entity)
                 else:
                     self.status.dropped(serialized_dag.dag_id)
 
@@ -210,7 +290,6 @@ class AirflowSource(Source[CreatePipelineRequest]):
         return self.status
 
     def close(self):
-        self.engine.close()
         self.session.close()
 
     def test_connection(self) -> None:
