@@ -14,6 +14,7 @@
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getMlModelByFQN } from '../../axiosAPIs/mlModelAPI';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -135,6 +136,15 @@ jest.mock('../../axiosAPIs/mlModelAPI', () => ({
   getMlModelByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
+  patchMlModelDetails: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockData })),
+  addFollower: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockData })),
+  removeFollower: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
 jest.mock('../../components/MlModelDetail/MlModelDetail.component', () => {
@@ -155,5 +165,18 @@ describe('Test MlModel Entity Page', () => {
     );
 
     expect(mlModelDetailComponent).toBeInTheDocument();
+  });
+
+  it('Should render error component if API fails', async () => {
+    (getMlModelByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject()
+    );
+    const { container } = render(<MlModelPageComponent />, {
+      wrapper: MemoryRouter,
+    });
+
+    const errorComponent = await findByTestId(container, 'error');
+
+    expect(errorComponent).toBeInTheDocument();
   });
 });
