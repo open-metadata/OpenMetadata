@@ -68,6 +68,7 @@ public class EventResource {
   @GET
   @Valid
   @Operation(
+      operationId = "listChangeEvents",
       summary = "Get change events",
       tags = "events",
       description = "Get a list of change events matching event types, entity type, from a given date",
@@ -75,7 +76,8 @@ public class EventResource {
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEventList.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public ResultList<ChangeEvent> get(

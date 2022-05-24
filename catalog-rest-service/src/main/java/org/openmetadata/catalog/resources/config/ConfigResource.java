@@ -47,8 +47,9 @@ public class ConfigResource {
   @GET
   @Path(("/auth"))
   @Operation(
+      operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -69,8 +70,9 @@ public class ConfigResource {
   @GET
   @Path(("/authorizer"))
   @Operation(
+      operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -91,8 +93,9 @@ public class ConfigResource {
   @GET
   @Path(("/sandbox"))
   @Operation(
+      operationId = "getSandboxConfiguration",
       summary = "Get sandbox mode",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -111,8 +114,9 @@ public class ConfigResource {
   @GET
   @Path(("/airflow"))
   @Operation(
+      operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -133,8 +137,9 @@ public class ConfigResource {
   @GET
   @Path(("/jwks"))
   @Operation(
+      operationId = "getJWKSResponse",
       summary = "Get JWKS public key",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
