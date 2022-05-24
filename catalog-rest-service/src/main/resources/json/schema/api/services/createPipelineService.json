@@ -23,20 +23,14 @@
     "serviceType": {
       "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineServiceType"
     },
-    "pipelineUrl": {
-      "description": "Pipeline UI URL",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running pipeline ingestion jobs",
-      "$ref": "../../type/schedule.json"
+    "connection": {
+      "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineConnection"
     },
     "owner": {
       "description": "Owner of this pipeline service.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "pipelineUrl"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }
