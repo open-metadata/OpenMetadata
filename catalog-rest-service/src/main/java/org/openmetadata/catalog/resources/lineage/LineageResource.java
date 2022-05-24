@@ -70,6 +70,7 @@ public class LineageResource {
   @Valid
   @Path("/{entity}/{id}")
   @Operation(
+      operationId = "getLineage",
       summary = "Get lineage",
       tags = "lineage",
       description = "Get lineage details for an entity identified by `id`.",
@@ -110,6 +111,7 @@ public class LineageResource {
   @Valid
   @Path("/{entity}/name/{fqn}")
   @Operation(
+      operationId = "getLineageByFQN",
       summary = "Get lineage by name",
       tags = "lineage",
       description = "Get lineage details for an entity identified by fully qualified name.",
@@ -152,6 +154,7 @@ public class LineageResource {
 
   @PUT
   @Operation(
+      operationId = "addLineageEdge",
       summary = "Add a lineage edge",
       tags = "lineage",
       description = "Add a lineage edge with from entity as upstream node and to entity as downstream node.",
@@ -171,6 +174,7 @@ public class LineageResource {
   @DELETE
   @Path("/{fromEntity}/{fromId}/{toEntity}/{toId}")
   @Operation(
+      operationId = "deleteLineageEdge",
       summary = "Delete a lineage edge",
       tags = "lineage",
       description = "Delete a lineage edge with from entity as upstream node and to entity as downstream node.",
