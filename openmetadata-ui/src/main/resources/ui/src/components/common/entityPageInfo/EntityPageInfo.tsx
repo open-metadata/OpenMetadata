@@ -266,6 +266,37 @@ const EntityPageInfo = ({
       });
   };
 
+  const getThreadElements = () => {
+    if (!isUndefined(entityFieldThreads)) {
+      return !isUndefined(tagThread) ? (
+        <p
+          className="link-text tw-ml-1 tw-w-8 tw-flex-none"
+          data-testid="tag-thread"
+          onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+          <span className="tw-flex">
+            <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+            <span className="tw-ml-1" data-testid="tag-thread-count">
+              {tagThread.count}
+            </span>
+          </span>
+        </p>
+      ) : (
+        <p
+          className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
+          data-testid="start-tag-thread"
+          onClick={() =>
+            onThreadLinkSelect?.(
+              getEntityFeedLink(entityType, entityFqn, 'tags')
+            )
+          }>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+        </p>
+      );
+    } else {
+      return null;
+    }
+  };
+
   useEffect(() => {
     setEntityFollowers(followersList);
   }, [followersList]);
@@ -454,34 +485,7 @@ const EntityPageInfo = ({
                 </TagsContainer>
               </div>
             </NonAdminAction>
-            {!isUndefined(tagThread) ? (
-              <p
-                className="link-text tw-ml-1 tw-w-8 tw-flex-none"
-                data-testid="tag-thread"
-                onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <span className="tw-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
-                  <span className="tw-ml-1" data-testid="tag-thread-count">
-                    {tagThread.count}
-                  </span>
-                </span>
-              </p>
-            ) : (
-              <p
-                className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
-                data-testid="start-tag-thread"
-                onClick={() =>
-                  onThreadLinkSelect?.(
-                    getEntityFeedLink(entityType, entityFqn, 'tags')
-                  )
-                }>
-                <SVGIcons
-                  alt="comments"
-                  icon={Icons.COMMENT_PLUS}
-                  width="20px"
-                />
-              </p>
-            )}
+            {getThreadElements()}
           </Fragment>
         )}
       </div>
