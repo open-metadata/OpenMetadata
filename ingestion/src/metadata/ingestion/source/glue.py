@@ -24,7 +24,14 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
+    GlueConnection as GluePipelineConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
+    PipelineService,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -37,10 +44,7 @@ from metadata.ingestion.source.sql_source import SQLSourceStatus
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import (
-    get_pipeline_service_or_create,
-    get_storage_service_or_create,
-)
+from metadata.utils.helpers import get_storage_service_or_create
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -68,15 +72,20 @@ class GlueSource(Source[Entity]):
             metadata_config,
         )
         self.task_id_mapping = {}
-        self.pipeline_service = get_pipeline_service_or_create(
-            {
-                "name": self.service_connection.pipelineServiceName,
-                "serviceType": "Glue",
-                "pipelineUrl": self.service_connection.awsConfig.endPointURL
-                if self.service_connection.awsConfig.endPointURL is not None
-                else f"https://glue.{self.service_connection.awsConfig.awsRegion}.amazonaws.com",
-            },
-            metadata_config,
+
+        # Create a Glue Pipeline Connection based on the Database Connection details
+        self.pipeline_service = self.metadata.get_service_or_create(
+            entity=PipelineService,
+            config=WorkflowSource(
+                type="glue",
+                serviceName=self.service_connection.pipelineServiceName,
+                serviceConnection=PipelineConnection(
+                    config=GluePipelineConnection(
+                        awsConfig=self.service_connection.awsConfig
+                    ),
+                ),
+                sourceConfig={},
+            ),
         )
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client
