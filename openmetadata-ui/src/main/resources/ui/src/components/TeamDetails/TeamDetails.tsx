@@ -576,7 +576,9 @@ const TeamDetails = ({
   };
 
   return (
-    <div className="tw-h-full tw-flex tw-flex-col tw-flex-grow">
+    <div
+      className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
+      data-testid="team-details-container">
       {teams.length && currentTeam ? (
         <Fragment>
           <div
