@@ -161,34 +161,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getOwnerSearch = useCallback(
     (searchQuery = WILD_CARD_CHAR, from = 1) => {
       setIsUserLoading(true);
-      // const promises = [
-      //   getSearchedUsers(searchQuery, from),
-      //   getSearchedTeams(searchQuery, from),
-      // ];
-      // Promise.allSettled(promises)
-      //   .then(
-      //     ([resUsers, resTeams]: Array<
-      //       PromiseSettledResult<SearchResponse>
-      //     >) => {
-      //       const users =
-      //         resUsers.status === 'fulfilled'
-      //           ? formatUsersResponse(resUsers.value.data.hits.hits)
-      //           : [];
-      //       const teams =
-      //         resTeams.status === 'fulfilled'
-      //           ? formatTeamsResponse(resTeams.value.data.hits.hits)
-      //           : [];
-      //       setListOwners(getOwnerList(users, teams));
-      //     }
-      //   )
-      //   .catch(() => {
-      //     // console.log('Failed to fetch search results: ', err);
-      //     setListOwners([]);
-      //   })
-      //   .finally(() => {
-      //     setIsUserLoading(false);
-      //   });
-
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
           const { users, teams } = res;
@@ -207,18 +179,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const getOwnerSuggestion = useCallback(
     (searchText = '') => {
       setIsUserLoading(true);
-      // getUserSuggestions(searchText)
-      //   .then((res: AxiosResponse) => {
-      //     const { users, teams } = formatTeamsAndUsersResponse(
-      //       res.data.suggest['table-suggest'][0].options
-      //     );
-      //     setListOwners(getOwnerList(users, teams));
-      //   })
-      //   .catch(() => {
-      //     setListOwners(getOwnerList());
-      //   })
-      //   .finally(() => setIsUserLoading(false));
-
       suggestFormattedUsersAndTeams(searchText)
         .then((res) => {
           const { users, teams } = res;
@@ -398,7 +358,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   }, [currentTier]);
 
   useEffect(() => {
-    // setListOwners(getOwnerList());
     debounceOnSearch(searchText);
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
@@ -408,8 +367,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   useEffect(() => {
     if (!listVisible) {
-      // setSearchText('');
-      // setListOwners(getOwnerList());
       handleOwnerSearch('');
     }
   }, [listVisible]);

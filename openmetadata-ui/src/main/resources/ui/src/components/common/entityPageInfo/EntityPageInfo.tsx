@@ -170,7 +170,7 @@ const EntityPageInfo = ({
         ) : (
           <p>{entityName} doesn&#39;t have any followers yet</p>
         )}
-        {list.length > 0 && (
+        {list.length > FOLLOWERS_VIEW_CAP && (
           <p
             className="link-text tw-text-sm tw-py-2"
             onClick={() => setIsViewMore(true)}>

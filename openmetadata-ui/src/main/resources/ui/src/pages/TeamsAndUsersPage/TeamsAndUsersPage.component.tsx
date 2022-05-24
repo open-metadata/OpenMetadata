@@ -182,7 +182,6 @@ const TeamsAndUsersPage = () => {
     setIsUsersLoading(true);
     deleteUser(id)
       .then(() => {
-        // AppState.updateUsers((userList || []).filter((item) => item.id !== id));
         getAllUsersList();
       })
       .catch((err: AxiosError) => {

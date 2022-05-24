@@ -249,11 +249,6 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             data-testid="dropdown-list"
             role="menu"
             style={dropDownPosition}>
-            {/* {isLoading ? (
-              <div className={widthClass}>
-                <Loader />
-              </div>
-            ) : ( */}
             <>
               {showSearchBar && (
                 <div className="has-search tw-p-4 tw-pb-2">
@@ -306,7 +301,6 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                 </div>
               )}
             </>
-            {/* )} */}
           </div>
         </>
       )}
