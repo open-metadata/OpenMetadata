@@ -23,7 +23,6 @@ import {
   getSuggestedUsers,
 } from '../axiosAPIs/miscAPI';
 import { getRoles } from '../axiosAPIs/rolesAPI';
-import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
@@ -43,16 +42,6 @@ export const getAllUsersList = (arrQueryFields = ''): void => {
     });
 };
 
-const getAllTeams = (): void => {
-  getTeams('defaultRoles')
-    .then((res: AxiosResponse) => {
-      AppState.updateUserTeam(res.data.data);
-    })
-    .catch(() => {
-      AppState.updateUserTeam([]);
-    });
-};
-
 const getAllRoles = (): void => {
   getRoles()
     .then((res: AxiosResponse) => {
@@ -66,7 +55,6 @@ const getAllRoles = (): void => {
 export const fetchAllUsers = () => {
   AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
-  getAllTeams();
   getAllRoles();
 };
 

@@ -36,6 +36,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
 import {
+  API_RES_MAX_SIZE,
   getTeamAndUserDetailsPath,
   INITIAL_PAGIN_VALUE,
   PAGE_SIZE_MEDIUM,
@@ -246,6 +247,32 @@ const TeamsAndUsersPage = () => {
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  /**
+   * Make API call to fetch all the teams
+   */
+  const fetchUsers = () => {
+    return new Promise<void>((resolve, reject) => {
+      getUsers('profile,teams,roles', API_RES_MAX_SIZE)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            const resUsers = res.data.data;
+            setUserList(resUsers);
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-teams-error']
+          );
+          showErrorToast(errMsg);
+          reject();
+        });
+    });
   };
 
   /**
@@ -632,12 +659,20 @@ const TeamsAndUsersPage = () => {
       setactiveUserTab(undefined);
       setIsTeamVisible(true);
     }
-    setUserList(AppState.users);
-    setAllTabList(AppState.users, teamAndUser as UserType);
+    setAllTabList(userList, teamAndUser as UserType);
     setUserSearchTerm('');
     setTeamUsersSearchText('');
-    fetchTeams();
-  }, [teamAndUser, AppState.users]);
+  }, [teamAndUser, userList]);
+
+  useEffect(() => {
+    fetchUsers()
+      .then(() => {
+        fetchTeams();
+      })
+      .catch((_) => {
+        // ignore exception handling, as its handled in previous promises.
+      });
+  }, []);
 
   return (
     <PageContainerV1>
