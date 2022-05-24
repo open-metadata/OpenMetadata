@@ -34,6 +34,9 @@
         "config": {
           "oneOf": [
             {
+              "$ref": "./connections/pipeline/backendConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/airflowConnection.json"
             }
           ]
