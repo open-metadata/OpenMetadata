@@ -67,6 +67,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.exception.UnhandledServerException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableUpdater;
@@ -552,10 +553,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
-    List<EntityReference> contains =
+    List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
 
-    if (contains.isEmpty()) {
+    if (records.isEmpty()) {
       return;
     }
     // Entity being deleted contains children entities
@@ -563,13 +564,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityReference entityReference : contains) {
-      LOG.info(
-          "Recursively {} deleting {} {}",
-          hardDelete ? "hard" : "soft",
-          entityReference.getType(),
-          entityReference.getId());
-      Entity.deleteEntity(updatedBy, entityReference.getType(), entityReference.getId(), true, hardDelete);
+    for (EntityRelationshipRecord record : records) {
+      LOG.info("Recursively {} deleting {} {}", hardDelete ? "hard" : "soft", record.getType(), record.getId());
+      Entity.deleteEntity(updatedBy, record.getType(), record.getId(), true, hardDelete);
     }
   }
 
@@ -771,10 +768,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsFollower || entity == null) {
       return null;
     }
-    List<EntityReference> followers = findFrom(entity.getId(), entityType, Relationship.FOLLOWS);
-    for (EntityReference follower : followers) {
-      User user = daoCollection.userDAO().findEntityById(follower.getId(), ALL);
-      follower.withName(user.getName()).withDeleted(user.getDeleted()).withFullyQualifiedName(user.getName());
+    List<EntityReference> followers = new ArrayList<>();
+    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS);
+    for (EntityRelationshipRecord record : records) {
+      followers.add(daoCollection.userDAO().findEntityReferenceById(record.getId(), ALL));
     }
     return followers;
   }
@@ -792,14 +789,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void restoreEntity(String updatedBy, String entityType, UUID id) throws IOException {
     // If an entity being restored contains other **deleted** children entities, restore them
-    List<EntityReference> contains =
+    List<EntityRelationshipRecord> records =
         daoCollection.relationshipDAO().findTo(id.toString(), entityType, Relationship.CONTAINS.ordinal());
 
-    if (!contains.isEmpty()) {
+    if (!records.isEmpty()) {
       // Restore all the contained entities
-      for (EntityReference entityReference : contains) {
-        LOG.info("Recursively restoring {} {}", entityReference.getType(), entityReference.getId());
-        Entity.restoreEntity(updatedBy, entityReference.getType(), entityReference.getId());
+      for (EntityRelationshipRecord record : records) {
+        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
+        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
       }
     }
 
@@ -852,15 +849,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
 
-  public List<EntityReference> findFrom(UUID toId, String toEntityType, Relationship relationship) {
+  public List<EntityRelationshipRecord> findFrom(UUID toId, String toEntityType, Relationship relationship) {
     return daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal());
   }
 
   public EntityReference getContainer(UUID toId, String toEntityType) throws IOException {
-    List<EntityReference> refs = findFrom(toId, toEntityType, Relationship.CONTAINS);
+    List<EntityRelationshipRecord> records = findFrom(toId, toEntityType, Relationship.CONTAINS);
     // An entity can have only one container
-    ensureSingleRelationship(toEntityType, toId, refs, "container", true);
-    return Entity.getEntityReferenceById(refs.get(0).getType(), refs.get(0).getId(), ALL);
+    ensureSingleRelationship(toEntityType, toId, records, "container", true);
+    return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
   }
 
   public void ensureSingleRelationship(
@@ -877,7 +874,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+  public final List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     return daoCollection
         .relationshipDAO()
         .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
@@ -916,9 +913,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsOwner) {
       return null;
     }
-    List<EntityReference> refs = findFrom(entity.getId(), entityType, Relationship.OWNS);
-    ensureSingleRelationship(entityType, entity.getId(), refs, "owners", false);
-    return refs.isEmpty() ? null : getOwner(refs.get(0));
+    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.OWNS);
+    ensureSingleRelationship(entityType, entity.getId(), records, "owners", false);
+    return records.isEmpty()
+        ? null
+        : getOwner(new EntityReference().withId(records.get(0).getId()).withType(records.get(0).getType()));
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {

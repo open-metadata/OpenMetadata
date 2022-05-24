@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +23,17 @@ import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.catalog.type.ColumnLineage;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.LineageDetails;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.util.FullyQualifiedName;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class LineageRepository {
   private final CollectionDAO dao;
@@ -57,9 +65,40 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
+    // Validate lineage details
+    String detailsJson = validateLineageDetails(from, to, addLineage.getEdge().getLineageDetails());
+
     // Finally, add lineage relationship
     dao.relationshipDAO()
-        .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal());
+        .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
+  }
+
+  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
+      throws IOException {
+    if (details == null || listOrEmpty(details.getColumnsLineage()).isEmpty()) {
+      return null;
+    }
+
+    List<ColumnLineage> columnsLineage = details.getColumnsLineage();
+    if (!from.getType().equals(Entity.TABLE) || !to.getType().equals(Entity.TABLE)) {
+      throw new IllegalArgumentException("Column level lineage is only allowed between two tables.");
+    }
+
+    Table fromTable = dao.tableDAO().findEntityById(from.getId());
+    Table toTable = dao.tableDAO().findEntityById(to.getId());
+    for (ColumnLineage columnLineage : columnsLineage) {
+      for (String fromColumn : columnLineage.getFromColumns()) {
+        // From column belongs to the fromNode
+        if (fromColumn.startsWith(fromTable.getFullyQualifiedName())) {
+          TableRepository.validateColumnFQN(fromTable, fromColumn);
+        } else {
+          Table otherTable = dao.tableDAO().findEntityByName(FullyQualifiedName.getTableFQN(fromColumn));
+          TableRepository.validateColumnFQN(otherTable, fromColumn);
+        }
+      }
+      TableRepository.validateColumnFQN(toTable, columnLineage.getToColumn());
+    }
+    return JsonUtils.pojoToJson(details);
   }
 
   @Transaction
@@ -89,54 +128,66 @@ public class LineageRepository {
             .withNodes(entities)
             .withUpstreamEdges(new ArrayList<>())
             .withDownstreamEdges(new ArrayList<>());
-    addUpstreamLineage(primary.getId(), primary.getType(), lineage, upstreamDepth);
-    addDownstreamLineage(primary.getId(), primary.getType(), lineage, downstreamDepth);
+    getUpstreamLineage(primary.getId(), primary.getType(), lineage, upstreamDepth);
+    getDownstreamLineage(primary.getId(), primary.getType(), lineage, downstreamDepth);
 
     // Remove duplicate nodes
     lineage.withNodes(lineage.getNodes().stream().distinct().collect(Collectors.toList()));
-
-    // Add entityReference details
-    for (int i = 0; i < lineage.getNodes().size(); i++) {
-      EntityReference ref = lineage.getNodes().get(i);
-      ref = Entity.getEntityReferenceById(ref.getType(), ref.getId(), Include.NON_DELETED);
-      lineage.getNodes().set(i, ref);
-    }
     return lineage;
   }
 
-  private void addUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
+  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth)
+      throws IOException {
     if (upstreamDepth == 0) {
       return;
     }
     // from this id ---> find other ids
-    List<EntityReference> upstreamEntities =
+    List<EntityRelationshipRecord> records =
         dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
-    lineage.getNodes().addAll(upstreamEntities);
+
+    final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
+    for (EntityRelationshipRecord record : records) {
+      EntityReference ref = Entity.getEntityReferenceById(record.getType(), record.getId(), Include.ALL);
+      LineageDetails lineageDetails = JsonUtils.readValue(record.getJson(), LineageDetails.class);
+      upstreamEntityReferences.add(ref);
+      lineage
+          .getUpstreamEdges()
+          .add(new Edge().withFromEntity(ref.getId()).withToEntity(id).withLineageDetails(lineageDetails));
+    }
+
+    lineage.getNodes().addAll(upstreamEntityReferences);
 
     upstreamDepth--;
-    for (EntityReference upstreamEntity : upstreamEntities) {
-      lineage.getUpstreamEdges().add(new Edge().withFromEntity(upstreamEntity.getId()).withToEntity(id));
-      addUpstreamLineage(
-          upstreamEntity.getId(),
-          upstreamEntity.getType(),
-          lineage,
-          upstreamDepth); // Recursively add upstream nodes and edges
+    // Recursively add upstream nodes and edges
+    for (EntityReference entity : upstreamEntityReferences) {
+      getUpstreamLineage(entity.getId(), entity.getType(), lineage, upstreamDepth);
     }
   }
 
-  private void addDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
+  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth)
+      throws IOException {
     if (downstreamDepth == 0) {
       return;
     }
     // from other ids ---> to this id
-    List<EntityReference> downStreamEntities =
+    List<EntityRelationshipRecord> records =
         dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
-    lineage.getNodes().addAll(downStreamEntities);
+
+    final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
+    for (EntityRelationshipRecord record : records) {
+      EntityReference ref = Entity.getEntityReferenceById(record.getType(), record.getId(), Include.ALL);
+      LineageDetails lineageDetails = JsonUtils.readValue(record.getJson(), LineageDetails.class);
+      downstreamEntityReferences.add(ref);
+      lineage
+          .getDownstreamEdges()
+          .add(new Edge().withToEntity(ref.getId()).withFromEntity(id).withLineageDetails(lineageDetails));
+    }
+    lineage.getNodes().addAll(downstreamEntityReferences);
 
     downstreamDepth--;
-    for (EntityReference entity : downStreamEntities) {
-      lineage.getDownstreamEdges().add(new Edge().withToEntity(entity.getId()).withFromEntity(id));
-      addDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
+    // Recursively add upstream nodes and edges
+    for (EntityReference entity : downstreamEntityReferences) {
+      getDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
     }
   }
 }

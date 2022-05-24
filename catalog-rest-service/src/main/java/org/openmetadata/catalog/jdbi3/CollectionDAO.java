@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import lombok.Builder;
 import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -63,7 +64,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
@@ -284,11 +284,14 @@ public interface CollectionDAO {
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, :json)",
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -336,18 +339,12 @@ public interface CollectionDAO {
     }
   }
 
-  class FromEntityReferenceMapper implements RowMapper<EntityReference> {
-    @Override
-    public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
-      return new EntityReference().withId(UUID.fromString(rs.getString("fromId"))).withType(rs.getString("fromEntity"));
-    }
-  }
-
-  class ToEntityReferenceMapper implements RowMapper<EntityReference> {
-    @Override
-    public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
-      return new EntityReference().withId(UUID.fromString(rs.getString("toId"))).withType(rs.getString("toEntity"));
-    }
+  @Getter
+  @Builder
+  class EntityRelationshipRecord {
+    private UUID id;
+    private String type;
+    private String json;
   }
 
   interface EntityRelationshipDAO {
@@ -361,32 +358,15 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
-                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
-        connectionType = POSTGRES)
-    int insert(
-        @Bind("fromId") String fromId,
-        @Bind("toId") String toId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation);
-
-    @ConnectionAwareSqlUpdate(
-        value =
             "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json)",
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
+                + "ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
                 + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     int insert(
         @Bind("fromId") String fromId,
@@ -400,13 +380,14 @@ public interface CollectionDAO {
     // Find to operations
     //
     @SqlQuery(
-        "SELECT toId, toEntity FROM entity_relationship "
+        "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
             + "ORDER BY toId")
-    @RegisterRowMapper(ToEntityReferenceMapper.class)
-    List<EntityReference> findTo(
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findTo(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
 
+    // TODO delete this
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
@@ -442,11 +423,11 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
+        "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFrom(
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
     //
@@ -487,6 +468,28 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
     void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+
+    class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
+      @Override
+      public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipRecord.builder()
+            .id(UUID.fromString(rs.getString("fromId")))
+            .type(rs.getString("fromEntity"))
+            .json(rs.getString("json"))
+            .build();
+      }
+    }
+
+    class ToRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
+      @Override
+      public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipRecord.builder()
+            .id(UUID.fromString(rs.getString("toId")))
+            .type(rs.getString("toEntity"))
+            .json(rs.getString("json"))
+            .build();
+      }
+    }
   }
 
   interface FeedDAO {
