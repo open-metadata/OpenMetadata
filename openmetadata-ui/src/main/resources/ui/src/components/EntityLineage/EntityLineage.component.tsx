@@ -453,8 +453,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           ? [
               ...(updatedLineageData.downstreamEdges as EntityEdge[]),
               {
-                fromEntity: sourceNode?.id,
-                toEntity: targetNode?.id,
+                fromEntity: sourceNode?.id as string,
+                toEntity: targetNode?.id as string,
               },
             ]
           : updatedLineageData.downstreamEdges;
@@ -468,8 +468,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           ? [
               ...(updatedLineageData.upstreamEdges as EntityEdge[]),
               {
-                fromEntity: sourceNode?.id,
-                toEntity: targetNode?.id,
+                fromEntity: sourceNode?.id as string,
+                toEntity: targetNode?.id as string,
               },
             ]
           : updatedLineageData.upstreamEdges;
