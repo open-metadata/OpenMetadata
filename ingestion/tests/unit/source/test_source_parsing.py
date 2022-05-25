@@ -435,7 +435,6 @@ def test_metabase():
                 "username": "username",
                 "password": "password",
                 "hostPort": "http://hostPort",
-                "dbServiceName": "Database Service Name to create Lineage",
             }
         },
         "sourceConfig": {
