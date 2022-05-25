@@ -17,6 +17,7 @@ checkpoints actions.
 """
 
 import logging
+import os
 from enum import Enum
 from typing import Dict, Optional, Union
 
@@ -49,7 +50,7 @@ from metadata.generated.schema.security.client import (
     googleSSOClientConfig,
     oktaSSOClientConfig,
 )
-from metadata.great_expectations.column_test_builders import (
+from metadata.great_expectations.columns.column_test_builders import (
     ColumnValuesLengthsToBeBetweenBuilder,
     ColumnValuesToBeBetweenBuilder,
     ColumnValuesToBeNotInSetBuilder,
@@ -57,10 +58,15 @@ from metadata.great_expectations.column_test_builders import (
     ColumnValuesToBeUniqueBuilder,
     ColumnValuesToMatchRegexBuilder,
 )
-from metadata.great_expectations.table_test_builders import (
+from metadata.great_expectations.tables.table_test_builders import (
     TableColumCountToEqualBuilder,
     TableRowCountToBeBetweenBuilder,
     TableRowCountToEqualBuilder,
+)
+from metadata.great_expectations.utils.utils import (
+    create_jinja_environment,
+    render_template,
+    create_ometa_connection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -121,6 +127,7 @@ class OpenMetadataValidationAction(ValidationAction):
         azure_scopes: if auth method is azure
         custom_oid_token_endpoint: if auth method is custom
         api_version: default to v1
+        config_file_path: path to the open metdata config path
     """
 
     # pylint: disable=too-many-locals
@@ -142,6 +149,7 @@ class OpenMetadataValidationAction(ValidationAction):
         azure_scopes: Optional[str] = None,
         custom_oid_token_endpoint: Optional[str] = None,
         api_version: str = "v1",
+        config_file_path: str = None,
     ):
         super().__init__(data_context)
         self.ometa_server = ometa_server
@@ -158,6 +166,7 @@ class OpenMetadataValidationAction(ValidationAction):
         self.azure_scopes = azure_scopes
         self.custom_oid_token_endpoint = custom_oid_token_endpoint
         self.api_version = api_version
+        self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
 
     # pylint: disable=arguments-differ,unused-argument
@@ -190,6 +199,7 @@ class OpenMetadataValidationAction(ValidationAction):
             check_point_spec.get("schema_name"),
             check_point_spec.get("table_name"),
         )
+
 
         if table_entity:
             for result in validation_result_suite.results:
@@ -300,6 +310,14 @@ class OpenMetadataValidationAction(ValidationAction):
         )
 
         return ometa_connection
+
+    def _create_ometa_connection_from_file(self) -> OpenMetadata:
+        """Create OpenMetadata API connection"""
+        environment = create_jinja_environment(self.config_file_path)
+        rendered_config = render_template(environment)
+
+        return create_ometa_connection(rendered_config)
+
 
     @staticmethod
     def _get_auth_provider(auth_provider: str) -> AuthProvider:
