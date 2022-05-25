@@ -326,8 +326,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         {mlModelDetail.mlStore ? (
           <table
             className="tw-w-full tw-mt-2"
-            data-testid="modle-store-table"
-            id="modle-store-table">
+            data-testid="model-store-table"
+            id="model-store-table">
             <thead>
               <tr className="tableHead-row">
                 {Object.keys(mlModelDetail.mlStore).map((key) => (

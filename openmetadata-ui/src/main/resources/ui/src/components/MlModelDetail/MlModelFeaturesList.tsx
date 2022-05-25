@@ -157,12 +157,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   if (mlFeatures && mlFeatures.length) {
     return (
       <Fragment>
-        <div className="tw-flex tw-flex-col">
+        <div className="tw-flex tw-flex-col" data-testid="feature-list">
           <hr className="tw-my-4" />
           <h6 className="tw-font-medium tw-text-base">Features used</h6>
           {mlFeatures.map((feature) => (
             <div
               className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-mb-8"
+              data-testid="feature-card"
               key={uniqueId()}>
               <h6 className="tw-font-semibold">{feature.name}</h6>
               {/* feature name and tags */}
