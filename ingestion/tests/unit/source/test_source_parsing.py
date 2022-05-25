@@ -172,7 +172,6 @@ def test_bigquery():
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
-                "enablePolicyTagImport": True,
                 "credentials": {
                     "gcsConfig": {
                         "type": "service_account",

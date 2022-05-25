@@ -42,20 +42,18 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SqlAlchamySource(Source, ABC):
+class SqlAlchemySource(Source, ABC):
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
         Method Yields Inspector objects for each aviable database
         """
-        pass
 
     @abstractmethod
     def get_schemas(self, inspector: Inspector) -> str:
         """
         Method Yields schemas aviable in database
         """
-        pass
 
     @abstractmethod
     def standardize_schema_table_names(
@@ -64,7 +62,6 @@ class SqlAlchamySource(Source, ABC):
         """
         Method formats Table & Schema names if required
         """
-        pass
 
     @abstractmethod
     def get_table_description(
@@ -73,32 +70,30 @@ class SqlAlchamySource(Source, ABC):
         """
         Method returns the table level comment
         """
-        pass
 
     @abstractmethod
     def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
         """
         Method to check if the table is partitioned table
         """
-        pass
 
     @abstractmethod
     def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
-        pass
+        """
+        Method to fetch data modles
+        """
 
     @abstractmethod
     def fetch_sample_data(self, schema: str, table_name: str) -> Optional[TableData]:
         """
         Method to fetch sample data form table
         """
-        pass
 
     @abstractmethod
     def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
         """
         Method to fetch table & view names
         """
-        pass
 
     @abstractmethod
     def get_columns(
@@ -107,7 +102,6 @@ class SqlAlchamySource(Source, ABC):
         """
         Method to fetch table columns data
         """
-        pass
 
     @abstractmethod
     def get_view_definition(
@@ -116,14 +110,12 @@ class SqlAlchamySource(Source, ABC):
         """
         Method to fetch view definition
         """
-        pass
 
     @abstractmethod
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         """
         Method to fetch tags associated with column
         """
-        pass
 
     @abstractmethod
     def fetch_table_tags(
@@ -132,7 +124,6 @@ class SqlAlchamySource(Source, ABC):
         """
         Method to fetch tags associated with table
         """
-        pass
 
     def get_database_entity(self, database_name: Optional[str]) -> Database:
         """

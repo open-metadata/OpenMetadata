@@ -31,7 +31,6 @@ CONFIG = """
     "serviceConnection": {
       "config": {
         "type": "BigQuery",
-        "enablePolicyTagImport": true,
         "credentials": {
             "gcsConfig": {
               "type": "service_account",

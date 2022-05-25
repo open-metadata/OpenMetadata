@@ -39,7 +39,7 @@ from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_souce import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
-from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchamySource
+from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
@@ -70,7 +70,7 @@ class SQLSourceStatus(SourceStatus):
         logger.warning(f"Filtered Table {record} due to {err}")
 
 
-class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchamySource):
+class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
     def __init__(
         self,
         config: WorkflowSource,

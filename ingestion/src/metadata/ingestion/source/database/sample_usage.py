@@ -30,7 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException, Source
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sample_data import SampleDataSourceStatus
+from metadata.ingestion.source.database.sample_data import SampleDataSourceStatus
 
 
 class SampleUsageSource(Source[TableQuery]):

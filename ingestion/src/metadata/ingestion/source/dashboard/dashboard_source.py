@@ -29,49 +29,42 @@ class DashboardSourceService(Source, ABC):
         """
         Get List of all dashboards
         """
-        pass
 
     @abstractmethod
     def get_dashboard_name(self, dashboard_details: Any) -> str:
         """
         Get Dashboard Name
         """
-        pass
 
     @abstractmethod
     def get_dashboard_details(self, dashboard: Any) -> Any:
         """
         Get Dashboard Details
         """
-        pass
 
     @abstractmethod
     def get_dashboard_entity(self, dashboard_details: Any) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
-        pass
 
     @abstractmethod
     def get_lineage(self, dashboard_details: Any) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
-        pass
 
     @abstractmethod
     def process_charts(self) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch Charts
         """
-        pass
 
     @abstractmethod
     def fetch_dashboard_charts(self, dashboard: Any) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard
         """
-        pass
 
     @abstractmethod
     def __init__(
