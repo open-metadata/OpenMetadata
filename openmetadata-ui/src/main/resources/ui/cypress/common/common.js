@@ -241,12 +241,17 @@ export const testSampleData = (entity) => {
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
   cy.get('[data-testid="edit"]').should('be.visible').click();
   cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+    .scrollIntoView()
     .should('be.visible')
     .click();
   cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+    .scrollIntoView()
     .should('be.visible')
     .should('have.class', 'open');
-  cy.get('[data-testid="next-button"]').should('be.visible').click();
+  cy.get('[data-testid="next-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 
   cy.get('[data-testid="dbt-source"]').should('be.visible');
   cy.get('[data-testid="submit-btn"]').should('be.visible').click();

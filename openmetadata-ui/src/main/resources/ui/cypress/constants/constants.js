@@ -122,11 +122,18 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-//modified-leaf-330420.stackoverflow
 export const BIG_QUERY_TABLE = {
   term: 'users',
   entity: MYDATA_SUMMARY_OPTIONS.tables,
   db: 'modified-leaf-330420',
   schema: 'stackoverflow',
+  entityType: 'database',
+};
+
+export const MY_SQL_TABLE = {
+  term: 'user_entity',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'openmetadata_db',
+  schema: 'openmetadata_db',
   entityType: 'database',
 };
