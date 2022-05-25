@@ -284,10 +284,8 @@ describe('TeamsAndUsers page', () => {
 
     cy.get('[data-testid="Manage"]').should('be.visible').click();
     cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-
-    cy.get('[data-testid="searchInputText"]')
-      .should('be.visible')
-      .type(TEAMS.Cloud_Infra.name);
+    
+    cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
       .should('be.visible')
@@ -368,7 +366,7 @@ describe('TeamsAndUsers page', () => {
         cy.get('.tw-z-10').click();
 
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')
