@@ -38,10 +38,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.messagingService import (
-    MessagingService,
-    MessagingServiceType,
-)
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )

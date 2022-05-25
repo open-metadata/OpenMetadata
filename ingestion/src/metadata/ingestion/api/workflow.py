@@ -227,7 +227,6 @@ class Workflow:
             click.secho("Workflow finished successfully", fg="green", bold=True)
             return 0
 
-
     def log_flow_status(self) -> int:
         from prefect import get_run_logger
 
