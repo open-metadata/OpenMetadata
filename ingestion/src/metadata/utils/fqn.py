@@ -26,6 +26,7 @@ from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -119,6 +120,7 @@ def _(
     database_name: Optional[str],
     schema_name: Optional[str],
     table_name: str,
+    retries: int = 3,
 ) -> Optional[str]:
     """
     Building logic for tables
@@ -127,6 +129,7 @@ def _(
     :param database_name: DB name or None
     :param schema_name: Schema name or None
     :param table_name: Table name
+    :param retries: ES Search retries
     :return:
     """
     if not service_name or not table_name:
@@ -143,6 +146,7 @@ def _(
                 "database_schema": schema_name,
                 "name": table_name,
             },
+            retries=retries,
         )
         entity: Optional[Table] = get_entity_from_es_result(entity_list=es_result)
         return str(entity.fullyQualifiedName.__root__) if entity else None
@@ -209,7 +213,7 @@ def _(
 
 @fqdn_build_registry.add(DataModel)
 def _(
-    metadata: OpenMetadata,
+    _: OpenMetadata,
     *,
     service_name: str,
     database_name: str,
@@ -218,3 +222,13 @@ def _(
 ) -> str:
 
     return _build(service_name, database_name, schema_name, model_name)
+
+
+@fqdn_build_registry.add(Pipeline)
+def _(
+    _: OpenMetadata,
+    *,
+    service_name: str,
+    pipeline_name: str,
+) -> str:
+    return _build(service_name, pipeline_name)

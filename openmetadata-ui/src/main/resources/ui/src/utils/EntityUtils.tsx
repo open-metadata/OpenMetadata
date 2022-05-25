@@ -457,6 +457,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
                     { 'tw-w-52': (displayVal as string).length > 32 }
                   )}
+                  data-testid="owner-name"
                   title={displayVal as string}>
                   {displayVal}
                 </span>

@@ -61,9 +61,8 @@
           "type": "string"
         },
         "taskUrl": {
-          "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
-          "type": "string",
-          "format": "uri"
+          "description": "Task URL suffix to visit/manage. This URL points to respective pipeline service UI.",
+          "type": "string"
         },
         "downstreamTasks": {
           "description": "All the tasks that are downstream of this task.",
@@ -159,9 +158,8 @@
       "type": "string"
     },
     "pipelineUrl": {
-      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
-      "type": "string",
-      "format": "uri"
+      "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI.",
+      "type": "string"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline.",

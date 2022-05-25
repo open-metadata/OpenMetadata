@@ -25,14 +25,6 @@ from metadata.utils.elasticsearch import ES_INDEX_MAP, get_query_from_dict
 
 logger = ometa_logger()
 
-
-# Prevent sqllineage from modifying the logger config
-def configure(self):
-    pass
-
-
-DictConfigurator.configure = configure
-
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -80,7 +72,7 @@ class ESMixin(Generic[T]):
         :param retries: Times to retry
         :return: List of Entities or None
         """
-        times = min(1, retries)  # Try at least once
+        times = max(1, retries)  # Try at least once
         while times:
             entity_list = self._search_es_entity(
                 entity_type=entity_type, query_string=query_string

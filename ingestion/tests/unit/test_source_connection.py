@@ -12,6 +12,10 @@
 
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
+    AthenaScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
@@ -36,6 +40,10 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
     MariaDBConnection,
     MariaDBScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+    MssqlScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
     MySQLScheme,
@@ -47,6 +55,10 @@ from metadata.generated.schema.entity.services.connections.database.pinotDBConne
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
     PostgresScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+    PrestoScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -68,6 +80,7 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
     VerticaScheme,
 )
+from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
 
@@ -631,3 +644,66 @@ class SouceConnectionTest(TestCase):
             account="account.region_name.cloud_service",
         )
         assert expected_args == get_connection_args(snowflake_conn_obj)
+
+    def test_athena_url(self):
+        # connection arguments without db
+        awsCreds = awsCredentials.AWSCredentials(
+            awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
+        )
+
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        athena_conn_obj = AthenaConnection(
+            awsConfig=awsCreds,
+            s3StagingDir="s3athena-postgres",
+            workgroup="primary",
+            scheme=AthenaScheme.awsathena_rest,
+            database=None,
+        )
+        assert expected_url == get_connection_url(athena_conn_obj)
+
+        # connection arguments witho db
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443/test?s3_staging_dir=s3athena-postgres&work_group=primary"
+        athena_conn_obj = AthenaConnection(
+            awsConfig=awsCreds,
+            s3StagingDir="s3athena-postgres",
+            workgroup="primary",
+            scheme=AthenaScheme.awsathena_rest,
+            database="test",
+        )
+        assert expected_url == get_connection_url(athena_conn_obj)
+
+    def test_mssql_url(self):
+        # connection arguments without db
+        expected_url = "mssql+pytds://sa:password@localhost:1433"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database=None,
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+        # connection arguments witho db
+        expected_url = "mssql+pytds://sa:password@localhost:1433/catalog_test"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database="catalog_test",
+        )
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+    def test_presto_url(self):
+        # connection arguments without db
+        expected_url = "presto://admin@localhost:8080/test_catalog"
+
+        presto_conn_obj = PrestoConnection(
+            username="admin",
+            hostPort="localhost:8080",
+            scheme=PrestoScheme.presto,
+            catalog="test_catalog",
+        )
+        assert expected_url == get_connection_url(presto_conn_obj)

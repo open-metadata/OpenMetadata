@@ -14,6 +14,7 @@
 import { isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
+import { entityUrlMap } from '../constants/feed.constants';
 import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
@@ -82,7 +83,9 @@ export const getDefaultValue = (owner: EntityReference) => {
     const name = owner.name;
     const displayName = owner.displayName;
     const entityType = owner.type;
-    const mention = `<a href=${`${document.location.protocol}//${document.location.host}/${entityType}/${name}`}>@${displayName}</a>`;
+    const mention = `<a href=${`/${
+      entityUrlMap[entityType as keyof typeof entityUrlMap]
+    }/${name}`}>@${displayName}</a>`;
 
     return `${mention} ${message}`;
   }

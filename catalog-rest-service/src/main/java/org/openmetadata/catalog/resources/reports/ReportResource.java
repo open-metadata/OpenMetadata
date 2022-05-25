@@ -79,6 +79,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @GET
   @Operation(
+      operationId = "listReports",
       summary = "List reports",
       tags = "reports",
       description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
@@ -104,6 +105,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getReportByID",
       summary = "Get a report",
       tags = "reports",
       description = "Get a report by `id`.",
@@ -135,6 +137,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @POST
   @Operation(
+      operationId = "getReportByFQN",
       summary = "Create a report",
       tags = "reports",
       description = "Create a new report.",
@@ -153,6 +156,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateReport",
       summary = "Create or update a report",
       tags = "reports",
       description = "Create a new report, it it does not exist or update an existing report.",
