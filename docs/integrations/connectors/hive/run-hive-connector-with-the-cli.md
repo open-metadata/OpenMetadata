@@ -31,51 +31,43 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
+### 1. Define the YAML Config
 
 This is a sample config for Hive:
 
 {% code title="hive.json" %}
 ```json
-{
-  "source": {
-    "type": "hive",
-    "serviceName": "local_hive",
-    "serviceConnection": {
-      "config": {
-        "type":"Hive",
-        "username":"<username>",
-        "password":"<password>",
-        "database":"<database>",
-        "authOptions":"<auth optios>",
-        "hostPort": "<hive connection host & port>"
-      }
-    },
-    "sourceConfig": {
-      "config": {
-          "enableDataProfiler": true or false,
-          "markDeletedTables": true or false,
-          "includeTables": true or false,
-          "includeViews": true or false,
-          "generateSampleData": true or false,
-          "sampleDataQuery": "<query to fetch table data>",
-          "schemaFilterPattern": "<schema name regex list>",
-          "tableFilterPattern": "<table name regex list>",
-          "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
-        }
-      }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "<OpenMetadata host and port>",
-      "authProvider": "<OpenMetadata auth provider>"
-    }
-  }
-}
+source:
+  type: hive
+  serviceName: local_hive
+  serviceConnection:
+    config:
+      type: Hive
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      authOptions: "<auth optios>"
+      hostPort: "<hive connection host & port>"
+  sourceConfig:
+    config:
+      enableDataProfiler: true or false
+      markDeletedTables: true or false
+      includeTables: true or false
+      includeViews: true or false
+      generateSampleData: true or false
+      sampleDataQuery: "<query to fetch table data>"
+      schemaFilterPattern: "<schema name regex list>"
+      tableFilterPattern: "<table name regex list>"
+      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT
+        files"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
+
 ```
 {% endcode %}
 
@@ -103,7 +95,7 @@ To specify LDAP Auth, use the following `connectionArguments`:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -112,9 +104,10 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
-"tableFilterPattern": {
-  "includes": ["users", "type_test"]
-}
+tableFilterPattern:
+  includes:
+    - users
+    - type_test
 ```
 
 #### Sink Configuration
@@ -128,12 +121,10 @@ The main property here is the `openMetadataServerConfig`, where you can define t
 For a simple, local installation using our docker containers, this looks like:
 
 ```
-"workflowConfig": {
-  "openMetadataServerConfig": {
-    "hostPort": "http://localhost:8585/api",
-    "authProvider": "no-auth"
-  }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 #### OpenMetadata Security Providers
@@ -141,25 +132,22 @@ For a simple, local installation using our docker containers, this looks like:
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
 
 ```
-"workflowConfig": {
-    "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "auth0",
-        "securityConfig": {
-            "clientId": "<client ID>",
-            "secretKey": "<secret key>",
-            "domain": "<domain>"
-        }
-    }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: auth0
+    securityConfig:
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
 
 ### 2. Run with the CLI
 
-First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
@@ -168,52 +156,42 @@ Note that from connector to connector, this recipe will always be the same. By u
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
-### 1. Define the JSON configuration
+### 1. Define the YAML configuration
 
 This is a sample config for a Hive profiler:
 
 ```json
-{
-    "source": {
-        "type": "hive",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-                "type": "Hive",
-                "hostPort": "<hostPort>",
-                "username": "<username>",
-                "password": "<password>",
-                "database": "<database>",
-                "warehouse": "<warehouse>",
-                "account": "<acount>",
-                "privateKey": "<privateKey>",
-                "snowflakePrivatekeyPassphrase": "<passphrase>",
-                "scheme": "<scheme>",
-                "role": "<role>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "Profiler",
-                "fqnFilterPattern": "<table FQN filtering regex>"
-            }
-        }
-    },
-    "processor": {
-        "type": "orm-profiler",
-        "config": {}
-    },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
+source:
+  type: hive
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Hive
+      hostPort: "<hostPort>"
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      warehouse: "<warehouse>"
+      account: "<acount>"
+      privateKey: "<privateKey>"
+      snowflakePrivatekeyPassphrase: "<passphrase>"
+      scheme: "<scheme>"
+      role: "<role>"
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: "<table FQN filtering regex>"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
+
 ```
 
 #### Source Configuration
@@ -234,41 +212,26 @@ Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
 
 ```json
- "processor": {
-    "type": "orm-profiler",
-    "config": {
-        "test_suite": {
-            "name": "<Test Suite name>",
-            "tests": [
-                {
-                    "table": "<Table FQN>",
-                    "table_tests": [
-                        {
-                            "testCase": {
-                                "config": {
-                                    "value": 100
-                                },
-                                "tableTestType": "tableRowCountToEqual"
-                            }
-                        }
-                    ],
-                    "column_tests": [
-                        {
-                            "columnName": "<Column Name>",
-                            "testCase": {
-                                "config": {
-                                    "minValue": 0,
-                                    "maxValue": 99
-                                },
-                                "columnTestType": "columnValuesToBeBetween"
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-     }
-  },
+processor:
+  type: orm-profiler
+  config:
+    test_suite:
+      name: "<Test Suite name>"
+      tests:
+      - table: "<Table FQN>"
+        table_tests:
+        - testCase:
+            config:
+              value: 100
+            tableTestType: tableRowCountToEqual
+        column_tests:
+        - columnName: "<Column Name>"
+          testCase:
+            config:
+              minValue: 0
+              maxValue: 99
+            columnTestType: columnValuesToBeBetween
+
 ```
 
 `tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../../data-quality/data-quality-overview/tests.md).
@@ -279,12 +242,12 @@ The same as the [metadata](run-hive-connector-with-the-cli.md#workflow-configura
 
 ### 2. Run with the CLI
 
-Again, we will start by saving the JSON file.
+Again, we will start by saving the YAML file.
 
 Then, we can run the workflow as:
 
 ```
-metadata profile -c <path-to-json>
+metadata profile -c <path-to-yaml>
 ```
 
 Note how instead of running `ingest`, we are using the `profile` command to select the `Profiler` workflow.

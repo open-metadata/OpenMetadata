@@ -391,7 +391,7 @@ The same as the [metadata](run-bigquery-connector-using-airflow-sdk.md#workflow-
 Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
 
 ```python
-import json
+import yaml
 from datetime import timedelta
 
 from airflow import DAG
@@ -415,11 +415,11 @@ default_args = {
 }
 
 config = """
-<your JSON configuration>
+<your YAML configuration>
 """
 
 def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
+    workflow_config = yaml.safe_load(config)
     workflow = ProfilerWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
