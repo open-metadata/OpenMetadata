@@ -73,5 +73,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["s3StagingDir"]
 }

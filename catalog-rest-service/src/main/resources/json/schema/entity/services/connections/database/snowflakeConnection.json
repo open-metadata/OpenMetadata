@@ -96,5 +96,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account"]
+  "required": ["username", "account", "password", "database", "warehouse"]
 }

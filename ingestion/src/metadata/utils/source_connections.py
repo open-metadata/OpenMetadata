@@ -350,7 +350,8 @@ def _(connection: AthenaConnection):
     if connection.database:
         url += f"/{connection.database}"
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
-    url += f"&work_group={connection.workgroup}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
     return url
 
 
