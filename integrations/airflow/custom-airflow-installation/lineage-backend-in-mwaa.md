@@ -16,7 +16,7 @@ This is a WIP that has been tested in Airflow 2.0.2 using [https://github.com/aw
 
 #### **OpenMetadata (version 0.10.1 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../overview/run-openmetadata-with-prefect.md) guide.
 
 ## 1. requirements.txt
 

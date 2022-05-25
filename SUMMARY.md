@@ -8,6 +8,7 @@
 * [Releases](docs/overview/releases.md)
 * [Try OpenMetadata Sandbox](docs/overview/take-it-for-a-spin.md)
 * [Try OpenMetadata in Docker](overview/run-openmetadata.md)
+* [OpenMetadata & Prefect](overview/run-openmetadata-with-prefect.md)
 * [Tutorials](docs/overview/tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](docs/overview/tutorials/tutorial-data-discovery-with-openmetadata.md)
 

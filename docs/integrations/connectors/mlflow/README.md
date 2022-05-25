@@ -18,7 +18,7 @@ Please ensure that your host system meets the requirements listed below.
 
 ### **OpenMetadata (version 0.9.0 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md).
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../../overview/run-openmetadata-with-prefect.md) guide.
 
 ### **Python (version 3.8.0 or later)**
 

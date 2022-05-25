@@ -20,6 +20,9 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 Please refer to the [Run OpenMetadata ](../overview/run-openmetadata.md#install-on-your-local-machine)section to run the server manually or using [Docker](../overview/run-openmetadata.md#run-docker).
 
+You may also follow the [OpenMetadata & Prefect](../overview/run-openmetadata-with-prefect.md) guide.
+
+
 ### Install from PyPI
 
 {% tabs %}
