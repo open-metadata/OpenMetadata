@@ -48,12 +48,6 @@
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
-    "enablePolicyTagImport": {
-      "title": "Enable Policy Tag Import",
-      "description": "Enable importing policy tags of BigQuery into OpenMetadata",
-      "type": "boolean",
-      "default": true
-    },
     "tagCategoryName": {
       "title": "Tag Category Name",
       "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
