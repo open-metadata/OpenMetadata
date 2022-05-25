@@ -68,28 +68,10 @@ jobs:
         source env/bin/activate
         make coverage
 
-    - name: Run PR Sonar
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.event_name == 'pull_request_target' }}
-      run: |
-        git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-
-        # Add PR analysis information
-        echo "\nsonar.pullrequest.key=${{ github.event.pull_request.number }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.branch=${{ github.head_ref }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.base=main" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.github.repository=OpenMetadata" >> ingestion/sonar-project.properties
-        echo "sonar.scm.revision=${{ github.event.pull_request.head.sha }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.provider=github" >> ingestion/sonar-project.properties
-
-        # Validate new properties
-        cat ingestion/sonar-project.properties
-
-        make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
-
     - name: Run Sonar
+      uses: sonarsource/sonarcloud-github-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.event_name == 'push' }}
-      run: make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
