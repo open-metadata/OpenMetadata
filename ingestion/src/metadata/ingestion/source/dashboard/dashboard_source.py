@@ -98,7 +98,7 @@ class DashboardSourceService(Source, ABC):
     ) -> Iterable[Union[Dashboard, Chart, AddLineageRequest]]:
         """Get dashboard method"""
         for dashboard in self.get_dashboards_list():
-            if 1:
+            try:
                 dashboard_details = self.get_dashboard_details(dashboard)
                 if filter_by_dashboard(
                     self.source_config.dashboardFilterPattern,
@@ -112,9 +112,9 @@ class DashboardSourceService(Source, ABC):
                 yield from self.get_dashboard_entity(dashboard_details)
                 if self.source_config.dbServiceName:
                     yield from self.get_lineage(dashboard_details)
-            # except Exception as err:
-            #     logger.error(repr(err))
-            #     self.status.failure(self.get_dashboard_name(dashboard), repr(err))
+            except Exception as err:
+                logger.error(repr(err))
+                self.status.failure(self.get_dashboard_name(dashboard), repr(err))
 
     def get_status(self) -> SourceStatus:
         return self.status
