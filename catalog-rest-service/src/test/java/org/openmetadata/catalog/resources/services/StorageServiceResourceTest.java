@@ -15,7 +15,6 @@ package org.openmetadata.catalog.resources.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.util.Map;
@@ -76,8 +75,6 @@ public class StorageServiceResourceTest extends EntityResourceTest<StorageServic
   @Override
   public void validateCreatedEntity(
       StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        service, createRequest.getDescription(), getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
   }
 

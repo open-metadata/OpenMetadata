@@ -78,8 +78,6 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
 
   @Override
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        policy, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
   }
 

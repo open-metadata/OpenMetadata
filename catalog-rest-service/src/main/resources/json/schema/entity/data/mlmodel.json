@@ -51,7 +51,7 @@
         },
         "description": {
           "description": "Description of the feature source.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -85,7 +85,7 @@
         },
         "description": {
           "description": "Description of the ML Feature.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -128,7 +128,7 @@
         },
         "description": {
           "description": "Description of the Hyper Parameter.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         }
       }
     },
@@ -168,7 +168,7 @@
     },
     "description": {
       "description": "Description of the ML Model, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model.",

@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityThread } from 'Models';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
@@ -183,7 +184,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
-  return (
+  return ReactDOM.createPortal(
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
         className="tw-z-10 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
@@ -262,7 +263,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           onDiscard={onDiscard}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -130,6 +130,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listRoles",
       summary = "List roles",
       tags = "roles",
       description =
@@ -190,6 +191,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllRoleVersion",
       summary = "List role versions",
       tags = "roles",
       description = "Get a list of all the versions of a role identified by `id`",
@@ -211,6 +213,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getRoleByID",
       summary = "Get a role",
       tags = "roles",
       description = "Get a role by `id`.",
@@ -244,6 +247,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getRoleByFQN",
       summary = "Get a role by name",
       tags = "roles",
       description = "Get a role by `name`.",
@@ -276,6 +280,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificRoleVersion",
       summary = "Get a version of the role",
       tags = "roles",
       description = "Get a version of the role by given `id`",
@@ -303,6 +308,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @POST
   @Operation(
+      operationId = "createRole",
       summary = "Create a role",
       tags = "roles",
       description = "Create a new role.",
@@ -310,7 +316,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -324,6 +330,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateRole",
       summary = "Update role",
       tags = "roles",
       description = "Create or Update a role.",
@@ -331,7 +338,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateRole(
@@ -347,6 +354,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchRole",
       summary = "Update a role",
       tags = "roles",
       description = "Update an existing role with JsonPatch.",
@@ -373,6 +381,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteRole",
       summary = "Delete a role",
       tags = "roles",
       description = "Delete a role by given `id`.",

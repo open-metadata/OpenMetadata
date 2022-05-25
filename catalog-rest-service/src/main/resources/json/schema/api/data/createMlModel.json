@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the ML model instance. How it was trained and for what it is used.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model",

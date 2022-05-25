@@ -26,8 +26,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.sql_source import SQLSource
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
-from metadata.utils.fqdn_generator import get_fqdn
 
 
 class MysqlSource(SQLSource):
@@ -64,10 +64,11 @@ class MysqlSource(SQLSource):
             if self.source_config.includeViews:
                 yield from self.fetch_views(self.inspector, schema)
             if self.source_config.markDeletedTables:
-                schema_fqdn = get_fqdn(
-                    DatabaseSchema,
-                    self.config.serviceName,
-                    self.service_connection.database,
-                    schema,
+                schema_fqdn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.service_connection.database,
+                    schema_name=schema,
                 )
                 yield from self.delete_tables(schema_fqdn)

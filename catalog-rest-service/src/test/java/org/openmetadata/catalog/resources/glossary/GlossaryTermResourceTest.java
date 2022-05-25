@@ -79,7 +79,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Order(0)
   @Test
-  void get_listGlossaryTermsWithDifferentFilters() throws HttpResponseException {
+  void get_listGlossaryTermsWithDifferentFilters() throws IOException {
     // Create the following glossary
     // glossary1
     // - term1
@@ -274,12 +274,12 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEntityDeleted(t1.getId(), true);
   }
 
-  public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws HttpResponseException {
+  public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws IOException {
     EntityReference glossaryRef = glossary.getEntityReference();
     EntityReference parentRef = parent != null ? parent.getEntityReference() : null;
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null).withGlossary(glossaryRef).withParent(parentRef);
-    return createEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
   }
 
   public void assertContains(List<GlossaryTerm> expectedTerms, List<GlossaryTerm> actualTerms)
@@ -312,10 +312,14 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Override
   public void validateCreatedEntity(GlossaryTerm entity, CreateGlossaryTerm request, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(entity, request.getDescription(), TestUtils.getPrincipal(authHeaders), null);
+    assertReference(request.getParent(), entity.getParent());
+    assertReference(request.getGlossary(), entity.getGlossary());
 
     // Validate fully qualified name
-    String fqn = entity.getParent() == null ? entity.getGlossary().getName() : entity.getParent().getName();
+    String fqn =
+        entity.getParent() == null
+            ? entity.getGlossary().getFullyQualifiedName()
+            : entity.getParent().getFullyQualifiedName();
     fqn = FullyQualifiedName.add(fqn, entity.getName());
     assertEquals(fqn, entity.getFullyQualifiedName());
 
@@ -338,10 +342,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Override
   public void compareEntities(GlossaryTerm expected, GlossaryTerm patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
-    validateEntityReference(patched.getGlossary());
-    assertEquals(expected.getGlossary().getId(), patched.getGlossary().getId());
+    assertReference(expected.getGlossary(), patched.getGlossary());
+    assertReference(expected.getParent(), patched.getParent());
+    assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
 
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());

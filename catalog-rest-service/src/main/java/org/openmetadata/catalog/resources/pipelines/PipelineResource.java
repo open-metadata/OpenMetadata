@@ -60,6 +60,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
@@ -102,6 +103,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @GET
   @Valid
   @Operation(
+      operationId = "listPipelines",
       summary = "List Pipelines",
       tags = "pipelines",
       description =
@@ -153,6 +155,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllPipelineVersion",
       summary = "List pipeline versions",
       tags = "pipelines",
       description = "Get a list of all the versions of a pipeline identified by `id`",
@@ -173,6 +176,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getPipelineWithID",
       summary = "Get a pipeline",
       tags = "pipelines",
       description = "Get a pipeline by `id`.",
@@ -205,6 +209,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getPipelineByFQN",
       summary = "Get a pipeline by name",
       tags = "pipelines",
       description = "Get a pipeline by fully qualified name.",
@@ -237,6 +242,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificPipelineVersion",
       summary = "Get a version of the pipeline",
       tags = "pipelines",
       description = "Get a version of the pipeline by given `id`",
@@ -264,6 +270,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   @POST
   @Operation(
+      operationId = "createPipeline",
       summary = "Create a pipeline",
       tags = "pipelines",
       description = "Create a new pipeline.",
@@ -271,8 +278,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePipeline.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -285,6 +291,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchPipeline",
       summary = "Update a Pipeline",
       tags = "pipelines",
       description = "Update an existing pipeline using JsonPatch.",
@@ -309,6 +316,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
   @PUT
   @Operation(
+      operationId = "createOrUpdatePipeline",
       summary = "Create or update a pipeline",
       tags = "pipelines",
       description = "Create a new pipeline, if it does not exist or update an existing pipeline.",
@@ -316,8 +324,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The pipeline",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePipeline.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -330,6 +337,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @PUT
   @Path("/{id}/status")
   @Operation(
+      operationId = "addStatusData",
       summary = "Add status data",
       tags = "pipelines",
       description = "Add status data to the pipeline.",
@@ -354,11 +362,15 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "pipelines",
       description = "Add a user identified by `userId` as follower of this pipeline",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
       })
   public Response addFollower(
@@ -375,9 +387,16 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollower",
       summary = "Remove a follower",
       tags = "pipelines",
-      description = "Remove the user identified `userId` as a follower of the pipeline.")
+      description = "Remove the user identified `userId` as a follower of the pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -394,6 +413,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deletePipeline",
       summary = "Delete a Pipeline",
       tags = "pipelines",
       description = "Delete a pipeline by `id`.",

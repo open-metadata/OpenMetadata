@@ -164,20 +164,6 @@ def get_dashboard_service_or_create(
         return created_service
 
 
-def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
-    metadata = OpenMetadata(metadata_config)
-    service: PipelineService = metadata.get_by_name(
-        entity=PipelineService, fqdn=service_json["name"]
-    )
-    if service is not None:
-        return service
-    else:
-        created_service = metadata.create_or_update(
-            CreatePipelineServiceRequest(**service_json)
-        )
-        return created_service
-
-
 def get_storage_service_or_create(service_json, metadata_config) -> StorageService:
     metadata = OpenMetadata(metadata_config)
     service: StorageService = metadata.get_by_name(

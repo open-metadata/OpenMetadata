@@ -198,8 +198,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   @Override
   public void validateCreatedEntity(
       MessagingService service, CreateMessagingService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        service, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     MessagingConnection expectedMessagingConnection = createRequest.getConnection();
     MessagingConnection actualMessagingConnection = service.getConnection();
     validateConnection(expectedMessagingConnection, actualMessagingConnection, service.getServiceType());

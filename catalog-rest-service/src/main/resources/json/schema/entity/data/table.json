@@ -190,7 +190,7 @@
         },
         "description": {
           "description": "Description of the column.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "#/definitions/fullyQualifiedColumnName"
@@ -531,7 +531,7 @@
         },
         "description": {
           "description": "Description of the Table from the model.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "path": {
           "description": "Path to sql definition file.",
@@ -587,7 +587,7 @@
     },
     "description": {
       "description": "Description of a table.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

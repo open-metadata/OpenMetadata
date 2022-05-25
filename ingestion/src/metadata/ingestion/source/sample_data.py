@@ -32,6 +32,12 @@ from metadata.generated.schema.api.tests.createTableTest import CreateTableTestR
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
+from metadata.generated.schema.entity.data.mlmodel import (
+    FeatureSource,
+    MlFeature,
+    MlHyperParameter,
+    MlStore,
+)
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -45,6 +51,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -62,10 +69,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import (
-    get_pipeline_service_or_create,
-    get_storage_service_or_create,
-)
+from metadata.utils.helpers import get_storage_service_or_create
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -315,9 +319,8 @@ class SampleDataSource(Source[Entity]):
                 "r",
             )
         )
-        self.pipeline_service = get_pipeline_service_or_create(
-            service_json=self.pipeline_service_json,
-            metadata_config=metadata_config,
+        self.pipeline_service = self.metadata.get_service_or_create(
+            entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
         self.lineage = json.load(
             open(
@@ -545,6 +548,36 @@ class SampleDataSource(Source[Entity]):
                     pipeline_status=PipelineStatus(**status),
                 )
 
+    def get_ml_feature_sources(self, feature: dict) -> List[FeatureSource]:
+        """
+        Build FeatureSources from sample data
+        """
+        return [
+            FeatureSource(
+                name=source["name"],
+                dataType=source["dataType"],
+                dataSource=self.metadata.get_entity_reference(
+                    entity=Table, fqdn=source["dataSource"]
+                ),
+            )
+            for source in feature.get("featureSources", [])
+        ]
+
+    def get_ml_features(self, model: dict) -> List[MlFeature]:
+        """
+        Build MlFeatures from sample data
+        """
+        return [
+            MlFeature(
+                name=feature["name"],
+                dataType=feature["dataType"],
+                description=feature.get("description"),
+                featureAlgorithm=feature.get("featureAlgorithm"),
+                featureSources=self.get_ml_feature_sources(feature),
+            )
+            for feature in model.get("mlFeatures", [])
+        ]
+
     def ingest_mlmodels(self) -> Iterable[CreateMlModelRequest]:
         """
         Convert sample model data into a Model Entity
@@ -571,6 +604,19 @@ class SampleDataSource(Source[Entity]):
                     description=model["description"],
                     algorithm=model["algorithm"],
                     dashboard=EntityReference(id=dashboard_id, type="dashboard"),
+                    mlStore=MlStore(
+                        storage=model["mlStore"]["storage"],
+                        imageRepository=model["mlStore"]["imageRepository"],
+                    )
+                    if model.get("mlStore")
+                    else None,
+                    server=model.get("server"),
+                    target=model.get("target"),
+                    mlFeatures=self.get_ml_features(model),
+                    mlHyperParameters=[
+                        MlHyperParameter(name=param["name"], value=param["value"])
+                        for param in model.get("mlHyperParameters", [])
+                    ],
                 )
                 yield model_ev
             except Exception as err:

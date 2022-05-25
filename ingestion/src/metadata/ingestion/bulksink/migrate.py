@@ -58,6 +58,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
+from metadata.utils.elasticsearch import ESIndex
 
 logger = logging.getLogger(__name__)
 
@@ -169,9 +170,9 @@ class MigrateBulkSink(BulkSink):
         for table in file.readlines():
             table = json.loads(table)
             try:
-                table_entities = self.metadata.search_entities_using_es(
-                    table_obj=self._separate_fqn(table.get("fullyQualifiedName")),
-                    search_index="table_search_index",
+                table_entities = self.metadata.es_search_from_service(
+                    entity_type=Table,
+                    filters=self._separate_fqn(table.get("fullyQualifiedName")),
                     service_name=table.get("service").get("name"),
                 )
                 if len(table_entities) < 1:

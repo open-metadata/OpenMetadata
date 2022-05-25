@@ -21,7 +21,6 @@ import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServer
 @Slf4j
 public final class OpenMetadataClientSecurityUtil {
   public static final String CLIENT_ID = "clientId";
-  public static final String AUDIENCE = "audience";
   public static final String DOMAIN = "domain";
   public static final String EMAIL = "email";
   public static final String SCOPES = "scopes";
