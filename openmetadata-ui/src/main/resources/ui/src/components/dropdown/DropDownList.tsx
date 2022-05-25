@@ -274,7 +274,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                     return (
                       <button
                         className={getTabClasses(index + 1, activeTab)}
-                        data-testid="tab"
+                        data-testid="dropdown-tab"
                         key={index}
                         onClick={() => setActiveTab(index + 1)}>
                         {grp}
