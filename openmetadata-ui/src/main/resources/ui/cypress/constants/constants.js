@@ -121,3 +121,12 @@ export const NEW_ADMIN = {
   display_name: `Test admin ${id}`,
   description: 'Hello, I am test admin',
 };
+
+//modified-leaf-330420.stackoverflow
+export const BIG_QUERY_TABLE = {
+  term: 'users',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'modified-leaf-330420',
+  schema: 'stackoverflow',
+  entityType: 'database',
+};
