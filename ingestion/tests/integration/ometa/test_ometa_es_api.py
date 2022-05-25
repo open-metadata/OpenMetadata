@@ -49,11 +49,6 @@ class OMetaESTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
-        data=CreateUserRequest(name="random-user", email="random@user.com"),
-    )
-    owner = EntityReference(id=user.id, type="user")
-
     service = CreateDatabaseServiceRequest(
         name="test-service-es",
         serviceType=DatabaseServiceType.Mysql,
@@ -76,28 +71,28 @@ class OMetaESTest(TestCase):
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         create_db = CreateDatabaseRequest(
-            name="test-db",
+            name="test-db-es",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
         cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
+            id=create_db_entity.id, name="test-db-es", type="database"
         )
 
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=cls.db_reference
+            name="test-schema-es", database=cls.db_reference
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
+            id=create_schema_entity.id, name="test-schema-es", type="databaseSchema"
         )
 
         create = CreateTableRequest(
-            name="test",
+            name="test-es",
             databaseSchema=cls.schema_reference,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
@@ -131,6 +126,8 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             service_name=self.service.name.__root__,
             filters={"name": self.entity.name.__root__},
+            size=100,
+            retries=10,
         )
 
         # We get the created table back
@@ -144,6 +141,8 @@ class OMetaESTest(TestCase):
                 "name": self.entity.name.__root__,
                 "database": self.db_reference.name,
             },
+            size=100,
+            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -157,6 +156,8 @@ class OMetaESTest(TestCase):
                 "database": self.db_reference.name,
                 "database_schema": self.schema_reference.name,
             },
+            size=100,
+            retries=10,
         )
 
         self.assertIsNotNone(res)

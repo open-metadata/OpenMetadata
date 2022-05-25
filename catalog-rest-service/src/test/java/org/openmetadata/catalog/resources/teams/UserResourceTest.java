@@ -650,7 +650,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Add user as follower to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(test, 1);
-    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS);
+    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), OK, 1, ADMIN_AUTH_HEADERS);
 
     // Delete user
     deleteAndCheckEntity(user, ADMIN_AUTH_HEADERS);
@@ -662,7 +662,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // User can no longer follow other entities
     assertResponse(
-        () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
+        () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), OK, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
   }

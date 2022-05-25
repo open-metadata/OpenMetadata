@@ -89,6 +89,7 @@ class TestFqn(TestCase):
         Validate Table FQN building
         """
         table_fqn = fqn.build(
+            ...,  # metadata client not needed with all params
             entity_type=Table,
             service_name="service",
             database_name="db",
@@ -98,6 +99,7 @@ class TestFqn(TestCase):
         self.assertEqual(table_fqn, "service.db.schema.table")
 
         table_fqn_dots = fqn.build(
+            ...,  # metadata client not needed with all params
             entity_type=Table,
             service_name="service",
             database_name="data.base",
@@ -107,6 +109,7 @@ class TestFqn(TestCase):
         self.assertEqual(table_fqn_dots, 'service."data.base".schema.table')
 
         table_fqn_space = fqn.build(
+            ...,  # metadata client not needed with all params
             entity_type=Table,
             service_name="service",
             database_name="data base",

@@ -95,6 +95,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
 
   @GET
   @Operation(
+      operationId = "listDBSchemas",
       summary = "List database schemas",
       tags = "databaseSchemas",
       description =
@@ -147,6 +148,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDBSchemaVersion",
       summary = "List schema versions",
       tags = "databaseSchemas",
       description = "Get a list of all the versions of a schema identified by `id`",
@@ -167,6 +169,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDBSchemaByID",
       summary = "Get a schema",
       tags = "databaseSchemas",
       description = "Get a database schema by `id`.",
@@ -200,6 +203,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getDBSchemaByFQN",
       summary = "Get a schema by name",
       tags = "databaseSchemas",
       description = "Get a database schema by fully qualified name.",
@@ -233,6 +237,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDBSchemaVersion",
       summary = "Get a version of the schema",
       tags = "databaseSchemas",
       description = "Get a version of the database schema by given `id`",
@@ -261,6 +266,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
 
   @POST
   @Operation(
+      operationId = "createDBSchema",
       summary = "Create a schema",
       tags = "databaseSchemas",
       description = "Create a schema under an existing `service`.",
@@ -269,9 +275,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
             responseCode = "200",
             description = "The database schema",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDatabaseSchema.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -284,6 +288,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchDBSchema",
       summary = "Update a database schema",
       tags = "databaseSchemas",
       description = "Update an existing database schema using JsonPatch.",
@@ -308,6 +313,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDBSchema",
       summary = "Create or update schema",
       tags = "databaseSchemas",
       description = "Create a database schema, if it does not exist or update an existing database schema.",
@@ -315,8 +321,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
         @ApiResponse(
             responseCode = "200",
             description = "The updated schema ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabaseSchema.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseSchema.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseSchema create)
@@ -328,6 +333,7 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDBSchema",
       summary = "Delete a schema",
       tags = "databaseSchemas",
       description = "Delete a schema by `id`. Schema can only be deleted if it has no tables.",

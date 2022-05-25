@@ -120,6 +120,7 @@ def _(
     database_name: Optional[str],
     schema_name: Optional[str],
     table_name: str,
+    retries: int = 3,
 ) -> Optional[str]:
     """
     Building logic for tables
@@ -128,6 +129,7 @@ def _(
     :param database_name: DB name or None
     :param schema_name: Schema name or None
     :param table_name: Table name
+    :param retries: ES Search retries
     :return:
     """
     if not service_name or not table_name:
@@ -144,6 +146,7 @@ def _(
                 "database_schema": schema_name,
                 "name": table_name,
             },
+            retries=retries,
         )
         entity: Optional[Table] = get_entity_from_es_result(entity_list=es_result)
         return str(entity.fullyQualifiedName.__root__) if entity else None

@@ -184,7 +184,7 @@ class GlueSource(Source[Entity]):
                     table.get("name"),
                 ):
                     self.status.filter(
-                        "{}".format(table["name"]),
+                        "{}".format(table["Name"]),
                         "Table pattern not allowed",
                     )
                     continue

@@ -145,7 +145,7 @@
     @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
   .show-more,
-  a[href]:not(.button-comp),
+  a[href]:not(.button-comp):not(.tw-no-underline),
   .link-text {
     @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
