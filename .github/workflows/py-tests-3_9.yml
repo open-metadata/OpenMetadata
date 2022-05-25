@@ -74,4 +74,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
-        projectBaseDir: ingestion
+        projectBaseDir: ingestion/
