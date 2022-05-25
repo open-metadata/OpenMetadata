@@ -15,9 +15,18 @@ from typing import Type, TypeVar
 import click
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.config.workflow import get_source_dir
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingConnection,
+)
+from metadata.generated.schema.entity.services.metadataService import MetadataConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -56,7 +65,8 @@ class Workflow:
 
         source_type = self.config.source.type.lower()
         source_class = self.get(
-            "metadata.ingestion.source.{}.{}Source".format(
+            "metadata.ingestion.source.{}.{}.{}Source".format(
+                get_source_dir(type(self.config.source.serviceConnection.__root__)),
                 self.typeClassFetch(source_type, True),
                 self.typeClassFetch(source_type, False),
             )
