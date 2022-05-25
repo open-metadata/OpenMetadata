@@ -268,7 +268,7 @@ describe('TeamsAndUsers page', () => {
         expect(+text).equal(0);
       });
 
-    cy.contains('Your team does not have any dataset').should('be.visible');
+    cy.contains('Your team does not have any').should('be.visible');
     cy.get('a > .button-comp').should('be.visible').contains('Explore');
     searchEntity(SEARCH_ENTITY_TABLE.table_1.term);
     cy.intercept(

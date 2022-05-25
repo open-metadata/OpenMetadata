@@ -166,7 +166,6 @@ public class LineageResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
-
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }

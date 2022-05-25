@@ -11,3 +11,7 @@ CREATE TABLE IF NOT EXISTS type_entity (
 
 ALTER TABLE webhook_entity
 DROP COLUMN deleted;
+
+ALTER TABLE entity_relationship
+DROP INDEX edge_index;
+
