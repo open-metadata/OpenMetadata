@@ -247,3 +247,4 @@ class ProfilerWorkflow:
         Close all connections
         """
         self.metadata.close()
+        self.processor.close()
