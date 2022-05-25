@@ -28,6 +28,7 @@ import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
@@ -145,7 +146,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
-    List<EntityReference> ownedEntities =
+    List<EntityRelationshipRecord> ownedEntities =
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
@@ -155,11 +156,11 @@ public class UserRepository extends EntityRepository<User> {
           daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.populateEntityReferences(ownedEntities);
+    return EntityUtil.getEntityReferences(ownedEntities);
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.populateEntityReferences(
+    return EntityUtil.getEntityReferences(
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 

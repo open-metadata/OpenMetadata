@@ -96,6 +96,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listTeams",
       summary = "List teams",
       tags = "teams",
       description =
@@ -142,6 +143,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTeamVersion",
       summary = "List team versions",
       tags = "teams",
       description = "Get a list of all the versions of a team identified by `id`",
@@ -163,6 +165,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getTeamByID",
       summary = "Get a team",
       tags = "teams",
       description = "Get a team by `id`.",
@@ -196,6 +199,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getTeamByFQN",
       summary = "Get a team by name",
       tags = "teams",
       description = "Get a team by `name`.",
@@ -228,6 +232,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificRoleVersion",
       summary = "Get a version of the team",
       tags = "teams",
       description = "Get a version of the team by given `id`",
@@ -255,6 +260,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @POST
   @Operation(
+      operationId = "createTeam",
       summary = "Create a team",
       tags = "teams",
       description = "Create a new team.",
@@ -262,7 +268,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
@@ -273,6 +279,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateTeam",
       summary = "Update team",
       tags = "teams",
       description = "Create or Update a team.",
@@ -280,7 +287,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -293,6 +300,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchTeam",
       summary = "Update a team",
       tags = "teams",
       description = "Update an existing team with JsonPatch.",
@@ -317,6 +325,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTeam",
       summary = "Delete a team",
       tags = "teams",
       description = "Delete a team by given `id`.",

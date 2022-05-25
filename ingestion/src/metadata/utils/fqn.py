@@ -26,6 +26,7 @@ from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -212,7 +213,7 @@ def _(
 
 @fqdn_build_registry.add(DataModel)
 def _(
-    metadata: OpenMetadata,
+    _: OpenMetadata,
     *,
     service_name: str,
     database_name: str,
@@ -221,3 +222,13 @@ def _(
 ) -> str:
 
     return _build(service_name, database_name, schema_name, model_name)
+
+
+@fqdn_build_registry.add(Pipeline)
+def _(
+    _: OpenMetadata,
+    *,
+    service_name: str,
+    pipeline_name: str,
+) -> str:
+    return _build(service_name, pipeline_name)

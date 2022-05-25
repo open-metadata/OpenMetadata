@@ -14,6 +14,9 @@ import pathlib
 from unittest import TestCase
 
 from metadata.config.common import ConfigurationError, load_config_file
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -27,12 +30,11 @@ class WorkflowTest(TestCase):
             self.assertEqual((my_class is not None), True)
 
     def test_get_4xx(self):
-        my_class = None
         key = "metadata.ingestion.sink.MYSQL.mysqlSINK"
         try:
             if key.find(".") >= 0:
                 module_name, class_name = key.rsplit(".", 1)
-                my_class = getattr(importlib.import_module(module_name), class_name)
+                getattr(importlib.import_module(module_name), class_name)
         except ModuleNotFoundError:
             self.assertRaises(ModuleNotFoundError)
 
@@ -60,19 +62,18 @@ class WorkflowTest(TestCase):
 
     def test_execute_200(self):
         current_dir = pathlib.Path(__file__).resolve().parent
-        config_file = current_dir.joinpath("mysql_test.json")
+        config_file = current_dir.joinpath("mysql_test.yaml")
         workflow_config = load_config_file(config_file)
         workflow = Workflow.create(workflow_config)
         workflow.execute()
         workflow.stop()
-        config = MetadataServerConfig.parse_obj(
-            workflow_config.get("metadata_server").get("config")
-        )
+        config = workflow.config.workflowConfig.openMetadataServerConfig
         client = OpenMetadata(config).client
 
         client.delete(
             f"/services/databaseServices/"
             f"{client.get('/services/databaseServices/name/local_mysql_test')['id']}"
+            f"?hardDelete=true&recursive=true"
         )
         file_path = "/tmp/mysql_test"
         with open(file_path) as ingestionFile:
@@ -82,6 +83,6 @@ class WorkflowTest(TestCase):
     def test_execute_4xx(self):
         config_file = pathlib.Path("/tmp/mysql_test123")
         try:
-            workflow_config = load_config_file(config_file)
+            load_config_file(config_file)
         except ConfigurationError:
             self.assertRaises(ConfigurationError)

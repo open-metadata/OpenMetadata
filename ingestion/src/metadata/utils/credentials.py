@@ -60,7 +60,7 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
             "type": gcs_credentials.gcsConfig.type,
             "project_id": gcs_credentials.gcsConfig.projectId,
             "private_key_id": gcs_credentials.gcsConfig.privateKeyId,
-            "private_key": gcs_credentials.gcsConfig.privateKey,
+            "private_key": gcs_credentials.gcsConfig.privateKey.get_secret_value(),
             "client_email": gcs_credentials.gcsConfig.clientEmail,
             "client_id": gcs_credentials.gcsConfig.clientId,
             "auth_uri": str(gcs_credentials.gcsConfig.authUri),

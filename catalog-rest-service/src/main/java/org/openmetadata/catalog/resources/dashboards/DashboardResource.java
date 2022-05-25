@@ -99,6 +99,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @GET
   @Valid
   @Operation(
+      operationId = "listDashboards",
       summary = "List Dashboards",
       tags = "dashboards",
       description =
@@ -150,6 +151,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDashboardVersion",
       summary = "List dashboard versions",
       tags = "dashboards",
       description = "Get a list of all the versions of a dashboard identified by `id`",
@@ -170,6 +172,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDashboardByID",
       summary = "Get a dashboard",
       tags = "dashboards",
       description = "Get a dashboard by `id`.",
@@ -202,6 +205,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getDashboardByFQN",
       summary = "Get a dashboard by name",
       tags = "dashboards",
       description = "Get a dashboard by fully qualified name.",
@@ -234,6 +238,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDashboardVersion",
       summary = "Get a version of the dashboard",
       tags = "dashboards",
       description = "Get a version of the dashboard by given `id`",
@@ -261,6 +266,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   @POST
   @Operation(
+      operationId = "createDashboard",
       summary = "Create a dashboard",
       tags = "dashboards",
       description = "Create a new dashboard.",
@@ -268,8 +274,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -282,6 +287,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchDashboard",
       summary = "Update a Dashboard",
       tags = "dashboards",
       description = "Update an existing dashboard using JsonPatch.",
@@ -306,6 +312,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDashboard",
       summary = "Create or update a dashboard",
       tags = "dashboards",
       description = "Create a new dashboard, if it does not exist or update an existing dashboard.",
@@ -313,8 +320,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
         @ApiResponse(
             responseCode = "200",
             description = "The dashboard",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDashboard.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Dashboard.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -327,6 +333,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollowerToDashboard",
       summary = "Add a follower",
       tags = "dashboards",
       description = "Add a user identified by `userId` as follower of this dashboard",
@@ -348,6 +355,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "removeFollowerFromDashboard",
       summary = "Remove a follower",
       tags = "dashboards",
       description = "Remove the user identified `userId` as a follower of the dashboard.")
@@ -367,6 +375,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDashboard",
       summary = "Delete a Dashboard",
       tags = "dashboards",
       description = "Delete a dashboard by `id`.",

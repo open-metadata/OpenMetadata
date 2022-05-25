@@ -64,6 +64,9 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
+    "airflow": {
+        "apache-airflow==2.1.4"
+    },  # Same as ingestion container. For development.
     "airflow-container": {
         "marshmallow-sqlalchemy>=0.26.0",
         "SQLAlchemy-Utils>=0.38.0",
@@ -198,7 +201,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow-container-1.10.15", "db2"}
+                    if plugin not in {"airflow", "airflow-container-1.10.15", "db2"}
                 ]
             )
         ),

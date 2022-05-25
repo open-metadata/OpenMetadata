@@ -51,6 +51,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -68,10 +69,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import (
-    get_pipeline_service_or_create,
-    get_storage_service_or_create,
-)
+from metadata.utils.helpers import get_storage_service_or_create
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -321,9 +319,8 @@ class SampleDataSource(Source[Entity]):
                 "r",
             )
         )
-        self.pipeline_service = get_pipeline_service_or_create(
-            service_json=self.pipeline_service_json,
-            metadata_config=metadata_config,
+        self.pipeline_service = self.metadata.get_service_or_create(
+            entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
         self.lineage = json.load(
             open(
