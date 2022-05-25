@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
@@ -66,12 +65,13 @@ import org.openmetadata.catalog.util.ResultList;
 public class PipelineServiceResource extends EntityResource<PipelineService, PipelineServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
 
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = "pipelines,owner";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
@@ -327,7 +327,6 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   private PipelineService getService(CreatePipelineService create, String user) {
     return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
-        .withPipelineUrl(create.getPipelineUrl())
-        .withIngestionSchedule(create.getIngestionSchedule());
+        .withConnection(create.getConnection());
   }
 }

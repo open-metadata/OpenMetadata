@@ -19,6 +19,9 @@
         },
         {
           "$ref": "../metadataService.json#/definitions/metadataConnection"
+        },
+        {
+          "$ref": "../pipelineService.json#/definitions/pipelineConnection"
         }
       ]
     }

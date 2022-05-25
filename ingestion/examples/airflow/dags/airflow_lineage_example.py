@@ -34,6 +34,7 @@ default_args = {
 
 @dag(
     default_args=default_args,
+    dag_id="sample_lineage",
     description="OpenMetadata Airflow Lineage example DAG",
     schedule_interval=timedelta(days=1),
     start_date=days_ago(1),
@@ -43,14 +44,13 @@ def openmetadata_airflow_lineage_example():
     @task(
         inlets={
             "tables": [
-                "bigquery_gcp.shopify.raw_order",
-                "bigquery_gcp.shopify.raw_customer",
+                "sample_data.ecommerce_db.shopify.raw_order",
+                "sample_data.ecommerce_db.shopify.raw_customer",
             ],
         },
-        outlets={"tables": ["bigquery_gcp.shopify.fact_order"]},
+        outlets={"tables": ["sample_data.ecommerce_db.shopify.fact_order"]},
     )
     def generate_data():
-        """write your query to generate ETL"""
         pass
 
     generate_data()

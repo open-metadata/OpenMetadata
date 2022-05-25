@@ -187,7 +187,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
-  public static EntityReference PREFECT_REFERENCE;
+  public static EntityReference GLUE_REFERENCE;
 
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
@@ -269,7 +269,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
-    new PipelineServiceResourceTest().setupPipelineServices();
+    new PipelineServiceResourceTest().setupPipelineServices(test);
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
 
