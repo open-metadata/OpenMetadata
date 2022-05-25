@@ -31,7 +31,7 @@ logger = ingestion_logger()
 
 
 class SqlColumnHandler:
-    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemeneted for this connector")
             self.source_config.includeTags = False
@@ -192,7 +192,7 @@ class SqlColumnHandler:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")
                 continue
-            self.fetch_tags(column=column, col_obj=om_column)
+            self.fetch_column_tags(column=column, col_obj=om_column)
             table_columns.append(om_column)
         return table_columns
 
