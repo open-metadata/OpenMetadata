@@ -85,8 +85,6 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     super(Webhook.class, new WebhookRepository(dao), authorizer);
   }
 
-  static final String FIELDS = "status";
-
   @GET
   @Operation(
       summary = "List webhooks",
