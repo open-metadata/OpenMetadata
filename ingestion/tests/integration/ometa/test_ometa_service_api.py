@@ -136,7 +136,6 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "BigQuery",
-                    "enablePolicyTagImport": True,
                     "credentials": {
                         "gcsConfig": {
                             "type": "service_account",

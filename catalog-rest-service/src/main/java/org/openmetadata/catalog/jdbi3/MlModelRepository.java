@@ -192,10 +192,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
   }
 
-  public void removeDashboard(MlModel mlModel) {
-    deleteTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class MlModelUpdater extends EntityUpdater {
     public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {

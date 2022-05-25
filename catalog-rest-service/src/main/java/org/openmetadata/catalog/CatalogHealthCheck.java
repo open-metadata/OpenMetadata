@@ -33,7 +33,7 @@ public class CatalogHealthCheck extends HealthCheck {
   }
 
   @Override
-  protected Result check() throws Exception {
+  protected Result check() {
     try {
       ListFilter filter = new ListFilter();
       userRepository.listAfter(null, Fields.EMPTY_FIELDS, filter, 1, null);

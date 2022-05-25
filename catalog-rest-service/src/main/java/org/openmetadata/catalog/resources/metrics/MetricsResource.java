@@ -80,6 +80,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
 
   @GET
   @Operation(
+      operationId = "listMetrics",
       summary = "List metrics",
       tags = "metrics",
       description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
@@ -112,6 +113,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getMetricByID",
       summary = "Get a metric",
       tags = "metrics",
       description = "Get a metric by `id`.",
@@ -143,6 +145,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
 
   @POST
   @Operation(
+      operationId = "createMetric",
       summary = "Create a metric",
       tags = "metrics",
       description = "Create a new metric.",
@@ -161,6 +164,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateMetric",
       summary = "Create or update a metric",
       tags = "metrics",
       description = "Create a new metric, if it does not exist or update an existing metric.",

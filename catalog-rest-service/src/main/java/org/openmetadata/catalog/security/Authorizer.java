@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.security;
 
-import java.io.IOException;
 import java.util.List;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
@@ -22,7 +21,7 @@ import org.openmetadata.catalog.type.MetadataOperation;
 public interface Authorizer {
 
   /** Initialize the authorizer */
-  void init(AuthorizerConfiguration config, Jdbi jdbi) throws IOException;
+  void init(AuthorizerConfiguration config, Jdbi jdbi);
 
   /**
    * Check if the authenticated user has given permission on the target entity identified by the given resourceType and

@@ -108,6 +108,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listPolicies",
       summary = "List Policies",
       tags = "policies",
       description =
@@ -154,6 +155,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getPolicyByID",
       summary = "Get a policy",
       tags = "policies",
       description = "Get a policy by `id`.",
@@ -186,6 +188,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getPolicyByFQN",
       summary = "Get a policy by name",
       tags = "policies",
       description = "Get a policy by fully qualified name.",
@@ -218,6 +221,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllPolicyVersion",
       summary = "List policy versions",
       tags = "policies",
       description = "Get a list of all the versions of a policy identified by `id`",
@@ -238,6 +242,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificPolicyVersion",
       summary = "Get a version of the policy",
       tags = "policies",
       description = "Get a version of the policy by given `id`",
@@ -265,6 +270,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @POST
   @Operation(
+      operationId = "createPolicy",
       summary = "Create a policy",
       tags = "policies",
       description = "Create a new policy.",
@@ -272,7 +278,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePolicy.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Policy.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePolicy create)
@@ -286,6 +292,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchPolicy",
       summary = "Update a policy",
       tags = "policies",
       description = "Update an existing policy using JsonPatch.",
@@ -312,6 +319,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdatePolicy",
       summary = "Create or update a policy",
       tags = "policies",
       description = "Create a new policy, if it does not exist or update an existing policy.",
@@ -334,6 +342,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deletePolicy",
       summary = "Delete a Policy",
       tags = "policies",
       description = "Delete a policy by `id`.",

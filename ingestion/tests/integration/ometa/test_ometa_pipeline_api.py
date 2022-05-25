@@ -31,7 +31,14 @@ from metadata.generated.schema.entity.data.pipeline import (
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
@@ -61,7 +68,12 @@ class OMetaPipelineTest(TestCase):
     service = CreatePipelineServiceRequest(
         name="test-service-pipeline",
         serviceType=PipelineServiceType.Airflow,
-        pipelineUrl="https://localhost:1000",
+        connection=PipelineConnection(
+            config=AirflowConnection(
+                hostPort="http://localhost:8080",
+                connection=BackendConnection(),
+            ),
+        ),
     )
     service_type = "pipelineService"
 

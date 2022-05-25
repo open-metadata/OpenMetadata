@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Description of the chart instance. What it has and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"

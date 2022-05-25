@@ -56,6 +56,10 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_lineage import (
+    _create_lineage_by_table_name,
+    ingest_lineage_by_query,
+)
 
 logger = ingestion_logger()
 
@@ -123,6 +127,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_policies(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
+        elif isinstance(record, CreatePipelineRequest):
+            self.write_pipelines_create(record)
         elif isinstance(record, AddLineageRequest):
             self.write_lineage(record)
         elif isinstance(record, OMetaUserProfile):
@@ -169,7 +175,7 @@ class MetadataRestSink(Sink[Entity]):
             )
             if db_schema_and_table.table.description is not None:
                 db_schema_and_table.table.description = (
-                    db_schema_and_table.table.description.strip()
+                    db_schema_and_table.table.description.__root__.strip()
                 )
 
             table_request = CreateTableRequest(
@@ -190,7 +196,7 @@ class MetadataRestSink(Sink[Entity]):
             if db_schema_and_table.location is not None:
                 if db_schema_and_table.location.description is not None:
                     db_schema_and_table.location.description = (
-                        db_schema_and_table.location.description.strip()
+                        db_schema_and_table.location.description.__root__.strip()
                     )
                 location_request = CreateLocationRequest(
                     name=db_schema_and_table.location.name,
@@ -233,7 +239,8 @@ class MetadataRestSink(Sink[Entity]):
                 )
 
             if db_schema_and_table.table.viewDefinition is not None:
-                lineage_status = self.metadata.ingest_lineage_by_query(
+                lineage_status = ingest_lineage_by_query(
+                    self.metadata,
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
                     database=db_schema_and_table.database.name.__root__,
@@ -354,6 +361,23 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest Location {location.name}")
             logger.error(err)
             self.status.failure(f"Location: {location.name}")
+
+    def write_pipelines_create(self, pipeline: CreatePipelineRequest) -> None:
+        """
+        Proper implementation of write_pipelines.
+        Send the CreatePipelineRequest to the OM API
+        :param pipeline: Create Pipeline Entity
+        """
+        try:
+            created_pipeline = self.metadata.create_or_update(pipeline)
+            logger.info(
+                f"Successfully ingested Pipeline {created_pipeline.displayName}"
+            )
+            self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest pipeline {pipeline.name}")
+            logger.error(err)
+            self.status.failure(f"Pipeline: {pipeline.name}")
 
     def write_pipelines(self, pipeline: Pipeline):
         try:
@@ -576,7 +600,8 @@ class MetadataRestSink(Sink[Entity]):
             for from_table_name in parser.tables:
                 if "." not in from_table_name:
                     from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
-                self.metadata._create_lineage_by_table_name(
+                _create_lineage_by_table_name(
+                    self.metadata,
                     from_table_name,
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,

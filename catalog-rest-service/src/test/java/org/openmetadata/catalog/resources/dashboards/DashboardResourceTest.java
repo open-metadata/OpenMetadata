@@ -215,8 +215,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   @Override
   public void validateCreatedEntity(Dashboard dashboard, CreateDashboard createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        dashboard, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertNotNull(dashboard.getServiceType());
     assertReference(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());

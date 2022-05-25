@@ -20,6 +20,7 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
+import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -358,24 +359,38 @@ const DashboardDetails = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
-        if (values[0].data) {
-          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
-        if (values[1] && values[1].length > 0) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
-            (tag) => {
-              return { fqn: tag, source: 'Glossary' };
-            }
-          );
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
           tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
         }
         setTagList(tagsAndTerms);
-        setTagFetchFailed(false);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
       })
       .catch(() => {
         setTagList([]);
@@ -577,6 +592,7 @@ const DashboardDetails = ({
                             </td>
                             <td
                               className="tw-group tw-relative tableBody-cell"
+                              data-testid="tags-wrapper"
                               onClick={() => {
                                 if (!editChartTags) {
                                   // Fetch tags and terms only once

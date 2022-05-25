@@ -18,7 +18,7 @@ import org.openmetadata.catalog.exception.PipelineServiceClientException;
  *
  * <ul>
  *   <li>A PipelineService is a service such as AirFlow to which a pipeline can be deployed
- *   <li>A Pipeline is a workflow for performing certain taks. Example - ingestion pipeline is a workflow that connects
+ *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a workflow that connects
  *       to a database service or other services and collect metadata.
  *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection to database service
  *       to collect metadata, OpenMetadata to user metadata over APIs, etc.
@@ -67,7 +67,7 @@ public abstract class PipelineServiceClient {
   }
 
   /* Authenticate with the service */
-  public abstract String authenticate() throws IOException;
+  public abstract String authenticate();
 
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract HttpResponse<String> getServiceStatus();

@@ -99,7 +99,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
-          LOG.info("Loading type {} with schema {}", type.getName(), type.getSchema());
+          LOG.info("Loading type {}", type.getName());
           try {
             this.dao.createOrUpdate(null, type);
           } catch (IOException e) {
@@ -124,6 +124,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listTypes",
       summary = "List types",
       tags = "metadata",
       description =
@@ -164,6 +165,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getTypeByID",
       summary = "Get a type",
       tags = "metadata",
       description = "Get a type by `id`.",
@@ -196,6 +198,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getTypeByFQN",
       summary = "Get a type by name",
       tags = "metadata",
       description = "Get a type by name.",
@@ -228,6 +231,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTypeVersion",
       summary = "List type versions",
       tags = "metadata",
       description = "Get a list of all the versions of a type identified by `id`",
@@ -248,6 +252,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificTypeVersion",
       summary = "Get a version of the types",
       tags = "metadata",
       description = "Get a version of the type by given `id`",
@@ -275,6 +280,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @POST
   @Operation(
+      operationId = "createType",
       summary = "Create a type",
       tags = "metadata",
       description = "Create a new type.",
@@ -282,7 +288,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The type",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateType.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Type.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateType create)
@@ -294,6 +300,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchType",
       summary = "Update a type",
       tags = "metadata",
       description = "Update an existing type using JsonPatch.",
@@ -337,6 +344,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteType",
       summary = "Delete a type",
       tags = "metadata",
       description = "Delete a type by `id`.",
@@ -355,6 +363,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @PUT
   @Path("/{id}")
   @Operation(
+      operationId = "addField",
       summary = "Add a field to an entity",
       tags = "metadata",
       description = "Add a field to an entity type. Fields can only be added to entity type and not field type.",
