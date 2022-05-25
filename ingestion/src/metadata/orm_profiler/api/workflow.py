@@ -38,7 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.utils.connections import (
     create_and_bind_session,
