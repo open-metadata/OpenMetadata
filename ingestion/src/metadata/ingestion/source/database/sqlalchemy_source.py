@@ -13,8 +13,7 @@ Generic source to build database connectors.
 """
 import traceback
 import uuid
-from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
+from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Tuple, Union
 
 from sqlalchemy.engine.reflection import Inspector
@@ -43,8 +42,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@dataclass  # type: ignore[misc]
-class DatabaseSourceService(Source, metaclass=ABCMeta):
+class SqlAlchamySource(Source, ABC):
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
@@ -112,14 +110,25 @@ class DatabaseSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_view_definition(table_type, table_name, schema, inspector) -> Optional[str]:
+    def get_view_definition(
+        table_type, table_name: str, schema: str, inspector: Inspector
+    ) -> Optional[str]:
         """
         Method to fetch view definition
         """
         pass
 
     @abstractmethod
-    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
+        """
+        Method to fetch tags associated with column
+        """
+        pass
+
+    @abstractmethod
+    def fetch_table_tags(
+        self, table_name: str, schema: str, inspector: Inspector
+    ) -> None:
         """
         Method to fetch tags associated with table
         """

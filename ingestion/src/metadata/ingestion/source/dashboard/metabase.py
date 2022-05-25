@@ -102,7 +102,7 @@ class MetabaseSource(DashboardSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
@@ -127,11 +127,12 @@ class MetabaseSource(DashboardSourceService):
     def process_charts(self) -> Optional[Iterable[Chart]]:
         return []
 
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
-        return Dashboard(
+        yield from self.fetch_dashboard_charts(dashboard_details)
+        yield Dashboard(
             id=uuid.uuid4(),
             name=dashboard_details["name"],
             url=self.service_connection.hostPort,

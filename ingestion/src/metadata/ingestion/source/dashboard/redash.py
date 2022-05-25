@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
 import requests
-from redash_toolbelt import Redash
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
@@ -24,10 +23,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.redashConne
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
-    DashboardServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -36,8 +31,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart as ModelChart
 from metadata.ingestion.models.table_metadata import Dashboard
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection
+from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -55,7 +49,7 @@ class RedashSourceStatus(SourceStatus):
         self.filtered.append(item)
 
 
-class RedashSource(Source[Entity]):
+class RedashSource(DashboardSourceService):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
     status: RedashSourceStatus
@@ -81,34 +75,35 @@ class RedashSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
         dashboard_info = self.client.dashboards()
         return dashboard_info["results"]
 
-    def get_dashboard_name(self, dashboard_details: object) -> str:
+    def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
         Get Dashboard Name
         """
         return dashboard_details["id"]
 
-    def get_dashboard_details(self, dashboard: object) -> object:
+    def get_dashboard_details(self, dashboard: dict) -> dict:
         """
         Get Dashboard Details
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
+        yield from self.fetch_dashboard_charts(dashboard_details)
         dashboard_id = dashboard_details["id"]
         if dashboard_id is not None:
             self.status.item_scanned_status()
             dashboard_data = self.client.get_dashboard(dashboard_id)
-            dashboard_url = f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
+            dashboard_url = f"{self.service_connection.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
             dashboard_description = ""
             for widgets in dashboard_data.get("widgets", []):
                 dashboard_description = widgets.get("text")
@@ -123,13 +118,13 @@ class RedashSource(Source[Entity]):
                 url=dashboard_url,
             )
 
-    def get_lineage(self, dashboard_details: object) -> Optional[AddLineageRequest]:
+    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
         logger.info("Lineage not implemented for redash")
 
-    def fetch_charts(self) -> Optional[Iterable[Chart]]:
+    def process_charts(self) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch Charts
         """
@@ -138,7 +133,7 @@ class RedashSource(Source[Entity]):
             query_id = query_info["id"]
             query_name = query_info["name"]
             query_data = requests.get(
-                f"{self.connection_config.hostPort}/api/queries/{query_id}"
+                f"{self.service_connection.hostPort}/api/queries/{query_id}"
             ).json()
             for visualization in query_data.get("Visualizations", []):
                 chart_type = visualization.get("type", "")
@@ -158,7 +153,7 @@ class RedashSource(Source[Entity]):
                     description=chart_description,
                 )
 
-    def fetch_dashboard_charts(self, dashboard: object) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(self, dashboard: dict) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -171,15 +166,17 @@ class RedashSource(Source[Entity]):
                 self.dashboards_to_charts[dashboard_id].append(widgets["id"])
                 yield ModelChart(
                     name=widgets["id"],
-                    displayName=visualization["query"]["name"],
-                    chart_type=visualization["type"],
+                    displayName=visualization["query"]["name"]
+                    if visualization and visualization["query"]
+                    else "",
+                    chart_type=visualization["type"] if visualization else "",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
                     url=(
-                        f"{self.connection_config.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
+                        f"{self.service_connection.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
                     ),
-                    description=visualization["description"],
+                    description=visualization["description"] if visualization else "",
                 )
 
     def close(self):

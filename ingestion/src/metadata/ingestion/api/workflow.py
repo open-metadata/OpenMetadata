@@ -15,6 +15,7 @@ from typing import Type, TypeVar
 import click
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.config.workflow import get_source_dir
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -65,9 +66,7 @@ class Workflow:
         source_type = self.config.source.type.lower()
         source_class = self.get(
             "metadata.ingestion.source.{}.{}.{}Source".format(
-                self._get_source_dir(
-                    type(self.config.source.serviceConnection.__root__)
-                ),
+                get_source_dir(type(self.config.source.serviceConnection.__root__)),
                 self.typeClassFetch(source_type, True),
                 self.typeClassFetch(source_type, False),
             )
@@ -157,17 +156,6 @@ class Workflow:
     def create(cls, config_dict: dict) -> "Workflow":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config)
-
-    # TODO TOTEST
-    def _get_source_dir(self, connection_type: type) -> str:
-        if connection_type == DatabaseConnection:
-            return "database"
-        if connection_type == MessagingConnection:
-            return "messaging"
-        if connection_type == MetadataConnection:
-            return "metadata"
-        if connection_type == DashboardConnection:
-            return "dashboard"
 
     def execute(self):
         for record in self.source.next_record():

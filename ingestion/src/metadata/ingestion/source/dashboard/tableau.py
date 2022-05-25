@@ -109,7 +109,7 @@ class TableauSource(DashboardSourceService):
             )
         ]
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
@@ -119,22 +119,23 @@ class TableauSource(DashboardSourceService):
                 dashboards[int(index)][key] = value
         return dashboards
 
-    def get_dashboard_name(self, dashboard_details: object) -> str:
+    def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
         Get Dashboard Name
         """
         return dashboard_details.get("name")
 
-    def get_dashboard_details(self, dashboard: object) -> object:
+    def get_dashboard_details(self, dashboard: dict) -> dict:
         """
         Get Dashboard Details
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
+        self.fetch_dashboard_charts(dashboard_details)
         dashboard_id = dashboard_details.get("id")
         dashboard_name = dashboard_details.get("name")
         dashboard_tag = dashboard_details.get("tags")
@@ -155,7 +156,7 @@ class TableauSource(DashboardSourceService):
             last_modified=dateparser.parse(self.chart["updatedAt"]).timestamp() * 1000,
         )
 
-    def get_lineage(self, dashboard_details: object) -> Optional[AddLineageRequest]:
+    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
@@ -235,7 +236,7 @@ class TableauSource(DashboardSourceService):
                 logger.error(err)
 
     def fetch_dashboard_charts(
-        self, dashboard_details: object
+        self, dashboard_details: dict
     ) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard

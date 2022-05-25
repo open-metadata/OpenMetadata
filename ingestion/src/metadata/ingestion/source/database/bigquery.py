@@ -165,7 +165,7 @@ class BigquerySource(CommonDbSourceService):
         else:
             return super().fetch_sample_data(schema, table)
 
-    def fetch_tags(self, column: dict, col_obj: Column) -> None:
+    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         try:
             if (
                 self.source_config.includeTags

@@ -1,8 +1,5 @@
-from abc import ABCMeta, abstractmethod
-from typing import Iterable, List, Optional, Union
-
-from libcst import Add
-from pymysql import DatabaseError
+from abc import ABC, abstractmethod
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -26,37 +23,37 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class DashboardSourceService(Source, metaclass=ABCMeta):
+class DashboardSourceService(Source, ABC):
     @abstractmethod
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[List[Any]]:
         """
         Get List of all dashboards
         """
         pass
 
     @abstractmethod
-    def get_dashboard_name(self, dashboard_details: object) -> str:
+    def get_dashboard_name(self, dashboard_details: Any) -> str:
         """
         Get Dashboard Name
         """
         pass
 
     @abstractmethod
-    def get_dashboard_details(self, dashboard_details: object) -> object:
+    def get_dashboard_details(self, dashboard: Any) -> Any:
         """
         Get Dashboard Details
         """
         pass
 
     @abstractmethod
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: Any) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
         pass
 
     @abstractmethod
-    def get_lineage(self, dashboard_details: object) -> Optional[AddLineageRequest]:
+    def get_lineage(self, dashboard_details: Any) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
@@ -70,7 +67,7 @@ class DashboardSourceService(Source, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def fetch_dashboard_charts(self, dashboard: object) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(self, dashboard: Any) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -119,8 +116,7 @@ class DashboardSourceService(Source, metaclass=ABCMeta):
                         "Dashboard Pattern not Allowed",
                     )
                     continue
-                yield self.fetch_dashboard_charts(dashboard_details)
-                yield self.get_dashboard_entity(dashboard_details)
+                yield from self.get_dashboard_entity(dashboard_details)
                 if self.source_config.dbServiceName:
                     yield from self.get_lineage(dashboard_details)
             # except Exception as err:

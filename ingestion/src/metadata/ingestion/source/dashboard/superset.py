@@ -216,6 +216,7 @@ class SupersetSource(DashboardSourceService):
         """
         Method to Get Dashboard Entity
         """
+        self.fetch_dashboard_charts(dashboard_details)
         dashboard_id = dashboard_details["id"]
         name = dashboard_details["dashboard_title"]
         dashboard_url = (
@@ -226,7 +227,7 @@ class SupersetSource(DashboardSourceService):
             * 1000
         )
         owners = get_owners(dashboard_details["owners"])
-        return Dashboard(
+        yield Dashboard(
             name=dashboard_id,
             displayName=name,
             description="",
@@ -237,11 +238,11 @@ class SupersetSource(DashboardSourceService):
             lastModified=last_modified,
         )
 
-    def get_lineage(self, dashboard_details: object) -> Optional[AddLineageRequest]:
+    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
-        pass
+        logger.info("Lineage not implemented for superset")
 
     def fetch_dashboard_charts(self, dashboard_details: dict) -> None:
         """

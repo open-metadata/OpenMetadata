@@ -108,7 +108,8 @@ class LookerSource(DashboardSourceService):
         """
         Method to Get Dashboard Entity
         """
-        return Dashboard(
+        yield from self.fetch_dashboard_charts(dashboard_details)
+        yield Dashboard(
             name=dashboard_details.id,
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",

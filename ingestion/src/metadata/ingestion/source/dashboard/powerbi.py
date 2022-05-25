@@ -85,7 +85,7 @@ class PowerbiSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[object]]:
+    def get_dashboards_list(self) -> Optional[List[dict]]:
         """
         Get List of all dashboards
         """
@@ -93,22 +93,23 @@ class PowerbiSource(Source[Entity]):
         dashboard_list = self.dashboard_service.get_dashboards()
         return dashboard_list.get("value")
 
-    def get_dashboard_name(self, dashboard_details: object) -> str:
+    def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
         Get Dashboard Name
         """
         return dashboard_details["id"]
 
-    def get_dashboard_details(self, dashboard: object) -> object:
+    def get_dashboard_details(self, dashboard: dict) -> dict:
         """
         Get Dashboard Details
         """
         return self.dashboard_service.get_dashboard(dashboard["id"])
 
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
+        yield from self.fetch_dashboard_charts(dashboard_details)
         return Dashboard(
             name=dashboard_details["id"],
             url=dashboard_details["webUrl"],
@@ -134,7 +135,7 @@ class PowerbiSource(Source[Entity]):
         """
         logger.info("Fetch Charts Not implemented for Looker")
 
-    def fetch_dashboard_charts(self, dashboard_details: object) -> Iterable[Chart]:
+    def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
         """Get chart method
         Args:
             charts:

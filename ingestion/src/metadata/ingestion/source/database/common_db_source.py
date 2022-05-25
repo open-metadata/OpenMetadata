@@ -37,9 +37,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_source import DatabaseSourceService
 from metadata.ingestion.source.database.dbt_souce import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
+from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchamySource
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
@@ -70,7 +70,7 @@ class SQLSourceStatus(SourceStatus):
         logger.warning(f"Filtered Table {record} due to {err}")
 
 
-class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
+class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchamySource):
     def __init__(
         self,
         config: WorkflowSource,
@@ -213,3 +213,11 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, DatabaseSourceService):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def fetch_table_tags(
+        self, table_name: str, schema: str, inspector: Inspector
+    ) -> None:
+        """
+        Method to fetch tags associated with table
+        """
+        pass
