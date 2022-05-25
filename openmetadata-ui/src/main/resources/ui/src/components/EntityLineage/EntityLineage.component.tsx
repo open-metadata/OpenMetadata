@@ -382,19 +382,19 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       ];
 
       const sourceDownstreamNode = updatedLineageData.downstreamEdges?.find(
-        (d) => source?.includes(d.toEntity as string)
+        (d) => source?.includes(d.toEntity)
       );
 
       const sourceUpStreamNode = updatedLineageData.upstreamEdges?.find((u) =>
-        source?.includes(u.fromEntity as string)
+        source?.includes(u.fromEntity)
       );
 
       const targetDownStreamNode = updatedLineageData.downstreamEdges?.find(
-        (d) => target?.includes(d.toEntity as string)
+        (d) => target?.includes(d.toEntity)
       );
 
       const targetUpStreamNode = updatedLineageData.upstreamEdges?.find((u) =>
-        target?.includes(u.fromEntity as string)
+        target?.includes(u.fromEntity)
       );
 
       let targetNode = nodes?.find((n) => target?.includes(n.id));
