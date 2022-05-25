@@ -273,7 +273,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Hyper Parameters</h6>
         <table
-          className="tw-w-full tw-mt-3"
+          className="tw-w-full tw-mt-2"
           data-testid="hyperparameters-table"
           id="hyperparameters-table">
           <thead>
@@ -321,12 +321,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const getMlModelStore = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mt-3">
-        <hr className="tw-my-4" />
+      <div className="tw-flex tw-flex-col tw-mt-2">
         <h6 className="tw-font-medium tw-text-base">Model Store</h6>
         {mlModelDetail.mlStore ? (
           <table
-            className="tw-w-full tw-mt-3"
+            className="tw-w-full tw-mt-2"
             data-testid="modle-store-table"
             id="modle-store-table">
             <thead>
@@ -437,7 +436,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </Fragment>
               )}
               {activeTab === 2 && (
-                <div>
+                <div className="tw-grid tw-grid-cols-2 tw-gap-x-6">
                   {getMlHyperParameters()}
                   {getMlModelStore()}
                 </div>
