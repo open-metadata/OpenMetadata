@@ -571,25 +571,18 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity,
-            fields=fields,
-            limit=limit,
-            params=params
+            entity=entity, fields=fields, limit=limit, params=params
         )
-        for entity in entity_list.entities:
-            yield entity
+        for elem in entity_list.entities:
+            yield elem
 
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity,
-                fields=fields,
-                limit=limit,
-                params=params,
-                after=after
+                entity=entity, fields=fields, limit=limit, params=params, after=after
             )
-            for entity in entity_list.entities:
-                yield entity
+            for elem in entity_list.entities:
+                yield elem
             after = entity_list.after
 
     def list_versions(

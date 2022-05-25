@@ -242,12 +242,11 @@ class OMetaTableTest(TestCase):
             self.metadata.create_or_update(data=fake_create)
 
         all_entities = self.metadata.list_all_entities(
-            entity=Table,
-            limit=2  # paginate in batches of pairs
+            entity=Table, limit=2  # paginate in batches of pairs
         )
-        # assert len(list(all_entities)) >= 10  # In case the default testing entity is not present
-        for entity in all_entities:
-            print(entity.name)
+        assert (
+            len(list(all_entities)) >= 10
+        )  # In case the default testing entity is not present
 
     def test_delete(self):
         """
