@@ -46,7 +46,8 @@
     "securityToken": {
       "title": "Security Token",
       "description": "Salesforce Security Token.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
@@ -76,5 +77,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": ["username"]
 }

@@ -19,6 +19,14 @@ from typing import Type, TypeVar
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingConnection,
+)
+from metadata.generated.schema.entity.services.metadataService import MetadataConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     Processor as WorkflowProcessor,
 )
@@ -58,6 +66,17 @@ def get_class(key: str) -> Type[T]:
         return my_class
 
 
+def get_source_dir(connection_type: type) -> str:
+    if connection_type == DatabaseConnection:
+        return "database"
+    if connection_type == MessagingConnection:
+        return "messaging"
+    if connection_type == MetadataConnection:
+        return "metadata"
+    if connection_type == DashboardConnection:
+        return "dashboard"
+
+
 def get_ingestion_source(
     source_type: str,
     source_config: WorkflowSource,
@@ -72,7 +91,8 @@ def get_ingestion_source(
     """
 
     source_class = get_class(
-        "metadata.ingestion.source.{}.{}Source".format(
+        "metadata.ingestion.source.{}.{}.{}Source".format(
+            get_source_dir(type(source_config.serviceConnection.__root__)),
             fetch_type_class(source_type, is_file=True),
             fetch_type_class(source_type, is_file=False),
         )
