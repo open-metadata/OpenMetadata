@@ -163,7 +163,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
 
   @Test
   void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {AIRFLOW_REFERENCE, PREFECT_REFERENCE};
+    EntityReference[] differentServices = {AIRFLOW_REFERENCE, GLUE_REFERENCE};
 
     // Create Pipeline for each service and test APIs
     for (EntityReference service : differentServices) {

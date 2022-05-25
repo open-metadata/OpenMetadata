@@ -77,6 +77,15 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
             .withConnection(TestUtils.AIRFLOW_CONNECTION);
     PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
     AIRFLOW_REFERENCE = pipelineService.getEntityReference();
+
+    createPipeline =
+        pipelineServiceResourceTest
+            .createRequest(test, 2)
+            .withServiceType(PipelineServiceType.Glue)
+            .withConnection(TestUtils.GLUE_CONNECTION);
+
+    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+    GLUE_REFERENCE = pipelineService.getEntityReference();
   }
 
   @Test
