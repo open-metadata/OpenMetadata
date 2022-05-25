@@ -361,7 +361,7 @@ const EntityTable = ({
     );
   };
 
-  const prePareConstraintIcon = (
+  const prepareConstraintIcon = (
     columnName: string,
     columnConstraint?: string
   ) => {
@@ -817,7 +817,7 @@ const EntityTable = ({
                                   row.canExpand ? '0px' : `${row.depth * 35}px`
                                 }`,
                               }}>
-                              {prePareConstraintIcon(
+                              {prepareConstraintIcon(
                                 cell.value,
                                 row.original.constraint
                               )}
