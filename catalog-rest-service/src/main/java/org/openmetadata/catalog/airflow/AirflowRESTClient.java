@@ -13,10 +13,12 @@
 
 package org.openmetadata.catalog.airflow;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
+import java.util.Map;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -148,12 +150,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String authToken = String.format(AUTH_TOKEN, token);
       String statusEndPoint = "%s/rest_api/api?api=rest_status";
       String statusUrl = String.format(statusEndPoint, serviceURL);
-      HttpRequest request =
-          HttpRequest.newBuilder(URI.create(statusUrl))
-              .header(CONTENT_HEADER, CONTENT_TYPE)
-              .header(AUTH_HEADER, authToken)
-              .GET()
-              .build();
+      HttpRequest request = createGetHttpRequestForJsonContent(authToken, statusUrl);
       response = client.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() == 200) {
         return response;
@@ -179,5 +176,33 @@ public class AirflowRESTClient extends PipelineServiceClient {
       throw PipelineServiceClientException.byMessage("Failed to test connection.", e.getMessage());
     }
     throw new PipelineServiceClientException(String.format("Failed to test connection due to %s", response.body()));
+  }
+
+  @Override
+  public Map<String, String> getLastIngestionLogs(String pipelineName) {
+    try {
+      String token = authenticate();
+      String authToken = String.format(AUTH_TOKEN, token);
+      String lastLogsEndPoint = "%s/rest_api/api?api=last_dag_logs&dag_id=%s";
+      String lastLogsUrl = String.format(lastLogsEndPoint, serviceURL, pipelineName);
+      HttpRequest request = createGetHttpRequestForJsonContent(authToken, lastLogsUrl);
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      TypeReference<Map<String, String>> mapTypeReference = new TypeReference<>() {};
+      Map<String, String> lastIngestionLogs = JsonUtils.readValue(response.body(), mapTypeReference);
+      if (response.statusCode() == 200) {
+        return lastIngestionLogs;
+      }
+    } catch (Exception e) {
+      throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+    }
+    throw new PipelineServiceClientException("Failed to get last ingestion logs.");
+  }
+
+  private HttpRequest createGetHttpRequestForJsonContent(String authToken, String lastLogsUrl) {
+    return HttpRequest.newBuilder(URI.create(lastLogsUrl))
+        .header(CONTENT_HEADER, CONTENT_TYPE)
+        .header(AUTH_HEADER, authToken)
+        .GET()
+        .build();
   }
 }
