@@ -58,3 +58,42 @@ export const MOCK_USER = [
     href: 'http://localhost:8585/api/v1/users/2a31e452-2061-4517-af35-0ace16161cde',
   },
 ];
+
+export const MOCK_CURRENT_TEAM_1 = {
+  id: '0ccba9c2-bb41-4e8d-9add-7af8bdd8d6b8',
+  name: 'Cloud_Infra',
+  fullyQualifiedName: 'Cloud_Infra',
+  displayName: 'Cloud_Infra',
+  description: 'This is Cloud_Infra description.',
+  version: 0.3,
+  updatedAt: 1653410822537,
+  updatedBy: 'anonymous',
+  href: 'http://localhost:8585/api/v1/teams/0ccba9c2-bb41-4e8d-9add-7af8bdd8d6b8',
+  isJoinable: true,
+  changeDescription: {
+    fieldsAdded: [
+      {
+        name: 'owner',
+        newValue:
+          '{"id":"9fcf9550-1571-4f79-8016-ba81a8c4a2f4","type":"user","name":"aaron_johnson0","fullyQualifiedName":"aaron_johnson0","displayName":"Aaron Johnson","deleted":false}',
+      },
+    ],
+    fieldsUpdated: [],
+    fieldsDeleted: [],
+    previousVersion: 0.2,
+  },
+  deleted: false,
+  defaultRoles: [
+    {
+      id: 'fb41f804-e266-4a8e-8f3a-022c72c70033',
+      type: 'role',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/fb41f804-e266-4a8e-8f3a-022c72c70033',
+    },
+  ],
+};

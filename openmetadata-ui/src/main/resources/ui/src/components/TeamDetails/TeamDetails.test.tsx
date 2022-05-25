@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import TeamDetails from './TeamDetails';
 import { mockTeams, MOCK_USER } from './TeamDetails.mock';
@@ -87,14 +88,25 @@ jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab.component</p>);
 });
 
-// jest.mock('../common/TabsPane/TabsPane', () => {
-//   return jest.fn().mockImplementation(({ setActiveTab }) => (
-//     <div>
-//       <p>TabsPane.component</p>
-//       <button></button>
-//     </div>
-//   ));
-// });
+const mockTabHandler = jest.fn().mockImplementation((fn, value) => fn(value));
+
+jest.mock('../common/TabsPane/TabsPane', () => {
+  return jest.fn().mockImplementation(({ setActiveTab }) => (
+    <div>
+      <p>TabsPane.component</p>
+      <button
+        data-testid="assets-btn"
+        onClick={() => mockTabHandler(setActiveTab, 2)}>
+        assets
+      </button>
+      <button
+        data-testid="roles-btn"
+        onClick={() => mockTabHandler(setActiveTab, 3)}>
+        roles
+      </button>
+    </div>
+  ));
+});
 
 jest.mock('../../AppState', () => {
   const mockUser = {
@@ -183,13 +195,35 @@ describe('TeamDetails component test', () => {
     expect(leaveTeam).toBeInTheDocument();
   });
 
-  it('Assests tab should render properly', async () => {
-    render(<TeamDetails {...(mockProps as unknown as TeamDetailsProp)} />);
+  it('Assets tab should work properly', async () => {
+    render(<TeamDetails {...(mockProps as unknown as TeamDetailsProp)} />, {
+      wrapper: MemoryRouter,
+    });
 
     const teamContainer = await screen.findByTestId('team-details-container');
-    const joinTeam = await screen.findByTestId('join-teams');
+    const assets = await screen.findByTestId('assets-btn');
 
     expect(teamContainer).toBeInTheDocument();
-    expect(joinTeam).toBeInTheDocument();
+    expect(assets).toBeInTheDocument();
+
+    fireEvent.click(assets);
+
+    expect(mockTabHandler).toBeCalledTimes(1);
+  });
+
+  it('Roles tab should work properly', async () => {
+    render(<TeamDetails {...(mockProps as unknown as TeamDetailsProp)} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const teamContainer = await screen.findByTestId('team-details-container');
+    const assets = await screen.findByTestId('assets-btn');
+
+    expect(teamContainer).toBeInTheDocument();
+    expect(assets).toBeInTheDocument();
+
+    fireEvent.click(assets);
+
+    expect(mockTabHandler).toBeCalledTimes(1);
   });
 });
