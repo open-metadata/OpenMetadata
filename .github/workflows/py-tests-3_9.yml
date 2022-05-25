@@ -67,6 +67,7 @@ jobs:
       run: |
         source env/bin/activate
         make coverage
+        rm pom.xml
 
     - name: Run Sonar
       uses: sonarsource/sonarcloud-github-action@master
