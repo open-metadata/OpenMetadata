@@ -19,8 +19,8 @@ from pytest import fixture
 from ingestion.src.metadata.great_expectations.action import (
     OpenMetadataValidationAction,
 )
-from metadata.great_expectations.column_test_builders import BaseColumnTestBuilder
-from metadata.great_expectations.table_test_builders import BaseTableTestBuilder
+from metadata.great_expectations.columns.column_test_builders import BaseColumnTestBuilder
+from metadata.great_expectations.tables.table_test_builders import BaseTableTestBuilder
 
 
 def mocked_ometa_object():
