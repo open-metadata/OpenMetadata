@@ -103,6 +103,7 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
         get_connection_url(connection),
         **options.dict(),
         connect_args=get_connection_args(connection),
+        pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
     )
 
