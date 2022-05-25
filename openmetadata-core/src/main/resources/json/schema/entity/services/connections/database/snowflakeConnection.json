@@ -66,7 +66,8 @@
     "privateKey": {
       "title": "Private Key",
       "description": "Connection to Snowflake instance via Private Key",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "snowflakePrivatekeyPassphrase": {
       "title": "Snowflake Passphrase Key",

@@ -55,7 +55,8 @@
     "personalAccessTokenSecret": {
       "title": "Personal Access Token Secret",
       "description": "Personal Access Token Secret.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "env": {
       "title": "Tableau Environment",
