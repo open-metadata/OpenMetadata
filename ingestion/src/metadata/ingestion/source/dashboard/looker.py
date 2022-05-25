@@ -11,32 +11,32 @@
 
 import os
 import traceback
-from typing import Iterable
+from typing import Any, Iterable, List, Optional
 
 import looker_sdk
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class LookerSource(Source[Entity]):
+class LookerSource(DashboardSourceService):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
 
@@ -45,18 +45,8 @@ class LookerSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-        self.config = config
-        self.source_config = config.sourceConfig.config
-        self.service_connection = config.serviceConnection.__root__.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-
+        super().__init__(config, metadata_config)
         self.client = self.looker_client()
-        self.status = SourceStatus()
-        self.service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
 
     def check_env(self, env_key):
         if os.environ.get(env_key):
@@ -89,81 +79,88 @@ class LookerSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
+    def get_dashboards_list(self) -> Optional[List[Any]]:
+        """
+        Get List of all dashboards
+        """
+        return self.client.all_dashboards(fields="id")
 
-    def next_record(self) -> Iterable[Entity]:
-        yield from self._get_looker_dashboards()
+    def get_dashboard_name(self, dashboard_details: object) -> str:
+        """
+        Get Dashboard Name
+        """
+        return dashboard_details.id
 
-    def _get_dashboard_elements(self, dashboard_elements):
-        if filter_by_chart(
-            chart_filter_pattern=self.source_config.chartFilterPattern,
-            chart_name=dashboard_elements.id,
-        ):
-            self.status.failure(dashboard_elements.id, "Chart filtered out")
-            return None
-        om_dashboard_elements = Chart(
-            name=dashboard_elements.id,
-            displayName=dashboard_elements.title or "",
-            description="",
-            chart_type=dashboard_elements.type,
-            url=f"{self.service_connection.hostPort}/dashboard_elements/{dashboard_elements.id}",
+    def get_dashboard_details(self, dashboard: object) -> dict:
+        """
+        Get Dashboard Details
+        """
+        fields = [
+            "id",
+            "title",
+            "dashboard_elements",
+            "dashboard_filters",
+            "view_count",
+        ]
+        return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
+
+    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+        """
+        Method to Get Dashboard Entity
+        """
+        return Dashboard(
+            name=dashboard_details.id,
+            displayName=dashboard_details.title,
+            description=dashboard_details.description or "",
+            charts=self.chart_names,
+            url=f"{self.service_connection.hostPort}/dashboards/{dashboard_details.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
-        if not dashboard_elements.id:
-            raise ValueError("Chart(Dashboard Element) without ID")
-        self.status.scanned(dashboard_elements.id)
-        yield om_dashboard_elements
-        self.charts.append(om_dashboard_elements)
-        self.chart_names.append(dashboard_elements.id)
 
-    def _get_looker_dashboards(self):
-        all_dashboards = self.client.all_dashboards(fields="id")
-        for child_dashboard in all_dashboards:
+    def get_lineage(self, dashboard_details: object) -> AddLineageRequest:
+        """
+        Get lineage between dashboard and data sources
+        """
+        logger.info("Lineage not implemented for Looker")
+
+    def process_charts(self) -> Optional[Iterable[Chart]]:
+        """
+        Get lineage between dashboard and data sources
+        """
+        logger.info("Fetch Charts Not implemented for Looker")
+
+    def fetch_dashboard_charts(
+        self, dashboard_details: object
+    ) -> Optional[Iterable[Chart]]:
+        """
+        Metod to fetch charts linked to dashboard
+        """
+        self.charts = []
+        self.chart_names = []
+        for dashboard_elements in dashboard_details.dashboard_elements:
             try:
-                if filter_by_dashboard(
-                    dashboard_filter_pattern=self.source_config.dashboardFilterPattern,
-                    dashboard_name=child_dashboard.id,
+                if filter_by_chart(
+                    chart_filter_pattern=self.source_config.chartFilterPattern,
+                    chart_name=dashboard_elements.id,
                 ):
-                    self.status.failure(child_dashboard.id, "Dashboard Filtered out")
+                    self.status.failure(dashboard_elements.id, "Chart filtered out")
                     continue
-                fields = [
-                    "id",
-                    "title",
-                    "dashboard_elements",
-                    "dashboard_filters",
-                    "view_count",
-                ]
-                dashboard = self.client.dashboard(
-                    dashboard_id=child_dashboard.id, fields=",".join(fields)
-                )
-                self.charts = []
-                self.chart_names = []
-                for iter_chart in dashboard.dashboard_elements:
-                    try:
-                        yield from self._get_dashboard_elements(iter_chart)
-                    except Exception as err:
-                        logger.debug(traceback.format_exc())
-                        logger.error(err)
-                yield Dashboard(
-                    name=dashboard.id,
-                    displayName=dashboard.title,
-                    description=dashboard.description or "",
-                    charts=self.chart_names,
-                    url=f"{self.service_connection.hostPort}/dashboards/{dashboard.id}",
+                om_dashboard_elements = Chart(
+                    name=dashboard_elements.id,
+                    displayName=dashboard_elements.title or "",
+                    description="",
+                    chart_type=dashboard_elements.type,
+                    url=f"{self.service_connection.hostPort}/dashboard_elements/{dashboard_elements.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
                 )
+                if not dashboard_elements.id:
+                    raise ValueError("Chart(Dashboard Element) without ID")
+                self.status.scanned(dashboard_elements.id)
+                yield om_dashboard_elements
+                self.charts.append(om_dashboard_elements)
+                self.chart_names.append(dashboard_elements.id)
             except Exception as err:
-                logger.error(repr(err))
-                self.status.failure(child_dashboard.id, repr(err))
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def close(self):
-        pass
-
-    def test_connection(self) -> None:
-        pass
+                logger.debug(traceback.format_exc())
+                logger.error(err)

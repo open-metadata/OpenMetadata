@@ -14,7 +14,7 @@ Superset source module
 
 import json
 import traceback
-from typing import Iterable
+from typing import Iterable, List, Optional
 
 import dateutil.parser as dateparser
 
@@ -40,11 +40,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.superset_rest import SupersetAPIClient
-from metadata.utils.connections import get_connection, test_connection
+from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -148,7 +146,7 @@ def get_service_type_from_database_uri(uri: str) -> str:
     return "external"
 
 
-class SupersetSource(Source[Entity]):
+class SupersetSource(DashboardSourceService):
     """
     Superset source class
 
@@ -177,19 +175,7 @@ class SupersetSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-        self.config = config
-        self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
-
-        self.status = SourceStatus()
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
-        self.service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
+        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -201,55 +187,75 @@ class SupersetSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
-
-    def next_record(self) -> Iterable[Entity]:
-        yield from self._fetch_charts()
-        yield from self._fetch_dashboards()
-
-    def _build_dashboard(self, dashboard_json) -> Dashboard:
-        dashboard_id = dashboard_json["id"]
-        name = dashboard_json["dashboard_title"]
-        dashboard_url = (
-            f"{self.service_connection.hostPort[:-1]}{dashboard_json['url']}"
-        )
-        last_modified = (
-            dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp()
-            * 1000
-        )
-        owners = get_owners(dashboard_json["owners"])
-        raw_position_data = dashboard_json.get("position_json", "{}")
-        charts = []
-        if raw_position_data is not None:
-            position_data = json.loads(raw_position_data)
-            for key, value in position_data.items():
-                if not key.startswith("CHART-"):
-                    continue
-                chart_id = value.get("meta", {}).get("chartId", "unknown")
-                charts.append(chart_id)
-
-        return Dashboard(
-            name=dashboard_id,
-            displayName=name,
-            description="",
-            url=dashboard_url,
-            owners=owners,
-            charts=charts,
-            service=EntityReference(id=self.service.id, type="dashboardService"),
-            lastModified=last_modified,
-        )
-
-    def _fetch_dashboards(self) -> Iterable[Entity]:
+    def get_dashboards_list(self) -> Optional[List[object]]:
+        """
+        Get List of all dashboards
+        """
         current_page = 0
         page_size = 25
         total_dashboards = self.client.fetch_total_dashboards()
         while current_page * page_size <= total_dashboards:
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
-            for dashboard_json in dashboards["result"]:
-                dashboard = self._build_dashboard(dashboard_json)
+            for dashboard in dashboards["result"]:
                 yield dashboard
+
+    def get_dashboard_name(self, dashboard_details: dict) -> str:
+        """
+        Get Dashboard Name
+        """
+        return dashboard_details["id"]
+
+    def get_dashboard_details(self, dashboard: dict) -> dict:
+        """
+        Get Dashboard Details
+        """
+        return dashboard
+
+    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+        """
+        Method to Get Dashboard Entity
+        """
+        dashboard_id = dashboard_details["id"]
+        name = dashboard_details["dashboard_title"]
+        dashboard_url = (
+            f"{self.service_connection.hostPort[:-1]}{dashboard_details['url']}"
+        )
+        last_modified = (
+            dateparser.parse(dashboard_details.get("changed_on_utc", "now")).timestamp()
+            * 1000
+        )
+        owners = get_owners(dashboard_details["owners"])
+        return Dashboard(
+            name=dashboard_id,
+            displayName=name,
+            description="",
+            url=dashboard_url,
+            owners=owners,
+            charts=self.charts,
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+            lastModified=last_modified,
+        )
+
+    def get_lineage(self, dashboard_details: object) -> Optional[AddLineageRequest]:
+        """
+        Get lineage between dashboard and data sources
+        """
+        pass
+
+    def fetch_dashboard_charts(self, dashboard_details: dict) -> None:
+        """
+        Metod to fetch charts linked to dashboard
+        """
+        raw_position_data = dashboard_details.get("position_json", "{}")
+        self.charts = []
+        if raw_position_data is not None:
+            position_data = json.loads(raw_position_data)
+            for key, value in position_data.items():
+                if not key.startswith("CHART-"):
+                    continue
+                chart_id = value.get("meta", {}).get("chartId", "unknown")
+                self.charts.append(chart_id)
 
     def _get_service_type_from_database_id(self, database_id):
         database_json = self.client.fetch_database(database_id)
@@ -307,7 +313,7 @@ class SupersetSource(Source[Entity]):
                     logger.error(err)
 
     # pylint: disable=too-many-locals
-    def _build_chart(self, chart_json) -> Chart:
+    def _build_chart(self, chart_json: dict) -> Chart:
         chart_id = chart_json["id"]
         name = chart_json["slice_name"]
         last_modified = (
@@ -351,7 +357,7 @@ class SupersetSource(Source[Entity]):
         yield from self._check_lineage(chart_id, chart_json.get("datasource_name_text"))
         yield chart
 
-    def _fetch_charts(self):
+    def process_charts(self) -> Optional[Iterable[Chart]]:
         current_page = 0
         page_size = 25
         total_charts = self.client.fetch_total_charts()
@@ -364,12 +370,3 @@ class SupersetSource(Source[Entity]):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(err)
-
-    def get_status(self):
-        return self.status
-
-    def close(self):
-        pass
-
-    def test_connection(self) -> None:
-        pass

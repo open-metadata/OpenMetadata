@@ -12,7 +12,7 @@
 
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, List, Optional
 from urllib.parse import quote
 
 import requests
@@ -36,12 +36,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.sql_source import SQLSourceStatus
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -49,7 +50,7 @@ HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 logger = ingestion_logger()
 
 
-class MetabaseSource(Source[Entity]):
+class MetabaseSource(DashboardSourceService):
     """Metabase entity class
 
     Args:
@@ -74,26 +75,12 @@ class MetabaseSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-        self.config = config
-        self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config: DashboardServiceMetadataPipeline = (
-            self.config.sourceConfig.config
-        )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-
-        self.status = SQLSourceStatus()
+        super().__init__(config, metadata_config)
         params = dict()
         params["username"] = self.service_connection.username
         params["password"] = self.service_connection.password.get_secret_value()
-
         self.connection = get_connection(self.service_connection)
         self.metabase_session = self.connection.client["metabase_session"]
-
-        self.dashboard_service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
         self.charts = []
         self.metric_charts = []
 
@@ -115,11 +102,48 @@ class MetabaseSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[Entity]:
-        yield from self.get_dashboards()
-        self.get_cards()
+    def get_dashboards_list(self) -> Optional[List[object]]:
+        """
+        Get List of all dashboards
+        """
+        resp_dashboards = self.req_get("/api/dashboard")
+        if resp_dashboards.status_code == 200:
+            return resp_dashboards.json()
+        return []
 
-    def get_charts(self, charts) -> Iterable[Chart]:
+    def get_dashboard_name(self, dashboard_details: dict) -> str:
+        """
+        Get Dashboard Name
+        """
+        return dashboard_details["name"]
+
+    def get_dashboard_details(self, dashboard: dict) -> dict:
+        """
+        Get Dashboard Details
+        """
+        resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
+        return resp_dashboard.json()
+
+    def process_charts(self) -> Optional[Iterable[Chart]]:
+        return []
+
+    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+        """
+        Method to Get Dashboard Entity
+        """
+        return Dashboard(
+            id=uuid.uuid4(),
+            name=dashboard_details["name"],
+            url=self.service_connection.hostPort,
+            displayName=dashboard_details["name"],
+            description=dashboard_details["description"]
+            if dashboard_details["description"] is not None
+            else "",
+            charts=self.charts,
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+        )
+
+    def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
         """Get chart method
 
         Args:
@@ -127,6 +151,7 @@ class MetabaseSource(Source[Entity]):
         Returns:
             Iterable[Chart]
         """
+        charts = dashboard_details["ordered_cards"]
         for chart in charts:
             try:
                 chart_details = chart["card"]
@@ -149,7 +174,7 @@ class MetabaseSource(Source[Entity]):
                     chart_type=str(chart_details["display"]),
                     url=self.service_connection.hostPort,
                     service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
+                        id=self.service.id, type="dashboardService"
                     ),
                 )
                 self.charts.append(chart_details["name"])
@@ -159,47 +184,16 @@ class MetabaseSource(Source[Entity]):
                 logger.debug(traceback.format_exc())
                 continue
 
-    def get_dashboards(self):
-        """Get dashboard method"""
-        resp_dashboards = self.req_get("/api/dashboard")
-        if resp_dashboards.status_code == 200:
-            for dashboard in resp_dashboards.json():
-                resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
-                dashboard_details = resp_dashboard.json()
-                self.charts = []
-                if filter_by_dashboard(
-                    self.source_config.dashboardFilterPattern, dashboard_details["name"]
-                ):
-                    self.status.filter(
-                        dashboard_details["name"], "Dashboard Pattern not Allowed"
-                    )
-                    continue
-                yield from self.get_charts(dashboard_details["ordered_cards"])
-                yield Dashboard(
-                    id=uuid.uuid4(),
-                    name=dashboard_details["name"],
-                    url=self.service_connection.hostPort,
-                    displayName=dashboard_details["name"],
-                    description=dashboard_details["description"]
-                    if dashboard_details["description"] is not None
-                    else "",
-                    charts=self.charts,
-                    service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
-                    ),
-                )
-                if self.service_connection.dbServiceName:
-                    yield from self.get_lineage(
-                        dashboard_details["ordered_cards"], dashboard_details["name"]
-                    )
-
-    def get_lineage(self, chart_list, dashboard_name):
+    def get_lineage(self, dashboard_details: dict) -> AddLineageRequest:
         """Get lineage method
 
         Args:
-            chart_list:
-            dashboard_name
+            dashboard_details
         """
+        chart_list, dashboard_name = (
+            dashboard_details["ordered_cards"],
+            dashboard_details["name"],
+        )
         metadata = OpenMetadata(self.metadata_config)
         for chart in chart_list:
             try:
@@ -210,9 +204,7 @@ class MetabaseSource(Source[Entity]):
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
                     table_fqdn = f"{self.service_connection.dbServiceName}.{table['schema']}.{table['name']}"
-                    dashboard_fqdn = (
-                        f"{self.dashboard_service.name}.{quote(dashboard_name)}"
-                    )
+                    dashboard_fqdn = f"{self.service.name}.{quote(dashboard_name)}"
                     table_entity = metadata.get_by_name(entity=Table, fqdn=table_fqdn)
                     chart_entity = metadata.get_by_name(
                         entity=Model_Dashboard, fqdn=dashboard_fqdn
@@ -243,19 +235,8 @@ class MetabaseSource(Source[Entity]):
             self.service_connection.hostPort + path, headers=self.metabase_session
         )
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def close(self):
-        pass
-
-    def prepare(self):
-        pass
-
-    def test_connection(self) -> None:
-        pass
-
     def get_card_detail(self, card_list):
+        # TODO: Need to handle card lineage
         metadata = OpenMetadata(self.metadata_config)
         for card in card_list:
             try:

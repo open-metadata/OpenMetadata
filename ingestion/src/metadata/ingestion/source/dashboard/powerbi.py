@@ -12,10 +12,11 @@
 
 import traceback
 import uuid
-from typing import Iterable
+from typing import Iterable, List, Optional
 
 from powerbi.client import PowerBiClient
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -56,18 +57,7 @@ class PowerbiSource(Source[Entity]):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        super().__init__()
-        self.config = config
-        self.source_config = self.config.sourceConfig.config
-        self.service_connection_config = config.serviceConnection.__root__.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
-
-        self.status = SourceStatus()
-
-        self.dashboard_service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
+        super().__init__(config, metadata_config)
 
         self.client = PowerBiClient(
             client_id=self.service_connection_config.clientId,
@@ -95,16 +85,67 @@ class PowerbiSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[Entity]:
-        yield from self.get_dashboards()
+    def get_dashboards_list(self) -> Optional[List[object]]:
+        """
+        Get List of all dashboards
+        """
+        self.dashboard_service = self.client.dashboards()
+        dashboard_list = self.dashboard_service.get_dashboards()
+        return dashboard_list.get("value")
 
-    def get_charts(self, charts) -> Iterable[Chart]:
+    def get_dashboard_name(self, dashboard_details: object) -> str:
+        """
+        Get Dashboard Name
+        """
+        return dashboard_details["id"]
+
+    def get_dashboard_details(self, dashboard: object) -> object:
+        """
+        Get Dashboard Details
+        """
+        return self.dashboard_service.get_dashboard(dashboard["id"])
+
+    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+        """
+        Method to Get Dashboard Entity, Dashboard Charts & Lineage
+        """
+        return Dashboard(
+            name=dashboard_details["id"],
+            url=dashboard_details["webUrl"],
+            displayName=dashboard_details["displayName"],
+            description="",
+            charts=self.charts,
+            service=EntityReference(
+                id=self.dashboard_service.id, type="dashboardService"
+            ),
+        )
+
+    def get_lineage(
+        self, datasource_list: List, dashboard_name: str
+    ) -> AddLineageRequest:
+        """
+        Get lineage between dashboard and data sources
+        """
+        logger.info("Lineage not implemented for Looker")
+
+    def fetch_charts(self) -> Iterable[Chart]:
+        """
+        Metod to fetch Charts
+        """
+        logger.info("Fetch Charts Not implemented for Looker")
+
+    def fetch_dashboard_charts(self, dashboard_details: object) -> Iterable[Chart]:
         """Get chart method
         Args:
             charts:
         Returns:
             Iterable[Chart]
         """
+        self.charts = []
+        charts = self.dashboard_service.get_tiles(
+            dashboard_id=dashboard_details["id"]
+        ).get("value")
+
         for chart in charts:
             try:
                 if filter_by_chart(
@@ -131,52 +172,3 @@ class PowerbiSource(Source[Entity]):
                 logger.debug(traceback.format_exc())
                 logger.error(repr(err))
                 self.status.failure(chart["title"], repr(err))
-
-    def get_dashboards(self):
-        """Get dashboard method"""
-        dashboard_service = self.client.dashboards()
-        dashboard_list = dashboard_service.get_dashboards()
-        for dashboard_id in dashboard_list.get("value"):
-            try:
-                dashboard_details = dashboard_service.get_dashboard(dashboard_id["id"])
-                self.charts = []
-                if filter_by_dashboard(
-                    self.source_config.dashboardFilterPattern,
-                    dashboard_details["displayName"],
-                ):
-                    self.status.failure(
-                        dashboard_details["displayName"],
-                        "Filtered out using Chart filter pattern",
-                    )
-                    continue
-                yield from self.get_charts(
-                    dashboard_service.get_tiles(
-                        dashboard_id=dashboard_details["id"]
-                    ).get("value")
-                )
-                yield Dashboard(
-                    name=dashboard_details["id"],
-                    url=dashboard_details["webUrl"],
-                    displayName=dashboard_details["displayName"],
-                    description="",
-                    charts=self.charts,
-                    service=EntityReference(
-                        id=self.dashboard_service.id, type="dashboardService"
-                    ),
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(err)
-                self.status.failure(dashboard_details["displayName"], repr(err))
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def close(self):
-        pass
-
-    def prepare(self):
-        pass
-
-    def test_connection(self) -> None:
-        pass
