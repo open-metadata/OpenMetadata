@@ -276,7 +276,7 @@ describe('TeamsAndUsers page', () => {
     ).as('searchApi');
 
     cy.wait('@searchApi');
-
+    cy.wait(500); // Wait for result to load after api success
     cy.get('[data-testid="table-link"]')
       .first()
       .contains(SEARCH_ENTITY_TABLE.table_1.term)
