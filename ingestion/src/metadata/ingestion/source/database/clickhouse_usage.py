@@ -27,7 +27,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
