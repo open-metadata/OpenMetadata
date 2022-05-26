@@ -69,8 +69,24 @@ jobs:
         make coverage
         rm pom.xml
 
+    - name: Run PR Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'pull_request_target' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
+        args: >
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
+
     - name: Run Sonar
       uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'push' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

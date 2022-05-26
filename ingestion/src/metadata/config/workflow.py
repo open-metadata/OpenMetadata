@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.messagingService import (
     MessagingConnection,
 )
 from metadata.generated.schema.entity.services.metadataService import MetadataConnection
+from metadata.generated.schema.entity.services.pipelineService import PipelineConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     Processor as WorkflowProcessor,
 )
@@ -75,6 +76,8 @@ def get_source_dir(connection_type: type) -> str:
         return "metadata"
     if connection_type == DashboardConnection:
         return "dashboard"
+    if connection_type == PipelineConnection:
+        return "pipeline"
 
 
 def get_ingestion_source(
