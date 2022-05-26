@@ -110,7 +110,6 @@ class KafkaSource(Source[CreateTopicRequest]):
     def next_record(self) -> Iterable[Topic]:
         topics_dict = self.admin_client.list_topics().topics
         for topic_name, topic_metadata in topics_dict.items():
-            print()
             try:
                 if not filter_by_topic(
                     self.source_config.topicFilterPattern, topic_name
@@ -131,9 +130,9 @@ class KafkaSource(Source[CreateTopicRequest]):
                     )
                     topic_configResource = self.admin_client.describe_configs(
                         [
-                            # ConfigResource(
-                            #     confluent_kafka.admin.RESOURCE_TOPIC, topic_name
-                            # )
+                            ConfigResource(
+                                confluent_kafka.admin.RESOURCE_TOPIC, topic_name
+                            )
                         ]
                     )
                     for j in concurrent.futures.as_completed(
