@@ -26,9 +26,9 @@ from metadata.generated.schema.entity.data.table import ColumnProfile, TableProf
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    TMetric,
     QueryMetric,
     StaticMetric,
+    TMetric,
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE

@@ -23,7 +23,12 @@ class LikeCount(StaticMetric):
 
     Given a column, and an expression, return the number of
     rows that match it
+
+    This Metric needs to be initialised passing the expression to check
+    add_props(expression="j%")(Metrics.LIKE_COUNT.value)
     """
+
+    expression: str
 
     @classmethod
     def name(cls):

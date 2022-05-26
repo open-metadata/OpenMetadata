@@ -12,6 +12,8 @@
 """
 CountInSet Metric definition
 """
+from typing import List
+
 from sqlalchemy import case, column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -25,7 +27,13 @@ class CountInSet(StaticMetric):
     COUNT_IN_SET Metric
 
     Given a column, return the count of values in a given set.
+
+    This Metric needs to be initialised passing the values to look for
+    the count:
+    add_props(values=["John"])(Metrics.COUNT_IN_SET.value)
     """
+
+    values: List[str]
 
     @classmethod
     def name(cls):

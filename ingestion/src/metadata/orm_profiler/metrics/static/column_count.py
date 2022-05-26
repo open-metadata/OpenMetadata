@@ -12,7 +12,7 @@
 """
 Table Column Count Metric definition
 """
-from sqlalchemy import func, inspect, literal
+from sqlalchemy import inspect, literal
 from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
@@ -28,6 +28,7 @@ class ColumnCount(StaticMetric):
     information:
     add_props(table=table)(Metrics.COLUMN_COUNT.value)
     """
+
     table: DeclarativeMeta
 
     @classmethod
