@@ -35,7 +35,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
     ColumnProfile,
     DataType,
-    JoinedWithItem,
+    JoinedWith,
     Table,
     TableData,
     TableJoins,
@@ -356,21 +356,34 @@ class OMetaTableTest(TestCase):
             entity=Table, fqdn=self.entity.fullyQualifiedName
         )
 
-        another_table = CreateTableRequest(
+        column_join_table_req = CreateTableRequest(
             name="another-test",
             databaseSchema=self.schema_reference,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
-        another_res = self.metadata.create_or_update(another_table)
+        column_join_table_res = self.metadata.create_or_update(column_join_table_req)
+
+        direct_join_table_req = CreateTableRequest(
+            name="direct-join-test",
+            databaseSchema=self.schema_reference,
+            columns=[],
+        )
+        direct_join_table_res = self.metadata.create_or_update(direct_join_table_req)
 
         joins = TableJoins(
             startDate=datetime.now(),
             dayCount=1,
+            directTableJoins=[
+                JoinedWith(
+                    fullyQualifiedName="test-service-table.test-db.test-schema.direct-join-test",
+                    joinCount=2,
+                )
+            ],
             columnJoins=[
                 ColumnJoins(
                     columnName="id",
                     joinedWith=[
-                        JoinedWithItem(
+                        JoinedWith(
                             fullyQualifiedName="test-service-table.test-db.test-schema.another-test.another_id",
                             joinCount=2,
                         )
@@ -380,7 +393,12 @@ class OMetaTableTest(TestCase):
         )
 
         self.metadata.publish_frequently_joined_with(res, joins)
-        self.metadata.delete(entity=Table, entity_id=str(another_res.id.__root__))
+        self.metadata.delete(
+            entity=Table, entity_id=str(column_join_table_res.id.__root__)
+        )
+        self.metadata.delete(
+            entity=Table, entity_id=str(direct_join_table_res.id.__root__)
+        )
 
     def test_list_versions(self):
         """
