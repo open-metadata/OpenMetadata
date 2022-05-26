@@ -371,9 +371,11 @@ class MetadataRestSink(Sink[Entity]):
         try:
             created_pipeline = self.metadata.create_or_update(pipeline)
             logger.info(
-                f"Successfully ingested Pipeline {created_pipeline.displayName}"
+                f"Successfully ingested Pipeline {created_pipeline.displayName or created_pipeline.name.__root__}"
             )
-            self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
+            self.status.records_written(
+                f"Pipeline: {created_pipeline.displayName or created_pipeline.name.__root__}"
+            )
         except (APIError, ValidationError) as err:
             logger.error(f"Failed to ingest pipeline {pipeline.name}")
             logger.error(err)
