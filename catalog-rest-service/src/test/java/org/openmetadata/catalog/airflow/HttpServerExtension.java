@@ -14,7 +14,10 @@ package org.openmetadata.catalog.airflow;
 
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.apache.http.client.utils.URIBuilder;
@@ -24,7 +27,15 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class HttpServerExtension implements BeforeAllCallback, AfterAllCallback {
 
-  private static final int PORT = 9999;
+  private static final int PORT;
+  static {
+    try (ServerSocket socket = new ServerSocket(0)) {
+      socket.setReuseAddress(true);
+      PORT = socket.getLocalPort();
+    } catch (IOException ex) {
+      throw new RuntimeException("Could not find a free port for testing");
+    }
+  }
   private static final String HOST = "localhost";
   private static final String SCHEME = "http";
   private static final String DEFAULT_CONTEXT = "/";
