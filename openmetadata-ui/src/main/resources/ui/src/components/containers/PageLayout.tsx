@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import React, { FC, Fragment, ReactNode } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -34,14 +35,14 @@ const PageLayout: FC<PageLayoutProp> = ({
 }: PageLayoutProp) => {
   const getLeftPanel = () => {
     return (
-      leftPanel && (
-        <div>
-          <div className="tw-pr-4 tw-py-1" id="left-panel">
-            {leftPanel}
-          </div>
-          <div />
-        </div>
-      )
+      <Row className="tw-my-4">
+        <Col
+          className="tw-bg-white tw-px-8 tw-drop-shadow-2xl tw-rounded-lg"
+          offset={1}
+          span={22}>
+          {leftPanel && <div id="left-panel">{leftPanel}</div>}
+        </Col>
+      </Row>
     );
   };
 
@@ -62,7 +63,7 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
-        <div
+        {/* <div
           className={classNames(
             'page-layout-container l3-col tw-gap-x-3 tw-px-6 centered-layout',
             classes,
@@ -79,9 +80,14 @@ const PageLayout: FC<PageLayoutProp> = ({
             {
               'page-layout-container-center': !leftPanel && !rightPanel,
             }
-          )}>
-          {getLeftPanel()}
-          <div
+          )}> */}
+        <Row>
+          <Col span={5}>{getLeftPanel()}</Col>
+          <Col span={14}>{children}</Col>
+          <Col span={5}>{getRightPanel()}</Col>
+        </Row>
+
+        {/* <div
             className={classNames(
               'tw-py-1',
               {
@@ -92,10 +98,10 @@ const PageLayout: FC<PageLayoutProp> = ({
               }
             )}
             id="center">
-            {children}
+            
           </div>
           {getRightPanel()}
-        </div>
+        </div> */}
       </Fragment>
     );
   };

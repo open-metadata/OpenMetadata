@@ -103,7 +103,7 @@ const MyData: React.FC<MyDataProps> = ({
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-12">
+      <div className="tw-mt-4">
         <MyAssetStats
           countDashboards={countDashboards}
           countPipelines={countPipelines}
@@ -115,14 +115,13 @@ const MyData: React.FC<MyDataProps> = ({
         <RecentlyViewed />
         <div className="tw-filter-seperator tw-mt-3" />
         <RecentSearchedTerms />
-        <div className="tw-filter-seperator tw-mt-3" />
       </div>
     );
   };
 
   const getRightPanel = useCallback(() => {
     return (
-      <div className="tw-mt-12">
+      <div className="tw-mt-4">
         <div data-testid="my-data-container">
           <EntityList
             entityList={ownedData}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -113,10 +114,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
   }, [userTeams, users, countServices]);
 
   return (
-    <div
-      className="tw-mb-3"
-      data-testid="data-summary-container"
-      id="assetStatsCount">
+    <div data-testid="data-summary-container" id="assetStatsCount">
       {Object.values(dataSummary).map((data, index) => (
         <div
           className="tw-flex tw-items-center tw-justify-between tw-mb-2"
@@ -134,22 +132,26 @@ const MyAssetStats: FunctionComponent<Props> = ({
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Link
-                    className="tw-font-medium tw-pl-2"
+                    className="tw-font-medium"
                     data-testid={data.dataTestId}
                     to={data.link}>
-                    <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      type="text">
                       {data.data}
-                    </button>
+                    </Button>
                   </Link>
                 </NonAdminAction>
               ) : (
                 <Link
-                  className="tw-font-medium tw-pl-2"
+                  className="tw-font-medium"
                   data-testid={data.dataTestId}
                   to={data.link}>
-                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                  <Button
+                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                    type="text">
                     {data.data}
-                  </button>
+                  </Button>
                 </Link>
               )
             ) : (

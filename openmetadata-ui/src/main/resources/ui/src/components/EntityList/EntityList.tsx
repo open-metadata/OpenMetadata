@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
+import { Button, Typography } from 'antd';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
-
 interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
+
+const { Text } = Typography;
 
 const EntityList: FunctionComponent<Prop> = ({
   entityList = [],
@@ -33,9 +35,9 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <h6 className="tw-heading tw-mb-3" data-testid="filter-heading">
+      <Text className="tw-font-semibold" type="secondary">
         {headerText}
-      </h6>
+      </Text>
       {entityList.length
         ? entityList.map((item, index) => {
             return (
@@ -48,16 +50,17 @@ const EntityList: FunctionComponent<Prop> = ({
                 <div className="tw-flex">
                   {getEntityIcon(item.index || item.type || '')}
                   <Link
-                    className="tw-font-medium tw-pl-2"
+                    className="tw-font-medium"
                     to={getEntityLink(
                       item.index || item.type || '',
                       item.fullyQualifiedName
                     )}>
-                    <button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline tw-w-52 tw-truncate tw-text-left"
-                      title={getEntityName(item as unknown as EntityReference)}>
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      title={getEntityName(item as unknown as EntityReference)}
+                      type="text">
                       {getEntityName(item as unknown as EntityReference)}
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               </div>
