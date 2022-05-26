@@ -96,14 +96,14 @@ class DBTSource:
                         columns=columns,
                         upstream=upstream_nodes,
                     )
-                    model_fqdn = fqn.build(
+                    model_fqn = fqn.build(
                         self.metadata,
                         entity_type=DataModel,
                         database_name=database,
                         schema_name=schema,
                         model_name=model_name,
                     )
-                    self.data_models[model_fqdn] = model
+                    self.data_models[model_fqn] = model
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(err)

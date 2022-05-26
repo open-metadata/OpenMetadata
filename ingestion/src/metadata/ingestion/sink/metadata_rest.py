@@ -509,7 +509,7 @@ class MetadataRestSink(Sink[Entity]):
             for role in record.roles:
                 try:
                     role_entity = self.metadata.get_by_name(
-                        entity=Role, fqdn=str(role.name.__root__)
+                        entity=Role, fqn=str(role.name.__root__)
                     )
                 except APIError:
                     role_entity = self._create_role(role)
@@ -524,7 +524,7 @@ class MetadataRestSink(Sink[Entity]):
             for team in record.teams:
                 try:
                     team_entity = self.metadata.get_by_name(
-                        entity=Team, fqdn=str(team.name.__root__)
+                        entity=Team, fqn=str(team.name.__root__)
                     )
                     if not team_entity:
                         raise APIError(
@@ -577,7 +577,7 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             # Fetch the table that we have already ingested
-            table = self.metadata.get_by_name(entity=Table, fqdn=record.table_name)
+            table = self.metadata.get_by_name(entity=Table, fqn=record.table_name)
 
             test = None
             if record.table_test:
@@ -621,12 +621,12 @@ class MetadataRestSink(Sink[Entity]):
         """
         try:
             pipeline = self.metadata.get_by_name(
-                entity=Pipeline, fqdn=record.pipeline_fqdn
+                entity=Pipeline, fqn=record.pipeline_fqn
             )
             self.metadata.add_pipeline_status(
                 pipeline=pipeline, status=record.pipeline_status
             )
-            self.status.records_written(f"Pipeline Status: {record.pipeline_fqdn}")
+            self.status.records_written(f"Pipeline Status: {record.pipeline_fqn}")
 
         except Exception as err:
             logger.debug(traceback.format_exc())
