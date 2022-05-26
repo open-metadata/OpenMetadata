@@ -50,4 +50,8 @@ describe('Tags page should work', () => {
           });
       });
   });
+
+  it('Add new category slow should work properly', () => {
+    cy.get('[data-testid="add-category"]').should('be.visible');
+  });
 });
