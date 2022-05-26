@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
+
 describe('Tags page should work', () => {
   beforeEach(() => {
     cy.goToHomePage();
@@ -22,5 +24,30 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="menu-item-Tags"]').should('be.visible').click();
   });
 
-  it('Required Details should be available', () => {});
+  it('Required Details should be available', () => {
+    cy.get('[data-testid="side-panel-category"]')
+      .should('be.visible')
+      .should('have.length', TOTAL_SAMPLE_DATA_TAGS_COUNT);
+
+    cy.get('[data-testid="add-category"]').should('be.visible');
+    cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
+    cy.get('[data-testid="delete-tag-category-button"]').should('be.visible');
+    cy.get('[data-testid="description"]').should('be.visible');
+    cy.get('[data-testid="table"]').should('be.visible');
+    cy.get('[data-testid="heading-name"]').should('be.visible');
+    cy.get('[data-testid="heading-description"]').should('be.visible');
+    cy.get('[data-testid="heading-actions"]').should('be.visible');
+
+    cy.get('.activeCategory > .tag-category')
+      .should('be.visible')
+      .invoke('text')
+      .then((text) => {
+        cy.get('.activeCategory > .tag-category')
+          .should('be.visible')
+          .invoke('text')
+          .then((heading) => {
+            expect(text).to.equal(heading);
+          });
+      });
+  });
 });

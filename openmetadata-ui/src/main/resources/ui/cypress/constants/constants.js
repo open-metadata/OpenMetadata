@@ -121,3 +121,5 @@ export const NEW_ADMIN = {
   display_name: `Test admin ${id}`,
   description: 'Hello, I am test admin',
 };
+
+export const TOTAL_SAMPLE_DATA_TAGS_COUNT = 3;
