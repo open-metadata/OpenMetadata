@@ -148,7 +148,7 @@ class ProfilerWorkflow:
         """
 
         # First, get all the databases for the service:
-        all_dbs = self.metadata.list_entities(
+        all_dbs = self.metadata.list_all_entities(
             entity=Database,
             params={"service": self.config.source.serviceName},
         )
@@ -156,7 +156,7 @@ class ProfilerWorkflow:
         # Then list all tables from each db.
         # This returns a nested structure [[db1 tables], [db2 tables]...]
         all_tables = [
-            self.metadata.list_entities(
+            self.metadata.list_all_entities(
                 entity=Table,
                 fields=[
                     "tableProfile",
@@ -165,8 +165,8 @@ class ProfilerWorkflow:
                 params={
                     "database": f"{self.config.source.serviceName}.{database.name.__root__}"
                 },
-            ).entities
-            for database in all_dbs.entities
+            )
+            for database in all_dbs
         ]
 
         # Flatten the structure into a List[Table]
