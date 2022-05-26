@@ -252,7 +252,7 @@ class MetadataUsageBulkSink(BulkSink):
             table_name=table_name,
         )
         table_fqn = _get_formmated_table_name(table_fqn)
-        table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
+        table_entity = self.metadata.get_by_name(Table, fqn=table_fqn)
         if table_entity:
             return [table_entity]
         es_result = self.metadata.es_search_from_service(

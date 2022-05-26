@@ -290,11 +290,11 @@ class SupersetSource(DashboardSourceService):
                 try:
                     from_entity = self.metadata.get_by_name(
                         entity=Table,
-                        fqdn=f"{self.service_connection.dbServiceName}.{datasource_text}",
+                        fqn=f"{self.service_connection.dbServiceName}.{datasource_text}",
                     )
                     to_entity = self.metadata.get_by_name(
                         entity=Lineage_Dashboard,
-                        fqdn=f"{self.config.serviceName}.{dashboard['id']}",
+                        fqn=f"{self.config.serviceName}.{dashboard['id']}",
                     )
                     if from_entity and to_entity:
                         lineage = AddLineageRequest(

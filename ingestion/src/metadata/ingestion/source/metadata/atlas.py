@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -258,12 +257,12 @@ class AtlasSource(Source):
     def get_lineage_entity_ref(self, fqn, metadata_config, type) -> EntityReference:
         metadata = OpenMetadata(metadata_config)
         if type == "table":
-            table = metadata.get_by_name(entity=Table, fqdn=fqn)
+            table = metadata.get_by_name(entity=Table, fqn=fqn)
             if not table:
                 return
             return EntityReference(id=table.id.__root__, type="table")
         elif type == "pipeline":
-            pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
+            pipeline = metadata.get_by_name(entity=Pipeline, fqn=fqn)
             if not pipeline:
                 return
             return EntityReference(id=pipeline.id.__root__, type="pipeline")
