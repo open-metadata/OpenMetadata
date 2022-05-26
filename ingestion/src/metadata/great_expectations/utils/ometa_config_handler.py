@@ -9,23 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utility functions to cerate open metadata connections from yaml file
+Utility functions to create open metadata connections from yaml file
 """
 
 import os
-import yaml
 from typing import Any, Optional
 
+import yaml
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection
+    OpenMetadataConnection,
 )
 
 
 def env(key: str) -> Optional[Any]:
     """Render environment variable from jinja template
-    
+
     Args:
         key: environment variable key
 
@@ -35,9 +35,9 @@ def env(key: str) -> Optional[Any]:
     return os.getenv(key)
 
 
-def create_jinja_environment(template_path: str):
+def create_jinja_environment(template_path: str) -> Environment:
     """Create jinja environment and register environment variable reading function
-    
+
     Args:
         template_path: path to the folder holding the template
     """
@@ -50,23 +50,28 @@ def create_jinja_environment(template_path: str):
 
 def render_template(environment: Environment, template_file: str = "config.yml") -> str:
     """Render tenmplate file
-    
+
     Args:
         template_file: name of the template file
+
+    Returns:
+        str
     """
     file_type = os.path.splitext(template_file)
     if file_type[1] not in {".yaml", ".yml"}:
-        raise TypeError(f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`")
-    
+        raise TypeError(
+            f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`"
+        )
+
     try:
-        return environment.get_template(template_file).render()
+        tmplt = environment.get_template(template_file)
+        return tmplt.render()
     except TemplateNotFound as err:
-        raise TypeError() from err
+        raise TemplateNotFound(
+            f"Config file at {environment.loader.searchpath} not found"
+        ) from err
 
 
-def create_ometa_connection(config: str) -> OpenMetadataConnection:
+def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:
     """Create OpenMetadata connection"""
-    return OpenMetadataConnection.parse_obj(
-        yaml.safe_load(config)
-    )
-
+    return OpenMetadataConnection.parse_obj(yaml.safe_load(config))

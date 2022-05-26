@@ -16,9 +16,6 @@ This subpackage needs to be used in Great Expectations
 checkpoints actions.
 """
 
-import logging
-import os
-from enum import Enum
 from typing import Dict, Optional, Union
 
 from great_expectations.checkpoint.actions import ValidationAction
@@ -39,73 +36,21 @@ from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (  # pylint: disable=line-too-long
-    AuthProvider,
-    OpenMetadataConnection,
+from metadata.great_expectations.builders.generic_test_case_builder import (
+    GenericTestCaseBuilder,
 )
-from metadata.generated.schema.security.client import (
-    auth0SSOClientConfig,
-    azureSSOClientConfig,
-    customOidcSSOClientConfig,
-    googleSSOClientConfig,
-    oktaSSOClientConfig,
-)
-from metadata.great_expectations.columns.column_test_builders import (
-    ColumnValuesLengthsToBeBetweenBuilder,
-    ColumnValuesToBeBetweenBuilder,
-    ColumnValuesToBeNotInSetBuilder,
-    ColumnValuesToBeNotNullBuilder,
-    ColumnValuesToBeUniqueBuilder,
-    ColumnValuesToMatchRegexBuilder,
-)
-from metadata.great_expectations.tables.table_test_builders import (
-    TableColumCountToEqualBuilder,
-    TableRowCountToBeBetweenBuilder,
-    TableRowCountToEqualBuilder,
-)
-from metadata.great_expectations.utils.utils import (
+from metadata.great_expectations.builders.supported_ge_tests import SupportedGETests
+from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
+    create_ometa_connection_obj,
     render_template,
-    create_ometa_connection,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import great_expectations_logger
 
-logger = logging.getLogger(__name__)
-
-
-class SupportedGETests(Enum):
-    """list of supported GE test OMeta builders"""
-
-    # pylint: disable=invalid-name
-    expect_table_column_count_to_equal = TableColumCountToEqualBuilder()
-    expect_table_row_count_to_be_between = TableRowCountToBeBetweenBuilder()
-    expect_table_row_count_to_equal = TableRowCountToEqualBuilder()
-    expect_column_value_lengths_to_be_between = ColumnValuesLengthsToBeBetweenBuilder()
-    expect_column_values_to_be_between = ColumnValuesToBeBetweenBuilder()
-    expect_column_values_to_not_be_in_set = ColumnValuesToBeNotInSetBuilder()
-    expect_column_values_to_not_be_null = ColumnValuesToBeNotNullBuilder()
-    expect_column_values_to_be_unique = ColumnValuesToBeUniqueBuilder()
-    expect_column_values_to_match_regex = ColumnValuesToMatchRegexBuilder()
+logger = great_expectations_logger()
 
 
-class GenericTestCaseBuilder:
-    """Generic TestCase builder to create test case entity
-
-    Attributes:
-        test_case_builder: Specific builder for the GE expectation
-    """
-
-    def __init__(self, *, test_case_builder):
-        self.test_case_builder = test_case_builder
-
-    def build_test_from_builder(self):
-        """Main method to build the test case entity
-        and send the results to OMeta
-        """
-        self.test_case_builder.add_test()
-
-
-# pylint: disable=too-many-instance-attributes
 class OpenMetadataValidationAction(ValidationAction):
     """Open Metdata validation action. It inherits from
     great expection validation action class and implements the
@@ -113,59 +58,20 @@ class OpenMetadataValidationAction(ValidationAction):
 
     Attributes:
         data_context: great expectation data context
-        ometa_server: server URL
         ometa_service_name: name of the service for the table
-        auth_provider: auth. provider for OMeta
-        secret_key: key for the auth. method used
-        client_id: client ID for the auth. method used
-        google_audience: if auth. method is google
-        okta_org_url: if auth is okta
-        okta_email: if auth is okta
-        okta_scopes: if auth is okta
-        auth0_domain: if auth is auth0
-        azure_authority: if auth method is azure
-        azure_scopes: if auth method is azure
-        custom_oid_token_endpoint: if auth method is custom
         api_version: default to v1
         config_file_path: path to the open metdata config path
     """
 
-    # pylint: disable=too-many-locals
     def __init__(
         self,
         data_context: DataContext,
         *,
-        ometa_server: str,
-        ometa_service_name: Optional[str] = None,
-        auth_provider: Optional[str] = "no_auth",
-        secret_key: Optional[str] = None,
-        client_id: Optional[str] = None,
-        google_audience: Optional[str] = None,
-        okta_org_url: Optional[str] = None,
-        okta_email: Optional[str] = None,
-        okta_scopes: Optional[str] = None,
-        auth0_domain: Optional[str] = None,
-        azure_authority: Optional[str] = None,
-        azure_scopes: Optional[str] = None,
-        custom_oid_token_endpoint: Optional[str] = None,
-        api_version: str = "v1",
         config_file_path: str = None,
+        ometa_service_name: Optional[str] = None,
     ):
         super().__init__(data_context)
-        self.ometa_server = ometa_server
         self.ometa_service_name = ometa_service_name
-        self.auth_provider = self._get_auth_provider(auth_provider)
-        self.client_id = client_id
-        self.secret_key = secret_key
-        self.google_audience = google_audience
-        self.okta_org_url = okta_org_url
-        self.okta_email = okta_email
-        self.okta_scopes = okta_scopes
-        self.auth0_domain = auth0_domain
-        self.azure_authority = azure_authority
-        self.azure_scopes = azure_scopes
-        self.custom_oid_token_endpoint = custom_oid_token_endpoint
-        self.api_version = api_version
         self.config_file_path = config_file_path
         self.ometa_conn = self._create_ometa_connection()
 
@@ -199,7 +105,6 @@ class OpenMetadataValidationAction(ValidationAction):
             check_point_spec.get("schema_name"),
             check_point_spec.get("table_name"),
         )
-
 
         if table_entity:
             for result in validation_result_suite.results:
@@ -298,91 +203,10 @@ class OpenMetadataValidationAction(ValidationAction):
 
     def _create_ometa_connection(self) -> OpenMetadata:
         """Create OpenMetadata API connection"""
-        config = OpenMetadataConnection(
-            hostPort=self.ometa_server,
-            authProvider=self.auth_provider,
-            securityConfig=self._get_security_config(),
-            apiVersion=self.api_version,
-        )
-
-        ometa_connection = OpenMetadata(
-            config,
-        )
-
-        return ometa_connection
-
-    def _create_ometa_connection_from_file(self) -> OpenMetadata:
-        """Create OpenMetadata API connection"""
         environment = create_jinja_environment(self.config_file_path)
         rendered_config = render_template(environment)
 
-        return create_ometa_connection(rendered_config)
-
-
-    @staticmethod
-    def _get_auth_provider(auth_provider: str) -> AuthProvider:
-        """Get enum object for the auth. provider from
-        string passed in checkpoint file config
-
-        Args:
-            auth_provider: auth provider name
-
-        Return:
-            AuthProvider
-        """
-        try:
-            return AuthProvider[auth_provider]
-        except KeyError:
-            raise ValueError(
-                f"value {auth_provider} for `auth_provider` is not supported."
-            )
-
-    def _get_security_config(
-        self,
-    ) -> Union[
-        azureSSOClientConfig.AzureSSOClientConfig,
-        googleSSOClientConfig.GoogleSSOClientConfig,
-        auth0SSOClientConfig.Auth0SSOClientConfig,
-        auth0SSOClientConfig.Auth0SSOClientConfig,
-    ]:
-        """Get security config object based on the auth. provider"""
-        if self.auth_provider == AuthProvider.no_auth:
-            return None
-        if self.auth_provider == AuthProvider.azure:
-            return azureSSOClientConfig.AzureSSOClientConfig(
-                clientSecret=self.secret_key,
-                authority=self.azure_authority,
-                clientId=self.client_id,
-                scopes=self.azure_scopes,
-            )
-        if self.auth_provider == AuthProvider.google:
-            return googleSSOClientConfig.GoogleSSOClientConfig(
-                secretKey=self.secret_key,
-                audience=self.google_audience,
-            )
-        if self.auth_provider == AuthProvider.okta:
-            return oktaSSOClientConfig.OktaSSOClientConfig(
-                clientId=self.client_id,
-                orgURL=self.okta_org_url,
-                privateKey=self.secret_key,
-                email=self.okta_email,
-                scopes=self.okta_scopes,
-            )
-        if self.auth_provider == AuthProvider.auth0:
-            return auth0SSOClientConfig.Auth0SSOClientConfig(
-                clientId=self.client_id,
-                secretKey=self.secret_key,
-                domain=self.auth0_domain,
-            )
-        if self.auth_provider == AuthProvider.custom_oidc:
-            return customOidcSSOClientConfig.CustomOIDCSSOClientConfig(
-                clientId=self.client_id,
-                secretKey=self.secret_key,
-                tokenEndpoint=self.api_version,
-            )
-        raise NotImplementedError(
-            f"Security config formmatting for `{self.auth_provider}` is not supported"
-        )
+        return OpenMetadata(create_ometa_connection_obj(rendered_config))
 
     def _handle_test_case(self, result: Dict, table_entity: Table):
         """Handle adding test to table entity based on the test case.

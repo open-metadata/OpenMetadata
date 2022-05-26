@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-TestCase builder handlers
+Base table test builder handlers
 """
 
 from abc import ABC, abstractmethod
@@ -19,12 +19,7 @@ from typing import Dict
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.table import (
-    tableColumnCountToEqual,
-    tableRowCountToBeBetween,
-    tableRowCountToEqual,
-)
-from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
+from metadata.generated.schema.tests.tableTest import TableTestCase
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -105,43 +100,3 @@ class BaseTableTestBuilder(ABC):
         """Used to create the table test request for the specific test.
         Needs to be implemented by the specific builder.
         """
-
-
-class TableColumCountToEqualBuilder(BaseTableTestBuilder):
-    """Builder for `expect_table_column_count_to_equal` GE expectation"""
-
-    def _build_test(self) -> CreateTableTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=tableColumnCountToEqual.TableColumnCountToEqual(
-                columnCount=self.result["expectation_config"]["kwargs"]["value"]
-            ),
-            test_type=TableTestType.tableColumnCountToEqual,
-        )
-
-
-class TableRowCountToBeBetweenBuilder(BaseTableTestBuilder):
-    """Builder for `expect_table_row_count_to_be_between` GE expectation"""
-
-    def _build_test(self) -> CreateTableTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=tableRowCountToBeBetween.TableRowCountToBeBetween(
-                minValue=self.result["expectation_config"]["kwargs"]["min_value"],
-                maxValue=self.result["expectation_config"]["kwargs"]["max_value"],
-            ),
-            test_type=TableTestType.tableRowCountToBeBetween,
-        )
-
-
-class TableRowCountToEqualBuilder(BaseTableTestBuilder):
-    """Builder for `expect_table_row_count_to_equal` GE expectation"""
-
-    def _build_test(self) -> CreateTableTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=tableRowCountToEqual.TableRowCountToEqual(
-                value=self.result["expectation_config"]["kwargs"]["value"],
-            ),
-            test_type=TableTestType.tableRowCountToEqual,
-        )

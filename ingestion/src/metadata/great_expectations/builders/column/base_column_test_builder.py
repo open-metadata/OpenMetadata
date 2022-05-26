@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-TestCase builder handlers
+Base column test builder
 """
 
 from abc import ABC, abstractmethod
@@ -19,15 +19,7 @@ from typing import Dict
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column import (
-    columnValuesLengthsToBeBetween,
-    columnValuesToBeBetween,
-    columnValuesToBeNotInSet,
-    columnValuesToBeNotNull,
-    columnValuesToBeUnique,
-    columnValuesToMatchRegex,
-)
-from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
+from metadata.generated.schema.tests.columnTest import ColumnTestCase
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -108,81 +100,3 @@ class BaseColumnTestBuilder(ABC):
         """Used to create the column test request for the specific test.
         Needs to be implemented by the specific builder.
         """
-
-
-class ColumnValuesLengthsToBeBetweenBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_value_lengths_to_be_between` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesLengthsToBeBetween.ColumnValueLengthsToBeBetween(
-                minLength=self.result["expectation_config"]["kwargs"].get("min_value"),
-                maxLength=self.result["expectation_config"]["kwargs"].get("max_value"),
-            ),
-            test_type=ColumnTestType.columnValueLengthsToBeBetween,
-        )
-
-
-class ColumnValuesToBeBetweenBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_value_to_be_between` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesToBeBetween.ColumnValuesToBeBetween(
-                minValue=self.result["expectation_config"]["kwargs"].get("max_value"),
-                maxValue=self.result["expectation_config"]["kwargs"].get("min_value"),
-            ),
-            test_type=ColumnTestType.columnValuesToBeBetween,
-        )
-
-
-class ColumnValuesToBeNotInSetBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_values_to_not_be_in_set` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesToBeNotInSet.ColumnValuesToBeNotInSet(
-                forbiddenValues=self.result["expectation_config"]["kwargs"][
-                    "value_set"
-                ],
-            ),
-            test_type=ColumnTestType.columnValuesToBeNotInSet,
-        )
-
-
-class ColumnValuesToBeNotNullBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_values_to_not_be_null` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesToBeNotNull.ColumnValuesToBeNotNull(),
-            test_type=ColumnTestType.columnValuesToBeNotNull,
-        )
-
-
-class ColumnValuesToBeUniqueBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_values_to_be_unique` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesToBeUnique.ColumnValuesToBeUnique(),
-            test_type=ColumnTestType.columnValuesToBeUnique,
-        )
-
-
-class ColumnValuesToMatchRegexBuilder(BaseColumnTestBuilder):
-    """Builder for `expect_column_values_to_match_regex` GE expectation"""
-
-    def _build_test(self) -> CreateColumnTestRequest:
-        """Specific test builder for the test"""
-        return self.build_test_request(
-            config=columnValuesToMatchRegex.ColumnValuesToMatchRegex(
-                regex=self.result["expectation_config"]["kwargs"]["regex"],
-            ),
-            test_type=ColumnTestType.columnValuesToMatchRegex,
-        )
