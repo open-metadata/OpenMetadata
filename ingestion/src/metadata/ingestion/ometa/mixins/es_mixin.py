@@ -25,14 +25,6 @@ from metadata.utils.elasticsearch import ES_INDEX_MAP, get_query_from_dict
 
 logger = ometa_logger()
 
-
-# Prevent sqllineage from modifying the logger config
-def configure(self):
-    pass
-
-
-DictConfigurator.configure = configure
-
 T = TypeVar("T", bound=BaseModel)
 
 

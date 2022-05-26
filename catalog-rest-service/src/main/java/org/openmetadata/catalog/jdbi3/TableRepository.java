@@ -97,13 +97,13 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
 
-  public TableRepository(CollectionDAO dao) {
+  public TableRepository(CollectionDAO daoCollection) {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        dao.tableDAO(),
-        dao,
+        daoCollection.tableDAO(),
+        daoCollection,
         TABLE_PATCH_FIELDS,
         TABLE_UPDATE_FIELDS);
   }
@@ -158,7 +158,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -189,7 +189,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -214,7 +214,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
 
     List<TableProfile> storedTableProfiles = getTableProfile(table);
     Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
@@ -239,7 +239,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addLocation(UUID tableId, UUID locationId) throws IOException {
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
@@ -257,7 +257,7 @@ public class TableRepository extends EntityRepository<Table> {
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     List<SQLQuery> storedQueries = getQueries(table);
     Map<String, SQLQuery> storedMapQueries = new HashMap<>();
     if (storedQueries != null) {
@@ -277,7 +277,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
@@ -314,7 +314,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteTableTest(UUID tableId, String tableTestType) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
@@ -341,7 +341,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     String columnName = columnTest.getColumnName();
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
@@ -387,7 +387,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteColumnTest(UUID tableId, String columnName, String columnTestType) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
     // our assumption is there is only one instance of a test type as of now.
@@ -423,7 +423,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     String columnName = customMetric.getColumnName();
     validateColumn(table, columnName);
 
@@ -461,7 +461,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     validateColumn(table, columnName);
 
     // Override any custom metric definition with the same name
@@ -495,7 +495,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
@@ -516,7 +516,7 @@ public class TableRepository extends EntityRepository<Table> {
         stored.setDescription(modelColumn.getDescription());
       }
     }
-    daoCollection.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), JsonUtils.pojoToJson(table));
     setFields(table, Fields.EMPTY_FIELDS);
     return table;
   }
@@ -675,7 +675,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   // Validate if a given column exists in the table
-  private void validateColumn(Table table, String columnName) {
+  public static void validateColumn(Table table, String columnName) {
     boolean validColumn = table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
@@ -683,7 +683,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   // Validate if a given column exists in the table
-  private void validateColumnFQN(Table table, String columnFQN) {
+  public static void validateColumnFQN(Table table, String columnFQN) {
     boolean validColumn = false;
     for (Column column : table.getColumns()) {
       if (column.getFullyQualifiedName().equals(columnFQN)) {
@@ -700,7 +700,7 @@ public class TableRepository extends EntityRepository<Table> {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = daoCollection.tableDAO().findEntityByName(tableFQN);
+      Table joinedWithTable = dao.findEntityByName(tableFQN);
 
       // Validate column
       validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());

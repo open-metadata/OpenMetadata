@@ -187,7 +187,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
-  public static EntityReference PREFECT_REFERENCE;
+  public static EntityReference GLUE_REFERENCE;
 
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
@@ -269,7 +269,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new DatabaseServiceResourceTest().setupDatabaseServices(test);
     new MessagingServiceResourceTest().setupMessagingServices();
-    new PipelineServiceResourceTest().setupPipelineServices();
+    new PipelineServiceResourceTest().setupPipelineServices(test);
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
 
@@ -585,7 +585,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (supportsFollowers) {
       UserResourceTest userResourceTest = new UserResourceTest();
       User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
-      addFollower(entity.getId(), user1.getId(), CREATED, TEST_AUTH_HEADERS);
+      addFollower(entity.getId(), user1.getId(), OK, TEST_AUTH_HEADERS);
     }
     entity = validateGetWithDifferentFields(entity, false);
     validateGetCommonFields(entity);
@@ -912,15 +912,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
-    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
-    // Add the same user as follower and make sure no errors are thrown and return response is OK
+    // Add the same user as follower and make sure no errors are thrown
     // (and not CREATED)
     addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
     // Add a new follower to the entity
     User user2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
-    addAndCheckFollower(entityId, user2.getId(), CREATED, 2, TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user2.getId(), OK, 2, TEST_AUTH_HEADERS);
 
     // Delete followers and make sure they are deleted
     deleteAndCheckFollower(entityId, user1.getId(), 1, TEST_AUTH_HEADERS);
@@ -939,7 +939,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add follower to the entity
     UserResourceTest userResourceTest = new UserResourceTest();
     User user1 = userResourceTest.createEntity(userResourceTest.createRequest(test, 1), TEST_AUTH_HEADERS);
-    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, TEST_AUTH_HEADERS);
+    addAndCheckFollower(entityId, user1.getId(), OK, 1, TEST_AUTH_HEADERS);
 
     deleteEntity(entityId, ADMIN_AUTH_HEADERS);
 
@@ -960,7 +960,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Add non-existent user as follower to the entity
     assertResponse(
-        () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, ADMIN_AUTH_HEADERS),
+        () -> addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, OK, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound(Entity.USER, NON_EXISTENT_ENTITY));
 

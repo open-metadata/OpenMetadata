@@ -100,6 +100,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Valid
   @Operation(
+      operationId = "listGlossaries",
       summary = "List Glossaries",
       tags = "glossaries",
       description =
@@ -146,6 +147,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getGlossaryByID",
       summary = "Get a glossary",
       tags = "glossaries",
       description = "Get a glossary by `id`.",
@@ -178,6 +180,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getGlossaryByFQN",
       summary = "Get a glossary by name",
       tags = "glossaries",
       description = "Get a glossary by name.",
@@ -210,6 +213,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllGlossaryVersion",
       summary = "List glossary versions",
       tags = "glossaries",
       description = "Get a list of all the versions of a glossary identified by `id`",
@@ -230,6 +234,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificGlossaryVersion",
       summary = "Get a version of the glossaries",
       tags = "glossaries",
       description = "Get a version of the glossary by given `id`",
@@ -257,6 +262,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @POST
   @Operation(
+      operationId = "createGlossary",
       summary = "Create a glossary",
       tags = "glossaries",
       description = "Create a new glossary.",
@@ -264,8 +270,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The glossary",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateGlossary.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -278,6 +283,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchGlossary",
       summary = "Update a glossary",
       tags = "glossaries",
       description = "Update an existing glossary using JsonPatch.",
@@ -302,6 +308,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateGlossary",
       summary = "Create or update a glossary",
       tags = "glossaries",
       description = "Create a new glossary, if it does not exist or update an existing glossary.",
@@ -322,6 +329,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteGlossary",
       summary = "Delete a Glossary",
       tags = "glossaries",
       description = "Delete a glossary by `id`.",

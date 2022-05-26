@@ -32,7 +32,14 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
@@ -402,7 +409,12 @@ def get_or_create_pipeline_service(
         pipeline_service = CreatePipelineServiceRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
-            pipelineUrl=conf.get("webserver", "base_url"),
+            connection=PipelineConnection(
+                config=AirflowConnection(
+                    hostPort=conf.get("webserver", "base_url"),
+                    connection=BackendConnection(),
+                ),
+            ),
         )
         airflow_service_entity = metadata.create_or_update(pipeline_service)
         operator.log.info("Created airflow service entity {}", airflow_service_entity)

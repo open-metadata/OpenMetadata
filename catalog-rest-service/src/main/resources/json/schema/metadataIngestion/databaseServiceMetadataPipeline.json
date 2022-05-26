@@ -112,6 +112,11 @@
       "type": "boolean",
       "default": true
     },
+    "includeTags": {
+      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "type": "boolean",
+      "default": true
+    },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data during metadata extraction.",
       "type": "boolean",

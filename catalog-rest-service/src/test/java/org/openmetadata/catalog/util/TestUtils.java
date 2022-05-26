@@ -50,15 +50,19 @@ import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.credentials.AWSCredentials;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
 import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.catalog.services.connections.pipeline.GlueConnection;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MessagingConnection;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 
@@ -81,6 +85,9 @@ public final class TestUtils {
   public static final DatabaseConnection SNOWFLAKE_DATABASE_CONNECTION;
   public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION;
   public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION;
+
+  public static PipelineConnection AIRFLOW_CONNECTION;
+  public static PipelineConnection GLUE_CONNECTION;
 
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
@@ -141,6 +148,19 @@ public final class TestUtils {
   static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
+      AIRFLOW_CONNECTION =
+          new PipelineConnection()
+              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+
+      GLUE_CONNECTION =
+          new PipelineConnection()
+              .withConfig(
+                  new GlueConnection()
+                      .withAwsConfig(
+                          new AWSCredentials()
+                              .withAwsAccessKeyId("ABCD")
+                              .withAwsSecretAccessKey("1234")
+                              .withAwsRegion("eu-west-2")));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
