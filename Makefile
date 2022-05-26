@@ -79,9 +79,11 @@ coverage:  ## Run all Python tests and generate the coverage report
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
 	coverage xml -i -o ingestion/coverage.xml
-	# Now fix paths
+	# Now base dir for filename
 	sed "s/filename=\"ingestion\//filename=\"/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
-	cat ingestion/coverage.xml
+	# Fix GA path https://community.sonarsource.com/t/sonar-on-github-actions-with-python-coverage-source-issue/36057
+	sed "s/<source>\/home\/runner\/work\/repo<\/source>/<source>\/github\/workspace<\/source>/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	cat ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
