@@ -23,14 +23,14 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.regex.Pattern;
-public class OpenMetaData {
-    private static final Logger LOG = LoggerFactory.getLogger(OpenMetaData.class);
+public class OpenMetadata {
+    private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
     private static final CatalogVersion CATALOG_VERSION_CLIENT;
 
     static {
         CATALOG_VERSION_CLIENT = new CatalogVersion();
         try {
-            InputStream fileInput = OpenMetaData.class.getResourceAsStream("/catalog/VERSION");
+            InputStream fileInput = OpenMetadata.class.getResourceAsStream("/catalog/VERSION");
             Properties props = new Properties();
             props.load(fileInput);
             CATALOG_VERSION_CLIENT.setVersion(props.getProperty("version", "unknown"));
@@ -46,11 +46,11 @@ public class OpenMetaData {
     private ApiClient apiClient;
     private OpenMetadataServerConnection serverConfig;
     private String basePath;
-    public OpenMetaData(OpenMetadataServerConnection config){
+    public OpenMetadata(OpenMetadataServerConnection config){
         serverConfig = config;
         apiClient = new ApiClient();
         //TODO: Custom interceptor for AUTH, currently this only works for NO-AUTH, can be used for local testing
-        basePath = config.getHostPort()+ "/" + config.getApiVersion();
+        basePath = config.getHostPort()+ "/";
         apiClient.setBasePath(basePath);
         validateVersion();
     }

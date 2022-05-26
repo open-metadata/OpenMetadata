@@ -79,6 +79,34 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven-src-plugin.version}</version>
+                <configuration>
+                    <skipSource>true</skipSource>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>1.4</version>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                    <outputDirectory>${project.build.directory}/classes/catalog</outputDirectory>
+                    <outputName>VERSION</outputName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>create-metadata</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>io.swagger.codegen.v3</groupId>
                 <artifactId>swagger-codegen-maven-plugin</artifactId>
                 <version>3.0.16</version>
@@ -96,8 +124,8 @@
                             <inputSpec>${project.basedir}/../../catalog-rest-service/target/classes/assets/swagger.yaml</inputSpec>
                             <language>java</language>
                             <library>feign</library>
-                            <generateApiTests>false</generateApiTests>
-                            <generateModelTests>false</generateModelTests>
+                            <generateApiTests>true</generateApiTests>
+                            <generateModelTests>true</generateModelTests>
                             <configOptions>
                                 <generateForOpenFeign>true</generateForOpenFeign>
                                 <sourceFolder>src/main/java/</sourceFolder>
