@@ -18,9 +18,13 @@ from metadata.generated.schema.api.tests.createTableTest import CreateTableTestR
 from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
 from metadata.generated.schema.tests.table import tableColumnCountToEqual
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
-from metadata.great_expectations.tables.table_test_builders import (
+from metadata.great_expectations.builders.table.column_count_to_equal import (
     TableColumCountToEqualBuilder,
+)
+from metadata.great_expectations.builders.table.row_count_to_be_between import (
     TableRowCountToBeBetweenBuilder,
+)
+from metadata.great_expectations.builders.table.row_count_to_equal import (
     TableRowCountToEqualBuilder,
 )
 

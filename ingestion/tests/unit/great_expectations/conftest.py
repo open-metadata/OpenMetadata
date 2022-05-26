@@ -12,15 +12,21 @@
 Fixtures for test suite
 """
 
+import os
 from unittest import mock
 
 from pytest import fixture
 
-from ingestion.src.metadata.great_expectations.action import (
-    OpenMetadataValidationAction,
+from metadata.great_expectations.action import OpenMetadataValidationAction
+from metadata.great_expectations.builders.column.base_column_test_builder import (
+    BaseColumnTestBuilder,
 )
-from metadata.great_expectations.columns.column_test_builders import BaseColumnTestBuilder
-from metadata.great_expectations.tables.table_test_builders import BaseTableTestBuilder
+from metadata.great_expectations.builders.table.base_table_test_builders import (
+    BaseTableTestBuilder,
+)
+from metadata.great_expectations.utils.ometa_config_handler import (
+    create_jinja_environment,
+)
 
 
 def mocked_ometa_object():
@@ -115,3 +121,10 @@ def mocked_ge_table_result():
         },
         "result": {"observed_value": 10},
     }
+
+
+@fixture(scope="module")
+def fixture_jinja_environment():
+    return create_jinja_environment(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
+    )

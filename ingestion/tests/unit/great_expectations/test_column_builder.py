@@ -18,12 +18,22 @@ from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTes
 from metadata.generated.schema.tests.basic import TestCaseResult as _TestCaseResult
 from metadata.generated.schema.tests.column import columnValuesToBeNotNull
 from metadata.generated.schema.tests.columnTest import ColumnTestCase, ColumnTestType
-from metadata.great_expectations.columns.column_test_builders import (
+from metadata.great_expectations.builders.column.values_lengths_to_be_between import (
     ColumnValuesLengthsToBeBetweenBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_be_between import (
     ColumnValuesToBeBetweenBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_be_not_in_set import (
     ColumnValuesToBeNotInSetBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_be_not_null import (
     ColumnValuesToBeNotNullBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_be_unique import (
     ColumnValuesToBeUniqueBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_match_regex import (
     ColumnValuesToMatchRegexBuilder,
 )
 
