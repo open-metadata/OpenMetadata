@@ -23,7 +23,6 @@ from tableau_api_lib.utils.querying import (
     get_workbooks_dataframe,
 )
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Dashboard_Entity,
@@ -44,6 +43,7 @@ from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -211,7 +211,7 @@ class TableauSource(DashboardSourceService):
                     f"{self.all_dashboard_details['contentUrl'][index]}"
                 )
                 chart_owner = self.all_dashboard_details["owner"][index]
-                chart_datasource_fqn = chart_url.replace("/", FQDN_SEPARATOR)
+                chart_datasource_fqn = chart_url.replace("/", FQN_SEPARATOR)
                 chart_last_modified = self.all_dashboard_details["updatedAt"][index]
                 tag_labels = []
                 if hasattr(chart_tags, "tag"):

@@ -23,6 +23,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_messaging_service_or_create,
@@ -147,7 +148,7 @@ class AtlasSource(Source):
                     ]
                     db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
 
                     om_table_entity = Table(
@@ -217,7 +218,7 @@ class AtlasSource(Source):
                 "table"
             ]["displayText"]
 
-            fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+            fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -238,7 +239,7 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )

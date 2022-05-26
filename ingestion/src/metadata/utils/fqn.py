@@ -20,7 +20,6 @@ from antlr4 import *
 from pydantic import BaseModel
 
 from metadata.antlr.split_listener import SplitListener
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -35,6 +34,7 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 
 T = TypeVar("T", bound=BaseModel)
 
+FQN_SEPARATOR: str = "."
 fqdn_build_registry = class_register()
 
 
@@ -64,7 +64,7 @@ def _build(*args) -> str:
     Equivalent of Java's FullyQualifiedName#build
     """
     quoted = [quote_name(name) for name in args]
-    return FQDN_SEPARATOR.join(quoted)
+    return FQN_SEPARATOR.join(quoted)
 
 
 def quote_name(name: str) -> str:
