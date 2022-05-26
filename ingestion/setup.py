@@ -204,7 +204,13 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow", "airflow-container-1.10.15", "db2", "great-expectations"}
+                    if plugin
+                    not in {
+                        "airflow",
+                        "airflow-container-1.10.15",
+                        "db2",
+                        "great-expectations",
+                    }
                 ]
             )
         ),
