@@ -128,6 +128,7 @@ public class TagResource {
 
   @GET
   @Operation(
+      operationId = "listTagCategories",
       summary = "List tag categories",
       tags = "tags",
       description = "Get a list of tag categories.",
@@ -156,6 +157,7 @@ public class TagResource {
   @GET
   @Path("{category}")
   @Operation(
+      operationId = "getTagCategoryByName",
       summary = "Get a tag category",
       tags = "tags",
       description =
@@ -185,6 +187,7 @@ public class TagResource {
 
   @GET
   @Operation(
+      operationId = "getPrimaryTag",
       summary = "Get a primary tag",
       tags = "tags",
       description =
@@ -227,6 +230,7 @@ public class TagResource {
   @GET
   @Path("{category}/{primaryTag}/{secondaryTag}")
   @Operation(
+      operationId = "getSecondaryTag",
       summary = "Get a secondary tag",
       tags = "tags",
       description = "Get a secondary tag identified by name.",
@@ -273,6 +277,7 @@ public class TagResource {
 
   @POST
   @Operation(
+      operationId = "createTagCategory",
       summary = "Create a tag category",
       tags = "tags",
       description =
@@ -282,8 +287,7 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTagCategory.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagCategory.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createCategory(
@@ -298,6 +302,7 @@ public class TagResource {
   @POST
   @Path("{category}")
   @Operation(
+      operationId = "createPrimaryTag",
       summary = "Create a primary tag",
       tags = "tags",
       description = "Create a primary tag in the given tag category.",
@@ -305,7 +310,7 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createPrimaryTag(
@@ -325,6 +330,7 @@ public class TagResource {
   @POST
   @Path("{category}/{primaryTag}")
   @Operation(
+      operationId = "createSecondaryTag",
       summary = "Create a secondary tag",
       tags = "tags",
       description = "Create a secondary tag under the given primary tag.",
@@ -332,7 +338,7 @@ public class TagResource {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTag.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Tag.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createSecondaryTag(
@@ -361,6 +367,7 @@ public class TagResource {
   @PUT
   @Path("{category}")
   @Operation(
+      operationId = "createOrUpdateTagCategory",
       summary = "Update a tag category",
       tags = "tags",
       description = "Update an existing category identify by category name")
@@ -386,6 +393,7 @@ public class TagResource {
   @PUT
   @Path("{category}/{primaryTag}")
   @Operation(
+      operationId = "createOrUpdatePrimaryTag",
       summary = "Update a primaryTag",
       tags = "tags",
       description = "Update an existing primaryTag identify by name")
@@ -420,6 +428,7 @@ public class TagResource {
   @PUT
   @Path("{category}/{primaryTag}/{secondaryTag}")
   @Operation(
+      operationId = "createOrUpdateSecondaryTag",
       summary = "Update a secondaryTag",
       tags = "tags",
       description = "Update an existing secondaryTag identify by name")
@@ -465,6 +474,7 @@ public class TagResource {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTagCategory",
       summary = "Delete tag category",
       tags = "tags",
       description = "Delete a tag category and all the tags under it.")
@@ -480,7 +490,11 @@ public class TagResource {
 
   @DELETE
   @Path("/{category}/{id}")
-  @Operation(summary = "Delete tag", tags = "tags", description = "Delete a tag and all the tags under it.")
+  @Operation(
+      operationId = "deleteTags",
+      summary = "Delete tag",
+      tags = "tags",
+      description = "Delete a tag and all the tags under it.")
   public Tag deleteTags(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,

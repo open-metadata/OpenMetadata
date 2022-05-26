@@ -16,45 +16,47 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.AIRFLOW_CONNECTION;
+import static org.openmetadata.catalog.util.TestUtils.MYSQL_DATABASE_CONNECTION;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
+import org.openmetadata.catalog.api.services.DatabaseConnection;
+import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.metadataIngestion.FilterPattern;
+import org.openmetadata.catalog.metadataIngestion.PipelineServiceMetadataPipeline;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
+import org.openmetadata.catalog.services.connections.database.MysqlConnection;
+import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
 public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
-  public static URI PIPELINE_SERVICE_URL;
-
-  static {
-    try {
-      PIPELINE_SERVICE_URL = new URI("http://localhost:8080");
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
-    }
-  }
-
   public PipelineServiceResourceTest() {
     super(
         Entity.PIPELINE_SERVICE,
@@ -66,30 +68,24 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     this.supportsAuthorizedMetadataOperations = false;
   }
 
-  public void setupPipelineServices() throws URISyntaxException, HttpResponseException {
-    // Create Airflow pipeline service
+  public void setupPipelineServices(TestInfo test) throws HttpResponseException {
     PipelineServiceResourceTest pipelineServiceResourceTest = new PipelineServiceResourceTest();
     CreatePipelineService createPipeline =
         pipelineServiceResourceTest
-            .createRequest("airflow", "", "", null)
+            .createRequest(test, 1)
             .withServiceType(PipelineServiceType.Airflow)
-            .withPipelineUrl(new URI("http://localhost:0"));
+            .withConnection(TestUtils.AIRFLOW_CONNECTION);
     PipelineService pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
     AIRFLOW_REFERENCE = pipelineService.getEntityReference();
 
-    // Create Prefect pipeline service
-    createPipeline
-        .withName("prefect")
-        .withServiceType(PipelineServiceType.Prefect)
-        .withPipelineUrl(new URI("http://localhost:0"));
-    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
-    PREFECT_REFERENCE = pipelineService.getEntityReference();
-  }
+    createPipeline =
+        pipelineServiceResourceTest
+            .createRequest(test, 2)
+            .withServiceType(PipelineServiceType.Glue)
+            .withConnection(TestUtils.GLUE_CONNECTION);
 
-  @BeforeAll
-  @Override
-  public void setup(TestInfo test) throws URISyntaxException, IOException {
-    super.setup(test);
+    pipelineService = pipelineServiceResourceTest.createEntity(createPipeline, ADMIN_AUTH_HEADERS);
+    GLUE_REFERENCE = pipelineService.getEntityReference();
   }
 
   @Test
@@ -100,137 +96,101 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
         BAD_REQUEST,
         "[serviceType must not be null]");
 
-    // Create pipeline with mandatory `brokers` field empty
+    // Create pipeline with mandatory `connection` field empty
     assertResponse(
-        () -> createEntity(createRequest(test).withPipelineUrl(null), ADMIN_AUTH_HEADERS),
+        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "[pipelineUrl must not be null]");
+        "[connection must not be null]");
   }
 
   @Test
-  void post_validService_as_admin_200_ok(TestInfo test) throws IOException {
-    // Create pipeline service with different optional fields
+  void post_validPipelineService_as_admin_200_ok(TestInfo test) throws IOException {
+    // Create database service with different optional fields
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-    createAndCheckEntity(createRequest(test, 3).withIngestionSchedule(null), authHeaders);
   }
 
   @Test
-  void post_invalidIngestionSchedule_4xx(TestInfo test) {
-    // No jdbc connection set
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    CreatePipelineService create = createRequest(test).withIngestionSchedule(schedule);
+  void put_updatePipelineService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
+    PipelineService service = createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
-    // Invalid format
-    create.withIngestionSchedule(schedule.withRepeatFrequency("INVALID"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid ingestion repeatFrequency INVALID");
+    // Update pipeline description and ingestino service that are null
+    CreatePipelineService update = createRequest(test).withDescription("description1");
 
-    // Duration that contains years, months and seconds are not allowed
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
-  }
-
-  @Test
-  void post_validIngestionSchedules_as_admin_200(TestInfo test) throws IOException {
-    Schedule schedule = new Schedule().withStartDate(new Date());
-    schedule.withRepeatFrequency("PT60M"); // Repeat every 60M should be valid
-    createAndCheckEntity(createRequest(test, 1).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-
-    schedule.withRepeatFrequency("PT1H49M");
-    createAndCheckEntity(createRequest(test, 2).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-
-    schedule.withRepeatFrequency("P1DT1H49M");
-    createAndCheckEntity(createRequest(test, 3).withIngestionSchedule(schedule), ADMIN_AUTH_HEADERS);
-  }
-
-  @Test
-  void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
-    // No jdbc connection set
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    CreatePipelineService create = createRequest(test).withIngestionSchedule(schedule);
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M")); // Repeat every 0 seconds
-    assertResponseContains(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
-
-    create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M")); // Repeat every 50 minutes 59 seconds
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Ingestion repeatFrequency is too short and must be more than 60 minutes");
-  }
-
-  @Test
-  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
-    PipelineService service =
-        createAndCheckEntity(
-            createRequest(test).withDescription(null).withPipelineUrl(PIPELINE_SERVICE_URL), ADMIN_AUTH_HEADERS);
-
-    // Update pipeline description and ingestion service that are null
-    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
-    CreatePipelineService update = createRequest(test).withDescription("description1").withIngestionSchedule(schedule);
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
-    change.getFieldsAdded().add(new FieldChange().withName("ingestionSchedule").withNewValue(schedule));
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
 
-    // Update ingestion schedule again
-    Schedule schedule1 = new Schedule().withStartDate(new Date()).withRepeatFrequency("PT1H");
-    update.withIngestionSchedule(schedule1);
-    change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("ingestionSchedule").withOldValue(schedule).withNewValue(schedule1));
-    service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    PipelineConnection updatedConnection =
+        new PipelineConnection()
+            .withConfig(
+                new AirflowConnection()
+                    .withHostPort(new URI("http://my-server:1234"))
+                    .withConnection(MYSQL_DATABASE_CONNECTION));
 
-    // update pipeline Url
-    URI pipelineUrl = new URI("http://localhost:9000");
-    update.withPipelineUrl(pipelineUrl);
-    change = getChangeDescription(service.getVersion());
-    change
-        .getFieldsUpdated()
-        .add(new FieldChange().withName("pipelineUrl").withOldValue(PIPELINE_SERVICE_URL).withNewValue(pipelineUrl));
-    updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+    update.withConnection(updatedConnection);
+    service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    validatePipelineConnection(updatedConnection, service.getConnection(), service.getServiceType());
+  }
+
+  @Test
+  void post_put_invalidConnection_as_admin_4xx(TestInfo test) throws IOException {
+    RedshiftConnection redshiftConnection = new RedshiftConnection();
+    DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+    PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
+    assertResponseContains(
+        () ->
+            createEntity(
+                createRequest(test).withDescription(null).withConnection(pipelineConnection), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "InvalidServiceConnectionException for service [Airflow] due to [Failed to construct connection instance of Airflow]");
+  }
+
+  @Test
+  void put_addIngestion_as_admin_2xx(TestInfo test) throws IOException {
+    // Create Pipeline Service
+    CreatePipelineService create = createRequest(test);
+    PipelineService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    EntityReference serviceRef = service.getEntityReference();
+
+    // Add an IngestionPipeline to the service
+    IngestionPipelineResourceTest ingestionPipelineResourceTest = new IngestionPipelineResourceTest();
+    CreateIngestionPipeline createIngestionPipeline =
+        ingestionPipelineResourceTest.createRequest(test).withService(serviceRef);
+
+    PipelineServiceMetadataPipeline pipelineServiceMetadataPipeline =
+        new PipelineServiceMetadataPipeline()
+            .withIncludeLineage(true)
+            .withPipelineFilterPattern(new FilterPattern().withExcludes(List.of("private_dag_*")));
+
+    SourceConfig sourceConfig = new SourceConfig().withConfig(pipelineServiceMetadataPipeline);
+    createIngestionPipeline.withSourceConfig(sourceConfig);
+    IngestionPipeline ingestionPipeline =
+        ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
+
+    PipelineService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
+    assertEquals(1, updatedService.getPipelines().size());
+    assertReference(ingestionPipeline.getEntityReference(), updatedService.getPipelines().get(0));
+
+    // Delete the pipeline service and ensure ingestion pipeline is deleted
+    deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
+    ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
   }
 
   @Override
   public CreatePipelineService createRequest(String name) {
     return new CreatePipelineService()
         .withName(name)
-        .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
-        .withPipelineUrl(PIPELINE_SERVICE_URL)
-        .withIngestionSchedule(null);
+        .withServiceType(PipelineServiceType.Airflow)
+        .withConnection(AIRFLOW_CONNECTION);
   }
 
   @Override
   public void validateCreatedEntity(
       PipelineService service, CreatePipelineService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
-
-    Schedule expectedIngestion = createRequest.getIngestionSchedule();
-    if (expectedIngestion != null) {
-      assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
-      assertEquals(expectedIngestion.getRepeatFrequency(), service.getIngestionSchedule().getRepeatFrequency());
-    }
-    assertEquals(createRequest.getPipelineUrl(), service.getPipelineUrl());
+    validatePipelineConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
   }
 
   @Override
@@ -257,18 +217,51 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     return service;
   }
 
+  private void validatePipelineConnection(
+      PipelineConnection expectedPipelineConnection,
+      PipelineConnection actualPipelineConnection,
+      PipelineServiceType pipelineServiceType) {
+    if (expectedPipelineConnection != null) {
+      if (pipelineServiceType == PipelineServiceType.Airflow) {
+        AirflowConnection expectedAirflowConnection = (AirflowConnection) expectedPipelineConnection.getConfig();
+        AirflowConnection actualAirflowConnection;
+        if (actualPipelineConnection.getConfig() instanceof AirflowConnection) {
+          actualAirflowConnection = (AirflowConnection) actualPipelineConnection.getConfig();
+        } else {
+          actualAirflowConnection =
+              JsonUtils.convertValue(actualPipelineConnection.getConfig(), AirflowConnection.class);
+        }
+        validateAirflowConnection(expectedAirflowConnection, actualAirflowConnection);
+      }
+    }
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
-    if (fieldName.equals("ingestionSchedule")) {
-      Schedule expectedSchedule = (Schedule) expected;
-      Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
-      assertEquals(expectedSchedule, actualSchedule);
-    } else if (fieldName.equals("pipelineUrl")) {
-      URI expectedUri = (URI) expected;
-      URI actualUri = URI.create((String) actual);
-      assertEquals(expectedUri, actualUri);
+    if (fieldName.equals("connection")) {
+      PipelineConnection expectedConnection = (PipelineConnection) expected;
+      PipelineConnection actualConnection = JsonUtils.readValue((String) actual, PipelineConnection.class);
+      actualConnection.setConfig(JsonUtils.convertValue(actualConnection.getConfig(), AirflowConnection.class));
+      // TODO remove this hardcoding
+      validatePipelineConnection(expectedConnection, actualConnection, PipelineServiceType.Airflow);
     } else {
       super.assertCommonFieldChange(fieldName, expected, actual);
     }
+  }
+
+  public static void validateAirflowConnection(
+      AirflowConnection expectedAirflowConnection, AirflowConnection actualAirflowConnection) {
+    assertEquals(expectedAirflowConnection.getHostPort(), actualAirflowConnection.getHostPort());
+    // Currently, just checking for MySQL as metadata db for Airflow
+    // We need to get inside the general DatabaseConnection and fetch the MysqlConnection
+    DatabaseConnection expectedDatabaseConnection = (DatabaseConnection) expectedAirflowConnection.getConnection();
+    MysqlConnection expectedMysqlConnection = (MysqlConnection) expectedDatabaseConnection.getConfig();
+
+    DatabaseConnection actualDatabaseConnection =
+        JsonUtils.convertValue(actualAirflowConnection.getConnection(), DatabaseConnection.class);
+    MysqlConnection actualMysqlConnection =
+        JsonUtils.convertValue(actualDatabaseConnection.getConfig(), MysqlConnection.class);
+    // Use the database service tests utilities for the comparison
+    validateMysqlConnection(expectedMysqlConnection, actualMysqlConnection);
   }
 }

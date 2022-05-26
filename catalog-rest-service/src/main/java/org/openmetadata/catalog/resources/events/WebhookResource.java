@@ -55,7 +55,6 @@ import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
@@ -92,6 +91,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @GET
   @Operation(
+      operationId = "listWebHooks",
       summary = "List webhooks",
       tags = "webhook",
       description = "Get a list of webhook subscriptions",
@@ -131,6 +131,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @Path("/{id}")
   @Valid
   @Operation(
+      operationId = "getWebHookByID",
       summary = "Get a webhook",
       tags = "webhook",
       description = "Get a webhook by given Id",
@@ -138,7 +139,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Webhook get(
@@ -158,6 +159,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getWebHookByFQN",
       summary = "Get a webhook by name",
       tags = "webhook",
       description = "Get a webhook by name.",
@@ -185,6 +187,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllWebHookVersion",
       summary = "List webhook versions",
       tags = "webhook",
       description = "Get a list of all the versions of a webhook identified by `id`",
@@ -205,6 +208,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificWebhookVersion",
       summary = "Get a version of the webhook",
       tags = "webhook",
       description = "Get a version of the webhook by given `id`",
@@ -232,6 +236,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @POST
   @Operation(
+      operationId = "createWebHook",
       summary = "Subscribe to a new webhook",
       tags = "webhook",
       description = "Subscribe to a new webhook",
@@ -253,6 +258,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateWebhook",
       summary = "Updated an existing or create a new webhook",
       tags = "webhook",
       description = "Updated an existing or create a new webhook",
@@ -275,6 +281,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchWebHook",
       summary = "Update a webhook",
       tags = "webhook",
       description = "Update an existing webhook using JsonPatch.",
@@ -301,6 +308,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @Path("/{id}")
   @Valid
   @Operation(
+      operationId = "deleteWebHook",
       summary = "Delete a webhook",
       tags = "webhook",
       description = "Get a webhook by given Id",

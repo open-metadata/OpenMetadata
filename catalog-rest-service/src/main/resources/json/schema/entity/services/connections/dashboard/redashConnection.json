@@ -35,7 +35,8 @@
     "apiKey": {
       "title": "API Key",
       "description": "API key of the redash instance to access.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

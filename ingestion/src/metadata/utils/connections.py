@@ -19,7 +19,7 @@ from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
@@ -146,7 +146,7 @@ def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
                 "Snowflake Private Key Passphrase not found, replacing it with empty string"
             )
         p_key = serialization.load_pem_private_key(
-            bytes(connection.privateKey, "utf-8"),
+            bytes(connection.privateKey.get_secret_value(), "utf-8"),
             password=snowflake_private_key_passphrase.encode(),
             backend=default_backend(),
         )
@@ -199,7 +199,7 @@ def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClie
         Salesforce(
             connection.username,
             password=connection.password.get_secret_value(),
-            security_token=connection.securityToken,
+            security_token=connection.securityToken.get_secret_value(),
         )
     )
     return salesforce_connection
@@ -429,7 +429,7 @@ def _(connection: RedashConnection, verbose: bool = False):
     from redash_toolbelt import Redash
 
     try:
-        redash = Redash(connection.hostPort, connection.apiKey)
+        redash = Redash(connection.hostPort, connection.apiKey.get_secret_value())
         redash_client = RedashClient(redash)
         return redash_client
 
@@ -485,13 +485,16 @@ def _(connection: TableauConnection, verbose: bool = False):
         tableau_server_config[connection.env][
             "password"
         ] = connection.password.get_secret_value()
-    elif connection.personalAccessTokenName and connection.personalAccessTokenSecret:
+    elif (
+        connection.personalAccessTokenName
+        and connection.personalAccessTokenSecret.get_secret_value()
+    ):
         tableau_server_config[connection.env][
             "personal_access_token_name"
         ] = connection.personalAccessTokenName
         tableau_server_config[connection.env][
             "personal_access_token_secret"
-        ] = connection.personalAccessTokenSecret
+        ] = connection.personalAccessTokenSecret.get_secret_value()
     try:
         conn = TableauServerConnection(
             config_json=tableau_server_config,
