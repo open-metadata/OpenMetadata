@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
+import { NEW_TAG_CATEGORY, TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -51,7 +51,52 @@ describe('Tags page should work', () => {
       });
   });
 
-  it('Add new category slow should work properly', () => {
-    cy.get('[data-testid="add-category"]').should('be.visible');
+  it('Add new tag category flow should work properly', () => {
+    cy.get('[data-testid="add-category"]').should('be.visible').click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="name"]')
+      .should('be.visible')
+      .type(NEW_TAG_CATEGORY.name);
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .should('be.visible')
+      .type(NEW_TAG_CATEGORY.description);
+
+    cy.get('[data-testid="saveButton"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('[data-testid="category-name"]')
+      .should('be.visible')
+      .invoke('text')
+      .then((text) => {
+        expect(text).to.equal(NEW_TAG_CATEGORY.name);
+      });
+  });
+
+  it('Delete Tag flow should work properly', () => {
+    cy.get('[data-testid="side-panel-category"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('be.visible')
+      .as('newCategory');
+
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+
+    cy.get('[data-testid="delete-tag-category-button"]')
+      .should('be.visible')
+      .click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.contains(
+      `Are you sure you want to delete the tag category "${NEW_TAG_CATEGORY.name}"?`
+    ).should('be.visible');
+
+    cy.get('[data-testid="save-button"]').should('be.visible').click();
+
+    cy.get('[data-testid="side-panel-category"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('not.be.exist');
   });
 });
