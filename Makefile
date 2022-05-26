@@ -82,7 +82,7 @@ coverage:  ## Run all Python tests and generate the coverage report
 	# Now base dir for filename
 	sed "s/filename=\"ingestion\//filename=\"/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
 	# Fix GA path https://community.sonarsource.com/t/sonar-on-github-actions-with-python-coverage-source-issue/36057
-	sed "s/<source>\/home\/runner\/work\/OpenMetadata/OpenMetadata<\/source>/<source>\/github\/workspace<\/source>/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	sed "s/<source>\/home\/runner\/work\/OpenMetadata\/OpenMetadata<\/source>/<source>\/github\/workspace<\/source>/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
 	cat ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
