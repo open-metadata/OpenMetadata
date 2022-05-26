@@ -137,3 +137,11 @@ export const MY_SQL_TABLE = {
   schema: 'openmetadata_db',
   entityType: 'database',
 };
+
+export const RED_SHIFT_TABLE = {
+  term: 'raw_customers',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'dev',
+  schema: 'dbt_jaffle',
+  entityType: 'database',
+};
