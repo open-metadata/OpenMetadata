@@ -23,6 +23,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   ColumnJoins,
+  JoinedWith,
   Table,
   TableJoins,
   TableType,
@@ -116,6 +117,7 @@ const DatasetDetailsProps = {
   followTableHandler: jest.fn(),
   joins: {
     columnJoins: [] as ColumnJoins[],
+    directTableJoins: [] as JoinedWith[],
   } as TableJoins,
   owner: {} as EntityReference,
   sampleData: {},
