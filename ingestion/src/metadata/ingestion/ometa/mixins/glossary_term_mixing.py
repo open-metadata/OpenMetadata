@@ -22,7 +22,7 @@ from metadata.ingestion.ometa.utils import ometa_logger
 T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 logger = ometa_logger()
 
-
+# pylint: disable=too-few-public-methods
 class GlossaryTermMixin:
     def create_glossary_term(self, entity: Type[T], glossary_term_body):
         """Method to create new Glossary Term

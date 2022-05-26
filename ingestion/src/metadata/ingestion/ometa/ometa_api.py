@@ -102,6 +102,7 @@ class EmptyPayloadException(Exception):
     """
 
 
+# pylint: disable=too-few-public-methods
 class EntityList(Generic[T], BaseModel):
     """
     Pydantic Entity list model
@@ -129,7 +130,7 @@ class OpenMetadata(
     ESMixin,
     OMetaServerMixin,
     Generic[T, C],
-):
+):  # pylint: disable=too-many-ancestors
     """
     Generic interface to the OpenMetadata API
 
@@ -433,7 +434,7 @@ class OpenMetadata(
         )
         if not resp:
             raise EmptyPayloadException(
-                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"  # pylint: disable=line-too-long
             )
         return entity_class(**resp)
 
@@ -475,17 +476,17 @@ class OpenMetadata(
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
             if not resp:
                 raise EmptyPayloadException(
-                    f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
+                    f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"  # pylint: disable=line-too-long
                 )
             return entity(**resp)
-        except APIError as err:
-            if err.status_code == 404:
+        except APIError as exc:
+            if exc.status_code == 404:
                 logger.info(
                     "GET %s for %s. HTTP %s - %s",
                     entity.__name__,
                     path,
-                    err.status_code,
-                    err,
+                    exc.status_code,
+                    exc,
                 )
 
             else:
@@ -493,8 +494,8 @@ class OpenMetadata(
                     "GET %s for %s." "Error %s - %s",
                     entity.__name__,
                     path,
-                    err.status_code,
-                    err,
+                    exc.status_code,
+                    exc,
                 )
 
             return None

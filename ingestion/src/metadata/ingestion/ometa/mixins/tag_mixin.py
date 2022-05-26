@@ -15,7 +15,7 @@ To be used be OpenMetadata
 """
 from typing import List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable-msg=E0611
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (

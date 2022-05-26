@@ -13,8 +13,6 @@ REST Auth & Client for Apache Superset
 """
 import json
 
-from pydantic import SecretStr
-
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -139,7 +137,9 @@ class SupersetAPIClient:
         )
         return response
 
-    def fetch_charts_with_id(self, chart_id):
+    def fetch_charts_with_id(
+        self, chart_id
+    ):  # pylint: disable=missing-function-docstring
         response = self.client.get(f"/chart/{chart_id}")
         return response
 

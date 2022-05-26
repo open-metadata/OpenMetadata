@@ -33,7 +33,7 @@ from metadata.ingestion.ometa.utils import ometa_logger
 
 logger = ometa_logger()
 
-
+# pylint: disable=too-few-public-methods
 class OMetaTopicMixin:
     """
     OpenMetadata API methods related to Topics.

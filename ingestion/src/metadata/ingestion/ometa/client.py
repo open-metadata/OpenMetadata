@@ -85,6 +85,7 @@ class APIError(Exception):
         return None
 
 
+# pylint: disable=too-few-public-methods
 class ClientConfig(ConfigModel):
     """
     :param raw_data: should we return api response raw or wrap it with

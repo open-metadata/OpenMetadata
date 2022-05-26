@@ -27,7 +27,7 @@ logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
-
+# pylint: disable=too-few-public-methods
 class ESMixin(Generic[T]):
     """
     OpenMetadata API methods related to Elasticsearch.
@@ -37,7 +37,7 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    search_from_service_url = "/search/query?q=service:{service} AND {filters}&from={from_}&size={size}&index={index}"
+    search_from_service_url = "/search/query?q=service:{service} AND {filters}&from={from_}&size={size}&index={index}"  # pylint: disable=line-too-long
 
     def _search_es_entity(
         self, entity_type: Type[T], query_string: str
@@ -81,7 +81,7 @@ class ESMixin(Generic[T]):
                 return entity_list
 
             logger.debug(
-                f"Could not find any entities for ES query {query_string}. Will retry in 1 second..."
+                f"Could not find any entities for ES query {query_string}. Will retry in 1 second..."  # pylint: disable=line-too-long
             )
 
             times -= 1

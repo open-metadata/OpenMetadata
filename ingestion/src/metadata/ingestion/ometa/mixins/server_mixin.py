@@ -90,5 +90,5 @@ class OMetaServerMixin:
 
         if server_version != client_version:
             raise VersionMismatchException(
-                f"Server version is {server_version} vs. Client version {client_version}. Both should match."
+                f"Server version is {server_version} vs. Client version {client_version}. Both should match."  # pylint: disable=line-too-long
             )

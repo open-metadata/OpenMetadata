@@ -16,7 +16,7 @@ To be used by OpenMetadata
 
 from typing import Generic, List, Optional, Type, TypeVar, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel  # pylint: disable-msg=E0611
 from requests.models import Response
 
 from metadata.generated.schema.type import basic

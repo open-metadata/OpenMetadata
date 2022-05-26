@@ -187,7 +187,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.request_executor import RequestExecutor
 
         try:
-            my_pem, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
+            my_pem, my_jwk = JWT.get_PEM_JWK(
+                self.security_config.privateKey
+            )  # pylint: disable=unused-variable
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
@@ -284,7 +286,7 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         conn = http.client.HTTPSConnection(self.security_config.domain)
         payload = (
             f"grant_type=client_credentials&client_id={self.security_config.clientId}"
-            f"&client_secret={self.security_config.secretKey}&audience=https://{self.security_config.domain}/api/v2/"
+            f"&client_secret={self.security_config.secretKey}&audience=https://{self.security_config.domain}/api/v2/"  # pylint: disable=line-too-long
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
         conn.request(
