@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NEW_TAG_CATEGORY, TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
+import { NEW_TAG, NEW_TAG_CATEGORY, TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -72,6 +72,25 @@ describe('Tags page should work', () => {
       .then((text) => {
         expect(text).to.equal(NEW_TAG_CATEGORY.name);
       });
+  });
+
+  it('Add new tag flow shoud work properly', () => {
+    cy.get('[data-testid="side-panel-category"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('be.visible')
+      .as('newCategory');
+
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+    cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="name"]').should('be.visible').type(NEW_TAG.name);
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .should('be.visible')
+      .type(NEW_TAG.description);
+    cy.get('[data-testid="saveButton"]').should('be.visible').click();
   });
 
   it('Delete Tag flow should work properly', () => {
