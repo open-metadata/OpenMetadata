@@ -74,6 +74,7 @@ module.exports = {
       md: '768px',
       lg: '992px',
       xl: '1200px',
+      xxl: '2160px',
     },
     extend: {
       borderColor: {
@@ -159,6 +160,7 @@ module.exports = {
         'screen-md': '768px',
         'screen-lg': '992px',
         'screen-xl': '1200px',
+        'screen-xxl': '2160px',
         'full-hd': '1080px',
         600: '600px',
       },
