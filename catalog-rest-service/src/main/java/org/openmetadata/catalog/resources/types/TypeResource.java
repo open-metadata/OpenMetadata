@@ -158,7 +158,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("after")
           String after)
       throws IOException {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("category", category.value());
     return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
