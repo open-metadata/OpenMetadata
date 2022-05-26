@@ -5,7 +5,6 @@ source:
     config:
       clientId: client_id
       clientSecret: client_secret
-      hostPort: https://analysis.windows.net/powerbi
       tenantId: tenant_id
       scope:
         - https://analysis.windows.net/powerbi/api/.default
@@ -14,10 +13,15 @@ source:
     config:
       chartFilterPattern:
         includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
           - Total Revenue
       dashboardFilterPattern:
-        excludes:
-          - Retail Analysis
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
 sink:
   type: metadata-rest
   config: {}

@@ -56,7 +56,7 @@
       "items": {
         "type": "string"
       },
-      "default": null
+      "default": ["https://analysis.windows.net/powerbi/api/.default"]
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -64,5 +64,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "clientId", "clientSecret"]
+  "required": ["clientId", "clientSecret", "tenantId"]
 }

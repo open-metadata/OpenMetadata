@@ -43,9 +43,16 @@ class PowerBiApiClient:
 
     def get_auth_token(self):
         logger.info("Generating PowerBi access token")
-        auth_response = self.msal_client.acquire_token_for_client(
-            scopes=self.config.scope
+
+        auth_response = self.msal_client.acquire_token_silent(
+            scopes=self.config.scope, account=None
         )
+
+        if not auth_response:
+            logger.info("Token does not exist in the cache. Getting a new token.")
+            auth_response = self.msal_client.acquire_token_for_client(
+                scopes=self.config.scope
+            )
 
         if not auth_response.get("access_token"):
             logger.error(
@@ -70,7 +77,7 @@ class PowerBiApiClient:
             Iterable[Chart]
         """
         try:
-            response = self.client.get(f"/myorg/dashboards/{dashboard_id}/tiles")
+            response = self.client.get(f"/myorg/admin/dashboards/{dashboard_id}/tiles")
             return response
         except Exception as err:  # pylint: disable=broad-except
             logger.error(repr(err))
@@ -83,7 +90,7 @@ class PowerBiApiClient:
             Iterable[Chart]
         """
         try:
-            response = self.client.get(f"/myorg/dashboards")
+            response = self.client.get(f"/myorg/admin/dashboards")
             return response
         except Exception as err:  # pylint: disable=broad-except
             logger.error(repr(err))
