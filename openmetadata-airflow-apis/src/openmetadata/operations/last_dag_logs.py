@@ -44,16 +44,24 @@ def last_dag_logs(dag_id: str) -> Response:
 
     for task_instance in task_instances:
         if os.path.isfile(task_instance.log_filepath):
-            response[task_instance.task_id] = Path(task_instance.log_filepath).read_text()
+            response[task_instance.task_id] = Path(
+                task_instance.log_filepath
+            ).read_text()
         # logs could be kept in a directory with the same name than the log file path without extension per attempt
         elif os.path.isdir(os.path.splitext(task_instance.log_filepath)[0]):
             dir_path = os.path.splitext(task_instance.log_filepath)[0]
-            sorted_logs = sorted(filter(os.path.isfile, glob.glob(f"{dir_path}/*.log")), key=os.path.getmtime)
-            response[task_instance.task_id] = \
-                f"\n*** Reading local file: {task_instance.log_filepath}\n".join(
-                    [Path(log).read_text() for log in sorted_logs]
-                )
+            sorted_logs = sorted(
+                filter(os.path.isfile, glob.glob(f"{dir_path}/*.log")),
+                key=os.path.getmtime,
+            )
+            response[
+                task_instance.task_id
+            ] = f"\n*** Reading local file: {task_instance.log_filepath}\n".join(
+                [Path(log).read_text() for log in sorted_logs]
+            )
         else:
-            return ApiResponse.not_found(f"Logs for task instance '{task_instance}' of DAG '{dag_id}' not found.")
+            return ApiResponse.not_found(
+                f"Logs for task instance '{task_instance}' of DAG '{dag_id}' not found."
+            )
 
     return ApiResponse.success(response)

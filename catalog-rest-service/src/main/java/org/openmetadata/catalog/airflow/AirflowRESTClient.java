@@ -192,11 +192,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
     String token = authenticate();
     String authToken = String.format(AUTH_TOKEN, token);
     String url = String.format(stringUrlFormat, stringReplacement);
-    HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-        .header(CONTENT_HEADER, CONTENT_TYPE)
-        .header(AUTH_HEADER, authToken)
-        .GET()
-        .build();
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(url))
+            .header(CONTENT_HEADER, CONTENT_TYPE)
+            .header(AUTH_HEADER, authToken)
+            .GET()
+            .build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 }
