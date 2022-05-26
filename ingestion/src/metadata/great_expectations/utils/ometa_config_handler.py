@@ -16,7 +16,7 @@ import os
 from typing import Any, Optional
 
 import yaml
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -42,7 +42,9 @@ def create_jinja_environment(template_path: str) -> Environment:
         template_path: path to the folder holding the template
     """
 
-    environment = Environment(loader=FileSystemLoader(template_path))
+    environment = Environment(
+        loader=FileSystemLoader(template_path), autoescape=select_autoescape()
+    )
     environment.globals["env"] = env
 
     return environment
