@@ -625,9 +625,9 @@ class SouceConnectionTest(TestCase):
         expected_args = {}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
-            connectionArguments=None,
+            warehouse="COMPUTE_WH",
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
@@ -639,6 +639,7 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             database="tiny",
+            warehouse="COMPUTE_WH",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
