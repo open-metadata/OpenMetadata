@@ -81,6 +81,7 @@ coverage:  ## Run all Python tests and generate the coverage report
 	coverage xml -i -o ingestion/coverage.xml
 	# Now fix paths
 	sed "s/filename=\"ingestion\//filename=\"/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	cat ingestion/coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
