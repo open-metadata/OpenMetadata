@@ -18,7 +18,7 @@ import airflow
 from airflow import configuration
 from openmetadata import __version__
 
-REST_API_ENDPOINT = "/admin/rest_api/api"
+REST_API_ENDPOINT = "/rest_api/api"
 
 # Getting Versions and Global variables
 HOSTNAME = socket.gethostname()
