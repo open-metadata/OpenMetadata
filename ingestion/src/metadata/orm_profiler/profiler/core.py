@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.data.table import ColumnProfile, TableProf
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    MetricType,
+    TMetric,
     QueryMetric,
     StaticMetric,
 )
@@ -48,7 +48,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(Generic[MetricType]):
+class Profiler(Generic[TMetric]):
     """
     Core Profiler.
 
@@ -60,7 +60,7 @@ class Profiler(Generic[MetricType]):
 
     def __init__(
         self,
-        *metrics: Type[MetricType],
+        *metrics: Type[TMetric],
         session: Session,
         table: DeclarativeMeta,
         profile_date: datetime = datetime.now(),
@@ -117,7 +117,7 @@ class Profiler(Generic[MetricType]):
         return self._table
 
     @property
-    def metrics(self) -> Tuple[Type[MetricType], ...]:
+    def metrics(self) -> Tuple[Type[TMetric], ...]:
         return self._metrics
 
     @property
@@ -158,7 +158,7 @@ class Profiler(Generic[MetricType]):
 
         return self._columns
 
-    def _filter_metrics(self, _type: Type[MetricType]) -> List[Type[MetricType]]:
+    def _filter_metrics(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """
         Filter metrics by type
         """
@@ -181,7 +181,7 @@ class Profiler(Generic[MetricType]):
         return self._filter_metrics(QueryMetric)
 
     @staticmethod
-    def get_col_metrics(metrics: List[Type[MetricType]]) -> List[Type[MetricType]]:
+    def get_col_metrics(metrics: List[Type[TMetric]]) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
         """

@@ -3,14 +3,15 @@
 # W1202: logging-format-interpolation - lazy formatting in logging functions
 # R0903: too-few-public-methods - False negatives in pydantic classes
 # W0707: raise-missing-from - Tends to be a false positive as exception are closely encapsulated
-disable=W1203,W1202,R0903,W0707
+# R0901: too-many-ancestors - We are already inheriting from SQA classes with a bunch of ancestors
+disable=W1203,W1202,R0903,W0707,R0901,W1201
 
 docstring-min-length=20
 max-args=7
 max-attributes=12
 
 # usual typevar naming
-good-names=T,C
+good-names=T,C,fn
 
 [MASTER]
 fail-under=6.0
