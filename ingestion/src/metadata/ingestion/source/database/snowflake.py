@@ -205,10 +205,13 @@ class SnowflakeSource(CommonDbSourceService):
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
                 )
+                SNOWFLAKE_TABLE_TYPE = "BASE TABLE"
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table_name,
-                    tableType="Regular" if entity_type == "Base Table" else "View",
+                    tableType="Regular"
+                    if entity_type.lower() == SNOWFLAKE_TABLE_TYPE.lower()
+                    else "View",
                     description=comment,
                     columns=table_columns,
                     viewDefinition=view_definition,
