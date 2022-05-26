@@ -637,7 +637,7 @@ class SouceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
             warehouse="COMPUTE_WH",
             connectionArguments={"user": "user-to-be-impersonated"},
