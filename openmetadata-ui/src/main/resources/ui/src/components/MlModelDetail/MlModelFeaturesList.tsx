@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined, uniqueId } from 'lodash';
+import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -51,25 +51,27 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   hasEditAccess,
   handleFeaturesUpdate,
 }) => {
-  const [selectedFeature, setSelectedFeature] = useState<MlFeature>();
-  const [editTag, setEditTag] = useState(false);
-  const [editDescription, setEditDescription] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
+    {} as MlFeature
+  );
+  const [editTag, setEditTag] = useState<boolean>(false);
+  const [editDescription, setEditDescription] = useState<boolean>(false);
   const [allTags, setAllTags] = useState<Array<TagOption>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
 
   const handleCancelEditDescription = () => {
-    setSelectedFeature(undefined);
+    setSelectedFeature({});
     setEditDescription(false);
   };
 
   const handleCancelEditTags = () => {
     setEditTag(false);
-    setSelectedFeature(undefined);
+    setSelectedFeature({});
   };
 
   const handleDescriptionChange = (value: string) => {
-    if (selectedFeature && editDescription) {
+    if (!isEmpty(selectedFeature) && editDescription) {
       const updatedFeatures = mlFeatures?.map((feature) => {
         if (feature.name === selectedFeature.name) {
           return {
@@ -94,7 +96,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
         state: State.Confirmed,
       };
     });
-    if (newSelectedTags && editTag && selectedFeature) {
+    if (newSelectedTags && editTag && !isEmpty(selectedFeature)) {
       const updatedFeatures = mlFeatures?.map((feature) => {
         if (feature.name === selectedFeature.name) {
           return {
@@ -338,7 +340,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
             </div>
           ))}
         </div>
-        {!isUndefined(selectedFeature) && editDescription && (
+        {!isEmpty(selectedFeature) && editDescription && (
           <ModalWithMarkdownEditor
             header={`Edit feature: "${selectedFeature.name}"`}
             placeholder="Enter feature description"
