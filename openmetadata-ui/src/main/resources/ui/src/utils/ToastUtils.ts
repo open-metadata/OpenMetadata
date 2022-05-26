@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { isString } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import { toast } from 'react-toastify';
 import jsonData from '../jsons/en';
 import { getErrorText } from './StringsUtils';
@@ -21,7 +21,7 @@ export const hashCode = (str: string) => {
   let hash = 0,
     i,
     chr;
-  if (str.length === 0) return hash;
+  if (isEmpty(str)) return hash;
   for (i = 0; i < str.length; i++) {
     chr = str.charCodeAt(i);
     hash = (hash << 5) - hash + chr;
