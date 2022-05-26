@@ -20,7 +20,7 @@ pip install openmetadata-ingestion[great-expectations]
 The `config.yml` file holds connection details to your Open Metadata instance, e.g.
 
 ```yml
-hostPort: http://localhost:8585
+hostPort: http://localhost:8585/api
 authProvider: azure
 apiVersion: v1
 securityConfig:
