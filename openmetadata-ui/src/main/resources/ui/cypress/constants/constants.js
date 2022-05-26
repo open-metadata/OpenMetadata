@@ -145,3 +145,11 @@ export const RED_SHIFT_TABLE = {
   schema: 'dbt_jaffle',
   entityType: 'database',
 };
+
+export const SNOWFLAKE_TABLE = {
+  term: 'snow_t1',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'TESTDB',
+  schema: 'PUBLIC',
+  entityType: 'database',
+};
