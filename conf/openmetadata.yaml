@@ -132,6 +132,7 @@ authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
@@ -141,6 +142,7 @@ authenticationConfiguration:
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
