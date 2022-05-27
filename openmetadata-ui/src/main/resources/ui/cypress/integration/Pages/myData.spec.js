@@ -34,7 +34,7 @@ describe('MyData page should work', () => {
       .first()
       .should('be.visible')
       .scrollIntoView();
-
+    cy.wait(500);
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]')
@@ -89,6 +89,7 @@ describe('MyData page should work', () => {
 
     cy.wait('@searchApi');
     // click on the 1st result and go to entity details page and follow the entity
+    cy.wait(500);
     cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
