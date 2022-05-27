@@ -92,9 +92,7 @@ const MyDataPage = () => {
     setCountTeams(count);
   };
 
-  const fetchData = (fetchService = false) => {
-    setError('');
-
+  const fetchEntityCount = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
@@ -162,7 +160,9 @@ const MyDataPage = () => {
         );
         setCountDashboards(0);
       });
+  };
 
+  const fetchTeamsAndUsersCount = () => {
     getUsers('', 0)
       .then((res) => {
         if (res.data) {
@@ -194,23 +194,35 @@ const MyDataPage = () => {
         );
         setTeamCount(0);
       });
+  };
+
+  const fetchServiceCount = () => {
+    // limit=0 will fetch empty data list with total count
+    getAllServices(true, 0)
+      .then((res) => {
+        const total = res.reduce((prev, curr) => {
+          return prev + (curr?.paging?.total || 0);
+        }, 0);
+        setCountServices(total);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setCountServices(0);
+      });
+  };
+
+  const fetchData = (fetchService = false) => {
+    setError('');
+
+    fetchEntityCount();
+
+    fetchTeamsAndUsersCount();
 
     if (fetchService) {
-      // limit=0 will fetch empty data list with total count
-      getAllServices(true, 0)
-        .then((res) => {
-          const total = res.reduce((prev, curr) => {
-            return prev + (curr?.paging?.total || 0);
-          }, 0);
-          setCountServices(total);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-          setCountServices(0);
-        });
+      fetchServiceCount();
     }
   };
 

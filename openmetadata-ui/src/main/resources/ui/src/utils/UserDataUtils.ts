@@ -26,7 +26,6 @@ import { getRoles } from '../axiosAPIs/rolesAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
-// import { API_RES_MAX_SIZE } from '../constants/constants';
 import { User } from '../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';

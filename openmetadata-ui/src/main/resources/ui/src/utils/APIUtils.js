@@ -58,7 +58,7 @@ export const formatDataResponse = (hits) => {
 };
 
 export const formatUsersResponse = (hits) => {
-  const users = hits.map((d) => {
+  return hits.map((d) => {
     return {
       name: d._source.name,
       displayName: d._source.display_name,
@@ -67,12 +67,10 @@ export const formatUsersResponse = (hits) => {
       id: d._source.user_id,
     };
   });
-
-  return users;
 };
 
 export const formatTeamsResponse = (hits) => {
-  const teams = hits.map((d) => {
+  return hits.map((d) => {
     return {
       name: d._source.name,
       displayName: d._source.display_name,
@@ -80,8 +78,6 @@ export const formatTeamsResponse = (hits) => {
       id: d._source.team_id,
     };
   });
-
-  return teams;
 };
 
 export const formatTeamsAndUsersResponse = (hits) => {

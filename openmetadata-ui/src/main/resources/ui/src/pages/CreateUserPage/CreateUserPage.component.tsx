@@ -87,7 +87,6 @@ const CreateUserPage = () => {
     createUser(userData)
       .then((res) => {
         if (res.data) {
-          // AppState.addUser(res.data);
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');

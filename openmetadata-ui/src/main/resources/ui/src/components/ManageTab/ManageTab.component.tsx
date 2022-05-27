@@ -177,9 +177,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   );
 
   const getOwnerSuggestion = useCallback(
-    (searchText = '') => {
+    (qSearchText = '') => {
       setIsUserLoading(true);
-      suggestFormattedUsersAndTeams(searchText)
+      suggestFormattedUsersAndTeams(qSearchText)
         .then((res) => {
           const { users, teams } = res;
           setListOwners(getOwnerList(users, teams));

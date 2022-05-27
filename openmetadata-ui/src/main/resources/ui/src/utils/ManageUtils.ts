@@ -23,9 +23,9 @@ export const getOwnerList = (
   const userDetails = AppState.getCurrentUserDetails();
 
   const userTeams =
-    userDetails?.teams?.map((team) => ({
-      name: getEntityName(team),
-      value: team.id,
+    userDetails?.teams?.map((userTeam) => ({
+      name: getEntityName(userTeam),
+      value: userTeam.id,
       group: 'Teams',
       type: 'team',
     })) ?? [];
