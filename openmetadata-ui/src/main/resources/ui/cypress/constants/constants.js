@@ -122,7 +122,6 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const TOTAL_SAMPLE_DATA_TAGS_COUNT = 3;
 export const NEW_TAG_CATEGORY = {
   name: 'TestCategory',
   description: 'This is the TestCategory',

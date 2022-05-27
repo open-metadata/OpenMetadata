@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NEW_TAG, NEW_TAG_CATEGORY, TOTAL_SAMPLE_DATA_TAGS_COUNT } from '../../constants/constants';
+import { NEW_TAG, NEW_TAG_CATEGORY } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -25,10 +25,6 @@ describe('Tags page should work', () => {
   });
 
   it('Required Details should be available', () => {
-    cy.get('[data-testid="side-panel-category"]')
-      .should('be.visible')
-      .should('have.length', TOTAL_SAMPLE_DATA_TAGS_COUNT);
-
     cy.get('[data-testid="add-category"]').should('be.visible');
     cy.get('[data-testid="add-new-tag-button"]').should('be.visible');
     cy.get('[data-testid="delete-tag-category-button"]').should('be.visible');
