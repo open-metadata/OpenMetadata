@@ -77,6 +77,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
+        projectBaseDir: ingestion/
         args: >
           -Dproject.settings=ingestion/sonar-project.properties
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
@@ -92,5 +93,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
+        projectBaseDir: ingestion/
