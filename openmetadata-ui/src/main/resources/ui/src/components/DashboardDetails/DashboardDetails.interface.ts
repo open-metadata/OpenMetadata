@@ -23,7 +23,6 @@ import {
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -44,7 +43,6 @@ export interface DashboardDetailsProps {
   charts: Array<ChartType>;
   serviceType: string;
   dashboardUrl: string;
-  users: Array<User>;
   dashboardDetails: Dashboard;
   entityName: string;
   activeTab: number;

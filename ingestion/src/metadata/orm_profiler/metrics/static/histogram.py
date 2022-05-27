@@ -14,7 +14,7 @@ Histogram Metric definition
 """
 from typing import Optional
 
-from sqlalchemy import and_, column, func
+from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.orm_profiler.metrics.core import QueryMetric

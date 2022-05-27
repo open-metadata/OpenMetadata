@@ -95,6 +95,14 @@
       <artifactId>jersey-media-multipart</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-jdbi</artifactId>
+    </dependency>
+    <dependency>
       <groupId>commons-lang</groupId>
       <artifactId>commons-lang</artifactId>
       <version>${commons-lang.version}</version>
@@ -247,7 +255,17 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-all</artifactId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

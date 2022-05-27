@@ -162,7 +162,7 @@ def test_read_tables(trino_service):
 
 
 def test_check_table():
-    is_responsive("http://localhost:8585/api/v1/health-check")
+    is_responsive("http://localhost:8586/healthcheck")
     metadata_config = MetadataServerConfig.parse_obj(
         {"api_endpoint": "http://localhost:8585/api", "auth_provider_type": "no-auth"}
     )
