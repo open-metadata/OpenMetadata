@@ -119,6 +119,58 @@ describe('Tags page should work', () => {
       .scrollIntoView()
       .should('be.visible')
       .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+
+    cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+      .contains('Add tag')
+      .should('be.visible')
+      .click();
+
+    cy.get(
+      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"]'
+    ).should('be.visible');
+    cy.get('[data-testid="associatedTagName"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(`${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+    cy.get('#menu-item-0 > .tw-truncate').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+      .scrollIntoView()
+      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
+      .should('exist');
+  });
+
+  it('Check Usage of tag and it should redirect to explore page with tags filter', () => {
+    cy.get('[data-testid="side-panel-category"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('be.visible')
+      .as('newCategory');
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+
+    cy.get('[data-testid="usage-count"]').should('be.visible').as('count');
+    cy.get('@count')
+      .invoke('text')
+      .then((text) => {
+        expect(text).to.equal('2');
+      });
+    cy.get('@count').click();
+
+    cy.get('[data-testid="table-data-card"]')
+      .first()
+      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
+      .should('be.visible');
+
+    cy.get('[data-testid="filter-container-TestCategory.test"]')
+      .should('be.visible')
+      .find('[data-testid="checkbox"]')
+      .should('be.visible')
+      .should('be.checked');
   });
 
   it('Delete tag flow should work properly', () => {
