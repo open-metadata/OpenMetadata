@@ -17,6 +17,7 @@ import sqlalchemy
 from sqlalchemy import Integer, Numeric
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
+from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
 from metadata.orm_profiler.orm.types.uuid import UUIDString
 from metadata.orm_profiler.registry import TypeRegistry
@@ -66,7 +67,8 @@ NOT_COMPUTE = {
     sqlalchemy.types.NullType,
     sqlalchemy.ARRAY,
     sqlalchemy.JSON,
-
+    sqa_types.SQAMap,
+    sqa_types.SQAStruct,
 }
 
 
