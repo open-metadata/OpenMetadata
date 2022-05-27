@@ -89,6 +89,30 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
   });
 
+  it('Delete tag flow should work properly', () => {
+    cy.get('[data-testid="side-panel-category"]')
+      .contains(NEW_TAG_CATEGORY.name)
+      .should('be.visible')
+      .as('newCategory');
+
+    cy.get('@newCategory')
+      .click()
+      .parent()
+      .should('have.class', 'activeCategory');
+    cy.get('.tableBody-row > :nth-child(1)')
+      .contains(NEW_TAG.name)
+      .should('be.visible');
+
+    cy.get('[data-testid="delete-tag"]').should('be.visible').click();
+    cy.get('[data-testid="delete-tag"]').should('be.visible');
+    cy.get('[data-testid="body-text"]')
+      .contains(`Are you sure you want to delete the tag "${NEW_TAG.name}"?`)
+      .should('be.visible');
+    cy.get('[data-testid="save-button"]').should('be.visible').click();
+    cy.wait(100);
+    cy.get('.tableBody-cell').contains(NEW_TAG.name).should('not.exist');
+  });
+
   it('Delete Tag flow should work properly', () => {
     cy.get('[data-testid="side-panel-category"]')
       .contains(NEW_TAG_CATEGORY.name)
