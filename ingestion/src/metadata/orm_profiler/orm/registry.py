@@ -66,6 +66,7 @@ NOT_COMPUTE = {
     sqlalchemy.types.NullType,
     sqlalchemy.ARRAY,
     sqlalchemy.JSON,
+
 }
 
 
