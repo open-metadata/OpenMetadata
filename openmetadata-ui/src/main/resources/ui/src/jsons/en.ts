@@ -107,6 +107,7 @@ const jsonData = {
     'fetch-version-error': 'Error while fetching version!',
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
+    'fetch-users-error': 'Error while fetching users!',
 
     'test-connection-error': 'Error while testing connection!',
 
