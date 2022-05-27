@@ -35,7 +35,7 @@ class TestDef(ConfigModel):
     on the incoming properties.
     """
 
-    table: str  # Table FQDN
+    table: str  # Table FQN
     profile_sample: Optional[float] = None
     table_tests: Optional[List[CreateTableTestRequest]] = None
     column_tests: Optional[List[CreateColumnTestRequest]] = None

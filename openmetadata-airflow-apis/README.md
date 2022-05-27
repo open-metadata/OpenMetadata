@@ -195,7 +195,7 @@ curl -H  'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE
 - Delete dag based on dag_id.
 ##### Endpoint:
 ```text
-http://{AIRFLOW_HOST}:{AIRFLOW_PORT}/admin/rest_api/api?api=delete_dag&dag_id=value
+http://{AIRFLOW_HOST}:{AIRFLOW_PORT}/rest_api/api?api=delete_dag&dag_id=value
 ```
 ##### Method:
 - GET
@@ -203,7 +203,7 @@ http://{AIRFLOW_HOST}:{AIRFLOW_PORT}/admin/rest_api/api?api=delete_dag&dag_id=va
 - dag_id - string - The id of dag.
 ##### Examples:
 ```bash
-curl -X GET http://localhost:8080/admin/rest_api/api?api=delete_dag&dag_id=dag_test
+curl -X GET http://localhost:8080/rest_api/api?api=delete_dag&dag_id=dag_test
 ```
 ##### response:
 ```json
