@@ -712,7 +712,6 @@ const PipelineDetailsPage = () => {
           tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
-          users={AppState.users}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />
