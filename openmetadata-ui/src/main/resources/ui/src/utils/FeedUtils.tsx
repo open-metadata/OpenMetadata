@@ -26,7 +26,6 @@ import TurndownService from 'turndown';
 import { deletePostById, getFeedById } from '../axiosAPIs/feedsAPI';
 import {
   getInitialEntity,
-  getInitialUsers,
   getSuggestions,
   getUserSuggestions,
 } from '../axiosAPIs/miscAPI';
@@ -39,6 +38,7 @@ import {
   linkRegEx,
   mentionRegEx,
 } from '../constants/feed.constants';
+import { SearchIndex } from '../enums/search.enum';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -147,7 +147,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   if (mentionChar === '@') {
     let atValues = [];
     if (!searchTerm) {
-      const data = await getInitialUsers();
+      const data = await getInitialEntity(SearchIndex.USER);
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
@@ -188,7 +188,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
   } else {
     let hashValues = [];
     if (!searchTerm) {
-      const data = await getInitialEntity();
+      const data = await getInitialEntity(SearchIndex.TABLE);
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {

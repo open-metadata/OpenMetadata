@@ -257,11 +257,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                     data-testid="searchInputText"
                     placeholder="Search..."
                     type="text"
-                    value={
-                      !isUndefined(controlledSearchStr)
-                        ? controlledSearchStr
-                        : undefined
-                    }
+                    value={controlledSearchStr}
                     onChange={(e) => {
                       handleListSearch(e.target.value);
                     }}
