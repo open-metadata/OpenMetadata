@@ -26,8 +26,9 @@ type Props = {
   owner?: Table['owner'];
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  sampleData?: TableData;
   columnName: string;
+  tableConstraints: Table['tableConstraints'];
+  sampleData?: TableData;
   hasEditAccess?: boolean;
   isReadOnly?: boolean;
   entityFqn?: string;
@@ -49,6 +50,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   onEntityFieldSelect,
   isReadOnly = false,
   entityFqn,
+  tableConstraints,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
 
@@ -81,6 +83,7 @@ const SchemaTab: FunctionComponent<Props> = ({
               owner={owner}
               searchText={lowerCase(searchText)}
               tableColumns={columns}
+              tableConstraints={tableConstraints}
               onEntityFieldSelect={onEntityFieldSelect}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onUpdate}

@@ -34,6 +34,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
 
     - name: Set up JDK 11
       uses: actions/setup-java@v2
@@ -69,13 +70,6 @@ jobs:
         make coverage
         rm pom.xml
 
-    - name: Fetch main for sonar
-      if: ${{ github.event_name == 'pull_request_target' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        git fetch --no-tags --unshallow https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-
     - name: Run PR Sonar
       uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'pull_request_target' }}
@@ -83,8 +77,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
-        projectBaseDir: ingestion/
         args: >
+          -Dproject.settings=ingestion/sonar-project.properties
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
           -Dsonar.pullrequest.branch=${{ github.head_ref }}
           -Dsonar.pullrequest.github.repository=OpenMetadata
@@ -98,4 +92,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
-        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties

@@ -65,6 +65,7 @@ export enum TabSpecificField {
   TESTS = 'tests',
   PIPELINE_STATUS = 'pipelineStatus',
   DASHBOARD = 'dashboard',
+  TABLE_CONSTRAINTS = 'tableConstraints',
 }
 
 export enum FqnPart {

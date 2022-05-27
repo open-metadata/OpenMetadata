@@ -114,9 +114,8 @@ migrationConfiguration:
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
 
 # Authorizer Configuration

@@ -12,6 +12,9 @@
 """
 Define Concat function
 """
+# Keep SQA docs style defining custom constructs
+# pylint: disable=consider-using-f-string,duplicate-code
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 

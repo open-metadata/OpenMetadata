@@ -39,8 +39,10 @@ class ProfilerDef(BaseModel):
     # rule_metrics: ...
 
     @validator("metrics", each_item=True)
-    def valid_metric(cls, value):  # cls as per pydantic docs
+    def valid_metric(cls, value):  # pylint: disable=no-self-argument,no-self-use
         """
+        We are using cls as per pydantic docs
+
         Validate that the input metrics are correctly named
         and can be found in the Registry
         """
