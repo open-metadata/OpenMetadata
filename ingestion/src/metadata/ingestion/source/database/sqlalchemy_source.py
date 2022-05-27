@@ -90,7 +90,9 @@ class SqlAlchemySource(Source, ABC):
         """
 
     @abstractmethod
-    def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
+    def get_table_names(
+        self, schema: str, inspector: Inspector
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Method to fetch table & view names
         """
