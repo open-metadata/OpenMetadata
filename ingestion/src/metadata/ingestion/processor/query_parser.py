@@ -22,8 +22,9 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.type.queryParserData import QueryParserData
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
-from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
 from metadata.utils.logger import ingestion_logger
 
 
@@ -74,21 +75,22 @@ class QueryParserProcessor(Processor):
 
     def process(self, record: TableQuery) -> QueryParserData:
         try:
-            start_date = record.analysis_date
-            if isinstance(record.analysis_date, str):
+            start_date = record.analysisDate
+            if isinstance(record.analysisDate, str):
                 start_date = datetime.datetime.strptime(
-                    str(record.analysis_date), "%Y-%m-%d %H:%M:%S"
+                    str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
                 ).date()
-            parser = Parser(record.sql)
+            parser = Parser(record.query)
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(
                 tables=parser.tables,
                 tables_aliases=parser.tables_aliases,
                 columns=columns_dict,
                 database=record.database,
-                sql=record.sql,
+                databaseSchema=record.databaseSchema,
+                sql=record.query,
                 date=start_date.strftime("%Y-%m-%d"),
-                service_name=record.service_name,
+                service_name=record.serviceName,
             )
         # pylint: disable=broad-except
         except Exception as err:

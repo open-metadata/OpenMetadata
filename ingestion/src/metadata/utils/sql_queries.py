@@ -278,7 +278,7 @@ MSSQL_SQL_USAGE_STATEMENT = """
         NULL schema_name,
         NULL query_type,
         NULL user_name,
-        NULL aborted
+        FALSE aborted
       FROM sys.dm_exec_cached_plans AS p
       INNER JOIN sys.dm_exec_query_stats AS s
         ON p.plan_handle = s.plan_handle

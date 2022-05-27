@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.tableUsageRequest import TableUsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 

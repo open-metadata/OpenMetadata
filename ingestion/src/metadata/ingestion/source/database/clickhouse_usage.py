@@ -13,7 +13,6 @@ Clickhouse usage module
 """
 
 import ast
-from typing import Iterable
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
@@ -25,7 +24,6 @@ from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
-from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection, test_connection
@@ -57,27 +55,12 @@ class ClickhouseUsageSource(UsageSource):
 
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[TableQuery]:
+    def get_database(self, data: dict) -> str:
         """
-        Using itertools.groupby and raw level iterator,
-        it groups to table and yields TableMetadata
-        :return:
+        Method to fetch database name from row data
         """
-        for row in self._get_raw_extract_iter():
-            database = "default"
-            if row["database_name"]:
-                database_list = ast.literal_eval(row["database_name"])
-                database = database_list[0] if len(database_list) == 1 else "default"
-
-            table_query = TableQuery(
-                query=row["query_id"],
-                user_name=row["user_name"],
-                starttime=str(row["start_time"]),
-                endtime=str(row["end_time"]),
-                analysis_date=self.analysis_date,
-                aborted=row["aborted"],
-                database=database,
-                sql=row["query_text"],
-                service_name=self.config.serviceName,
-            )
-            yield table_query
+        database = "default"
+        if data["database_name"]:
+            database_list = ast.literal_eval(data["database_name"])
+            database = database_list[0] if len(database_list) == 1 else "default"
+        return database

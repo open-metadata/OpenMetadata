@@ -12,11 +12,8 @@
 Snowflake usage module
 """
 
-import traceback
 from datetime import timedelta
 from typing import Any, Dict, Iterable, Iterator, Union
-
-from sqlalchemy import inspect
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -34,7 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
 
 # This import verifies that the dependencies are available.
-from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
 from metadata.utils.helpers import get_start_and_end
@@ -98,33 +94,16 @@ class SnowflakeUsageSource(UsageSource):
                 for row in rows:
                     yield row
 
-    def next_record(self) -> Iterable[TableQuery]:
+    def get_database(self, data: dict) -> str:
         """
-        Using itertools.groupby and raw level iterator,
-        it groups to table and yields TableMetadata
-        :return:
+        Method to get database name
         """
-        for row in self._get_raw_extract_iter():
-            try:
-                table_query = TableQuery(
-                    query=row["query_type"],
-                    user_name=row["user_name"],
-                    starttime=str(row["start_time"]),
-                    endtime=str(row["end_time"]),
-                    analysis_date=self.analysis_date,
-                    aborted="1969" in str(row["end_time"]),
-                    database=row["database_name"],
-                    sql=row["query_text"],
-                    service_name=self.config.serviceName,
-                )
-                if not row["database_name"] and self.connection.database:
-                    TableQuery.database = self.connection.database
-                logger.debug(f"Parsed Query: {row['query_text']}")
-                if row["schema_name"] is not None:
-                    self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-                else:
-                    self.report.scanned(f"{row['database_name']}")
-                yield table_query
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.debug(repr(err))
+        if not data["database_name"] and self.connection.database:
+            return self.connection.database
+        return data["database_name"]
+
+    def get_aborted_status(self, data: dict) -> bool:
+        """
+        Method to get aborted status of query
+        """
+        return "1969" in str(data["end_time"])

@@ -15,7 +15,7 @@ import collections
 import logging as log
 import os
 from datetime import datetime
-from typing import Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from google.cloud import logging
 
@@ -31,16 +31,14 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
 
 
-class BigqueryUsageSource(Source[TableQuery]):
+class BigqueryUsageSource:
     SERVICE_TYPE = DatabaseServiceType.BigQuery.value
     scheme = "bigquery"
 
@@ -58,7 +56,12 @@ class BigqueryUsageSource(Source[TableQuery]):
         )
 
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
-        self.status = SQLSourceStatus()
+        self.logging_client = logging.Client()
+        self.usage_logger = self.logging_client.logger(self.logger_name)
+        logger.debug("Listing entries for logger {}:".format(self.usage_logger.name))
+        self.start, self.end = get_start_and_end(
+            self.config.sourceConfig.config.queryLogDuration
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -75,69 +78,41 @@ class BigqueryUsageSource(Source[TableQuery]):
 
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
+    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
+        entries = self.usage_logger.list_entries()
+        for entry in entries:
+            timestamp = entry.timestamp.isoformat()
+            timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
 
-    def next_record(self) -> Iterable[TableQuery]:
-        logging_client = logging.Client()
-        usage_logger = logging_client.logger(self.logger_name)
-        logger.debug("Listing entries for logger {}:".format(usage_logger.name))
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        try:
-            entries = usage_logger.list_entries()
-            for entry in entries:
-                timestamp = entry.timestamp.isoformat()
-                timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
-                if timestamp >= start and timestamp <= end:
-                    if ("query" in str(entry.payload)) and type(
-                        entry.payload
-                    ) == collections.OrderedDict:
-                        payload = list(entry.payload.items())[-1][1]
-                        if "jobChange" in payload:
-                            logger.debug(f"\nEntries: {payload}")
-                            if (
-                                "queryConfig"
-                                in payload["jobChange"]["job"]["jobConfig"]
-                            ):
-                                queryConfig = payload["jobChange"]["job"]["jobConfig"][
-                                    "queryConfig"
-                                ]
-                            else:
-                                continue
-                            jobStats = payload["jobChange"]["job"]["jobStats"]
-                            statementType = ""
-                            if hasattr(queryConfig, "statementType"):
-                                statementType = queryConfig["statementType"]
-                            database = self.project_id
-                            analysis_date = str(
-                                datetime.strptime(
-                                    jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
-                                ).strftime("%Y-%m-%d %H:%M:%S")
-                            )
-                            logger.debug(
-                                f"Query :{statementType}:{queryConfig['query']}"
-                            )
-                            tq = TableQuery(
-                                query=statementType,
-                                user_name=entry.resource.labels["project_id"],
-                                starttime=str(jobStats["startTime"]),
-                                endtime=str(jobStats["endTime"]),
-                                analysis_date=analysis_date,
-                                aborted=0,
-                                database=str(database),
-                                sql=queryConfig["query"],
-                                service_name=self.config.serviceName,
-                            )
-                            yield tq
+            if (
+                timestamp <= self.start
+                and timestamp >= self.end
+                and "query" not in str(entry.payload)
+                and type(entry.payload) != collections.OrderedDict
+            ):
+                continue
 
-        except Exception as err:
-            logger.error(repr(err))
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def test_connection(self) -> SourceStatus:
-        pass
+            payload = list(entry.payload.items())[-1][1]
+            if ("jobChange" in payload) and (
+                "queryConfig" in payload["jobChange"]["job"]["jobConfig"]
+            ):
+                logger.debug(f"\nEntries: {payload}")
+                queryConfig = payload["jobChange"]["job"]["jobConfig"]["queryConfig"]
+                jobStats = payload["jobChange"]["job"]["jobStats"]
+                self.analysis_date = str(
+                    datetime.strptime(
+                        jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
+                    ).strftime("%Y-%m-%d %H:%M:%S")
+                )
+                yield {
+                    "query_text": queryConfig["query"],
+                    "user_name": entry.resource.labels["project_id"],
+                    "start_time": str(jobStats["startTime"]),
+                    "end_time": str(jobStats["endTime"]),
+                    "aborted": False,
+                    "database_name": self.project_id,
+                    "schema_name": None,
+                }
 
     def close(self):
         super().close()

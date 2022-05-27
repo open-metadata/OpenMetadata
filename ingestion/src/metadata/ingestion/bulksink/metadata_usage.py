@@ -10,22 +10,24 @@
 #  limitations under the License.
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
+from metadata.generated.schema.entity.data.table import (
+    ColumnJoins,
+    SqlQuery,
+    Table,
+    TableJoins,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
+from metadata.generated.schema.type.tableUsageRequest import TableUsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
-from metadata.ingestion.models.table_queries import (
-    ColumnJoinedWith,
-    TableColumn,
-    TableUsageCount,
-    TableUsageRequest,
-)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -34,6 +36,12 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import ingest_lineage_by_query
 
 logger = ingestion_logger()
+
+
+@dataclass
+class ColumnJoinedWith:
+    fullyQualifiedName: str
+    joinCount: int
 
 
 class MetadataUsageSinkConfig(ConfigModel):
@@ -57,6 +65,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.metadata = OpenMetadata(self.metadata_config)
         self.status = BulkSinkStatus()
         self.table_join_dict = {}
+        self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
@@ -64,13 +73,12 @@ class MetadataUsageBulkSink(BulkSink):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def handle_work_unit_start(self, wu):
-        pass
-
-    def handle_work_unit_end(self, wu):
-        pass
-
-    def ingest_sql_queries_lineage(self, queries, database):
+    def ingest_sql_queries_lineage(
+        self, queries: List[SqlQuery], database: str
+    ) -> None:
+        """
+        Method to ingest lineage by sql queries
+        """
         for query in queries:
             ingest_lineage_by_query(
                 self.metadata,
@@ -79,74 +87,34 @@ class MetadataUsageBulkSink(BulkSink):
                 database=database,
             )
 
-    def write_records(self) -> None:
-        usage_records = [json.loads(l) for l in self.file_handler.readlines()]
-        table_usage_map = {}
-        for record in usage_records:
-            table_usage = TableUsageCount(**json.loads(record))
-            self.service_name = table_usage.service_name
-            if "." in table_usage.table:
-                (
-                    table_usage.database_schema,
-                    table_usage.table,
-                ) = table_usage.table.split(".")[-2:]
-                table_entities = self.__get_table_entity(
-                    table_usage.database, table_usage.database_schema, table_usage.table
-                )
-            else:
-                table_entities = self.metadata.es_search_from_service(
-                    entity_type=Table,
-                    service_name=self.service_name,
-                    filters={
-                        "database": table_usage.database,
-                        "database_schema": None,
-                        "name": table_usage.table,
-                    },
-                )
-            for table_entity in table_entities or []:
-                if table_entity is not None:
-                    if not table_usage_map.get(table_entity.id.__root__):
-                        table_usage_map[table_entity.id.__root__] = {
-                            "table_entity": table_entity,
-                            "usage_count": table_usage.count,
-                            "sql_queries": table_usage.sql_queries,
-                            "usage_date": table_usage.date,
-                            "database": table_usage.database,
-                        }
-                    else:
-                        table_usage_map[table_entity.id.__root__][
-                            "usage_count"
-                        ] += table_usage.count
-                        table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
-                            table_usage.sql_queries
-                        )
-                    table_join_request = self.__get_table_joins(table_usage)
-                    logger.debug("table join request {}".format(table_join_request))
-                    try:
-                        if (
-                            table_join_request is not None
-                            and len(table_join_request.columnJoins) > 0
-                        ):
-                            self.metadata.publish_frequently_joined_with(
-                                table_entity, table_join_request
-                            )
-                    except APIError as err:
-                        self.status.failures.append(table_join_request)
-                        logger.error(
-                            "Failed to update query join for {}, {}".format(
-                                table_usage.table, err
-                            )
-                        )
+    def __populate_table_usage_map(
+        self, table_entity: Table, table_usage: TableUsageCount
+    ) -> None:
+        """
+        Method populate the table_usage_map dictionary
+        """
+        if not self.table_usage_map.get(table_entity.id.__root__):
+            self.table_usage_map[table_entity.id.__root__] = {
+                "table_entity": table_entity,
+                "usage_count": table_usage.count,
+                "sql_queries": table_usage.sqlQueries,
+                "usage_date": table_usage.date,
+                "database": table_usage.database,
+                "database_schema": table_usage.databaseSchema,
+            }
+        else:
+            self.table_usage_map[table_entity.id.__root__][
+                "usage_count"
+            ] += table_usage.count
+            self.table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
+                table_usage.sql_queries
+            )
 
-                else:
-                    logger.warning(
-                        "Table does not exist, skipping usage publish {}, {}".format(
-                            table_usage.table, table_usage.database
-                        )
-                    )
-                    self.status.warnings.append(f"Table: {table_usage.table}")
-
-        for table_id, value_dict in table_usage_map.items():
+    def __publish_usage_records(self) -> None:
+        """
+        Method to publish SQL Queries, Table Usage & Lineage
+        """
+        for _, value_dict in self.table_usage_map.items():
             self.metadata.ingest_table_queries_data(
                 table=value_dict["table_entity"],
                 table_queries=value_dict["sql_queries"],
@@ -179,47 +147,93 @@ class MetadataUsageBulkSink(BulkSink):
                 self.status.failures.append(
                     "Table: {}".format(value_dict["table_entity"].name.__root__)
                 )
+
+    def write_records(self) -> None:
+        for usage_record in self.file_handler.readlines():
+            record = json.loads(usage_record)
+            table_usage = TableUsageCount(**json.loads(record))
+            self.service_name = table_usage.serviceName
+            if "." in table_usage.table:
+                databaseSchema, table = table_usage.table.split(".")[-2:]
+                table_usage.table = table
+                if not table_usage.databaseSchema:
+                    table_usage.databaseSchema = databaseSchema
+            table_entities = self.__get_table_entity(
+                table_usage.database, table_usage.databaseSchema, table_usage.table
+            )
+            for table_entity in table_entities or []:
+                if table_entity is not None:
+                    self.__populate_table_usage_map(
+                        table_usage=table_usage, table_entity=table_entity
+                    )
+                    table_join_request = self.__get_table_joins(
+                        table_usage, table_entity
+                    )
+                    logger.debug("table join request {}".format(table_join_request))
+                    try:
+                        if (
+                            table_join_request is not None
+                            and len(table_join_request.columnJoins) > 0
+                        ):
+                            self.metadata.publish_frequently_joined_with(
+                                table_entity, table_join_request
+                            )
+                    except APIError as err:
+                        self.status.failures.append(table_join_request)
+                        logger.error(
+                            "Failed to update query join for {}, {}".format(
+                                table_usage.table, err
+                            )
+                        )
+                else:
+                    logger.warning(
+                        "Table does not exist, skipping usage publish {}, {}".format(
+                            table_usage.table, table_usage.database
+                        )
+                    )
+                    self.status.warnings.append(f"Table: {table_usage.table}")
+        self.__publish_usage_records()
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
-    def __get_table_joins(self, table_usage):
+    def __get_table_joins(
+        self, table_usage: TableUsageCount, table_entity: Table
+    ) -> TableJoins:
         table_joins: TableJoins = TableJoins(
             columnJoins=[], directTableJoins=[], startDate=table_usage.date
         )
+        """
+        Method to get Table Joins
+        """
         column_joins_dict = {}
         for column_join in table_usage.joins:
             joined_with = {}
-            if column_join.table_column is None or len(column_join.joined_with) == 0:
+            if column_join.tableColumn is None or len(column_join.joinedWith) == 0:
                 continue
-            if column_join.table_column.column in column_joins_dict.keys():
-                joined_with = column_joins_dict[column_join.table_column.column]
+
+            if column_join.tableColumn.column in column_joins_dict.keys():
+                joined_with = column_joins_dict[column_join.tableColumn.column]
             else:
-                column_joins_dict[column_join.table_column.column] = {}
-            main_column_fqdn = self.__get_column_fqdn(
-                table_usage.database,
-                table_usage.database_schema,
-                column_join.table_column,
-            )
-            for column in column_join.joined_with:
-                joined_column_fqdn = self.__get_column_fqdn(
-                    table_usage.database, table_usage.database_schema, column
-                )
-                if str(joined_column_fqdn) in joined_with.keys():
-                    column_joined_with = joined_with[str(joined_column_fqdn)]
+                column_joins_dict[column_join.tableColumn.column] = {}
+
+            for column in column_join.joinedWith:
+                joined_column_fqn = self.__get_column_fqn(column, table_entity)
+                if str(joined_column_fqn) in joined_with.keys():
+                    column_joined_with = joined_with[str(joined_column_fqn)]
                     column_joined_with.joinCount += 1
-                    joined_with[str(joined_column_fqdn)] = column_joined_with
-                elif joined_column_fqdn is not None:
-                    joined_with[str(joined_column_fqdn)] = ColumnJoinedWith(
-                        fullyQualifiedName=str(joined_column_fqdn), joinCount=1
+                    joined_with[str(joined_column_fqn)] = column_joined_with
+                elif joined_column_fqn is not None:
+                    joined_with[str(joined_column_fqn)] = ColumnJoinedWith(
+                        fullyQualifiedName=str(joined_column_fqn), joinCount=1
                     )
                 else:
                     logger.info(
-                        f"Skipping join columns for {column} {joined_column_fqdn}"
+                        f"Skipping join columns for {column} {joined_column_fqn}"
                     )
-            column_joins_dict[column_join.table_column.column] = joined_with
+            column_joins_dict[column_join.tableColumn.column] = joined_with
 
         for key, value in column_joins_dict.items():
             table_joins.columnJoins.append(
@@ -227,29 +241,29 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqdn(
-        self, database: str, database_schema: str, table_column: TableColumn
-    ):
-        table_entities = self.__get_table_entity(
-            database, database_schema, table_column.table
-        )
-        if not table_entities:
-            return None
-        for table_entity in table_entities:
-            for tbl_column in table_entity.columns:
-                if table_column.column.lower() == tbl_column.name.__root__.lower():
-                    return tbl_column.fullyQualifiedName.__root__
+    def __get_column_fqn(
+        self, table_column: TableColumn, table_entity: Table
+    ) -> Optional[str]:
+        """
+        Method to get column fqn
+        """
+        for tbl_column in table_entity.columns:
+            if table_column.column.lower() == tbl_column.name.__root__.lower():
+                return tbl_column.fullyQualifiedName.__root__
 
     def __get_table_entity(
-        self, database_name: str, database_schema: str, table_name: str
+        self, database: str, database_schema: Optional[str], table: str
     ) -> Optional[List[Table]]:
+        """
+        Method to get table entity from database, database_schema & table name
+        """
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
             service_name=self.service_name,
-            database_name=database_name,
+            database_name=database,
             schema_name=database_schema,
-            table_name=table_name,
+            table_name=table,
         )
         table_fqn = _get_formmated_table_name(table_fqn)
         table_entity = self.metadata.get_by_name(Table, fqn=table_fqn)
@@ -259,9 +273,9 @@ class MetadataUsageBulkSink(BulkSink):
             entity_type=Table,
             service_name=self.service_name,
             filters={
-                "database": database_name,
+                "database": database,
                 "database_schema": database_schema,
-                "name": table_name,
+                "name": table,
             },
         )
         return es_result

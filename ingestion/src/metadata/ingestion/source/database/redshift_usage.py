@@ -37,16 +37,8 @@ logger = ingestion_logger()
 
 
 class RedshiftUsageSource(UsageSource):
-    # SELECT statement from mysql information_schema to extract table and column metadata
+
     SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
-    # CONFIG KEYS
-    WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
-    CLUSTER_SOURCE = "cluster_source"
-    CLUSTER_KEY = "cluster_key"
-    USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
-    DATABASE_KEY = "database_key"
-    SERVICE_TYPE = DatabaseServiceType.Redshift.value
-    DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__(config, metadata_config)
