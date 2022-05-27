@@ -181,6 +181,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <AdminProtectedRoute
         exact
+        component={CustomEntityPage}
+        path={ROUTES.CUSTOM_ENTITY_DETAIL}
+      />
+      <AdminProtectedRoute
+        exact
         component={AddCustomField}
         path={ROUTES.ADD_CUSTOM_FIELD}
       />

@@ -214,6 +214,7 @@ export const ROUTES = {
   BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   CUSTOM_ENTITY: `/custom-entity`,
+  CUSTOM_ENTITY_DETAIL: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_FIELD: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
@@ -368,6 +369,13 @@ export const getBotsPath = (botsName: string) => {
 
 export const getAddCustomFieldPath = (entityTypeFQN: string) => {
   let path = ROUTES.ADD_CUSTOM_FIELD;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getCustomEntityPath = (entityTypeFQN: string) => {
+  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
   path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
   return path;

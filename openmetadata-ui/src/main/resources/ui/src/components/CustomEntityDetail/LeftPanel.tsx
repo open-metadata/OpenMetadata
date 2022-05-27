@@ -14,6 +14,8 @@
 import classNames from 'classnames';
 import { startCase, uniqueId } from 'lodash';
 import React, { FC } from 'react';
+import { useHistory } from 'react-router-dom';
+import { getCustomEntityPath } from '../../constants/constants';
 import { Type } from '../../generated/entity/type';
 
 interface LeftPanelProp {
@@ -22,6 +24,8 @@ interface LeftPanelProp {
 }
 
 export const LeftPanel: FC<LeftPanelProp> = ({ typeList, selectedType }) => {
+  const history = useHistory();
+
   const getActiveClass = (typeName: string) => {
     const flag = typeName === selectedType.name;
     if (flag) {
@@ -31,11 +35,19 @@ export const LeftPanel: FC<LeftPanelProp> = ({ typeList, selectedType }) => {
     }
   };
 
+  const handleLabelClick = (typeFQN: string) => {
+    const path = getCustomEntityPath(typeFQN);
+    history.push(path);
+  };
+
   return (
     <div className="tw-flex tw-flex-col tw-bg-white tw-h-screen tw-p-3 tw-border tw-border-main tw-rounded-md">
       <h6 className="tw-heading tw-text-sm">Schema &amp; Custom Fields</h6>
       {typeList.map((type) => (
-        <div className="tw-mb-3" key={uniqueId()}>
+        <div
+          className="tw-mb-3 tw-cursor-pointer"
+          key={uniqueId()}
+          onClick={() => handleLabelClick(type.fullyQualifiedName || '')}>
           <p
             className={classNames(
               'tw-px-3 tw-py-2 tw--mx-3',

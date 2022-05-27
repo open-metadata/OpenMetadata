@@ -26,9 +26,10 @@ import { LeftPanel } from './LeftPanel';
 
 interface Props {
   entityTypes: Array<Type>;
+  entityTypeFQN?: string;
 }
 
-const CustomEntityDetail: FC<Props> = ({ entityTypes }) => {
+const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
   const history = useHistory();
 
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -73,9 +74,12 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes }) => {
 
   useEffect(() => {
     if (entityTypes.length) {
-      onEntityTypeSelect(entityTypes[0]);
+      const entityType =
+        entityTypes.find((type) => type.fullyQualifiedName === entityTypeFQN) ||
+        entityTypes[0];
+      onEntityTypeSelect(entityType);
     }
-  }, [entityTypes]);
+  }, [entityTypes, entityTypeFQN]);
 
   return (
     <PageContainer>

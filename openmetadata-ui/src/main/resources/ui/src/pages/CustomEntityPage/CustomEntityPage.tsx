@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { Fragment, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { getTypeListByCategory } from '../../axiosAPIs/metadataTypeAPI';
 import CustomEntityDetail from '../../components/CustomEntityDetail/CustomEntityDetail';
 import Loader from '../../components/Loader/Loader';
@@ -20,6 +21,7 @@ import { Category, Type } from '../../generated/entity/type';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomEntityPage = () => {
+  const { entityTypeFQN } = useParams<{ [key: string]: string }>();
   const [entityTypes, setEntityTypes] = useState<Array<Type>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -52,7 +54,10 @@ const CustomEntityPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <CustomEntityDetail entityTypes={getEntityTypesList()} />
+        <CustomEntityDetail
+          entityTypeFQN={entityTypeFQN}
+          entityTypes={getEntityTypesList()}
+        />
       )}
     </Fragment>
   );
