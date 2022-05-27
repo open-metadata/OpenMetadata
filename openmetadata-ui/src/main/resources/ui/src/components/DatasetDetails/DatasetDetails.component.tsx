@@ -635,6 +635,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
                       owner={owner}
                       sampleData={sampleData}
+                      tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
