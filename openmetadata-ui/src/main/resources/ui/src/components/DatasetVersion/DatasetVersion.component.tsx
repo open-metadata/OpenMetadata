@@ -413,6 +413,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       )}
                       columns={updatedColumns()}
                       joins={currentVersionData.joins as ColumnJoins[]}
+                      tableConstraints={[]}
                     />
                   </div>
                 </div>
