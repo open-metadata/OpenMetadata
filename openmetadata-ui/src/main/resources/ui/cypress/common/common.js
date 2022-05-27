@@ -228,6 +228,10 @@ export const testSampleData = (entity) => {
 
   // initially sample data should not be present
   searchEntity(entity.term);
+  cy.get(`[data-testid="${entity.entity}-tab"]`).should('be.visible').click();
+  cy.get(`[data-testid="${entity.entity}-tab"]`)
+    .should('be.visible')
+    .should('have.class', 'active');
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().should('be.visible').click();
   cy.get('[data-testid="Sample Data"]').should('be.visible').click();
@@ -236,7 +240,10 @@ export const testSampleData = (entity) => {
   // go to service details and modify ingestion to enable sample data
   cy.get(':nth-child(1) > .link-title').should('be.visible').click();
   cy.wait(500);
-  cy.get('[data-testid="table-container"]').contains(entity.db);
+
+  if (entity.entityType === 'database') {
+    cy.get('[data-testid="table-container"]').contains(entity.db);
+  }
 
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
   cy.get('[data-testid="edit"]').should('be.visible').click();
