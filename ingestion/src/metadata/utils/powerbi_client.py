@@ -12,6 +12,7 @@
 REST Auth & Client for PowerBi
 """
 import traceback
+from typing import Tuple
 
 import msal
 
@@ -41,7 +42,10 @@ class PowerBiApiClient:
         )
         self.client = REST(client_config)
 
-    def get_auth_token(self):
+    def get_auth_token(self) -> Tuple[str, str]:
+        """
+        Method to generate PowerBi access token
+        """
         logger.info("Generating PowerBi access token")
 
         auth_response = self.msal_client.acquire_token_silent(
@@ -68,30 +72,57 @@ class PowerBiApiClient:
 
         return access_token, expiry
 
-    def fetch_charts(self, dashboard_id: str):
+    def fetch_charts(self, dashboard_id: str) -> dict:
         """Get charts method
 
         Args:
             dashboard_id:
         Returns:
-            Iterable[Chart]
+            dict
         """
         try:
             response = self.client.get(f"/myorg/admin/dashboards/{dashboard_id}/tiles")
             return response
         except Exception as err:  # pylint: disable=broad-except
-            logger.error(repr(err))
+            logger.error(err)
             logger.debug(traceback.format_exc())
 
-    def fetch_dashboards(self):
+    def fetch_dashboards(self) -> dict:
         """Get dashboards method
 
         Returns:
-            Iterable[Chart]
+            dict
         """
         try:
             response = self.client.get(f"/myorg/admin/dashboards")
             return response
         except Exception as err:  # pylint: disable=broad-except
-            logger.error(repr(err))
+            logger.error(err)
+            logger.debug(traceback.format_exc())
+
+    def fetch_datasets(self) -> dict:
+        """Get datasets method
+
+        Returns:
+            dict
+        """
+        try:
+            response = self.client.get(f"/myorg/admin/datasets")
+            return response
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(err)
+            logger.debug(traceback.format_exc())
+
+    def fetch_dataset_by_id(self, dataset_id: str) -> dict:
+        """Get dataset by id method
+        Args:
+            dataset_id:
+        Returns:
+            dict
+        """
+        try:
+            response = self.client.get(f"/myorg/admin/datasets/{dataset_id}")
+            return response
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(err)
             logger.debug(traceback.format_exc())

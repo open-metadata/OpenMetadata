@@ -39,15 +39,13 @@ logger = ingestion_logger()
 
 
 class PowerbiSource(DashboardSourceService):
-    """Powerbi entity class
+    """PowerBi entity class
     Args:
         config:
         metadata_config:
     Attributes:
         config:
         metadata_config:
-        status:
-        dashboard_service:
         charts:
     """
 
@@ -56,18 +54,7 @@ class PowerbiSource(DashboardSourceService):
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
-        self.config = config
-        self.service_connection = self.config.serviceConnection.__root__.config
-        self.source_config = self.config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
-
-        self.status = SQLSourceStatus()
-        self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
-        self.service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
+        super().__init__(config, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -90,8 +77,8 @@ class PowerbiSource(DashboardSourceService):
         """
         Get List of all dashboards
         """
-        self.dashboards = self.client.fetch_dashboards()
-        return self.dashboards.get("value")
+        self.dashboards = self.client.fetch_dashboards().get("value")
+        return self.dashboards
 
     def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
@@ -115,7 +102,7 @@ class PowerbiSource(DashboardSourceService):
             url=dashboard_details["webUrl"],
             displayName=dashboard_details["displayName"],
             description="",
-            charts=self.charts,
+            charts=[chart["id"] for chart in self.charts],
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
@@ -123,7 +110,16 @@ class PowerbiSource(DashboardSourceService):
         """
         Get lineage between dashboard and data sources
         """
-        logger.info("Lineage not implemented for PowerBi")
+        metadata = OpenMetadata(self.metadata_config)
+        charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
+            "value"
+        )
+        for chart in charts:
+            dataset_id = chart.get("datasetId")
+            if dataset_id:
+                print("dataset_id: " + dataset_id)
+                dataset = self.client.fetch_dataset_by_id(dataset_id=dataset_id)
+                print(dataset)
 
     def process_charts(self) -> Iterable[Chart]:
         """
@@ -164,7 +160,7 @@ class PowerbiSource(DashboardSourceService):
                         id=self.service.id, type="dashboardService"
                     ),
                 )
-                self.charts.append(chart["id"])
+                self.charts.append(chart)
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())

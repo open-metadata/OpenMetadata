@@ -91,7 +91,7 @@ class DashboardSourceService(Source, ABC):
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
-        yield from self.process_dashboards()
+        gen = yield from self.process_dashboards()
         yield from self.process_charts()
 
     def process_dashboards(
