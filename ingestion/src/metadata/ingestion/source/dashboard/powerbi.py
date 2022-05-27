@@ -117,9 +117,7 @@ class PowerbiSource(DashboardSourceService):
         for chart in charts:
             dataset_id = chart.get("datasetId")
             if dataset_id:
-                print("dataset_id: " + dataset_id)
                 dataset = self.client.fetch_dataset_by_id(dataset_id=dataset_id)
-                print(dataset)
 
     def process_charts(self) -> Iterable[Chart]:
         """

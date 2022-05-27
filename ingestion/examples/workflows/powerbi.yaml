@@ -1,6 +1,6 @@
 source:
   type: powerbi
-  serviceName: local_powerbi
+  serviceName: local_power11
   serviceConnection:
     config:
       clientId: client_id
