@@ -94,20 +94,6 @@ class BigquerySource(CommonDbSourceService):
         )
         self.temp_credentials = None
 
-    #  and "policy_tags" in column and column["policy_tags"]
-    def prepare(self):
-        try:
-            if self.connection_config.enablePolicyTagImport:
-                self.metadata.create_tag_category(
-                    CreateTagCategoryRequest(
-                        name=self.connection_config.tagCategoryName,
-                        description="",
-                        categoryType="Classification",
-                    )
-                )
-        except Exception as err:
-            logger.error(err)
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -131,6 +117,18 @@ class BigquerySource(CommonDbSourceService):
 
     def prepare(self):
         self.service_connection.database = self.service_connection.projectId
+        #  and "policy_tags" in column and column["policy_tags"]
+        try:
+            if self.source_config.includeTags:
+                self.metadata.create_tag_category(
+                    CreateTagCategoryRequest(
+                        name=self.connection_config.tagCategoryName,
+                        description="",
+                        categoryType="Classification",
+                    )
+                )
+        except Exception as err:
+            logger.error(err)
         return super().prepare()
 
     def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
