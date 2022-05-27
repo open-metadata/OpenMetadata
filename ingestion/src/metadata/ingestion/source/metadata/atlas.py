@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -23,6 +22,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.atlas_client import AtlasClient, AtlasSourceConfig
 from metadata.utils.column_type_parser import ColumnTypeParser
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.helpers import (
     get_database_service_or_create,
     get_messaging_service_or_create,
@@ -147,7 +147,7 @@ class AtlasSource(Source):
                     ]
                     db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
 
                     om_table_entity = Table(
@@ -217,7 +217,7 @@ class AtlasSource(Source):
                 "table"
             ]["displayText"]
 
-            fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+            fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -238,7 +238,7 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}{FQDN_SEPARATOR}{db.name.__root__}{FQDN_SEPARATOR}{table_name}"
+                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )
@@ -257,12 +257,12 @@ class AtlasSource(Source):
     def get_lineage_entity_ref(self, fqn, metadata_config, type) -> EntityReference:
         metadata = OpenMetadata(metadata_config)
         if type == "table":
-            table = metadata.get_by_name(entity=Table, fqdn=fqn)
+            table = metadata.get_by_name(entity=Table, fqn=fqn)
             if not table:
                 return
             return EntityReference(id=table.id.__root__, type="table")
         elif type == "pipeline":
-            pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
+            pipeline = metadata.get_by_name(entity=Pipeline, fqn=fqn)
             if not pipeline:
                 return
             return EntityReference(id=pipeline.id.__root__, type="pipeline")

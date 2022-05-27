@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -782,7 +783,7 @@ public interface CollectionDAO {
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
-    List<List<String>> listFromByPrefix(
+    List<Triple<String, String, String>> listFromByPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
@@ -792,7 +793,7 @@ public interface CollectionDAO {
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType LIKE CONCAT(:toType, '%') AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
-    List<List<String>> listFromByAllPrefix(
+    List<Triple<String, String, String>> listFromByAllPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
@@ -803,10 +804,36 @@ public interface CollectionDAO {
             + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
-    List<List<String>> listToByPrefix(
+    List<Triple<String, String, String>> listToByPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
+            + "fromFQN = :fqn AND fromType = :type AND toType = :otherType AND relation = :relation "
+            + "UNION "
+            + "SELECT toFQN, fromFQN, json FROM field_relationship WHERE "
+            + "toFQN = :fqn AND toType = :type AND fromType = :otherType AND relation = :relation")
+    @RegisterRowMapper(ToFieldMapper.class)
+    List<Triple<String, String, String>> listBidirectional(
+        @Bind("fqn") String fqn,
+        @Bind("type") String type,
+        @Bind("otherType") String otherType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
+            + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :type AND toType = :otherType AND relation = :relation "
+            + "UNION "
+            + "SELECT toFQN, fromFQN, json FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND toType = :type AND fromType = :otherType AND relation = :relation")
+    @RegisterRowMapper(ToFieldMapper.class)
+    List<Triple<String, String, String>> listBidirectionalByPrefix(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("type") String type,
+        @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
     default void deleteAllByPrefix(String fqnPrefix) {
@@ -828,17 +855,17 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    class ToFieldMapper implements RowMapper<List<String>> {
+    class ToFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
-      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
       }
     }
 
-    class FromFieldMapper implements RowMapper<List<String>> {
+    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
-      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
       }
     }
   }

@@ -55,7 +55,7 @@ def _create_lineage_by_table_name(
     try:
         from_table = str(from_table).replace("<default>", "")
         to_table = str(to_table).replace("<default>", "")
-        from_fqdn = fqn.build(
+        from_fqn = fqn.build(
             metadata,
             entity_type=Table,
             service_name=service_name,
@@ -63,9 +63,9 @@ def _create_lineage_by_table_name(
             schema_name=None,  # TODO: Split table name
             table_name=_get_formmated_table_name(str(from_table)),
         )
-        from_entity: Table = metadata.get_by_name(entity=Table, fqdn=from_fqdn)
+        from_entity: Table = metadata.get_by_name(entity=Table, fqn=from_fqn)
         if not from_entity:
-            table_obj = _separate_fqn(database=database, fqn=from_fqdn)
+            table_obj = _separate_fqn(database=database, fqn=from_fqn)
             multiple_from_fqns = metadata.es_search_from_service(
                 entity_type=Table,
                 service_name=service_name,
@@ -73,7 +73,7 @@ def _create_lineage_by_table_name(
             )
         else:
             multiple_from_fqns = [from_entity]
-        to_fqdn = fqn.build(
+        to_fqn = fqn.build(
             metadata,
             entity_type=Table,
             service_name=service_name,
@@ -81,9 +81,9 @@ def _create_lineage_by_table_name(
             schema_name=None,  # TODO: Split table name
             table_name=_get_formmated_table_name(str(to_table)),
         )
-        to_entity: Table = metadata.get_by_name(entity=Table, fqdn=to_fqdn)
+        to_entity: Table = metadata.get_by_name(entity=Table, fqn=to_fqn)
         if not to_entity:
-            table_obj = _separate_fqn(database=database, fqn=to_fqdn)
+            table_obj = _separate_fqn(database=database, fqn=to_fqn)
             multiple_to_fqns = metadata.es_search_from_service(
                 entity_type=Table,
                 service_name=service_name,
