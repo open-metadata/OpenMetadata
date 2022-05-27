@@ -14,8 +14,8 @@ pip install --upgrade openmetadata-ingestion
 
 {% tabs %}
 {% tab title="Docker" %}
-{% content-ref url="upgrade-on-bare-metal/backup-metadata.md" %}
-[backup-metadata.md](upgrade-on-bare-metal/backup-metadata.md)
+{% content-ref url="upgrade-on-docker/backup-metadata.md" %}
+[backup-metadata.md](upgrade-on-docker/backup-metadata.md)
 {% endcontent-ref %}
 {% endtab %}
 
@@ -26,8 +26,8 @@ pip install --upgrade openmetadata-ingestion
 {% endtab %}
 
 {% tab title="Bare Metal" %}
-{% content-ref url="upgrade-on-docker/backup-metadata.md" %}
-[backup-metadata.md](upgrade-on-docker/backup-metadata.md)
+{% content-ref url="upgrade-on-bare-metal/backup-metadata.md" %}
+[backup-metadata.md](upgrade-on-bare-metal/backup-metadata.md)
 {% endcontent-ref %}
 {% endtab %}
 {% endtabs %}

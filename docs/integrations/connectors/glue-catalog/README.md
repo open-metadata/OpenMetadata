@@ -99,6 +99,8 @@ When this metadata has been ingested you will find it in the OpenMetadata UI pip
 
 The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 
+For Glue, we use the Catalog ID as the database when mapping Glue metadata to OpenMetadata Entities.
+
 **Connection Options (Optional)**
 
 Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.

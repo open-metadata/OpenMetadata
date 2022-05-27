@@ -6,8 +6,8 @@ When upgrading to the 0.10 version of OpenMetadata, please note that this versio
 **The 0.10 Release consists of backward incompatible changes.**
 {% endhint %}
 
-{% content-ref url="../upgrade-on-bare-metal/backup-metadata.md" %}
-[backup-metadata.md](../upgrade-on-bare-metal/backup-metadata.md)
+{% content-ref url="../upgrade-on-docker/backup-metadata.md" %}
+[backup-metadata.md](../upgrade-on-docker/backup-metadata.md)
 {% endcontent-ref %}
 
 {% content-ref url="upgrade-openmetadata-on-kubernetes.md" %}
