@@ -16,7 +16,7 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 try:
     from typing import get_args
@@ -551,6 +551,39 @@ class OpenMetadata(
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
+
+    def list_all_entities(
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        limit: int = 1000,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Iterable[T]:
+        """
+        Utility method that paginates over all EntityLists
+        to return a generator to fetch entities
+        :param entity: Entity Type, such as Table
+        :param fields: Extra fields to return
+        :param limit: Number of entities in each pagination
+        :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :return: Generator that will be yielding all Entities
+        """
+
+        # First batch of Entities
+        entity_list = self.list_entities(
+            entity=entity, fields=fields, limit=limit, params=params
+        )
+        for elem in entity_list.entities:
+            yield elem
+
+        after = entity_list.after
+        while after:
+            entity_list = self.list_entities(
+                entity=entity, fields=fields, limit=limit, params=params, after=after
+            )
+            for elem in entity_list.entities:
+                yield elem
+            after = entity_list.after
 
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
