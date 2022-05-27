@@ -158,13 +158,13 @@ class OMetaLineageTest(TestCase):
 
         db_service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-db-lineage"
+                entity=DatabaseService, fqn="test-service-db-lineage"
             ).id.__root__
         )
 
         pipeline_service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqdn="test-service-pipeline-lineage"
+                entity=PipelineService, fqn="test-service-pipeline-lineage"
             ).id.__root__
         )
 

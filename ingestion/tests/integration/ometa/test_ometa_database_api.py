@@ -92,7 +92,7 @@ class OMetaDatabaseTest(TestCase):
         """
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-db"
+                entity=DatabaseService, fqn="test-service-db"
             ).id.__root__
         )
 
@@ -140,7 +140,7 @@ class OMetaDatabaseTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -153,7 +153,7 @@ class OMetaDatabaseTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Database, entity_id=res_name.id)
@@ -184,7 +184,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -215,7 +215,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -231,7 +231,7 @@ class OMetaDatabaseTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Database, fqdn=self.entity.fullyQualifiedName
+            entity=Database, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Database, entity_id=res_name.id.__root__, version=0.1
@@ -247,7 +247,7 @@ class OMetaDatabaseTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Database, fqdn=res.fullyQualifiedName
+            entity=Database, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

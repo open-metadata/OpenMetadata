@@ -106,7 +106,7 @@ class OMetaESTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn=cls.service.name.__root__
+                entity=DatabaseService, fqn=cls.service.name.__root__
             ).id.__root__
         )
 

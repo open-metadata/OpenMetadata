@@ -187,18 +187,16 @@ class OMetaTableMixin:
 
         return self._add_tests(table=table, test=col_test, path="columnTest")
 
-    def update_profile_sample(
-        self, fqdn: str, profile_sample: float
-    ) -> Optional[Table]:
+    def update_profile_sample(self, fqn: str, profile_sample: float) -> Optional[Table]:
         """
         Update the profileSample property of a Table, given
-        its FQDN.
+        its FQN.
 
-        :param fqdn: Table FQDN
+        :param fqn: Table FQN
         :param profile_sample: new profile sample to set
         :return: Updated table
         """
-        table = self.get_by_name(entity=Table, fqdn=fqdn)
+        table = self.get_by_name(entity=Table, fqn=fqn)
         if table:
             updated = CreateTableRequest(
                 name=table.name,

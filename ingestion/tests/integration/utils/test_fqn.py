@@ -109,7 +109,7 @@ class FQNBuildTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-table-fqn"
+                entity=DatabaseService, fqn="test-service-table-fqn"
             ).id.__root__
         )
 

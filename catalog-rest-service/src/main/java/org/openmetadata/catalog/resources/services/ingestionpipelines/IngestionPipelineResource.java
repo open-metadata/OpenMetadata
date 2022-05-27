@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -469,7 +470,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -481,6 +482,28 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+  }
+
+  @GET
+  @Path("/logs/{id}/last")
+  @Operation(
+      summary = "Retrieve all logs from last ingestion pipeline run",
+      tags = "IngestionPipelines",
+      description = "Get all logs from last ingestion pipeline run by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+      })
+  public Response getLastIngestionLogs(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(id);
+    return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {

@@ -80,6 +80,19 @@ APIS_METADATA = [
         ],
     },
     {
+        "name": "last_dag_logs",
+        "description": "Retrieve all logs from the task instances of a last DAG run",
+        "http_method": "GET",
+        "arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
+    },
+    {
         "name": "rest_status",
         "description": "Get the status of Airflow REST status",
         "http_method": "GET",

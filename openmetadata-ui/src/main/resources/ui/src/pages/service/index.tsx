@@ -735,31 +735,12 @@ const ServicePage: FunctionComponent = () => {
     setIsEdit(false);
   };
 
-  const getServiceSpecificData = (serviceDetails?: ServiceDataObj) => {
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-      case ServiceCategory.MESSAGING_SERVICES:
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return {
-          connection: serviceDetails?.connection,
-        };
-
-      case ServiceCategory.PIPELINE_SERVICES:
-        return {
-          pipelineUrl: serviceDetails?.pipelineUrl,
-        };
-
-      default:
-        return {};
-    }
-  };
-
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (description !== updatedHTML && !isUndefined(serviceDetails)) {
       const { id } = serviceDetails;
 
       const updatedServiceDetails = {
-        ...getServiceSpecificData(serviceDetails),
+        ...serviceDetails,
         name: serviceDetails.name,
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
@@ -788,7 +769,7 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      ...getServiceSpecificData(serviceDetails),
+      ...serviceDetails,
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
