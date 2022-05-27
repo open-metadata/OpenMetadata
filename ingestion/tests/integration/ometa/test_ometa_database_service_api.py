@@ -76,7 +76,7 @@ class OMetaDatabaseServiceTest(TestCase):
         """
         service_db_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-db-service"
+                entity=DatabaseService, fqn="test-db-service"
             ).id.__root__
         )
 
@@ -138,7 +138,7 @@ class OMetaDatabaseServiceTest(TestCase):
 
         self.metadata.create_or_update(data=self.create)
 
-        res = self.metadata.get_by_name(entity=DatabaseService, fqdn=self.entity.name)
+        res = self.metadata.get_by_name(entity=DatabaseService, fqn=self.entity.name)
         self.assertEqual(res.name, self.entity.name)
 
     def test_get_id(self):
@@ -150,7 +150,7 @@ class OMetaDatabaseServiceTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=DatabaseService, fqdn=self.entity.name
+            entity=DatabaseService, fqn=self.entity.name
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=DatabaseService, entity_id=res_name.id)
@@ -177,7 +177,7 @@ class OMetaDatabaseServiceTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=DatabaseService, fqdn=self.entity.name
+            entity=DatabaseService, fqn=self.entity.name
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -202,7 +202,7 @@ class OMetaDatabaseServiceTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=DatabaseService, fqdn=self.entity.name
+            entity=DatabaseService, fqn=self.entity.name
         )
 
         res = self.metadata.get_list_entity_versions(

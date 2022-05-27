@@ -34,6 +34,7 @@ from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
 from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
+from openmetadata.operations.last_dag_logs import last_dag_logs
 from openmetadata.operations.status import status
 from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
@@ -130,6 +131,8 @@ class REST_API(AppBuilderBaseView):
             return self.dag_status()
         if api == "delete_dag":
             return self.delete_dag()
+        if api == "last_dag_logs":
+            return self.last_dag_logs()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -275,4 +278,26 @@ class REST_API(AppBuilderBaseView):
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
                 error=f"Failed to delete {dag_id} due to {exc} - {traceback.format_exc()}",
+            )
+
+    def last_dag_logs(self) -> Response:
+        """
+        Retrieve all logs from the task instances of a last DAG run
+        """
+        dag_id: str = self.get_request_arg(request, "dag_id")
+
+        if not dag_id:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error=f"Missing dag_id argument in the request",
+            )
+
+        try:
+            return last_dag_logs(dag_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to get last run logs for '{dag_id}'")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
             )

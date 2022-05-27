@@ -118,10 +118,6 @@
       "minLength": 1,
       "maxLength": 128
     },
-    "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
     "tablePartition": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TablePartition",
@@ -193,7 +189,7 @@
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedColumnName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
@@ -243,6 +239,20 @@
       "required": ["name", "dataType"],
       "additionalProperties": false
     },
+    "joinedWith": {
+      "description": "Fully qualified names of the fields/entities that this field/entity is joined with.",
+      "type": "object",
+      "properties": {
+        "fullyQualifiedName": {
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "joinCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["fullyQualifiedName", "joinCount"],
+      "additionalProperties": false
+    },
     "columnJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnJoin",
@@ -255,16 +265,7 @@
           "description": "Fully qualified names of the columns that this column is joined with.",
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "fullyQualifiedName": {
-                "$ref": "#/definitions/fullyQualifiedColumnName"
-              },
-              "joinCount": {
-                "type": "integer"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },
@@ -273,7 +274,7 @@
     "tableJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableJoins",
-      "description": "This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.",
+      "description": "This schema defines the type to capture information about how this table is joined with other tables and columns.",
       "properties": {
         "startDate": {
           "description": "Date can be only from today going back to last 29 days.",
@@ -287,6 +288,13 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnJoins"
+          }
+        },
+        "directTableJoins": {
+          "description": "Joins with other tables that are not on a specific column (e.g: UNION join)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },

@@ -18,7 +18,6 @@ from typing import Iterable, List, Optional
 
 import dateutil.parser as dateparser
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -43,6 +42,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -275,8 +275,8 @@ class SupersetSource(DashboardSourceService):
         if database_id and table_name:
             platform = self._get_service_type_from_database_id(database_id)
             dataset_fqn = (
-                f"{platform}{FQDN_SEPARATOR}{database_name + FQDN_SEPARATOR if database_name else ''}"
-                f"{schema_name + FQDN_SEPARATOR if schema_name else ''}"
+                f"{platform}{FQN_SEPARATOR}{database_name + FQN_SEPARATOR if database_name else ''}"
+                f"{schema_name + FQN_SEPARATOR if schema_name else ''}"
                 f"{table_name}"
             )
             return dataset_fqn
@@ -290,11 +290,11 @@ class SupersetSource(DashboardSourceService):
                 try:
                     from_entity = self.metadata.get_by_name(
                         entity=Table,
-                        fqdn=f"{self.service_connection.dbServiceName}.{datasource_text}",
+                        fqn=f"{self.service_connection.dbServiceName}.{datasource_text}",
                     )
                     to_entity = self.metadata.get_by_name(
                         entity=Lineage_Dashboard,
-                        fqdn=f"{self.config.serviceName}.{dashboard['id']}",
+                        fqn=f"{self.config.serviceName}.{dashboard['id']}",
                     )
                     if from_entity and to_entity:
                         lineage = AddLineageRequest(

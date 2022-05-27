@@ -85,11 +85,11 @@ def success_callback(context: Dict[str, str]) -> None:
         operator.log.info("Updating pipeline status on success...")
 
         airflow_service_entity: PipelineService = metadata.get_by_name(
-            entity=PipelineService, fqdn=config.airflow_service_name
+            entity=PipelineService, fqn=config.airflow_service_name
         )
         pipeline: Pipeline = metadata.get_by_name(
             entity=Pipeline,
-            fqdn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
+            fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         )
 
         add_status(
