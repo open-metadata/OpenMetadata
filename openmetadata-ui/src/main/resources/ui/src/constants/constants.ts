@@ -70,6 +70,7 @@ const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
 const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 const PLACEHOLDER_USER_NAME = ':username';
 const PLACEHOLDER_BOTS_NAME = ':botsName';
+const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -212,6 +213,8 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
+  CUSTOM_ENTITY: `/custom-entity`,
+  ADD_CUSTOM_FIELD: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -363,6 +366,13 @@ export const getBotsPath = (botsName: string) => {
   return path;
 };
 
+export const getAddCustomFieldPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_FIELD;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -376,6 +386,12 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
+  {
+    name: 'Custom Entity',
+    to: '/custom-entity',
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
