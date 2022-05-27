@@ -193,7 +193,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def get_test_name(table: Table, test_type: str, column_name: str = None):
         """
         Build a unique identifier to log the test
-        in the shape of FQDN.[column].test_type
+        in the shape of FQN.[column].test_type
 
         :param table: Table Entity
         :param test_type: We expected one test type per table & column

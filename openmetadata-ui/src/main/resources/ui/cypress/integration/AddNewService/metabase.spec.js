@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Metabase Ingestion', () => {
   it('add and ingest data', () => {
@@ -31,9 +28,6 @@ describe('Metabase Ingestion', () => {
       cy.get('#root_hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
-      cy.get('#root_dbServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('metabaseDbServiceName'));
     };
 
     const addIngestionInput = () => {
