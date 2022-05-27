@@ -70,12 +70,6 @@ jobs:
         make coverage
         rm pom.xml
 
-    - name: Fetch main for sonar
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        git fetch --no-tags --unshallow https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-
     - name: Run PR Sonar
       uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'pull_request_target' }}
