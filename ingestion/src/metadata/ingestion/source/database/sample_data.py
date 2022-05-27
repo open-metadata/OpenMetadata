@@ -91,17 +91,17 @@ def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
     metadata = OpenMetadata(metadata_config)
     fqn = edge["fqn"]
     if edge["type"] == "table":
-        table = metadata.get_by_name(entity=Table, fqdn=fqn)
+        table = metadata.get_by_name(entity=Table, fqn=fqn)
         if not table:
             return
         return EntityReference(id=table.id, type="table")
     elif edge["type"] == "pipeline":
-        pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
+        pipeline = metadata.get_by_name(entity=Pipeline, fqn=fqn)
         if not pipeline:
             return
         return EntityReference(id=pipeline.id, type="pipeline")
     elif edge["type"] == "dashboard":
-        dashboard = metadata.get_by_name(entity=Dashboard, fqdn=fqn)
+        dashboard = metadata.get_by_name(entity=Dashboard, fqn=fqn)
         if not dashboard:
             return
         return EntityReference(id=dashboard.id, type="dashboard")
@@ -541,10 +541,10 @@ class SampleDataSource(Source[Entity]):
         Ingest sample pipeline status
         """
         for status_data in self.pipeline_status:
-            pipeline_fqdn = status_data["pipeline"]
+            pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
                 yield OMetaPipelineStatus(
-                    pipeline_fqdn=pipeline_fqdn,
+                    pipeline_fqn=pipeline_fqn,
                     pipeline_status=PipelineStatus(**status),
                 )
 
@@ -557,7 +557,7 @@ class SampleDataSource(Source[Entity]):
                 name=source["name"],
                 dataType=source["dataType"],
                 dataSource=self.metadata.get_entity_reference(
-                    entity=Table, fqdn=source["dataSource"]
+                    entity=Table, fqn=source["dataSource"]
                 ),
             )
             for source in feature.get("featureSources", [])
@@ -588,12 +588,12 @@ class SampleDataSource(Source[Entity]):
         for model in self.models:
             try:
                 # Fetch linked dashboard ID from name
-                fqdn = model["dashboard"]
-                dashboard = self.metadata.get_by_name(entity=Dashboard, fqdn=fqdn)
+                mlmodel_fqn = model["dashboard"]
+                dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
 
                 if not dashboard:
                     raise InvalidSampleDataException(
-                        f"Cannot find {fqdn} in Sample Dashboards"
+                        f"Cannot find {mlmodel_fqn} in Sample Dashboards"
                     )
 
                 dashboard_id = str(dashboard.id.__root__)

@@ -162,7 +162,7 @@ class AirflowLineageTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-table-lineage"
+                entity=DatabaseService, fqn="test-service-table-lineage"
             ).id.__root__
         )
 
@@ -214,11 +214,11 @@ class AirflowLineageTest(TestCase):
         )
 
         self.assertIsNotNone(
-            self.metadata.get_by_name(entity=Pipeline, fqdn="local_airflow_3.lineage")
+            self.metadata.get_by_name(entity=Pipeline, fqn="local_airflow_3.lineage")
         )
 
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.lineage"
+            entity=Pipeline, fqn="local_airflow_3.lineage"
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
@@ -299,7 +299,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.task_group_lineage", fields=["tasks"]
+            entity=Pipeline, fqn="local_airflow_3.task_group_lineage", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("group1.task1", {task.name for task in pipeline.tasks})
@@ -360,7 +360,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.clean_test", fields=["tasks"]
+            entity=Pipeline, fqn="local_airflow_3.clean_test", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("task1", {task.name for task in pipeline.tasks})
@@ -415,7 +415,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline: Pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqdn="local_airflow_3.clean_test", fields=["tasks"]
+            entity=Pipeline, fqn="local_airflow_3.clean_test", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("task1", {task.name for task in pipeline.tasks})

@@ -185,6 +185,10 @@ class ProfilerWorkflow:
                 self.sink.write_record(profile_and_tests)
 
     def print_status(self) -> int:
+        """
+        Runs click echo to print the
+        workflow results
+        """
         click.echo()
         click.secho("Source Status:", bold=True)
         click.echo(self.source_status.as_string())
@@ -202,16 +206,16 @@ class ProfilerWorkflow:
         ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        elif (
+        if (
             self.source_status.warnings
             or self.processor.get_status().failures
             or (hasattr(self, "sink") and self.sink.get_status().warnings)
         ):
             click.secho("Workflow finished with warnings", fg="yellow", bold=True)
             return 0
-        else:
-            click.secho("Workflow finished successfully", fg="green", bold=True)
-            return 0
+
+        click.secho("Workflow finished successfully", fg="green", bold=True)
+        return 0
 
     def raise_from_status(self, raise_warnings=False):
         """

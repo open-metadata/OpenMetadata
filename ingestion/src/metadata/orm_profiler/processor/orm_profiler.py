@@ -145,7 +145,6 @@ class OrmProfilerProcessor(Processor[Table]):
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
-        # TODO: add_props when needed for incoming metrics
         metrics = (
             [Metrics.get(name) for name in self.config.profiler.metrics]
             if self.config.profiler.metrics
@@ -193,7 +192,7 @@ class OrmProfilerProcessor(Processor[Table]):
     def get_test_name(table: Table, test_type: str, column_name: str = None):
         """
         Build a unique identifier to log the test
-        in the shape of FQDN.[column].test_type
+        in the shape of FQN.[column].test_type
 
         :param table: Table Entity
         :param test_type: We expected one test type per table & column
@@ -473,9 +472,7 @@ class OrmProfilerProcessor(Processor[Table]):
         schema = self.metadata.get_by_id(
             entity=DatabaseSchema, entity_id=record.databaseSchema.id
         )
-        orm_table = ometa_to_orm(
-            table=record, schema=schema, dialect=self.session.bind.dialect.name
-        )
+        orm_table = ometa_to_orm(table=record, schema=schema)
 
         entity_profile = self.profile_entity(orm_table, record)
 
