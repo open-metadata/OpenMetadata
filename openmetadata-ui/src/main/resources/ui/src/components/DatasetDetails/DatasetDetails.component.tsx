@@ -139,6 +139,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
+    directTableJoins: [],
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
@@ -295,35 +296,37 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
   > => {
-    let freqJoin: Array<JoinedWith & { name: string }> = [];
-    for (const joinData of tableJoinData.columnJoins as ColumnJoins[]) {
-      freqJoin = [
-        ...freqJoin,
-        ...(joinData?.joinedWith?.map((joinedCol) => {
-          const tableFQN = getTableFQNFromColumnFQN(
-            joinedCol?.fullyQualifiedName as string
-          );
+    const tableFQNGrouping = [
+      ...(tableJoinData.columnJoins?.flatMap(
+        (cjs) =>
+          cjs.joinedWith?.map<JoinedWith>((jw) => ({
+            fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
+            joinCount: jw.joinCount,
+          })) ?? []
+      ) ?? []),
+      ...(tableJoinData.directTableJoins ?? []),
+    ].reduce(
+      (result, jw) => ({
+        ...result,
+        [jw.fullyQualifiedName]:
+          (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
+      }),
+      {} as Record<string, number>
+    );
 
-          return {
-            name: getPartialNameFromTableFQN(
-              tableFQN,
-              [FqnPart.Database, FqnPart.Table],
-              FQN_SEPARATOR_CHAR
-            ),
-            fullyQualifiedName: tableFQN,
-            joinCount: joinedCol.joinCount,
-          };
-        }) as Array<JoinedWith & { name: string }>),
-      ].sort((a, b) =>
-        (a?.joinCount as number) > (b?.joinCount as number)
-          ? 1
-          : (b?.joinCount as number) > (a?.joinCount as number)
-          ? -1
-          : 0
-      );
-    }
-
-    return freqJoin;
+    return Object.entries(tableFQNGrouping)
+      .map<JoinedWith & { name: string }>(
+        ([fullyQualifiedName, joinCount]) => ({
+          fullyQualifiedName,
+          joinCount,
+          name: getPartialNameFromTableFQN(
+            fullyQualifiedName,
+            [FqnPart.Database, FqnPart.Table],
+            FQN_SEPARATOR_CHAR
+          ),
+        })
+      )
+      .sort((a, b) => b.joinCount - a.joinCount);
   };
 
   const prepareTableRowInfo = () => {

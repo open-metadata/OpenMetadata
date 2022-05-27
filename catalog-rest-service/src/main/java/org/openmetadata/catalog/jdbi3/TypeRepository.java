@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Triple;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.TypeRegistry;
 import org.openmetadata.catalog.entity.Type;
@@ -111,14 +112,14 @@ public class TypeRepository extends EntityRepository<Type> {
       return null; // Field types don't support custom fields
     }
     List<CustomField> customFields = new ArrayList<>();
-    List<List<String>> results =
+    List<Triple<String, String, String>> results =
         daoCollection
             .fieldRelationshipDAO()
             .listToByPrefix(
                 getCustomFieldFQNPrefix(type.getName()), Entity.TYPE, Entity.TYPE, Relationship.HAS.ordinal());
-    for (List<String> result : results) {
-      CustomField field = JsonUtils.readValue(result.get(2), CustomField.class);
-      field.setFieldType(dao.findEntityReferenceByName(result.get(1)));
+    for (Triple<String, String, String> result : results) {
+      CustomField field = JsonUtils.readValue(result.getRight(), CustomField.class);
+      field.setFieldType(dao.findEntityReferenceByName(result.getMiddle()));
       customFields.add(field);
     }
     customFields.sort(EntityUtil.compareCustomField);

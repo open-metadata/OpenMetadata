@@ -28,9 +28,6 @@ describe('Metabase Ingestion', () => {
       cy.get('#root_hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
-      cy.get('#root_dbServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('metabaseDbServiceName'));
     };
 
     const addIngestionInput = () => {

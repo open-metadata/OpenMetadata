@@ -233,7 +233,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
 
         for task in dag.tasks:
             for table_fqn in self.get_inlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqdn=table_fqn)
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                 yield AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(id=table_entity.id, type="table"),
@@ -244,7 +244,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
                 )
 
             for table_fqn in self.get_outlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqdn=table_fqn)
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
                 yield AddLineageRequest(
                     edge=EntitiesEdge(
                         fromEntity=EntityReference(
@@ -269,7 +269,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,
-                            fqdn=fqn.build(
+                            fqn=fqn.build(
                                 self.metadata,
                                 entity_type=Pipeline,
                                 service_name=self.service.name.__root__,

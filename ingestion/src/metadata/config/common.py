@@ -23,8 +23,6 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-FQDN_SEPARATOR: str = "."
-
 
 class ConfigModel(BaseModel):
     class Config:

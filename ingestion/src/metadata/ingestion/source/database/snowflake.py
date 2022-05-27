@@ -157,8 +157,8 @@ class SnowflakeSource(CommonDbSourceService):
                     )
                     yield from self.fetch_tables(inspector=inspector, schema=schema)
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
-                        yield from self.delete_tables(schema_fqdn)
+                        schema_fqn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
+                        yield from self.delete_tables(schema_fqn)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.info(err)
@@ -205,10 +205,13 @@ class SnowflakeSource(CommonDbSourceService):
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
                 )
+                SNOWFLAKE_TABLE_TYPE = "BASE TABLE"
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table_name,
-                    tableType="Regular" if entity_type == "Base Table" else "View",
+                    tableType="Regular"
+                    if entity_type.lower() == SNOWFLAKE_TABLE_TYPE.lower()
+                    else "View",
                     description=comment,
                     columns=table_columns,
                     viewDefinition=view_definition,

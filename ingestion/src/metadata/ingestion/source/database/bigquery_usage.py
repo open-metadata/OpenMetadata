@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.helpers import get_start_and_end
 

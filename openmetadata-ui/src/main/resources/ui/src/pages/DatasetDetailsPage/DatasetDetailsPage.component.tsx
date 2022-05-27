@@ -133,6 +133,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
+    directTableJoins: [],
   });
   const [tableType, setTableType] = useState<TableType>(TableType.Regular);
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
