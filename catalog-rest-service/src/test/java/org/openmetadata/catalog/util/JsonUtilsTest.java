@@ -17,7 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonArrayBuilder;
@@ -96,5 +98,13 @@ class JsonUtilsTest {
     jsonException =
         assertThrows(JsonException.class, () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("contains no element for index 3"));
+  }
+
+  @Test
+  void testReadValuePassingTypeReference() throws IOException {
+    Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
+    String json = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
+    TypeReference<Map<String, String>> mapTypeReference = new TypeReference<>() {};
+    assertEquals(expectedMap, JsonUtils.readValue(json, mapTypeReference));
   }
 }

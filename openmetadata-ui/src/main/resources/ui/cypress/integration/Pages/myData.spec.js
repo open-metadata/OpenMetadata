@@ -89,7 +89,9 @@ describe('MyData page should work', () => {
 
     cy.wait('@searchApi');
     // click on the 1st result and go to entity details page and follow the entity
-    cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
+    cy.get('[data-testid="table-link"]').first().contains(termObj.term).as('resultLink');
+    cy.wait(500); // Wait for result to load after api success
+    cy.get('@resultLink').click();
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
@@ -106,7 +108,7 @@ describe('MyData page should work', () => {
       .then((name) => {
         cy.get('.tw-z-10').click();
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')

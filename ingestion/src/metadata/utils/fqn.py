@@ -20,7 +20,6 @@ from antlr4 import *
 from pydantic import BaseModel
 
 from metadata.antlr.split_listener import SplitListener
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -35,7 +34,8 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 
 T = TypeVar("T", bound=BaseModel)
 
-fqdn_build_registry = class_register()
+FQN_SEPARATOR: str = "."
+fqn_build_registry = class_register()
 
 
 class FQNBuildingException(Exception):
@@ -64,7 +64,7 @@ def _build(*args) -> str:
     Equivalent of Java's FullyQualifiedName#build
     """
     quoted = [quote_name(name) for name in args]
-    return FQDN_SEPARATOR.join(quoted)
+    return FQN_SEPARATOR.join(quoted)
 
 
 def quote_name(name: str) -> str:
@@ -104,7 +104,7 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
-    fn = fqdn_build_registry.registry.get(entity_type.__name__)
+    fn = fqn_build_registry.registry.get(entity_type.__name__)
     if not fn:
         raise FQNBuildingException(
             f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
@@ -112,7 +112,7 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
     return fn(metadata, **kwargs)
 
 
-@fqdn_build_registry.add(Table)
+@fqn_build_registry.add(Table)
 def _(
     metadata: OpenMetadata,
     *,
@@ -154,7 +154,7 @@ def _(
     return _build(service_name, database_name, schema_name, table_name)
 
 
-@fqdn_build_registry.add(DatabaseSchema)
+@fqn_build_registry.add(DatabaseSchema)
 def _(
     _: OpenMetadata,  # ES Search not enabled for Schemas
     *,
@@ -169,7 +169,7 @@ def _(
     return _build(service_name, database_name, schema_name)
 
 
-@fqdn_build_registry.add(Database)
+@fqn_build_registry.add(Database)
 def _(
     _: OpenMetadata,  # ES Search not enabled for Databases
     *,
@@ -183,7 +183,7 @@ def _(
     return _build(service_name, database_name)
 
 
-@fqdn_build_registry.add(Dashboard)
+@fqn_build_registry.add(Dashboard)
 def _(
     _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
     *,
@@ -197,7 +197,7 @@ def _(
     return _build(service_name, dashboard_name)
 
 
-@fqdn_build_registry.add(Tag)
+@fqn_build_registry.add(Tag)
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
     *,
@@ -211,7 +211,7 @@ def _(
     return _build(tag_category_name, tag_name)
 
 
-@fqdn_build_registry.add(DataModel)
+@fqn_build_registry.add(DataModel)
 def _(
     _: OpenMetadata,
     *,
@@ -224,7 +224,7 @@ def _(
     return _build(service_name, database_name, schema_name, model_name)
 
 
-@fqdn_build_registry.add(Pipeline)
+@fqn_build_registry.add(Pipeline)
 def _(
     _: OpenMetadata,
     *,

@@ -319,6 +319,8 @@ const mockProp = {
   countServices: 0,
   countTables: 10,
   countTopics: 5,
+  countTeams: 7,
+  countUsers: 100,
   followedDataCount: 5,
   ownedDataCount: 5,
   error: '',

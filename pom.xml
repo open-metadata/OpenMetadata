@@ -95,6 +95,7 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.0</testng.version>
+    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -318,6 +319,16 @@
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-core</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-jdbi</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
@@ -343,6 +354,18 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-all</artifactId>
         <version>2.0.2-beta</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-inline</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <version>${mockito.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>

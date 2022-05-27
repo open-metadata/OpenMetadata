@@ -157,8 +157,8 @@ class SnowflakeSource(CommonDbSourceService):
                     )
                     yield from self.fetch_tables(inspector=inspector, schema=schema)
                     if self.source_config.markDeletedTables:
-                        schema_fqdn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
-                        yield from self.delete_tables(schema_fqdn)
+                        schema_fqn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
+                        yield from self.delete_tables(schema_fqn)
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.info(err)
