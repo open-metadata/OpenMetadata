@@ -15,15 +15,18 @@ import { AxiosError, AxiosResponse } from 'axios';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getTypeListByCategory } from '../../axiosAPIs/metadataTypeAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import CustomEntityDetail from '../../components/CustomEntityDetail/CustomEntityDetail';
 import Loader from '../../components/Loader/Loader';
 import { Category, Type } from '../../generated/entity/type';
+import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomEntityPage = () => {
   const { entityTypeFQN } = useParams<{ [key: string]: string }>();
   const [entityTypes, setEntityTypes] = useState<Array<Type>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isError, setIsError] = useState<boolean>(false);
 
   const fetchEntityType = () => {
     setIsLoading(true);
@@ -32,6 +35,7 @@ const CustomEntityPage = () => {
         setEntityTypes(res.data.data);
       })
       .catch((err: AxiosError) => {
+        setIsError(true);
         showErrorToast(err);
       })
       .finally(() => {
@@ -49,18 +53,19 @@ const CustomEntityPage = () => {
     fetchEntityType();
   }, []);
 
-  return (
-    <Fragment>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <CustomEntityDetail
-          entityTypeFQN={entityTypeFQN}
-          entityTypes={getEntityTypesList()}
-        />
-      )}
-    </Fragment>
-  );
+  const Component = () =>
+    isError ? (
+      <ErrorPlaceHolder>
+        {jsonData['api-error-messages']['unexpected-server-response']}
+      </ErrorPlaceHolder>
+    ) : (
+      <CustomEntityDetail
+        entityTypeFQN={entityTypeFQN}
+        entityTypes={getEntityTypesList()}
+      />
+    );
+
+  return <Fragment>{isLoading ? <Loader /> : <Component />}</Fragment>;
 };
 
 export default CustomEntityPage;
