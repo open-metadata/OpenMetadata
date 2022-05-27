@@ -12,6 +12,8 @@
 """
 Table Column Count Metric definition
 """
+# pylint: disable=duplicate-code
+
 from sqlalchemy import inspect, literal
 from sqlalchemy.orm import DeclarativeMeta
 

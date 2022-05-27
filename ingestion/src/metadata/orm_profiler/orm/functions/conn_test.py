@@ -15,6 +15,8 @@ This will be executed as a way to make sure
 that the Engine can reach and execute in the
 source.
 """
+# pylint: disable=duplicate-code
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import ClauseElement, Executable
 

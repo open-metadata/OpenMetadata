@@ -18,7 +18,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
 
@@ -57,6 +57,8 @@ class Profiler(Generic[TMetric]):
     - An ORM Table. One profiler attacks one table at a time.
     - A tuple of metrics, from which we will construct queries.
     """
+
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
     def __init__(
         self,
@@ -258,7 +260,7 @@ class Profiler(Generic[TMetric]):
         except (TimeoutError, Exception) as err:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error while running table metric for: {self.table.__tablename__}"
+                f"Error while running table metric for: {self.table.__tablename__} - {err}"
             )
             self.session.rollback()
 

@@ -12,6 +12,8 @@
 """
 CountInSet Metric definition
 """
+# pylint: disable=duplicate-code
+
 from typing import List
 
 from sqlalchemy import case, column, func

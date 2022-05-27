@@ -54,9 +54,9 @@ class MetricRegistry(Enum):
         return self.value(*args, **kwargs)
 
     @property
-    def name(
+    def name(  # pylint: disable=function-redefined, invalid-overridden-method
         self,
-    ) -> str:  # pylint: disable=function-redefined, invalid-overridden-method
+    ) -> str:
         """
         Override the default `name` on Enums
         to use the mapped class name instead.

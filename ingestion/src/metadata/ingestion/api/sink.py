@@ -15,6 +15,9 @@ from typing import Any, Generic, List
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.status import Status
@@ -42,7 +45,9 @@ class Sink(Closeable, Generic[Entity], metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict) -> "Sink":
+    def create(
+        cls, config_dict: dict, metadata_config: OpenMetadataConnection
+    ) -> "Sink":
         pass
 
     @abstractmethod
