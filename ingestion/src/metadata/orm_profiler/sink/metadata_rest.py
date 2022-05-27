@@ -33,6 +33,10 @@ class MetadataRestSinkConfig(ConfigModel):
 
 
 class MetadataRestSink(Sink[Entity]):
+    """
+    Metadata Sink sending the profiler
+    and tests results to the OM API
+    """
 
     config: MetadataRestSinkConfig
     status: SinkStatus

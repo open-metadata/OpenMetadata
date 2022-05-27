@@ -12,6 +12,8 @@
 """
 AVG Metric definition
 """
+# pylint: disable=duplicate-code
+
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
