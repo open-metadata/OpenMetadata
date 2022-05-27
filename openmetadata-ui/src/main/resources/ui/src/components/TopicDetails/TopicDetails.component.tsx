@@ -13,7 +13,7 @@
 
 import { EntityTags, ExtraInfo } from 'Models';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -28,7 +28,6 @@ import {
   getCurrentUserId,
   getEntityName,
   getEntityPlaceHolder,
-  getUserTeams,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -49,7 +48,6 @@ import SchemaEditor from '../schema-editor/SchemaEditor';
 import { TopicDetailsProps } from './TopicDetails.interface';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
-  users,
   topicDetails,
   partitions,
   cleanupPolicies,
@@ -88,7 +86,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   isSampleDataLoading,
   sampleData,
 }: TopicDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -104,10 +101,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
   const setFollowersData = (followers: Array<EntityReference>) => {
@@ -340,12 +341,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);

@@ -107,7 +107,7 @@ describe('MyData page should work', () => {
       .then((name) => {
         cy.get('.tw-z-10').click();
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')
