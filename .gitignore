@@ -84,6 +84,7 @@ openmetadata-ui/src/main/resources/ui/src/generated
 
 #vscode
 */.vscode/*
+.vscode/*
 
 # Python generated sources
 ingestion-core/src/metadata/generated/**

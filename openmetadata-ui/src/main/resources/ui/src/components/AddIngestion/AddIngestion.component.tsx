@@ -23,15 +23,15 @@ import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
-  ConfigClass,
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
-  ConfigType,
+  ConfigClass,
   FilterPattern,
   IngestionPipeline,
+  TypeEnum,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   DatabaseServiceMetadataPipelineClass,
@@ -219,13 +219,13 @@ const AddIngestion = ({
   const usageIngestionType = useMemo(() => {
     return (
       (data?.source.sourceConfig.config as ConfigClass)?.type ??
-      ConfigType.DatabaseUsage
+      TypeEnum.DatabaseUsage
     );
   }, [data]);
   const profilerIngestionType = useMemo(() => {
     return (
       (data?.source.sourceConfig.config as ConfigClass)?.type ??
-      ConfigType.Profiler
+      TypeEnum.Profiler
     );
   }, [data]);
 
@@ -399,7 +399,7 @@ const AddIngestion = ({
           ),
           markDeletedTables,
           ...DatabaseConfigData,
-          type: ConfigType.DatabaseMetadata,
+          type: TypeEnum.DatabaseMetadata,
         };
       }
       case ServiceCategory.MESSAGING_SERVICES: {
@@ -408,7 +408,7 @@ const AddIngestion = ({
             topicFilterPattern,
             showTopicFilter
           ),
-          type: ConfigType.MessagingMetadata,
+          type: TypeEnum.MessagingMetadata,
         };
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
@@ -421,7 +421,7 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
-          type: ConfigType.DashboardMetadata,
+          type: TypeEnum.DashboardMetadata,
         };
       }
       default: {
@@ -476,7 +476,9 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: getConfigData(pipelineType),
+        config: getConfigData(
+          pipelineType
+        ) as CreateIngestionPipeline['sourceConfig']['config'],
       },
     };
 

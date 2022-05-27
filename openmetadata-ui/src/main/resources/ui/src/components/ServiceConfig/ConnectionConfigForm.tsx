@@ -74,7 +74,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       data.hasOwnProperty('connection')
       ? ((data as DatabaseService | MessagingService | DashboardService)
           .connection.config as ConfigData)
-      : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
+      : ({
+          pipelineUrl: (data as PipelineService).connection.config?.hostPort,
+        } as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {

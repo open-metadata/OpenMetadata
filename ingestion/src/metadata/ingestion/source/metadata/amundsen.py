@@ -285,7 +285,7 @@ class AmundsenSource(Source[Entity]):
     def get_database_service_or_create(
         self, service_name: str, service_type: str
     ) -> DatabaseService:
-        service = self.metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+        service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
         if service is not None:
             return service
         else:

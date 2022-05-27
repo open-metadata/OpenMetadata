@@ -158,7 +158,7 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 35
                               }
                           ]
@@ -167,43 +167,43 @@
                           "columnName": "address_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 49
                               }
                           ]
@@ -1103,63 +1103,63 @@
                           "columnName": "api_client_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 55
                               }
                           ]
@@ -1715,31 +1715,31 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 45
                               }
                           ]
@@ -1748,67 +1748,67 @@
                           "columnName": "customer_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 45
                               }
                           ]
@@ -3802,43 +3802,43 @@
                           "columnName": "location_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 50
                               }
                           ]
@@ -4107,11 +4107,11 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 5
                               }
                           ]
@@ -4120,7 +4120,7 @@
                           "columnName": "product_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 5
                               },
                               {
@@ -4132,47 +4132,47 @@
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 5
                               }
                           ]
@@ -4526,11 +4526,11 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 5
                               }
                           ]
@@ -4539,11 +4539,11 @@
                           "columnName": "product_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim.product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 5
                               }
                           ]
@@ -4944,63 +4944,63 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.shop_id",
                                   "joinCount": 35
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 35
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.shop_id",
                                   "joinCount": 35
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 50
                               },
                               {
@@ -5244,11 +5244,11 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 20
                               },
                               {
@@ -5261,67 +5261,67 @@
                           "columnName": "user_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 35
                               }
                           ]
@@ -6474,23 +6474,23 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               }
                           ]
@@ -6499,23 +6499,23 @@
                           "columnName": "api_client_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               }
                           ]
@@ -6524,27 +6524,27 @@
                           "columnName": "user_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.shop_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               }
                           ]
@@ -6553,23 +6553,23 @@
                           "columnName": "customer_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               }
                           ]
@@ -6578,59 +6578,59 @@
                           "columnName": "order_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:billing_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:product_variant_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shipping_address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 30
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 25
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 5
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               }
                           ]
@@ -7380,35 +7380,35 @@
                           "columnName": "billing_address_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7417,35 +7417,35 @@
                           "columnName": "shop_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7463,35 +7463,35 @@
                           "columnName": "shipping_address_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7500,35 +7500,35 @@
                           "columnName": "api_client_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7537,39 +7537,39 @@
                           "columnName": "user_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.shop_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7578,35 +7578,35 @@
                           "columnName": "product_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7615,35 +7615,35 @@
                           "columnName": "product_variant_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7652,39 +7652,39 @@
                           "columnName": "customer_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.shop_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7693,51 +7693,51 @@
                           "columnName": "order_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
                                   "joinCount": 60
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
                                   "joinCount": 60
                               }
                           ]
@@ -7746,35 +7746,35 @@
                           "columnName": "location_id",
                           "joinedWith": [
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address:address_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_address.address_id",
                                   "joinCount": 49
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client:api_client_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_api_client.api_client_id",
                                   "joinCount": 55
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer:customer_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_customer.customer_id",
                                   "joinCount": 45
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location:location_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_location.location_id",
                                   "joinCount": 50
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim:product:product_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.product\".product_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_shop:shop_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
                                   "joinCount": 40
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff:user_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.dim_staff.user_id",
                                   "joinCount": 20
                               },
                               {
-                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order:order_id",
+                                  "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
                                   "joinCount": 60
                               }
                           ]

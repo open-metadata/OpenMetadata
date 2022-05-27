@@ -76,20 +76,20 @@ class OMetaLineageMixin(Generic[T]):
     def get_lineage_by_name(
         self,
         entity: Union[Type[T], str],
-        fqdn: str,
+        fqn: str,
         up_depth: int = 1,
         down_depth: int = 1,
     ) -> Optional[Dict[str, Any]]:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
-        :param fqdn: Entity FQDN
+        :param fqn: Entity FQN
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
         return self._get_lineage(
             entity=entity,
-            path=f"name/{fqdn}",
+            path=f"name/{fqn}",
             up_depth=up_depth,
             down_depth=down_depth,
         )
@@ -104,7 +104,7 @@ class OMetaLineageMixin(Generic[T]):
         """
         Generic function to get entity data.
         :param entity: Type of the entity
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
