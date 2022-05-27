@@ -78,6 +78,7 @@ jobs:
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
         args: >
+          -Dproject.settings=ingestion/sonar-project.properties
           -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
           -Dsonar.pullrequest.branch=${{ github.head_ref }}
           -Dsonar.pullrequest.github.repository=OpenMetadata
@@ -90,3 +91,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
