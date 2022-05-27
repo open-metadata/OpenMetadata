@@ -8,6 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import Optional, Tuple
+
+from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
@@ -41,3 +44,13 @@ class AthenaSource(CommonDbSourceService):
             )
 
         return cls(config, metadata_config)
+
+    def get_table_names(
+            self, schema: str, inspector: Inspector
+    ) -> Optional[Tuple[str, str]]:
+        if self.source_config.includeTables:
+            for table in inspector.get_table_names(schema):
+                yield table, "External"  # All tables in Athena are External
+        if self.source_config.includeViews:
+            for view in inspector.get_view_names(schema):
+                yield view, "View"
