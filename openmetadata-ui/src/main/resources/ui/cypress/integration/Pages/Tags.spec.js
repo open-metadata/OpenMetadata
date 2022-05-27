@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { NEW_TAG, NEW_TAG_CATEGORY } from '../../constants/constants';
+import { searchEntity } from '../../common/common';
+import { NEW_TAG, NEW_TAG_CATEGORY, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 describe('Tags page should work', () => {
   beforeEach(() => {
@@ -61,7 +62,7 @@ describe('Tags page should work', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-
+    cy.get('.tw-modal-container').should('not.exist');
     cy.get('[data-testid="category-name"]')
       .should('be.visible')
       .invoke('text')
@@ -89,6 +90,37 @@ describe('Tags page should work', () => {
     cy.get('[data-testid="saveButton"]').should('be.visible').click();
   });
 
+  it('Use newly created tag to any entity should work', () => {
+    const term = SEARCH_ENTITY_TABLE.table_2.term;
+    searchEntity(term);
+    cy.wait(500);
+    cy.get('[data-testid="table-link"]').first().contains(term).click();
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
+    )
+      .should('be.visible')
+      .scrollIntoView()
+      .click();
+
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+    ).should('be.visible');
+    cy.get('[data-testid="associatedTagName"]')
+      .should('be.visible')
+      .type(`${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+    cy.get('[data-testid="list-item"] > .tw-truncate')
+      .should('be.visible')
+      .click();
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+    ).contains(`${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="entity-tags"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`);
+  });
+
   it('Delete tag flow should work properly', () => {
     cy.get('[data-testid="side-panel-category"]')
       .contains(NEW_TAG_CATEGORY.name)
@@ -104,12 +136,13 @@ describe('Tags page should work', () => {
       .should('be.visible');
 
     cy.get('[data-testid="delete-tag"]').should('be.visible').click();
-    cy.get('[data-testid="delete-tag"]').should('be.visible');
+    cy.get('.tw-modal-container').should('be.visible');
     cy.get('[data-testid="body-text"]')
       .contains(`Are you sure you want to delete the tag "${NEW_TAG.name}"?`)
       .should('be.visible');
     cy.get('[data-testid="save-button"]').should('be.visible').click();
     cy.wait(100);
+    cy.get('.tw-modal-container').should('not.exist');
     cy.get('.tableBody-cell').contains(NEW_TAG.name).should('not.exist');
   });
 
