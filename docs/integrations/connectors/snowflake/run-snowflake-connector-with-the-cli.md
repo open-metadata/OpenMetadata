@@ -28,59 +28,51 @@ pip3 install 'openmetadata-ingestion[snowflake]'
 
 All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json) you can find the structure to create a connection to Snowflake.
 
-In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
+In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
+### 1. Define the YAML Config
 
 This is a sample config for Snowflake:
 
 ```json
-{
-    "source": {
-        "type": "snowflake",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-                "type": "Snowflake",
-                "username": "<username>",
-                "password": "<password>",
-                "database": "<database>",
-                "warehouse": "<warehouse>",
-                "hostPort": "account.region.service.snowflakecomputing.com",
-                "account": "<account>",
-                "privateKey": "<privateKey>",
-                "snowflakePrivatekeyPassphrase": "<passphrase>",
-                "scheme": "<scheme>",
-                "role": "<role>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "enableDataProfiler": true or false,
-                "markDeletedTables": true or false,
-                "includeTables": true or false,
-                "includeViews": true or false,
-                "generateSampleData": true or false,
-                "sampleDataQuery": "<query to fetch table data>",
-                "schemaFilterPattern": "<schema name regex list>",
-                "tableFilterPattern": "<table name regex list>",
-                "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
-            }
-        }
-    },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
+source:
+  type: snowflake
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Snowflake
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      warehouse: "<warehouse>"
+      hostPort: account.region.service.snowflakecomputing.com
+      account: "<acount>"
+      privateKey: "<privateKey>"
+      snowflakePrivatekeyPassphrase: "<passphrase>"
+      scheme: "<scheme>"
+      role: "<role>"
+  sourceConfig:
+    config:
+      enableDataProfiler: true or false
+      markDeletedTables: true or false
+      includeTables: true or false
+      includeViews: true or false
+      generateSampleData: true or false
+      sampleDataQuery: "<query to fetch table data>"
+      schemaFilterPattern: "<schema name regex list>"
+      tableFilterPattern: "<table name regex list>"
+      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT
+        files"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
+
 ```
 
 #### Source Configuration - Service Connection
@@ -119,9 +111,10 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 * **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
-"tableFilterPattern": {
-  "includes": ["users", "type_test"]
-}
+tableFilterPattern:
+  includes:
+    - users
+    - type_test
 ```
 
 #### Sink Configuration
@@ -135,12 +128,10 @@ The main property here is the `openMetadataServerConfig`, where you can define t
 For a simple, local installation using our docker containers, this looks like:
 
 ```
-"workflowConfig": {
-  "openMetadataServerConfig": {
-    "hostPort": "http://localhost:8585/api",
-    "authProvider": "no-auth"
-  }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 #### OpenMetadata Security Providers
@@ -148,17 +139,14 @@ For a simple, local installation using our docker containers, this looks like:
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
 
 ```
-"workflowConfig": {
-    "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "auth0",
-        "securityConfig": {
-            "clientId": "<client ID>",
-            "secretKey": "<secret key>",
-            "domain": "<domain>"
-        }
-    }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: auth0
+    securityConfig:
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
 
 ### 2. Run with the CLI
@@ -166,7 +154,7 @@ We support different security providers. You can find their definitions [here](h
 First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
@@ -175,63 +163,49 @@ Note that from connector to connector, this recipe will always be the same. By u
 
 To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same. However, the `sourceConfig` is now modeled after [this](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json) JSON Schema.
 
-### 1. Define the JSON Configuration
+### 1. Define the YAML Configuration
 
 This is a sample config for Snowflake Usage:
 
 ```json
-{
-    "source": {
-        "type": "snowflake-usage",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-                "type": "Snowflake",
-                "username": "<username>",
-                "password": "<password>",
-                "database": "<database>",
-                "warehouse": "<warehouse>",
-                "hostPort": "account.region.service.snowflakecomputing.com",
-                "account": "<account>",
-                "privateKey": "<privateKey>",
-                "snowflakePrivatekeyPassphrase": "<passphrase>",
-                "scheme": "<scheme>",
-                "role": "<role>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "queryLogDuration": "<query log duration integer>",
-                "stageFileLocation": "<path to store the stage file>",
-                "resultLimit": "<query log limit integer>"
-            }
-        }
-    },
-    "processor": {
-        "type": "query-parser",
-        "config": {
-            "filter": ""
-        }
-    },
-    "stage": {
-        "type": "table-usage",
-        "config": {
-            "filename": "/tmp/snowflake_usage"
-        }
-    },
-    "bulkSink": {
-        "type": "metadata-usage",
-        "config": {
-            "filename": "/tmp/snowflake_usage"
-        }
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
+source:
+  type: snowflake-usage
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Snowflake
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      warehouse: "<warehouse>"
+      hostPort: account.region.service.snowflakecomputing.com
+      account: "<acount>"
+      privateKey: "<privateKey>"
+      snowflakePrivatekeyPassphrase: "<passphrase>"
+      scheme: "<scheme>"
+      role: "<role>"
+  sourceConfig:
+    config:
+      queryLogDuration: "<query log duration integer>"
+      stageFileLocation: "<path to store the stage file>"
+      resultLimit: "<query log limit integer>"
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: "/tmp/snowflake_usage"
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: "/tmp/snowflake_usage"
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
+
 ```
 
 #### Source Configuration - Service Connection
@@ -267,20 +241,65 @@ pip3 install --upgrade 'openmetadata-ingestion[snowflake-usage]'
 
 #### Run the command
 
-After saving the JSON config, we will run the command the same way we did for the metadata ingestion:
+After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 ## Data Profiler and Quality Tests
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
+### 1. Define the YAML configuration
+
+This is a sample config for a Snowflake profiler:
+
+```json
+source:
+  type: snowflake
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Snowflake
+      username: "<username>"
+      password: "<password>"
+      database: "<database>"
+      warehouse: "<warehouse>"
+      hostPort: account.region.service.snowflakecomputing.com
+      account: "<acount>"
+      privateKey: "<privateKey>"
+      snowflakePrivatekeyPassphrase: "<passphrase>"
+      scheme: "<scheme>"
+      role: "<role>"
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: "<table FQN filtering regex>"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
+
 ```
-"fqnFilterPattern": {
-  "includes": ["service.database.schema.*"]
-}
+
+#### Source Configuration
+
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json).
+* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
+
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
+
+```
+fqnFilterPattern:
+  includes:
+    - service.database.schema.*
 ```
 
 #### Processor
@@ -288,41 +307,25 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
 
 ```json
- "processor": {
-    "type": "orm-profiler",
-    "config": {
-        "test_suite": {
-            "name": "<Test Suite name>",
-            "tests": [
-                {
-                    "table": "<Table FQN>",
-                    "table_tests": [
-                        {
-                            "testCase": {
-                                "config": {
-                                    "value": 100
-                                },
-                                "tableTestType": "tableRowCountToEqual"
-                            }
-                        }
-                    ],
-                    "column_tests": [
-                        {
-                            "columnName": "<Column Name>",
-                            "testCase": {
-                                "config": {
-                                    "minValue": 0,
-                                    "maxValue": 99
-                                },
-                                "columnTestType": "columnValuesToBeBetween"
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-     }
-  },
+processor:
+  type: orm-profiler
+  config:
+    test_suite:
+      name: <Test Suite name>
+      tests:
+        - table: <Table FQN>
+          table_tests:
+            - testCase:
+                config:
+                  value: 100
+                tableTestType: tableRowCountToEqual
+          column_tests:
+            - columnName: <Column Name>
+              testCase:
+                config:
+                  minValue: 0
+                  maxValue: 99
+                columnTestType: columnValuesToBeBetween
 ```
 
 `tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../../data-quality/data-quality-overview/tests.md).
@@ -333,12 +336,12 @@ The same as the [metadata](run-snowflake-connector-with-the-cli.md#workflow-conf
 
 ### 2. Run with the CLI
 
-Again, we will start by saving the JSON file.
+Again, we will start by saving the YAML file.
 
 Then, we can run the workflow as:
 
 ```
-metadata profile -c <path-to-json>
+metadata profile -c <path-to-yaml>
 ```
 
 ## DBT Integration
