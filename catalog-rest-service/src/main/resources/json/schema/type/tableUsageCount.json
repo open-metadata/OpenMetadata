@@ -50,7 +50,8 @@
     },
     "count": {
       "description": "Usage count of table",
-      "type": "integer"
+      "type": "integer",
+      "default": 1
     },
     "databaseSchema": {
       "description": "Database schema of the associated with table",

@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
@@ -18,6 +17,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
+    JoinedWith,
     SqlQuery,
     Table,
     TableJoins,
@@ -36,12 +36,6 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import ingest_lineage_by_query
 
 logger = ingestion_logger()
-
-
-@dataclass
-class ColumnJoinedWith:
-    fullyQualifiedName: str
-    joinCount: int
 
 
 class MetadataUsageSinkConfig(ConfigModel):
@@ -107,7 +101,7 @@ class MetadataUsageBulkSink(BulkSink):
                 "usage_count"
             ] += table_usage.count
             self.table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
-                table_usage.sql_queries
+                table_usage.sqlQueries
             )
 
     def __publish_usage_records(self) -> None:
@@ -119,11 +113,11 @@ class MetadataUsageBulkSink(BulkSink):
                 table=value_dict["table_entity"],
                 table_queries=value_dict["sql_queries"],
             )
-            self.ingest_sql_queries_lineage(
-                value_dict["sql_queries"], value_dict["database"]
-            )
+            # self.ingest_sql_queries_lineage(
+            #     value_dict["sql_queries"], value_dict["database"]
+            # )
             table_usage_request = TableUsageRequest(
-                date=value_dict["usage_date"], count=value_dict["usage_count"]
+                date=self.today, count=value_dict["usage_count"]
             )
             try:
                 self.metadata.publish_table_usage(
@@ -220,13 +214,15 @@ class MetadataUsageBulkSink(BulkSink):
                 column_joins_dict[column_join.tableColumn.column] = {}
 
             for column in column_join.joinedWith:
-                joined_column_fqn = self.__get_column_fqn(column, table_entity)
+                joined_column_fqn = self.__get_column_fqn(
+                    table_usage.database, table_usage.databaseSchema, column
+                )
                 if str(joined_column_fqn) in joined_with.keys():
                     column_joined_with = joined_with[str(joined_column_fqn)]
                     column_joined_with.joinCount += 1
                     joined_with[str(joined_column_fqn)] = column_joined_with
                 elif joined_column_fqn is not None:
-                    joined_with[str(joined_column_fqn)] = ColumnJoinedWith(
+                    joined_with[str(joined_column_fqn)] = JoinedWith(
                         fullyQualifiedName=str(joined_column_fqn), joinCount=1
                     )
                 else:
@@ -242,14 +238,20 @@ class MetadataUsageBulkSink(BulkSink):
         return table_joins
 
     def __get_column_fqn(
-        self, table_column: TableColumn, table_entity: Table
+        self, database: str, database_schema: str, table_column: TableColumn
     ) -> Optional[str]:
         """
         Method to get column fqn
         """
-        for tbl_column in table_entity.columns:
-            if table_column.column.lower() == tbl_column.name.__root__.lower():
-                return tbl_column.fullyQualifiedName.__root__
+        table_entities = self.__get_table_entity(
+            database, database_schema, table_column.table
+        )
+        if not table_entities:
+            return None
+        for table_entity in table_entities:
+            for tbl_column in table_entity.columns:
+                if table_column.column.lower() == tbl_column.name.__root__.lower():
+                    return tbl_column.fullyQualifiedName.__root__
 
     def __get_table_entity(
         self, database: str, database_schema: Optional[str], table: str

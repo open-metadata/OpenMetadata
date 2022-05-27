@@ -73,9 +73,12 @@ class QueryParserProcessor(Processor):
         config = QueryParserProcessorConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def process(self, record: TableQuery) -> QueryParserData:
+    def process(self, record: TableQuery) -> Optional[QueryParserData]:
+        query_parser_data = None
         try:
-            start_date = record.analysisDate
+            if not record.query:
+                return
+            start_date = record.analysisDate.__root__
             if isinstance(record.analysisDate, str):
                 start_date = datetime.datetime.strptime(
                     str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
@@ -84,13 +87,13 @@ class QueryParserProcessor(Processor):
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(
                 tables=parser.tables,
-                tables_aliases=parser.tables_aliases,
+                tableAliases=parser.tables_aliases,
                 columns=columns_dict,
                 database=record.database,
                 databaseSchema=record.databaseSchema,
                 sql=record.query,
                 date=start_date.strftime("%Y-%m-%d"),
-                service_name=record.serviceName,
+                serviceName=record.serviceName,
             )
         # pylint: disable=broad-except
         except Exception as err:
@@ -98,8 +101,6 @@ class QueryParserProcessor(Processor):
                 logger.debug(record.sql)
             logger.debug(traceback.format_exc())
             logger.error(err)
-            query_parser_data = None
-
         return query_parser_data
 
     def close(self):

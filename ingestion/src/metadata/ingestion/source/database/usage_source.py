@@ -91,8 +91,8 @@ class UsageSource(Source[TableQuery]):
         :return:
         """
         for row in self._get_raw_extract_iter():
-            try:
-                if row:
+            if row:
+                try:
                     table_query = TableQuery(
                         query=row["query_text"],
                         userName=row["user_name"],
@@ -105,14 +105,16 @@ class UsageSource(Source[TableQuery]):
                         databaseSchema=row["schema_name"],
                     )
                     logger.debug(f"Parsed Query: {row['query_text']}")
-                if not row["schema_name"]:
-                    self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-                else:
-                    self.report.scanned(f"{row['database_name']}")
-                yield table_query
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.debug(repr(err))
+                    if not row["schema_name"]:
+                        self.report.scanned(
+                            f"{row['database_name']}.{row['schema_name']}"
+                        )
+                    else:
+                        self.report.scanned(f"{row['database_name']}")
+                    yield table_query
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(str(err))
 
     def get_report(self):
         """

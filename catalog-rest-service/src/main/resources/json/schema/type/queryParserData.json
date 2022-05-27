@@ -18,7 +18,7 @@
     },
     "columns": {
       "description": "Table columns used in query",
-      "type": "string"
+      "type": "object"
     },
     "database": {
       "description": "Database of the associated with query",
@@ -41,13 +41,6 @@
       "type": "string"
     }
   },
-  "required": [
-    "sql",
-    "serviceName",
-    "tables",
-    "columns",
-    "tableAliases",
-    "database"
-  ],
+  "required": ["sql", "serviceName", "tables", "database"],
   "additionalProperties": false
 }

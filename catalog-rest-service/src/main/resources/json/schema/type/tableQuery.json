@@ -23,7 +23,7 @@
     },
     "analysisDate": {
       "description": "Date of execution of SQL query",
-      "type": "string"
+      "$ref": "./basic.json#/definitions/dateTime"
     },
     "aborted": {
       "description": "Flag to check if query was aborted during execution",

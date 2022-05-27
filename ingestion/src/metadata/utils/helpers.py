@@ -46,7 +46,7 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -186,7 +186,8 @@ def datetime_to_ts(date: datetime) -> int:
 
 
 def _get_formmated_table_name(table_name):
-    return table_name.replace("[", "").replace("]", "")
+    if table_name:
+        return table_name.replace("[", "").replace("]", "")
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
