@@ -649,9 +649,10 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run endpoint health-check. Return `true` if OK
+        Run version api call. Return `true` if response is not None
         """
-        return self.client.get("/health-check")["status"] == "healthy"
+        raw_version = self.client.get("/version")["version"]
+        return raw_version is not None
 
     def close(self):
         """

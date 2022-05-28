@@ -575,7 +575,6 @@ const TopicDetailsPage: FunctionComponent = () => {
           topicFQN={topicFQN}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
-          users={AppState.users}
           version={currentVersion}
           versionHandler={versionHandler}
         />

@@ -13,33 +13,31 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEqual, isUndefined } from 'lodash';
+import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getSuggestedTeams,
+  getSuggestedUsers,
+} from '../axiosAPIs/miscAPI';
 import { getRoles } from '../axiosAPIs/rolesAPI';
-import { getTeams } from '../axiosAPIs/teamsAPI';
 import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
-import { API_RES_MAX_SIZE } from '../constants/constants';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SettledStatus } from '../enums/axios.enum';
 import { User } from '../generated/entity/teams/user';
+import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
-const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, API_RES_MAX_SIZE)
+export const getAllUsersList = (arrQueryFields = ''): void => {
+  getUsers(arrQueryFields, 1)
     .then((res) => {
       AppState.updateUsers(res.data.data);
     })
     .catch(() => {
       AppState.updateUsers([]);
-    });
-};
-
-const getAllTeams = (): void => {
-  getTeams('defaultRoles')
-    .then((res: AxiosResponse) => {
-      AppState.updateUserTeam(res.data.data);
-    })
-    .catch(() => {
-      AppState.updateUserTeam([]);
     });
 };
 
@@ -56,7 +54,6 @@ const getAllRoles = (): void => {
 export const fetchAllUsers = () => {
   AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
-  getAllTeams();
   getAllRoles();
 };
 
@@ -93,6 +90,10 @@ export const matchUserDetails = (
   }
 
   return isMatch;
+};
+
+export const isCurrentUserAdmin = () => {
+  return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
 };
 
 export const fetchUserProfilePic = (userId?: string, username?: string) => {
@@ -142,4 +143,65 @@ export const getUserProfilePic = (userId?: string, username?: string) => {
   }
 
   return profile;
+};
+
+export const searchFormattedUsersAndTeams = (
+  searchQuery = WILD_CARD_CHAR,
+  from = 1
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSearchedUsers(searchQuery, from),
+      getSearchedTeams(searchQuery, from),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(resUsers.value.data.hits.hits)
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(resTeams.value.data.hits.hits)
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
+};
+
+export const suggestFormattedUsersAndTeams = (
+  searchQuery: string
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSuggestedUsers(searchQuery),
+      getSuggestedTeams(searchQuery),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<AxiosResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(
+                  resUsers.value.data.suggest['table-suggest'][0].options
+                )
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(
+                  resTeams.value.data.suggest['table-suggest'][0].options
+                )
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
 };

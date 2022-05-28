@@ -28,7 +28,6 @@ import {
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -91,21 +90,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
