@@ -330,7 +330,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       try {
         String json = JsonUtils.pojoToJson(list);
         Response response;
-        if (webhook.getSecretKey() != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
           response = getTarget().header(RestUtil.SIGNATURE_HEADER, hmac).post(javax.ws.rs.client.Entity.json(json));
         } else {
