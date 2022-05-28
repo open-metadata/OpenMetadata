@@ -38,6 +38,7 @@ const AppRouter = () => {
   ) : (
     <>
       {authConfig?.provider === AuthTypes.GOOGLE ||
+      authConfig?.provider === AuthTypes.AWS_COGNITO ||
       authConfig?.provider === AuthTypes.CUSTOM_OIDC ? (
         <AuthenticatedAppRouter />
       ) : (

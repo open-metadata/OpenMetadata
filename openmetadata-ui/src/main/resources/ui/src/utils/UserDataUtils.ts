@@ -67,9 +67,12 @@ export const getUserDataFromOidc = (
   const images = oidcUser.profile.picture
     ? getImages(oidcUser.profile.picture)
     : undefined;
+  const profileEmail = oidcUser.profile.email;
+  const email = isEmpty(profileEmail) ? userData.email : profileEmail;
 
   return {
     ...userData,
+    email,
     displayName: oidcUser.profile.name,
     profile: !isEmpty(images) ? { images } : userData.profile,
   };
