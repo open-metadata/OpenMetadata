@@ -28,7 +28,9 @@ export const getTypeListByCategory = (
 export const getTypeByFQN = (typeFQN: string): Promise<AxiosResponse> => {
   const path = `/metadata/types/name/${typeFQN}`;
 
-  return APIClient.get(path);
+  const params = { fields: 'customFields' };
+
+  return APIClient.get(path, { params });
 };
 
 export const addFieldToEntity = (

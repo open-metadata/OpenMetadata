@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getTypeByFQN } from '../../axiosAPIs/metadataTypeAPI';
 import { getAddCustomFieldPath } from '../../constants/constants';
 import { Type } from '../../generated/entity/type';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
@@ -36,6 +39,16 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
   const [selectedEntityType, setSelectedEntityType] = useState<Type>(
     {} as Type
   );
+  const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
+    useState<Type>({} as Type);
+
+  const fetchTypeDetail = (typeFQN: string) => {
+    getTypeByFQN(typeFQN)
+      .then((res: AxiosResponse) => {
+        setSelectedEntityTypeDetail(res.data);
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
 
   const onTabChange = (tab: number) => {
     setActiveTab(tab);
@@ -47,16 +60,17 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
 
   const handleAddField = () => {
     const path = getAddCustomFieldPath(
-      selectedEntityType.fullyQualifiedName || ''
+      selectedEntityTypeDetail.fullyQualifiedName as string
     );
     history.push(path);
   };
 
-  const schemaCheck = activeTab === 1 && !isEmpty(selectedEntityType);
-  const schemaValue = selectedEntityType.schema || '{}';
+  const schemaCheck = activeTab === 1 && !isEmpty(selectedEntityTypeDetail);
+  const schemaValue = selectedEntityTypeDetail.schema || '{}';
 
-  const customFieldsCheck = activeTab === 2 && !isEmpty(selectedEntityType);
-  const customFields = selectedEntityType.customFields || [];
+  const customFieldsCheck =
+    activeTab === 2 && !isEmpty(selectedEntityTypeDetail);
+  const customFields = selectedEntityTypeDetail.customFields || [];
 
   const tabs = [
     {
@@ -81,11 +95,20 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
     }
   }, [entityTypes, entityTypeFQN]);
 
+  useEffect(() => {
+    if (!isEmpty(selectedEntityType)) {
+      fetchTypeDetail(selectedEntityType.fullyQualifiedName as string);
+    }
+  }, [selectedEntityType]);
+
   return (
     <PageContainer>
       <PageLayout
         leftPanel={
-          <LeftPanel selectedType={selectedEntityType} typeList={entityTypes} />
+          <LeftPanel
+            selectedType={selectedEntityTypeDetail}
+            typeList={entityTypes}
+          />
         }>
         <TabsPane
           activeTab={activeTab}
