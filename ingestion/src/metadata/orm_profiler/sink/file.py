@@ -28,6 +28,11 @@ class FileSinkConfig(ConfigModel):
 
 
 class FileSink(Sink[Entity]):
+    """
+    Helper sink to save profiler
+    results in a file for analysis
+    """
+
     config: FileSinkConfig
     report: SinkStatus
 
@@ -44,7 +49,7 @@ class FileSink(Sink[Entity]):
         # Build the path if it does not exist
         if not fpath.parent.is_dir():
             Path(self.config.filename).mkdir(parents=True, exist_ok=True)
-        self.file = fpath.open("w")
+        self.file = fpath.open("w", encoding="utf-8")
         self.wrote_something = False
 
     @classmethod
@@ -61,7 +66,7 @@ class FileSink(Sink[Entity]):
         self.file.write(f"{record.profile.json()}\n")
 
         if record.record_tests:
-            self.file.write(f"\nTest results:\n")
+            self.file.write("\nTest results:\n")
             self.file.write(f"{record.record_tests.json()}\n")
 
         self.wrote_something = True

@@ -96,7 +96,7 @@ import {
 } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
+import { getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -748,12 +748,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 )}
                               </td>
                               <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(schema?.owner?.id)
-                                    ?.displayName ||
-                                    getOwnerFromId(schema?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
+                                <p>{getEntityName(schema?.owner) || '--'}</p>
                               </td>
                               <td className="tableBody-cell">
                                 <p>

@@ -204,11 +204,11 @@ class MetabaseSource(DashboardSourceService):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqdn = f"{self.service_connection.dbServiceName}.{table['schema']}.{table['name']}"
-                    dashboard_fqdn = f"{self.service.name}.{quote(dashboard_name)}"
-                    table_entity = metadata.get_by_name(entity=Table, fqdn=table_fqdn)
+                    table_fqn = f"{self.service_connection.dbServiceName}.{table['schema']}.{table['name']}"
+                    dashboard_fqn = f"{self.service.name}.{quote(dashboard_name)}"
+                    table_entity = metadata.get_by_name(entity=Table, fqn=table_fqn)
                     chart_entity = metadata.get_by_name(
-                        entity=Model_Dashboard, fqdn=dashboard_fqdn
+                        entity=Model_Dashboard, fqn=dashboard_fqn
                     )
                     logger.debug("from entity %s", table_entity)
                     if table_entity and chart_entity:

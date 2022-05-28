@@ -20,12 +20,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.database.sql_source import SQLSourceStatus
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.helpers import get_start_and_end
 

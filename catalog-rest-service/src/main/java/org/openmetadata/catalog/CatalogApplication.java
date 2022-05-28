@@ -29,10 +29,16 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 import java.util.Optional;
+import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -79,6 +85,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
     final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -125,7 +132,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
+    environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
     registerResources(catalogConfig, environment, jdbi);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
@@ -137,9 +144,13 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
+    FilterRegistration.Dynamic micrometerFilter =
+        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 
   @SneakyThrows
@@ -163,6 +174,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
+    bootstrap.addBundle(new MicrometerBundle());
     super.initialize(bootstrap);
   }
 

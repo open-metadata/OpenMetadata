@@ -139,7 +139,7 @@ class Metric(ABC):
         return self.col.type.python_type if self.col else None
 
 
-MetricType = TypeVar("MetricType", bound=Metric)
+TMetric = TypeVar("TMetric", bound=Metric)
 
 
 class StaticMetric(Metric, ABC):

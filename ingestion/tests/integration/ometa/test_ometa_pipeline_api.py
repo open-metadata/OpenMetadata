@@ -104,7 +104,7 @@ class OMetaPipelineTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqdn="test-service-pipeline"
+                entity=PipelineService, fqn="test-service-pipeline"
             ).id.__root__
         )
 
@@ -152,7 +152,7 @@ class OMetaPipelineTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Pipeline, fqdn=self.entity.fullyQualifiedName
+            entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -165,7 +165,7 @@ class OMetaPipelineTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqdn=self.entity.fullyQualifiedName
+            entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Pipeline, entity_id=res_name.id)
@@ -196,7 +196,7 @@ class OMetaPipelineTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqdn=self.entity.fullyQualifiedName
+            entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -358,7 +358,7 @@ class OMetaPipelineTest(TestCase):
 
         updated_pipeline = self.metadata.get_by_name(
             entity=Pipeline,
-            fqdn="test-service-pipeline.pipeline-test",
+            fqn="test-service-pipeline.pipeline-test",
             fields=["tasks"],
         )
 
@@ -376,7 +376,7 @@ class OMetaPipelineTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqdn=self.entity.fullyQualifiedName
+            entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -392,7 +392,7 @@ class OMetaPipelineTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Pipeline, fqdn=self.entity.fullyQualifiedName
+            entity=Pipeline, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Pipeline, entity_id=res_name.id.__root__, version=0.1
@@ -408,7 +408,7 @@ class OMetaPipelineTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Pipeline, fqdn=res.fullyQualifiedName
+            entity=Pipeline, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

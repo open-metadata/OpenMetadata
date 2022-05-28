@@ -143,9 +143,9 @@ describe('TeamsAndUsers page', () => {
 
   it('Add and remove user to team should work properly', () => {
     const searchString = 'aaron';
-    
-    cy.wait(1000)
-    cy.get('[data-testid="add-new-user"]').should('be.visible'); 
+
+    cy.wait(1000);
+    cy.get('[data-testid="add-new-user"]').should('be.visible');
     cy.get('[data-testid="add-new-user"]').click();
     cy.get('.tw-modal-container').should('be.visible');
     cy.get(
@@ -276,18 +276,17 @@ describe('TeamsAndUsers page', () => {
     ).as('searchApi');
 
     cy.wait('@searchApi');
-
     cy.get('[data-testid="table-link"]')
       .first()
       .contains(SEARCH_ENTITY_TABLE.table_1.term)
-      .click();
+      .as('resultLink');
+    cy.wait(500); // Wait for result to load after api success
+    cy.get('@resultLink').click();
 
     cy.get('[data-testid="Manage"]').should('be.visible').click();
     cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-
-    cy.get('[data-testid="searchInputText"]')
-      .should('be.visible')
-      .type(TEAMS.Cloud_Infra.name);
+    
+    cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
       .should('be.visible')
@@ -368,7 +367,7 @@ describe('TeamsAndUsers page', () => {
         cy.get('.tw-z-10').click();
 
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')

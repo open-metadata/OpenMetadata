@@ -23,7 +23,6 @@ from tableau_api_lib.utils.querying import (
     get_workbooks_dataframe,
 )
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Dashboard_Entity,
@@ -44,6 +43,7 @@ from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import FQN_SEPARATOR
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -168,14 +168,14 @@ class TableauSource(DashboardSourceService):
         dashboard_name = dashboard_details.get("name")
         for datasource in datasource_list:
             try:
-                table_fqdn = datasource.split("(")[1].split(")")[0]
-                dashboard_fqdn = f"{self.config.serviceName}.{dashboard_name}"
-                table_fqdn = f"{self.source_config.dbServiceName}.{table_fqdn}"
+                table_fqn = datasource.split("(")[1].split(")")[0]
+                dashboard_fqn = f"{self.config.serviceName}.{dashboard_name}"
+                table_fqn = f"{self.source_config.dbServiceName}.{table_fqn}"
                 table_entity = self.metadata_client.get_by_name(
-                    entity=Table, fqdn=table_fqdn
+                    entity=Table, fqn=table_fqn
                 )
                 dashboard_entity = self.metadata_client.get_by_name(
-                    entity=Dashboard_Entity, fqdn=dashboard_fqdn
+                    entity=Dashboard_Entity, fqn=dashboard_fqn
                 )
                 if table_entity and dashboard_entity:
                     lineage = AddLineageRequest(
@@ -211,7 +211,7 @@ class TableauSource(DashboardSourceService):
                     f"{self.all_dashboard_details['contentUrl'][index]}"
                 )
                 chart_owner = self.all_dashboard_details["owner"][index]
-                chart_datasource_fqn = chart_url.replace("/", FQDN_SEPARATOR)
+                chart_datasource_fqn = chart_url.replace("/", FQN_SEPARATOR)
                 chart_last_modified = self.all_dashboard_details["updatedAt"][index]
                 tag_labels = []
                 if hasattr(chart_tags, "tag"):

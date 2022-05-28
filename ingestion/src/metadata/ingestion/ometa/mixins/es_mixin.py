@@ -53,7 +53,7 @@ class ESMixin(Generic[T]):
 
         if response:
             return [
-                self.get_by_name(entity=entity_type, fqdn=hit["_source"]["fqdn"])
+                self.get_by_name(entity=entity_type, fqn=hit["_source"]["fqdn"])
                 for hit in response["hits"]["hits"]
             ] or None
 

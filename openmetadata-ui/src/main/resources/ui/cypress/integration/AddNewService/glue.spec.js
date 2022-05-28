@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Glue Ingestion', () => {
   it('add and ingest data', () => {

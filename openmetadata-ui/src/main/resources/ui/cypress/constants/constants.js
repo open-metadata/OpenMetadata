@@ -121,3 +121,12 @@ export const NEW_ADMIN = {
   display_name: `Test admin ${id}`,
   description: 'Hello, I am test admin',
 };
+
+export const NEW_TAG_CATEGORY = {
+  name: 'TestCategory',
+  description: 'This is the TestCategory',
+};
+export const NEW_TAG = {
+  name: 'test',
+  description: 'This is the Test tag',
+};

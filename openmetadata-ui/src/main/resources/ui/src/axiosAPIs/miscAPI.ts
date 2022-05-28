@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { isUndefined } from 'lodash';
 import { Edge } from '../components/EntityLineage/EntityLineage.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import { getCurrentUserId } from '../utils/CommonUtils';
@@ -102,11 +103,29 @@ export const getLoggedInUserPermissions: Function =
     return APIClient.get('/permissions');
   };
 
-export const getInitialUsers: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=user_search_index`
-  );
+export const getInitialEntity = (
+  index: SearchIndex,
+  params = {} as AxiosRequestConfig
+): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/query`, {
+    params: {
+      q: WILD_CARD_CHAR,
+      from: 0,
+      size: 5,
+      index,
+      ...params,
+    },
+  });
 };
+
+export const getSuggestedUsers = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.USER}`);
+};
+
+export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
+};
+
 export const getUserSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {
@@ -114,9 +133,36 @@ export const getUserSuggestions: Function = (
     `/search/suggest?q=${term}&index=${SearchIndex.USER},${SearchIndex.TEAM}`
   );
 };
-export const getInitialEntity: Function = (): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/query?q=*&from=0&size=5&index=${SearchIndex.TABLE}`
+
+export const getSearchedUsers = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
+};
+
+export const getSearchedTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+};
+
+export const getSearchedUsersAndTeams = (
+  queryString: string,
+  from: number,
+  size = 10
+): Promise<AxiosResponse> => {
+  return searchData(
+    queryString,
+    from,
+    size,
+    '',
+    '',
+    '',
+    `${SearchIndex.USER},${SearchIndex.TEAM}`
   );
 };
 

@@ -13,10 +13,8 @@
 
 import { Button } from 'antd';
 import { isNil } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import AppState from '../../AppState';
 import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,
@@ -34,6 +32,8 @@ type Props = {
   countServices: number;
   countTables: number;
   countTopics: number;
+  countTeams: number;
+  countUsers: number;
 };
 type Summary = {
   icon: string;
@@ -50,8 +50,9 @@ const MyAssetStats: FunctionComponent<Props> = ({
   countServices,
   countTables,
   countTopics,
+  countTeams,
+  countUsers,
 }: Props) => {
-  const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getSummarydata = () => {
@@ -94,7 +95,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       user: {
         icon: Icons.USERS,
         data: 'Users',
-        count: users.length,
+        count: countUsers,
         link: getTeamAndUserDetailsPath(UserType.USERS),
         dataTestId: 'user',
         adminOnly: true,
@@ -102,7 +103,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       teams: {
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
-        count: userTeams.length,
+        count: countTeams,
         link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
       },
@@ -111,7 +112,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setdataSummary(getSummarydata());
-  }, [userTeams, users, countServices]);
+  }, []);
 
   return (
     <div data-testid="data-summary-container" id="assetStatsCount">
@@ -165,4 +166,4 @@ const MyAssetStats: FunctionComponent<Props> = ({
   );
 };
 
-export default observer(MyAssetStats);
+export default MyAssetStats;
