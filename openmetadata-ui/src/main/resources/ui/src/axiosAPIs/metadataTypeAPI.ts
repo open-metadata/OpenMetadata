@@ -13,22 +13,16 @@
 
 import { AxiosResponse } from 'axios';
 import { Category, CustomField } from '../generated/entity/type';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getTypeListByCategory = (
   category: Category
 ): Promise<AxiosResponse> => {
-  const searchParams = new URLSearchParams();
-  searchParams.set('category', category);
-  searchParams.set('limit', '12');
-  const path = getURLWithQueryFields(
-    `/metadata/types`,
-    '',
-    searchParams.toString()
-  );
+  const path = `/metadata/types`;
 
-  return APIClient.get(path);
+  const params = { category, limit: '12' };
+
+  return APIClient.get(path, { params });
 };
 
 export const getTypeByFQN = (typeFQN: string): Promise<AxiosResponse> => {
