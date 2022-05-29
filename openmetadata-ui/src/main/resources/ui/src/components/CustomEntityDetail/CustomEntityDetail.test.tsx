@@ -38,6 +38,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
+jest.mock('../../axiosAPIs/metadataTypeAPI', () => ({
+  getTypeByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockData })),
+}));
+
 jest.mock('../containers/PageContainer', () => {
   return jest
     .fn()
