@@ -237,6 +237,13 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormattedTeamsData = {
+    name: string;
+    displayName: string;
+    type: string;
+    id: string;
+  };
+
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
@@ -244,6 +251,11 @@ declare module 'Models' {
     type: string;
     id: string;
     description?: string;
+  };
+
+  export type SearchedUsersAndTeams = {
+    users: FormattedUsersData[];
+    teams: FormattedTeamsData[];
   };
 
   export type TagOption = {

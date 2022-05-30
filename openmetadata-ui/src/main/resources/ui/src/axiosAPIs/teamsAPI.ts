@@ -17,11 +17,12 @@ import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getTeams = (
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  limit = 100000
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=1000000`);
+  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=${limit}`);
 };
 
 export const getTeamByName: Function = (

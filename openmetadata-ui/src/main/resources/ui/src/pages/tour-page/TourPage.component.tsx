@@ -129,7 +129,9 @@ const TourPage = () => {
             countPipelines={8}
             countServices={4}
             countTables={21}
+            countTeams={7}
             countTopics={20}
+            countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
@@ -240,7 +242,6 @@ const TourPage = () => {
             usageSummary={
               mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }
-            users={[]}
             versionHandler={handleCountChange}
           />
         );

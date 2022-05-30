@@ -14,7 +14,7 @@
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -30,7 +30,6 @@ import {
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
@@ -141,9 +140,7 @@ const EntityPageInfo = ({
   };
 
   const getFollowers = () => {
-    const list = entityFollowers
-      .map((follower) => getFollowerDetail(follower.id))
-      .filter(Boolean);
+    const list = cloneDeep(entityFollowers);
 
     return (
       <div
