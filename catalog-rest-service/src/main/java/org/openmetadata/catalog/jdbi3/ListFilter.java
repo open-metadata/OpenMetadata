@@ -38,6 +38,7 @@ public class ListFilter {
     condition = addCondition(condition, getDatabaseCondition(tableName));
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
+    condition = addCondition(condition, getCategoryCondition(tableName));
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -67,10 +68,21 @@ public class ListFilter {
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, escape(parentFqn));
   }
 
+  public String getCategoryCondition(String tableName) {
+    String category = queryParams.get("category");
+    return category == null ? "" : getCategoryPrefixCondition(tableName, escape(category));
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
         ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
         : String.format("%s.fullyQualifiedName LIKE '%s%s%%'", tableName, fqnPrefix, Entity.SEPARATOR);
+  }
+
+  private String getCategoryPrefixCondition(String tableName, String category) {
+    return tableName == null
+        ? String.format("category LIKE '%s%s%%'", category, "")
+        : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
   }
 
   private String addCondition(String condition1, String condition2) {
