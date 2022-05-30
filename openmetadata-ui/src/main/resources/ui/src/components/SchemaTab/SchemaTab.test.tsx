@@ -21,6 +21,7 @@ import {
   LabelType,
   Source,
   State,
+  Table,
 } from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab.component';
 const mockColumns: Column[] = [
@@ -78,6 +79,13 @@ jest.mock('../EntityTable/EntityTable.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTable</p>);
 });
 
+const mockTableConstraints = [
+  {
+    constraintType: 'PRIMARY_KEY',
+    columns: ['address_id', 'shop_id'],
+  },
+] as Table['tableConstraints'];
+
 describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
@@ -88,6 +96,7 @@ describe('Test SchemaTab Component', () => {
         joins={mockjoins}
         owner={mockOwner}
         sampleData={mockSampleData}
+        tableConstraints={mockTableConstraints}
         onUpdate={mockUpdate}
       />,
       {

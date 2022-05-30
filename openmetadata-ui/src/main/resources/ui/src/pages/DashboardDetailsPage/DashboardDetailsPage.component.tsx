@@ -759,7 +759,6 @@ const DashboardDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
-          users={AppState.users}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

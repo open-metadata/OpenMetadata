@@ -33,8 +33,9 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
+import { getEntityName } from './CommonUtils';
 import { isValidJSONString } from './StringsUtils';
-import { getEntityLink, getOwnerFromId } from './TableUtils';
+import { getEntityLink } from './TableUtils';
 
 /* eslint-disable */
 const parseMarkdown = (
@@ -262,10 +263,6 @@ const getDescriptionElement = (fieldChange: FieldChange) => {
   );
 };
 
-const getOwnerName = (id: string) => {
-  return getOwnerFromId(id)?.displayName || getOwnerFromId(id)?.name || '';
-};
-
 export const feedSummaryFromatter = (
   fieldChange: FieldChange,
   type: ChangeType,
@@ -377,9 +374,7 @@ export const feedSummaryFromatter = (
     }
 
     case fieldChange?.name === 'owner': {
-      const ownerName =
-        getOwnerName(newValue?.id as string) ||
-        getOwnerName(value?.id as string);
+      const ownerName = getEntityName(newValue) || getEntityName(value);
       const ownerText =
         !isEmpty(oldValue) && !isEmpty(newValue) ? (
           <Fragment>
