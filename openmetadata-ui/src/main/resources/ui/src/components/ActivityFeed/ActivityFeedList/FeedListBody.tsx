@@ -93,7 +93,6 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           return (
             <div data-testid="message-container" key={index}>
               <ActivityFeedCard
-                className="tw-mb-6"
                 data-testid="main-message"
                 entityLink={feed.about}
                 feed={mainFeed}

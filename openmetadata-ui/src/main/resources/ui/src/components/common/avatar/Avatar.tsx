@@ -46,9 +46,7 @@ const Avatar = ({
         fontSize: `${Number(width) / 2}px`,
         fontWeight: 'normal',
       }}>
-      <p className={classNames('tw-self-center tw-capitalize', textClass)}>
-        {character}
-      </p>
+      <span className={classNames(textClass)}>{character}</span>
     </div>
   );
 };

@@ -37,9 +37,10 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       <Row className="tw-my-4">
         <Col
-          className="tw-bg-white tw-px-8 tw-drop-shadow-2xl tw-rounded-lg"
+          className="tw-bg-white tw-px-4 tw-drop-shadow-md tw-rounded-lg"
           offset={1}
-          span={22}>
+          span={22}
+          style={{ border: '2px #e0e7ef solid', borderRadius: '8px' }}>
           {leftPanel && <div id="left-panel">{leftPanel}</div>}
         </Col>
       </Row>
@@ -49,12 +50,14 @@ const PageLayout: FC<PageLayoutProp> = ({
   const getRightPanel = () => {
     return (
       rightPanel && (
-        <div>
-          <div className="tw-px-2 tw-py-1" id="right-panel">
-            {rightPanel}
-          </div>
-          <div />
-        </div>
+        <Row className="tw-my-4">
+          <Col offset={1} span={22}>
+            <div className="tw-py-1" id="right-panel">
+              {rightPanel}
+            </div>
+            <div />
+          </Col>
+        </Row>
       )
     );
   };

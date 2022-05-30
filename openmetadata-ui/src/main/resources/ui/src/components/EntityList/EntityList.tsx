@@ -18,9 +18,18 @@ import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import { Card } from 'antd';
 interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
+  noDataPlaceholder: JSX.Element;
+  testIDText: string;
+}
+
+interface AntdEntityListProp {
+  entityList: Array<FormatedTableData>;
+  headerText: string | JSX.Element;
+  headerTextLabel: string;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
@@ -68,6 +77,55 @@ const EntityList: FunctionComponent<Prop> = ({
           })
         : noDataPlaceholder}
     </Fragment>
+  );
+};
+
+export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
+  entityList = [],
+  headerText,
+  headerTextLabel,
+  noDataPlaceholder,
+  testIDText,
+}: AntdEntityListProp) => {
+  return (
+    <Card
+      extra={headerText}
+      style={{
+        border: '2px #e0e7ef solid',
+        borderRadius: '8px',
+        marginTop: '3px',
+      }}
+      title={headerTextLabel}>
+      {entityList.length
+        ? entityList.map((item, index) => {
+            return (
+              <div
+                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                data-testid={`${testIDText}-${getEntityName(
+                  item as unknown as EntityReference
+                )}`}
+                key={index}>
+                <div className="tw-flex">
+                  {getEntityIcon(item.index || item.type || '')}
+                  <Link
+                    className="tw-font-medium"
+                    to={getEntityLink(
+                      item.index || item.type || '',
+                      item.fullyQualifiedName
+                    )}>
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      title={getEntityName(item as unknown as EntityReference)}
+                      type="text">
+                      {getEntityName(item as unknown as EntityReference)}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        : noDataPlaceholder}
+    </Card>
   );
 };
 

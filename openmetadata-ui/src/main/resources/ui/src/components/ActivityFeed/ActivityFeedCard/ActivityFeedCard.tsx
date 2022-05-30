@@ -24,6 +24,7 @@ import FeedCardBody from '../FeedCardBody/FeedCardBody';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from '../FeedCardHeader/FeedCardHeader';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
+import { Card } from 'antd';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
@@ -46,33 +47,36 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
 
   return (
-    <div className={classNames(className)}>
-      <FeedCardHeader
-        createdBy={feed.from}
-        entityFQN={entityFQN as string}
-        entityField={entityField as string}
-        entityType={entityType as string}
-        isEntityFeed={isEntityFeed}
-        timeStamp={feed.postTs}
-      />
-      <FeedCardBody
-        className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
-        isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
-        message={feed.message}
-        postId={feed.id}
-        threadId={threadId as string}
-        onConfirmation={onConfirmation}
-      />
-      <FeedCardFooter
-        className="tw-ml-9 tw-mt-3"
-        isFooterVisible={isFooterVisible}
-        lastReplyTimeStamp={lastReplyTimeStamp}
-        repliedUsers={repliedUsers}
-        replies={replies}
-        threadId={threadId}
-        onThreadSelect={onThreadSelect}
-      />
-    </div>
+    <Card style={{ border: '2px #e0e7ef solid', borderRadius: '8px' }}>
+      <div className={classNames(className)}>
+        <FeedCardHeader
+          createdBy={feed.from}
+          entityFQN={entityFQN as string}
+          entityField={entityField as string}
+          entityType={entityType as string}
+          isEntityFeed={isEntityFeed}
+          timeStamp={feed.postTs}
+        />
+        <FeedCardBody
+          className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
+          isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
+          message={feed.message}
+          postId={feed.id}
+          threadId={threadId as string}
+          onConfirmation={onConfirmation}
+        />
+        <div className="tw-filter-seperator" />
+        <FeedCardFooter
+          className="tw-ml-9 tw-mt-3"
+          isFooterVisible={isFooterVisible}
+          lastReplyTimeStamp={lastReplyTimeStamp}
+          repliedUsers={repliedUsers}
+          replies={replies}
+          threadId={threadId}
+          onThreadSelect={onThreadSelect}
+        />
+      </div>
+    </Card>
   );
 };
 
