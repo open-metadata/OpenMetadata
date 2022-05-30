@@ -26,7 +26,7 @@ describe('Kafka Ingestion', () => {
       );
       cy.get('#root_schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
-      )
+      );
     };
 
     const addIngestionInput = () => {
