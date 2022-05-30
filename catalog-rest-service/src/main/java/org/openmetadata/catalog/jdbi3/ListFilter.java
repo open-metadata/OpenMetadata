@@ -1,6 +1,9 @@
 package org.openmetadata.catalog.jdbi3;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.Include;
@@ -39,6 +42,7 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
     condition = addCondition(condition, getCategoryCondition(tableName));
+    condition = addCondition(condition, getWebhookCondition(tableName));
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -73,6 +77,11 @@ public class ListFilter {
     return category == null ? "" : getCategoryPrefixCondition(tableName, escape(category));
   }
 
+  public String getWebhookCondition(String tableName) {
+    String webhookStatus = queryParams.get("status");
+    return webhookStatus == null ? "" : getStatusPrefixCondition(tableName, escape(webhookStatus));
+  }
+
   private String getFqnPrefixCondition(String tableName, String fqnPrefix) {
     return tableName == null
         ? String.format("fullyQualifiedName LIKE '%s%s%%'", fqnPrefix, Entity.SEPARATOR)
@@ -83,6 +92,21 @@ public class ListFilter {
     return tableName == null
         ? String.format("category LIKE '%s%s%%'", category, "")
         : String.format("%s.category LIKE '%s%s%%'", tableName, category, "");
+  }
+
+  private String getStatusPrefixCondition(String tableName, String statusPrefix) {
+    if (!statusPrefix.isEmpty()) {
+      List<String> statusList = new ArrayList<>(Arrays.asList(statusPrefix.split(",")));
+      List<String> condition = new ArrayList<>();
+      for (String s : statusList) {
+        String format = "\"" + s + "\"";
+        condition.add(format);
+      }
+      return "status in (" + String.join(",", condition) + ")";
+    }
+    return tableName == null
+        ? String.format("status LIKE '%s%s%%'", statusPrefix, "")
+        : String.format("%s.status LIKE '%s%s%%'", tableName, statusPrefix, "");
   }
 
   private String addCondition(String condition1, String condition2) {
