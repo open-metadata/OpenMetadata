@@ -12,6 +12,8 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
+# pylint: disable=duplicate-code
+
 from sqlalchemy.sql.sqltypes import String, TypeDecorator
 
 

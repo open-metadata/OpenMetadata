@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -38,7 +38,6 @@ import {
   getEntityPlaceHolder,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  getUserTeams,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -91,7 +90,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  users,
   usageSummary,
   joins,
   tableType,
@@ -132,7 +130,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   paging,
   fetchFeedHandler,
 }: DatasetDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -174,10 +171,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
   };
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
   const setFollowersData = (followers: Array<EntityReference>) => {
@@ -529,12 +530,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
-
-  useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
   useEffect(() => {
@@ -635,6 +630,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
                       owner={owner}
                       sampleData={sampleData}
+                      tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}

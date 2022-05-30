@@ -221,9 +221,8 @@ fernetConfiguration:
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
       schedule:
         checkInterval: 2500ms

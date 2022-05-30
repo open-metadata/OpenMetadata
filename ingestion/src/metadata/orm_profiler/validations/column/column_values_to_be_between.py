@@ -12,6 +12,7 @@
 """
 ColumnValuesToBeBetween validation implementation
 """
+# pylint: disable=duplicate-code
 
 from datetime import datetime
 

@@ -64,6 +64,13 @@ const mockEntityFieldThreads = [
 const onEntityFieldSelect = jest.fn();
 const onThreadLinkSelect = jest.fn();
 
+const mockTableConstraints = [
+  {
+    constraintType: 'PRIMARY_KEY',
+    columns: ['address_id', 'shop_id'],
+  },
+] as Table['tableConstraints'];
+
 const mockEntityTableProp = {
   tableColumns: [
     {
@@ -145,6 +152,7 @@ const mockEntityTableProp = {
   entityFqn: 'bigquery_gcp.ecommerce.shopify.raw_product_catalog',
   owner: {} as Table['owner'],
   columnName: '',
+  tableConstraints: mockTableConstraints,
   onEntityFieldSelect,
   onThreadLinkSelect,
 };
