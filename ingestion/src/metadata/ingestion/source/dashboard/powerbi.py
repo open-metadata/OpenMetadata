@@ -15,6 +15,10 @@ import uuid
 from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as Lineage_Dashboard,
+)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -118,6 +122,16 @@ class PowerbiSource(DashboardSourceService):
             dataset_id = chart.get("datasetId")
             if dataset_id:
                 dataset = self.client.fetch_dataset_by_id(dataset_id=dataset_id)
+                if not dataset.get("error"):
+                    data_source_name = dataset.get("name")
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=f"{self.source_config.dbServiceName}.{data_source_name}",
+                    )
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=f"{self.config.serviceName}.{dashboard_details['id']}",
+                    )
 
     def process_charts(self) -> Iterable[Chart]:
         """
