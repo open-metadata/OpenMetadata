@@ -25,6 +25,10 @@ jest.mock('../../utils/CommonUtils', () => ({
   isEven: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
+});
+
 const mockUpdateEntityType = jest.fn();
 const mockFields = [
   {

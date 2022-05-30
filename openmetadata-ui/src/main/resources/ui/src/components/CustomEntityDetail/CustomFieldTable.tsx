@@ -17,6 +17,7 @@ import React, { FC, Fragment, useState } from 'react';
 import { CustomField, Type } from '../../generated/entity/type';
 import { getEntityName, isEven } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 
 interface CustomFieldTableProp {
@@ -81,7 +82,19 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                   <td className="tableBody-cell">
                     {getEntityName(field.fieldType)}
                   </td>
-                  <td className="tableBody-cell">{field.description}</td>
+                  <td className="tableBody-cell">
+                    {field.description ? (
+                      <RichTextEditorPreviewer
+                        markdown={field.description || ''}
+                      />
+                    ) : (
+                      <span
+                        className="tw-no-description tw-p-2 tw--ml-1.5"
+                        data-testid="no-description">
+                        No description{' '}
+                      </span>
+                    )}
+                  </td>
                   <td className="tableBody-cell">
                     <div className="tw-flex">
                       <button className="tw-cursor-pointer">
