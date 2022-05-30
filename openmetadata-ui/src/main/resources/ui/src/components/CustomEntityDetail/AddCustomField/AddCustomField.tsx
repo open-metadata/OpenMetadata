@@ -82,30 +82,18 @@ const AddCustomField: FC = () => {
     return Boolean(type);
   };
 
-  const handleNameError = (flag: boolean) => {
-    if (!flag) {
-      setFormErrorData((preVData) => ({
-        ...preVData,
-        name: 'Invalid Field Name',
-      }));
-    } else {
-      setFormErrorData((preVData) => ({
-        ...preVData,
-        name: '',
-      }));
-    }
-  };
-
-  const handleTypeError = (flag: boolean) => {
+  const handleError = (flag: boolean, field: string) => {
+    const message =
+      field === 'name' ? 'Invalid Field Name' : 'Type is required';
     if (!flag) {
       setFormErrorData((preVdata) => ({
         ...preVdata,
-        type: 'Type is required',
+        [field]: message,
       }));
     } else {
       setFormErrorData((preVdata) => ({
         ...preVdata,
-        type: '',
+        [field]: '',
       }));
     }
   };
@@ -119,7 +107,7 @@ const AddCustomField: FC = () => {
       case 'name': {
         const newData = { ...formData, name: value };
         const isValidName = validateName(value);
-        handleNameError(isValidName);
+        handleError(isValidName, 'name');
         setFormData(newData);
 
         break;
@@ -127,7 +115,7 @@ const AddCustomField: FC = () => {
       case 'type': {
         const newData = { ...formData, type: value };
         const isValidType = validateType(value);
-        handleTypeError(isValidType);
+        handleError(isValidType, 'type');
         setFormData(newData);
 
         break;
@@ -155,18 +143,15 @@ const AddCustomField: FC = () => {
         },
       };
       addFieldToEntity(typeDetail.id as string, fieldData)
-        .then((res: AxiosResponse) => {
-          const check = res.status === 200;
-          if (check) {
-            history.goBack();
-          }
+        .then(() => {
+          history.goBack();
         })
         .catch((err: AxiosError) => {
           showErrorToast(err);
         });
     } else {
-      handleNameError(isValidName);
-      handleTypeError(isValidType);
+      handleError(isValidName, 'name');
+      handleError(isValidType, 'type');
     }
   };
 
