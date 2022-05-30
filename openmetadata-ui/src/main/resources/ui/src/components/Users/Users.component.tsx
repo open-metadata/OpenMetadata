@@ -51,7 +51,7 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
-import {EntityListWithAntd} from '../EntityList/EntityList';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
 

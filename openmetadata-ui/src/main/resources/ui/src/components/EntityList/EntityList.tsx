@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
-import { Card } from 'antd';
 interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
