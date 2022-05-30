@@ -409,6 +409,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
     if (response.getStatus() == Status.CREATED) {
       postCreate(response.getEntity());
+    } else if (response.getStatus() == Status.OK) {
+      postUpdate(response.getEntity());
     }
     return response;
   }

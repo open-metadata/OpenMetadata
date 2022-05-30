@@ -56,7 +56,7 @@ public class TypeRegistry {
     }
   }
 
-  public static void removeType(String typeName) {
+  public void removeType(String typeName) {
     TYPES.remove(typeName);
     LOG.info("Deleted type {}\n", typeName);
     // TODO cleanup custom fields
