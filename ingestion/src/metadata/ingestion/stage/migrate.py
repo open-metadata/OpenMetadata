@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.migrate import (
+from metadata.ingestion.source.metadata.migrate import (
     DatabaseServiceWrapper,
     MessagingServiceWrapper,
     PolicyWrapper,

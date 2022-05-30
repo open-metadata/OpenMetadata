@@ -46,7 +46,7 @@
     },
     "description": {
       "description": "Description of the testcase.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "testCase": {
       "$ref": "#/definitions/tableTestCase"

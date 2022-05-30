@@ -34,6 +34,12 @@ getTypes(){
 
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
     do
+        joblist=$(jobs | wc -l)
+        while (( ${joblist} >= 10 ))
+            do
+                sleep 1
+                joblist=$(jobs | wc -l)
+            done
         mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
         fileTS=$(echo "$file_with_dir" | sed "s/.json/.ts/g")
         generateType "$file_with_dir" "$fileTS" &

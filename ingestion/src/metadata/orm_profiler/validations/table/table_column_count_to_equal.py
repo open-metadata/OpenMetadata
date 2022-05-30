@@ -12,6 +12,8 @@
 """
 TableColumnCountToEqual validation implementation
 """
+# pylint: disable=duplicate-code
+
 from datetime import datetime
 
 from metadata.generated.schema.entity.data.table import TableProfile

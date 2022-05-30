@@ -92,7 +92,7 @@ public class PolicyEvaluator {
     LOG.info("Finished loading Access Control policies");
   }
 
-  /** Checks if the policy has rules that gives permission to perform an operation on the given entity. */
+  /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
   public boolean hasPermission(@NonNull UUID policyId, EntityInterface entity, @NonNull MetadataOperation operation) {
     AttributeBasedFacts facts =
         new AttributeBasedFacts.AttributeBasedFactsBuilder()

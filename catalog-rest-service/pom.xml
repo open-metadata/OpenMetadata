@@ -13,12 +13,12 @@
 
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-    <testng.version>7.5</testng.version>
     <selenium.version>4.1.2</selenium.version>
-
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
+    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
+    <org.testcontainers.version>1.17.2</org.testcontainers.version>
   </properties>
 
   <dependencies>
@@ -93,6 +93,14 @@
     <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-multipart</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-jdbi</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
@@ -247,7 +255,17 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-all</artifactId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -262,25 +280,25 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.17.1</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>1.17.1</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
-      <version>1.17.1</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mysql</artifactId>
-      <version>1.17.1</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->

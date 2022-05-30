@@ -24,15 +24,12 @@ import {
 import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.component';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import {
-  getGlossaryPath,
-  getParentGlossaryPath,
-} from '../../constants/constants';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryTermPage = () => {
@@ -51,8 +48,9 @@ const AddGlossaryTermPage = () => {
     history.push(path);
   };
 
-  const goToGlossary = (name = '') => {
-    goToGlossaryPath(getGlossaryPath(name));
+  const goToGlossary = () => {
+    const fqn = glossaryTermsFQN || glossaryName || '';
+    goToGlossaryPath(getGlossaryPath(fqn));
   };
 
   const handleCancel = () => {
@@ -75,9 +73,7 @@ const AddGlossaryTermPage = () => {
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
-            goToGlossaryPath(
-              getParentGlossaryPath(res?.data?.fullyQualifiedName)
-            );
+            goToGlossary();
           }, 500);
         } else {
           handleSaveFailure(

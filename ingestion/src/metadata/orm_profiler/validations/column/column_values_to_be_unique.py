@@ -12,6 +12,7 @@
 """
 ColumnValuesToBeUnique validation implementation
 """
+# pylint: disable=duplicate-code
 
 from datetime import datetime
 
@@ -58,7 +59,7 @@ def column_values_to_be_unique(
     )
     result = (
         f"Found valuesCount={col_profile.valuesCount} vs. uniqueCount={col_profile.uniqueCount}."
-        + f" Both counts should be equal for column values to be unique."
+        + " Both counts should be equal for column values to be unique."
     )
 
     return TestCaseResult(

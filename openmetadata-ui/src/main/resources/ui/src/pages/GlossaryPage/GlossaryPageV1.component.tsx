@@ -37,13 +37,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getAddGlossaryTermsPath,
-  getGlossaryPath,
-  getUserPath,
-  PAGE_SIZE,
-  ROUTES,
-} from '../../constants/constants';
+import { getUserPath, PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -59,6 +53,10 @@ import {
   getTermPosFromGlossaries,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
+import {
+  getAddGlossaryTermsPath,
+  getGlossaryPath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export type ModifiedGlossaryData = Glossary & {

@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
@@ -346,7 +347,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
-    String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
+    String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     String fields = "";
     Team getTeam =
         byName
@@ -383,9 +384,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        team, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-
     assertEquals(createRequest.getProfile(), team.getProfile());
     TestUtils.validateEntityReferences(team.getOwns());
 
@@ -405,11 +403,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public void validateUpdatedEntity(Team updatedEntity, CreateTeam request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
-  }
-
-  @Override
   protected void validateDeletedEntity(
       CreateTeam create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -424,9 +417,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
-
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());
     TestUtils.validateEntityReferences(updated.getOwns());

@@ -172,7 +172,6 @@ def test_bigquery():
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
-                "enablePolicyTagImport": True,
                 "credentials": {
                     "gcsConfig": {
                         "type": "service_account",
@@ -436,7 +435,6 @@ def test_metabase():
                 "username": "username",
                 "password": "password",
                 "hostPort": "http://hostPort",
-                "dbServiceName": "Database Service Name to create Lineage",
             }
         },
         "sourceConfig": {
