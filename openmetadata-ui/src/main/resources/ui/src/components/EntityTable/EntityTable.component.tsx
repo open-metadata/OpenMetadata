@@ -65,9 +65,10 @@ interface Props {
   owner: Table['owner'];
   tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
-  searchText?: string;
   columnName: string;
   hasEditAccess: boolean;
+  tableConstraints: Table['tableConstraints'];
+  searchText?: string;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
@@ -88,6 +89,7 @@ const EntityTable = ({
   onThreadLinkSelect,
   onEntityFieldSelect,
   entityFqn,
+  tableConstraints,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -357,6 +359,24 @@ const EntityTable = ({
     onEntityFieldSelect?.(
       `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
     );
+  };
+
+  const prepareConstraintIcon = (
+    columnName: string,
+    columnConstraint?: string
+  ) => {
+    if (!isNil(columnConstraint)) {
+      return getConstraintIcon(columnConstraint);
+    } else {
+      const flag = tableConstraints?.find((constraint) =>
+        constraint.columns?.includes(columnName)
+      );
+      if (!isUndefined(flag)) {
+        return getConstraintIcon(flag.constraintType);
+      } else {
+        return null;
+      }
+    }
   };
 
   useEffect(() => {
@@ -785,7 +805,7 @@ const EntityTable = ({
                         </div>
                       )}
                       {cell.column.id === 'name' && (
-                        <>
+                        <Fragment>
                           {isReadOnly ? (
                             <div className="tw-inline-block">
                               <RichTextEditorPreviewer markdown={cell.value} />
@@ -797,11 +817,14 @@ const EntityTable = ({
                                   row.canExpand ? '0px' : `${row.depth * 35}px`
                                 }`,
                               }}>
-                              {getConstraintIcon(row.original.constraint)}
+                              {prepareConstraintIcon(
+                                cell.value,
+                                row.original.constraint
+                              )}
                               {cell.render('Cell')}
                             </span>
                           )}
-                        </>
+                        </Fragment>
                       )}
                     </td>
                   );

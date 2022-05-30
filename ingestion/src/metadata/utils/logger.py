@@ -28,6 +28,7 @@ class Loggers(Enum):
     PROFILER = "Profiler"
     INGESTION = "Ingestion"
     UTILS = "Utils"
+    GREAT_EXPECTATIONS = "GreatExpectations"
 
 
 def ometa_logger():
@@ -50,6 +51,10 @@ def utils_logger():
     return logging.getLogger(Loggers.UTILS.value)
 
 
+def great_expectations_logger():
+    return logging.getLogger(Loggers.GREAT_EXPECTATIONS.value)
+
+
 def set_loggers_level(level: Union[int, str] = logging.INFO):
     """
     Set all loggers levels
@@ -60,3 +65,4 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
     profiler_logger().setLevel(level)
     ingestion_logger().setLevel(level)
     utils_logger().setLevel(level)
+    great_expectations_logger().setLevel(level)

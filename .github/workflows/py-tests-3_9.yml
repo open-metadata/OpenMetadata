@@ -34,6 +34,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
 
     - name: Set up JDK 11
       uses: actions/setup-java@v2
@@ -67,29 +68,29 @@ jobs:
       run: |
         source env/bin/activate
         make coverage
+        rm pom.xml
 
     - name: Run PR Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'pull_request_target' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.event_name == 'pull_request_target' }}
-      run: |
-        git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-
-        # Add PR analysis information
-        echo "\nsonar.pullrequest.key=${{ github.event.pull_request.number }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.branch=${{ github.head_ref }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.base=main" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.github.repository=OpenMetadata" >> ingestion/sonar-project.properties
-        echo "sonar.scm.revision=${{ github.event.pull_request.head.sha }}" >> ingestion/sonar-project.properties
-        echo "sonar.pullrequest.provider=github" >> ingestion/sonar-project.properties
-
-        # Validate new properties
-        cat ingestion/sonar-project.properties
-
-        make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
 
     - name: Run Sonar
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'push' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ github.event_name == 'push' }}
-      run: make token=${{ secrets.INGESTION_SONAR_SECRET }} sonar_ingestion
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/

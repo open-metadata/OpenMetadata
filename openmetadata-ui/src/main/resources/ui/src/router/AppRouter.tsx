@@ -32,13 +32,19 @@ const AppRouter = () => {
     getCallBackComponent,
   } = useAuthContext();
   const callbackComponent = getCallBackComponent();
+  const oidcProviders = [
+    AuthTypes.GOOGLE,
+    AuthTypes.AWS_COGNITO,
+    AuthTypes.CUSTOM_OIDC,
+  ];
+  const isOidcProvider =
+    authConfig?.provider && oidcProviders.includes(authConfig.provider);
 
   return loading ? (
     <Loader />
   ) : (
     <>
-      {authConfig?.provider === AuthTypes.GOOGLE ||
-      authConfig?.provider === AuthTypes.CUSTOM_OIDC ? (
+      {isOidcProvider ? (
         <AuthenticatedAppRouter />
       ) : (
         <>

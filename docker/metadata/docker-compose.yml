@@ -87,11 +87,13 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
     expose:
       - 8585
+      - 8586
       - 9200
       - 9300
       - 3306
     ports:
       - 8585:8585
+      - 8586:8586
     depends_on:
       - mysql
     networks:

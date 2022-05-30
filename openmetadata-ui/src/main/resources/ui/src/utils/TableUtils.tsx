@@ -14,9 +14,8 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags } from 'Models';
 import React, { Fragment } from 'react';
-import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -121,40 +120,6 @@ export const getSearchTableTagsWithoutTier = (
       !item.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`) ||
       isNaN(parseInt(item.substring(9).trim()))
   );
-};
-
-export const getOwnerFromId = (
-  id?: string
-): TableDetail['owner'] | undefined => {
-  let retVal: TableDetail['owner'];
-  if (id) {
-    const user = AppState.users.find((item) => item.id === id);
-    if (user) {
-      retVal = {
-        name: user.displayName || user.name,
-        id: user.id,
-        type: 'user',
-      };
-    } else {
-      const team = AppState.userTeams.find((item) => item.id === id);
-      if (team) {
-        retVal = {
-          name: team.name,
-          displayName: team.displayName || team.name,
-          id: team.id,
-          type: 'team',
-        };
-      }
-    }
-  }
-
-  return retVal;
-};
-
-export const getFollowerDetail = (id: string) => {
-  const follower = AppState.users.find((user) => user.id === id);
-
-  return follower;
 };
 
 export const getConstraintIcon = (constraint = '', className = '') => {
