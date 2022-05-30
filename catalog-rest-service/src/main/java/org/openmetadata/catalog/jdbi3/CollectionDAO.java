@@ -1245,7 +1245,6 @@ public interface CollectionDAO {
         @Bind("state") int state);
 
     @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
-    @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
 
     @ConnectionAwareSqlQuery(
