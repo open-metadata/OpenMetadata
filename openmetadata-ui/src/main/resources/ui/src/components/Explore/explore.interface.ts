@@ -45,6 +45,7 @@ export interface ExploreProps {
   searchQuery: string;
   showDeleted: boolean;
   searchResult: ExploreSearchData | undefined;
+  isFilterSelected: boolean;
   fetchCount: () => void;
   handleFilterChange: (data: FilterObject) => void;
   handlePathChange: (path: string) => void;
