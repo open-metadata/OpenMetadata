@@ -88,6 +88,7 @@ describe('Test Explore component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <Explore
+        isFilterSelected
         error=""
         fetchCount={mockFunction}
         fetchData={mockFunction}

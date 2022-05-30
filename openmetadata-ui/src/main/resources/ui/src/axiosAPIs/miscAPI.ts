@@ -30,7 +30,7 @@ export const searchData: Function = (
   sortOrder: string,
   searchIndex: string,
   onlyDeleted = false,
-  track_total_hits = false
+  trackTotalHits = false
 ): Promise<AxiosResponse> => {
   return APIClient.get(
     `/search/query?${getSearchAPIQuery(
@@ -42,7 +42,7 @@ export const searchData: Function = (
       sortOrder,
       searchIndex,
       onlyDeleted,
-      track_total_hits
+      trackTotalHits
     )}`
   );
 };

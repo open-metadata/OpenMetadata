@@ -22,7 +22,7 @@ export const getSearchAPIQuery = (
   sortOrder: string,
   searchIndex: string,
   onlyDeleted = false,
-  track_total_hits = false
+  trackTotalHits = false
 ): string => {
   const start = (from - 1) * size;
   const query = queryString
@@ -37,5 +37,5 @@ export const getSearchAPIQuery = (
     sortField ? `&sort_field=${sortField}` : ''
   }${sortOrder ? `&sort_order=${sortOrder}` : ''}${
     searchIndex ? `&index=${searchIndex}` : ''
-  }${track_total_hits ? '&track_total_hits=true' : ''}`;
+  }${trackTotalHits ? '&track_total_hits=true' : ''}`;
 };
