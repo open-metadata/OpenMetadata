@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { NEW_GLOSSARY, NEW_GLOSSARY_TERMS } from '../../constants/constants';
+import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
   cy.get('[data-testid="header"]')
@@ -53,6 +53,34 @@ const createGlossaryTerm = (term) => {
   cy.get('#left-panel').contains(term.name).should('be.visible');
 };
 
+const deleteGlossaryTerm = ({ name }) => {
+  cy.get('#left-panel').contains(name).should('be.visible').click();
+  cy.wait(100);
+  cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
+
+  cy.get('[data-testid="Manage"]').should('be.visible').click();
+  cy.get('[data-testid="delete-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  cy.get('.tw-modal-container').should('be.visible');
+  cy.get('[data-testid="confirmation-text-input"]')
+    .should('be.visible')
+    .type(DELETE_TERM);
+
+  cy.get('[data-testid="confirm-button"]')
+    .should('be.visible')
+    .should('not.disabled')
+    .click();
+  cy.get('.Toastify__toast-body')
+    .contains('Glossary Term deleted successfully!')
+    .should('be.visible');
+
+  cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
+  cy.wait(100);
+};
+
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
@@ -64,6 +92,12 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+    // Todo: need to remove below uncaught exception once tree-view error resolves
+    cy.on('uncaught:exception', () => {
+      // return false to prevent the error from
+      // failing this test
+      return false;
+    });
   });
 
   it('Create new glossary flow should work properly', () => {
@@ -123,15 +157,14 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Create glossary term should work properly', () => {
-    // Todo: need to remove below uncaught exception once tree-view error resolves
-    cy.on('uncaught:exception', () => {
-      // return false to prevent the error from
-      // failing this test
-      return false;
-    });
-
     const terms = Object.values(NEW_GLOSSARY_TERMS);
 
     terms.forEach(createGlossaryTerm);
+  });
+
+  it('Delete glossary term should work properly', () => {
+    const terms = Object.values(NEW_GLOSSARY_TERMS);
+
+    terms.forEach(deleteGlossaryTerm);
   });
 });
