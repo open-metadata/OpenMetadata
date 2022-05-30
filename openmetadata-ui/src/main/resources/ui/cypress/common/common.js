@@ -15,7 +15,7 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 
-export const hanldeIngestionRetry = (type, count = 0) => {
+export const handleIngestionRetry = (type, count = 0) => {
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
