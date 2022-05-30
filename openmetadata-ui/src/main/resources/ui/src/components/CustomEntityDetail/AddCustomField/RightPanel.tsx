@@ -16,8 +16,10 @@ import React, { Fragment } from 'react';
 export const RightPanel = () => {
   return (
     <Fragment>
-      <h6 className="tw-heading tw-text-base">Lorem, ipsum.</h6>
-      <div className="tw-mb-5">
+      <h6 className="tw-heading tw-text-base" data-testid="header">
+        Lorem, ipsum.
+      </h6>
+      <div className="tw-mb-5" data-testid="body">
         Lorem ipsum dolor sit, amet consectetur adipisicing elit. Adipisci ab,
         rem molestiae culpa iure fugit cumque vel, nisi quam sed reprehenderit
         exercitationem assumenda odio doloribus corrupti magni perferendis
