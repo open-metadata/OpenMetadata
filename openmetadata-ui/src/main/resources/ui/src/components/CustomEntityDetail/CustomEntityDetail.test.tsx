@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Type } from '../../generated/entity/type';
+import { Tab } from '../common/TabsPane/TabsPane';
 import CustomEntityDetail from './CustomEntityDetail';
 
 const mockData = {
@@ -61,7 +62,25 @@ jest.mock('../buttons/Button/Button', () => ({
 }));
 
 jest.mock('../common/TabsPane/TabsPane', () =>
-  jest.fn().mockReturnValue(<div data-testid="tabs">Tabs</div>)
+  jest.fn().mockImplementation(({ setActiveTab, tabs }) => {
+    return (
+      <div>
+        <nav
+          className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container tw-px-7"
+          data-testid="tabs"
+          id="tabs">
+          {tabs.map((tab: Tab) => (
+            <button
+              data-testid={tab.name}
+              key={tab.position}
+              onClick={() => setActiveTab?.(tab.position)}>
+              {tab.name}
+            </button>
+          ))}
+        </nav>
+      </div>
+    );
+  })
 );
 
 jest.mock('../schema-editor/SchemaEditor', () =>
@@ -94,11 +113,39 @@ describe('Test Custom Entity Detail Component', () => {
     );
 
     const leftPanel = await findByTestId('LeftPanel');
-    const tabs = await findByTestId('tabs');
+    const tabContainer = await findByTestId('tabs');
     const schema = await findByTestId('schema-editor');
 
+    const schemTab = await findByTestId('Schema');
+    const customFieldTab = await findByTestId('Custom Fields');
+
     expect(leftPanel).toBeInTheDocument();
-    expect(tabs).toBeInTheDocument();
+    expect(tabContainer).toBeInTheDocument();
     expect(schema).toBeInTheDocument();
+    expect(schemTab).toBeInTheDocument();
+    expect(customFieldTab).toBeInTheDocument();
+  });
+
+  it('Should render custom fields table if active tab is Custom Fields', async () => {
+    const { findByTestId } = render(
+      <CustomEntityDetail entityTypes={[mockData]} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const leftPanel = await findByTestId('LeftPanel');
+    const tabContainer = await findByTestId('tabs');
+
+    expect(leftPanel).toBeInTheDocument();
+    expect(tabContainer).toBeInTheDocument();
+
+    const customFieldTab = await findByTestId('Custom Fields');
+
+    expect(customFieldTab).toBeInTheDocument();
+
+    fireEvent.click(customFieldTab);
+
+    expect(await findByTestId('CustomFieldTable')).toBeInTheDocument();
   });
 });
