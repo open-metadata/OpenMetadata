@@ -25,6 +25,8 @@ interface CustomFieldTableProp {
   updateEntityType: (customFields: Type['customFields']) => void;
 }
 
+type Operation = 'delete' | 'update' | 'no-operation';
+
 export const CustomFieldTable: FC<CustomFieldTableProp> = ({
   customFields,
   updateEntityType,
@@ -33,17 +35,26 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
     {} as CustomField
   );
 
+  const [operation, setOperation] = useState<Operation>('no-operation');
+
+  const resetSelectedField = () => {
+    setSelectedField({} as CustomField);
+    setOperation('no-operation' as Operation);
+  };
+
   const handleFieldDelete = () => {
     const updatedFields = customFields.filter(
       (field) => field.name !== selectedField.name
     );
     updateEntityType(updatedFields);
-    setSelectedField({} as CustomField);
+    resetSelectedField();
   };
 
   const onDeleteCancel = () => {
-    setSelectedField({} as CustomField);
+    resetSelectedField();
   };
+
+  const deleteCheck = !isEmpty(selectedField) && operation === 'delete';
 
   return (
     <Fragment>
@@ -108,7 +119,10 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                       <button
                         className="tw-cursor-pointer tw-ml-4"
                         data-testid="delete-button"
-                        onClick={() => setSelectedField(field)}>
+                        onClick={() => {
+                          setSelectedField(field);
+                          setOperation('delete');
+                        }}>
                         <SVGIcons
                           alt="delete"
                           icon={Icons.DELETE}
@@ -132,7 +146,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
           </tbody>
         </table>
       </div>
-      {!isEmpty(selectedField) && (
+      {deleteCheck && (
         <ConfirmationModal
           bodyText={`Are you sure you want to delete the field ${selectedField.name}`}
           cancelText="Cancel"
