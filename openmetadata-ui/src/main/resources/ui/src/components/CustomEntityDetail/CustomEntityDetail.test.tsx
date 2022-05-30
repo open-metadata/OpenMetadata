@@ -35,8 +35,14 @@ const mockData = {
   href: 'http://localhost:8585/api/v1/metadata/types/32f81349-d7d7-4a6a-8fc7-d767f233b674',
 } as Type;
 
+const mockPush = jest.fn();
+
+const MOCK_HISTORY = {
+  push: mockPush,
+};
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
+  useHistory: jest.fn().mockImplementation(() => MOCK_HISTORY),
 }));
 
 jest.mock('../../axiosAPIs/metadataTypeAPI', () => ({
@@ -55,10 +61,6 @@ jest.mock('../containers/PageContainer', () => {
 
 jest.mock('../../constants/constants', () => ({
   getAddCustomFieldPath: jest.fn().mockReturnValue('/custom-entity/table'),
-}));
-
-jest.mock('../buttons/Button/Button', () => ({
-  Button: jest.fn().mockReturnValue(<button>button</button>),
 }));
 
 jest.mock('../common/TabsPane/TabsPane', () =>
@@ -147,5 +149,34 @@ describe('Test Custom Entity Detail Component', () => {
     fireEvent.click(customFieldTab);
 
     expect(await findByTestId('CustomFieldTable')).toBeInTheDocument();
+  });
+
+  it('Should call history.push method on click of Add field button', async () => {
+    const { findByTestId } = render(
+      <CustomEntityDetail entityTypes={[mockData]} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const tabContainer = await findByTestId('tabs');
+
+    expect(tabContainer).toBeInTheDocument();
+
+    const customFieldTab = await findByTestId('Custom Fields');
+
+    expect(customFieldTab).toBeInTheDocument();
+
+    fireEvent.click(customFieldTab);
+
+    expect(await findByTestId('CustomFieldTable')).toBeInTheDocument();
+
+    const addFieldButton = await findByTestId('add-field-button');
+
+    expect(addFieldButton).toBeInTheDocument();
+
+    fireEvent.click(addFieldButton);
+
+    expect(mockPush).toHaveBeenCalled();
   });
 });

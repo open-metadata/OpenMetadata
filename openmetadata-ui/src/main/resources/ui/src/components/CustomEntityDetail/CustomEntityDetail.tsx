@@ -130,6 +130,7 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
               <div className="tw-flex tw-justify-end">
                 <Button
                   className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
+                  data-testid="add-field-button"
                   size="custom"
                   theme="primary"
                   onClick={() => handleAddField()}>
