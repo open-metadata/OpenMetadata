@@ -17,7 +17,7 @@ Configure and schedule BigQuery **metadata**, **usage**, and **profiler** workfl
 Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 {% hint style="success" %}
-OpenMetadata uses service accounts in Google Cloud Platform to fetch metadata, profiling information and query usage information. The service account should be configured with the minimum of predefined role for [roles/bigquery.dataViewer](https://cloud.google.com/bigquery/docs/access-control#bigquery) and [roles/bigquery.jobUser](https://cloud.google.com/bigquery/docs/access-control#bigquery) at the project level or you can create and assign a [custom role](https://cloud.google.com/bigquery/docs/access-control#custom\_roles) as per your requirement.
+OpenMetadata uses service accounts in Google Cloud Platform to fetch metadata, profiling information and query usage information. The service account should be configured with the minimum of predefined role for [roles/bigquery.dataViewer](https://cloud.google.com/bigquery/docs/access-control#bigquery), [roles/bigquery.readSessionUser](https://cloud.google.com/bigquery/docs/access-control#bigquery) and [roles/bigquery.jobUser](https://cloud.google.com/bigquery/docs/access-control#bigquery) at the project level or you can create and assign a [custom role](https://cloud.google.com/bigquery/docs/access-control#custom\_roles) as per your requirement.
 {% endhint %}
 
 ## Metadata Ingestion
