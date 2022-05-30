@@ -33,7 +33,7 @@ import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
-import EntityList from '../EntityList/EntityList';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import Onboarding from '../onboarding/Onboarding';
@@ -77,7 +77,7 @@ const MyData: React.FC<MyDataProps> = ({
   const getFilterDropDown = () => {
     return (
       <Fragment>
-        <div className="tw-relative tw-mt-5">
+        <div className="tw-relative tw-my-5">
           <Button
             className="hover:tw-no-underline focus:tw-no-underline"
             data-testid="feeds"
@@ -86,7 +86,7 @@ const MyData: React.FC<MyDataProps> = ({
             theme="primary"
             variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-font-medium">
+            <span className="tw-font-medium tw-text-grey">
               {filterList.find((f) => f.value === feedFilter)?.name}
             </span>
             <DropDownIcon />
@@ -127,11 +127,10 @@ const MyData: React.FC<MyDataProps> = ({
     return (
       <div className="tw-mt-4">
         <div data-testid="my-data-container">
-          <EntityList
+          <EntityListWithAntd
             entityList={ownedData}
             headerText={
-              <div className="tw-flex tw-justify-between">
-                My Data
+              <>
                 {ownedData.length ? (
                   <Link
                     data-testid="my-data"
@@ -148,19 +147,19 @@ const MyData: React.FC<MyDataProps> = ({
                     </span>
                   </Link>
                 ) : null}
-              </div>
+              </>
             }
+            headerTextLabel="My Data"
             noDataPlaceholder={<>You have not owned anything yet.</>}
             testIDText="My data"
           />
         </div>
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mt-3" />
         <div data-testid="following-data-container">
-          <EntityList
+          <EntityListWithAntd
             entityList={followedData}
             headerText={
-              <div className="tw-flex tw-justify-between">
-                Following
+              <>
                 {followedData.length ? (
                   <Link
                     data-testid="following-data"
@@ -177,13 +176,14 @@ const MyData: React.FC<MyDataProps> = ({
                     </span>
                   </Link>
                 ) : null}
-              </div>
+              </>
             }
+            headerTextLabel="Following"
             noDataPlaceholder={<>You have not followed anything yet.</>}
             testIDText="Following data"
           />
         </div>
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mt-3" />
       </div>
     );
   }, [ownedData, followedData]);
