@@ -32,6 +32,10 @@ To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
+{% hint style="success" %}
+OpenMetadata uses service accounts in Google Cloud Platform to fetch metadata, profiling information and query usage information. The service account should be configured with the minimum of predefined role for [roles/bigquery.dataViewer](https://cloud.google.com/bigquery/docs/access-control#bigquery) and [roles/bigquery.jobUser](https://cloud.google.com/bigquery/docs/access-control#bigquery) at the project level or you can create and assign a [custom role](https://cloud.google.com/bigquery/docs/access-control#custom\_roles) as per your requirement.
+{% endhint %}
+
 ## Metadata Ingestion
 
 ### 1. Visit the _Services_ Page

@@ -16,6 +16,10 @@ Configure and schedule BigQuery **metadata**, **usage**, and **profiler** workfl
 
 Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
+{% hint style="success" %}
+OpenMetadata uses service accounts in Google Cloud Platform to fetch metadata, profiling information and query usage information. The service account should be configured with the minimum of predefined role for [roles/bigquery.dataViewer](https://cloud.google.com/bigquery/docs/access-control#bigquery) and [roles/bigquery.jobUser](https://cloud.google.com/bigquery/docs/access-control#bigquery) at the project level or you can create and assign a [custom role](https://cloud.google.com/bigquery/docs/access-control#custom\_roles) as per your requirement.
+{% endhint %}
+
 ## Metadata Ingestion
 
 All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json) you can find the structure to create a connection to BigQuery.
@@ -191,7 +195,7 @@ default_args = {
 }
 
 config = """
-<your JSON configuration>
+<your YAML configuration>
 """
 
 def metadata_ingestion_workflow():
