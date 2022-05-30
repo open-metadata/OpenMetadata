@@ -33,7 +33,6 @@ from metadata.ingestion.api.source import InvalidSourceException
 # This import verifies that the dependencies are available.
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
@@ -56,12 +55,10 @@ class SnowflakeUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        end = end + timedelta(days=1)
-        self.analysis_date = start
+        self.end = self.end + timedelta(days=1)
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=start,
-            end_date=end,
+            start_date=self.start,
+            end_date=self.end,
             result_limit=self.config.sourceConfig.config.resultLimit,
         )
         self._extract_iter: Union[None, Iterator] = None

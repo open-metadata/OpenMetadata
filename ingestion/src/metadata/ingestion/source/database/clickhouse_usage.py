@@ -21,28 +21,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-
-# This import verifies that the dependencies are available.
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import CLICKHOUSE_SQL_USAGE_STATEMENT
 
 
 class ClickhouseUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__(config, metadata_config)
-        self.config = config
-        self.connection = config.serviceConnection.__root__.config
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        self.analysis_date = start
         self.sql_stmt = CLICKHOUSE_SQL_USAGE_STATEMENT.format(
-            start_time=start, end_time=end
+            start_time=self.start, end_time=self.end
         )
-        self.report = SQLSourceStatus()
-        self.engine = get_connection(self.connection)
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):

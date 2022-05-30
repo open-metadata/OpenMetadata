@@ -32,36 +32,27 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
-from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
 
 
-class BigqueryUsageSource:
+class BigqueryUsageSource(UsageSource):
     SERVICE_TYPE = DatabaseServiceType.BigQuery.value
     scheme = "bigquery"
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
+        super().__init__(config, metadata_config)
         self.temp_credentials = None
-        self.metadata_config = metadata_config
-        self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
-
         # Used as db
         self.project_id = (
-            self.service_connection.projectId
-            or self.service_connection.credentials.gcsConfig.projectId
+            self.connection.projectId or self.connection.credentials.gcsConfig.projectId
         )
-
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.logging_client = logging.Client()
         self.usage_logger = self.logging_client.logger(self.logger_name)
         logger.debug("Listing entries for logger {}:".format(self.usage_logger.name))
-        self.start, self.end = get_start_and_end(
-            self.config.sourceConfig.config.queryLogDuration
-        )
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
