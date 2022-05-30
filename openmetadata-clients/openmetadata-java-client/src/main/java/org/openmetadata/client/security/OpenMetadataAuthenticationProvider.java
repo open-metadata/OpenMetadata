@@ -2,10 +2,10 @@ package org.openmetadata.client.security;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import io.swagger.client.model.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
-public class OpenMetadataAuthenticationProvider  implements AuthenticationProvider, RequestInterceptor {
+public class OpenMetadataAuthenticationProvider  implements AuthenticationProvider {
     @Override
     public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
         return null;
@@ -20,6 +20,7 @@ public class OpenMetadataAuthenticationProvider  implements AuthenticationProvid
     public String getAccessToken() {
         return null;
     }
+
 
     @Override
     public void apply(RequestTemplate requestTemplate) {

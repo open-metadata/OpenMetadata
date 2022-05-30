@@ -3,7 +3,6 @@ package org.openmetadata.core.util;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.regex.Pattern;
-
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,7 @@ public final class VersionUtils {
     return catalogVersion;
   }
 
-  public static String getVersionFromString(String input){
+  public static String getVersionFromString(String input) {
     if (input.contains("-")) {
       return input.split(Pattern.quote("-"))[0];
     } else {

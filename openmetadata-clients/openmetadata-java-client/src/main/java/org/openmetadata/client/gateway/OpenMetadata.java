@@ -16,9 +16,10 @@ package org.openmetadata.client.gateway;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.client.ApiClient;
 import io.swagger.client.api.CatalogApi;
-import io.swagger.client.model.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
+import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.core.util.VersionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,8 @@ public class OpenMetadata {
     public OpenMetadata(OpenMetadataServerConnection config){
         serverConfig = config;
         apiClient = new ApiClient();
-        //TODO: Custom interceptor for AUTH, currently this only works for NO-AUTH, can be used for local testing
+        AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
+        apiClient.addAuthorization("oauth" , factory.getAuthProvider(config));
         basePath = config.getHostPort()+ "/";
         apiClient.setBasePath(basePath);
         apiClient.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);

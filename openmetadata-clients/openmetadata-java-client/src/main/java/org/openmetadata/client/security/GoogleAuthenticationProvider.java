@@ -2,29 +2,34 @@ package org.openmetadata.client.security;
 
 
 import com.google.auth.oauth2.AccessToken;
-import com.google.auth.oauth2.GoogleCredentials;
-import feign.RequestInterceptor;
+import com.google.auth.oauth2.IdTokenCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import feign.RequestTemplate;
-import org.apache.commons.io.IOUtils;
 import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import io.swagger.client.model.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
-import java.nio.charset.StandardCharsets;
+import java.io.FileInputStream;
+import java.util.Arrays;
 
-public class GoogleAuthenticationProvider  implements AuthenticationProvider, RequestInterceptor {
+public class GoogleAuthenticationProvider  implements AuthenticationProvider {
     private OpenMetadataServerConnection serverConfig;
     private GoogleSSOClientConfig securityConfig;
     private String generatedAuthToken;
     private Long expirationTimeMillis;
+    private final String OPENID_SCOPE = "https://www.googleapis.com/auth/plus.me";
+    private final String PROFILE_SCOPE = "https://www.googleapis.com/auth/userinfo.profile";
+    private final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
+
     public GoogleAuthenticationProvider(OpenMetadataServerConnection iConfig){
-        if(!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProviderEnum.GOOGLE)){
-            throw new RuntimeException("Required type to incoke is Google OKTA");
+        if(!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.GOOGLE)){
+            throw new RuntimeException("Required type to invoke is Google OKTA");
         }
         serverConfig = iConfig;
         securityConfig = (GoogleSSOClientConfig) iConfig.getSecurityConfig();
         generatedAuthToken = "";
     }
+
     @Override
     public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
         return new GoogleAuthenticationProvider(iConfig);
@@ -33,12 +38,18 @@ public class GoogleAuthenticationProvider  implements AuthenticationProvider, Re
     @Override
     public String authToken() {
         try {
-            GoogleCredentials credentials = GoogleCredentials.fromStream(IOUtils.toInputStream(securityConfig.getSecretKey(), StandardCharsets.UTF_8));
-            credentials.refreshIfExpired();
-            AccessToken token = credentials.getAccessToken();
+            String credPath = securityConfig.getSecretKey();
+            String targetAudience = securityConfig.getAudience();
+
+            ServiceAccountCredentials saCreds = ServiceAccountCredentials.fromStream(new FileInputStream(credPath));
+
+            saCreds = (ServiceAccountCredentials) saCreds.createScoped(Arrays.asList(OPENID_SCOPE, PROFILE_SCOPE , EMAIL_SCOPE));
+            IdTokenCredentials tokenCredential = IdTokenCredentials.newBuilder().setIdTokenProvider(saCreds).setTargetAudience(targetAudience).build();
+            AccessToken token = tokenCredential.refreshAccessToken();
             this.expirationTimeMillis = token.getExpirationTime().getTime();
             this.generatedAuthToken = token.getTokenValue();
         }catch(Exception ex){
+            System.out.println(ex.getMessage());
         }
         return generatedAuthToken;
     }

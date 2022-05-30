@@ -2,17 +2,16 @@ package org.openmetadata.client.security;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import io.swagger.client.model.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
-
-public class OktaAuthenticationProvider  implements AuthenticationProvider, RequestInterceptor {
+public class OktaAuthenticationProvider  implements AuthenticationProvider {
     private OpenMetadataServerConnection serverConfig;
     private OktaSSOClientConfig securityConfig;
     private String generatedAuthToken;
     private String expiry;
     public OktaAuthenticationProvider(OpenMetadataServerConnection iConfig){
-        if(!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProviderEnum.OKTA)){
+        if(!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.OKTA)){
             throw new RuntimeException("Required type to invoke is OKTA SSO");
         }
         serverConfig = iConfig;
@@ -27,7 +26,7 @@ public class OktaAuthenticationProvider  implements AuthenticationProvider, Requ
 
     @Override
     public String authToken() {
-        return null;
+        return "";
     }
 
     @Override

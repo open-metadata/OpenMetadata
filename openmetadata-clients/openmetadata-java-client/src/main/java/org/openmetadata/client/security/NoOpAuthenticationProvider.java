@@ -2,20 +2,15 @@ package org.openmetadata.client.security;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import io.swagger.client.model.OpenMetadataServerConnection;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
-public class NoOpAuthenticationProvider implements AuthenticationProvider, RequestInterceptor {
-
-    private OpenMetadataServerConnection serverConfig;
-
-    public NoOpAuthenticationProvider(OpenMetadataServerConnection iConfig){
-        serverConfig = iConfig;
+public class NoOpAuthenticationProvider implements AuthenticationProvider {
+    public NoOpAuthenticationProvider(){
     }
-
     @Override
     public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
-        return new NoOpAuthenticationProvider(iConfig);
+        return new NoOpAuthenticationProvider();
     }
 
     @Override
@@ -25,11 +20,12 @@ public class NoOpAuthenticationProvider implements AuthenticationProvider, Reque
 
     @Override
     public String getAccessToken() {
-        return "no_token";
+        return "";
     }
 
     @Override
     public void apply(RequestTemplate requestTemplate) {
-
+        //no-auth we dont apply anything
+        return;
     }
 }
