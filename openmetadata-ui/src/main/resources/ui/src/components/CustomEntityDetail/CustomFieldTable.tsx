@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
@@ -47,7 +48,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
     <Fragment>
       <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
         <table className="tw-w-full" data-testid="entity-custom-fields-table">
-          <thead>
+          <thead data-testid="table-header">
             <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
               <th className="tableHead-cell" data-testid="field-name">
                 Name
@@ -58,12 +59,12 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
               <th className="tableHead-cell" data-testid="field-description">
                 Description
               </th>
-              <th className="tableHead-cell" data-testid="field-description">
+              <th className="tableHead-cell" data-testid="field-actions">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="table-body">
             {customFields.length ? (
               customFields.map((field, index) => (
                 <tr
@@ -74,6 +75,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                       'tw-border-b-0': index === customFields.length - 1,
                     }
                   )}
+                  data-testid="data-row"
                   key={uniqueId()}>
                   <td className="tableBody-cell">{field.name}</td>
                   <td className="tableBody-cell">
@@ -92,6 +94,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                       </button>
                       <button
                         className="tw-cursor-pointer tw-ml-4"
+                        data-testid="delete-button"
                         onClick={() => setSelectedField(field)}>
                         <SVGIcons
                           alt="delete"
@@ -105,7 +108,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                 </tr>
               ))
             ) : (
-              <tr className="tableBody-row">
+              <tr className="tableBody-row" data-testid="no-data-row">
                 <td
                   className="tableBody-cell tw-text-grey-muted tw-text-center"
                   colSpan={4}>
