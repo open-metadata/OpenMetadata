@@ -65,12 +65,13 @@ const TeamsAndUsersPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDataLoading, setIsDataLoading] = useState(true);
-  const [isRightPannelLoading, setIsRightPannelLoading] = useState(true);
-  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState(true);
-  const [isTeamVisible, setIsTeamVisible] = useState(true);
-  const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [isRightPannelLoading, setIsRightPannelLoading] =
+    useState<boolean>(true);
+  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState<boolean>(true);
+  const [isTeamVisible, setIsTeamVisible] = useState<boolean>(true);
+  const [isUsersLoading, setIsUsersLoading] = useState<boolean>(true);
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
@@ -79,8 +80,9 @@ const TeamsAndUsersPage = () => {
   const [currentTeamUserPage, setCurrentTeamUserPage] =
     useState(INITIAL_PAGIN_VALUE);
   const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGIN_VALUE);
-  const [teamUsersSearchText, setTeamUsersSearchText] = useState('');
-  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
+  const [teamUsersSearchText, setTeamUsersSearchText] = useState<string>('');
+  const [isDescriptionEditable, setIsDescriptionEditable] =
+    useState<boolean>(false);
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
@@ -88,7 +90,7 @@ const TeamsAndUsersPage = () => {
   const [userList, setUserList] = useState<Array<User>>([]);
   const [usersCount, setUsersCount] = useState<number>(0);
   const [adminsCount, setAdminsCount] = useState<number>(0);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [selectedUserList, setSelectedUserList] = useState<Array<User>>([]);
 
   const descriptionHandler = (value: boolean) => {
@@ -354,6 +356,8 @@ const TeamsAndUsersPage = () => {
         .finally(() => {
           setIsRightPannelLoading(false);
         });
+    } else {
+      setIsRightPannelLoading(false);
     }
   };
 
@@ -704,7 +708,7 @@ const TeamsAndUsersPage = () => {
           fetchCurrentTeam(teamAndUser);
         }
       } else {
-        setactiveUserTab(undefined);
+        setactiveUserTab('' as UserType);
         setIsTeamVisible(true);
       }
       setUserSearchTerm('');
