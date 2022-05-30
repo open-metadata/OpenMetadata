@@ -12,10 +12,11 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getTypeByFQN } from '../../axiosAPIs/metadataTypeAPI';
+import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
 import { getAddCustomFieldPath } from '../../constants/constants';
 import { Type } from '../../generated/entity/type';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -86,6 +87,21 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
     },
   ];
 
+  const updateEntityType = (customFields: Type['customFields']) => {
+    const patch = compare(selectedEntityTypeDetail, {
+      ...selectedEntityTypeDetail,
+      customFields,
+    });
+
+    updateType(selectedEntityTypeDetail.id as string, patch)
+      .then((res: AxiosResponse) => {
+        const { customFields } = res.data;
+
+        setSelectedEntityTypeDetail((prev) => ({ ...prev, customFields }));
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
+
   useEffect(() => {
     if (entityTypes.length) {
       const entityType =
@@ -137,7 +153,10 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
                   Add Field
                 </Button>
               </div>
-              <CustomFieldTable customFields={customFields} />
+              <CustomFieldTable
+                customFields={customFields}
+                updateEntityType={updateEntityType}
+              />
             </div>
           )}
         </div>

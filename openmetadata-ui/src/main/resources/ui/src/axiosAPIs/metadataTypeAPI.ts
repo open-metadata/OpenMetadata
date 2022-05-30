@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { Category, CustomField } from '../generated/entity/type';
 import APIClient from './index';
 
@@ -40,4 +41,16 @@ export const addFieldToEntity = (
   const path = `/metadata/types/${entityTypeId}`;
 
   return APIClient.put(path, data);
+};
+
+export const updateType = (
+  entityTypeId: string,
+  data: Operation[]
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+  const path = `/metadata/types/${entityTypeId}`;
+
+  return APIClient.patch(path, data, configOptions);
 };

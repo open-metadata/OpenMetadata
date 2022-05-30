@@ -11,64 +11,121 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, { FC } from 'react';
-import { CustomField } from '../../generated/entity/type';
+import { isEmpty, uniqueId } from 'lodash';
+import React, { FC, Fragment, useState } from 'react';
+import { CustomField, Type } from '../../generated/entity/type';
 import { getEntityName, isEven } from '../../utils/CommonUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 
 interface CustomFieldTableProp {
   customFields: CustomField[];
+  updateEntityType: (customFields: Type['customFields']) => void;
 }
 
 export const CustomFieldTable: FC<CustomFieldTableProp> = ({
   customFields,
+  updateEntityType,
 }) => {
+  const [selectedField, setSelectedField] = useState<CustomField>(
+    {} as CustomField
+  );
+
+  const handleFieldDelete = () => {
+    const updatedFields = customFields.filter(
+      (field) => field.name !== selectedField.name
+    );
+    updateEntityType(updatedFields);
+    setSelectedField({} as CustomField);
+  };
+
+  const onDeleteCancel = () => {
+    setSelectedField({} as CustomField);
+  };
+
   return (
-    <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
-      <table className="tw-w-full" data-testid="entity-custom-fields-table">
-        <thead>
-          <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
-            <th className="tableHead-cell" data-testid="field-name">
-              Name
-            </th>
-            <th className="tableHead-cell" data-testid="field-type">
-              Type
-            </th>
-            <th className="tableHead-cell" data-testid="field-description">
-              Description
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {customFields.length ? (
-            customFields.map((field, index) => (
-              <tr
-                className={classNames(
-                  `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
-                  {
-                    'tw-border-b-0 tw-border-l-0 tw-border-r-0':
-                      index === customFields.length - 1,
-                  }
-                )}
-                key={uniqueId()}>
-                <td className="tableBody-cell">{field.name}</td>
-                <td className="tableBody-cell">
-                  {getEntityName(field.fieldType)}
-                </td>
-                <td className="tableBody-cell">{field.description}</td>
-              </tr>
-            ))
-          ) : (
-            <tr className="tableBody-row">
-              <td
-                className="tableBody-cell tw-text-grey-muted tw-text-center"
-                colSpan={3}>
-                No data
-              </td>
+    <Fragment>
+      <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
+        <table className="tw-w-full" data-testid="entity-custom-fields-table">
+          <thead>
+            <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
+              <th className="tableHead-cell" data-testid="field-name">
+                Name
+              </th>
+              <th className="tableHead-cell" data-testid="field-type">
+                Type
+              </th>
+              <th className="tableHead-cell" data-testid="field-description">
+                Description
+              </th>
+              <th className="tableHead-cell" data-testid="field-description">
+                Actions
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {customFields.length ? (
+              customFields.map((field, index) => (
+                <tr
+                  className={classNames(
+                    `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
+                    'tw-border-l-0 tw-border-r-0',
+                    {
+                      'tw-border-b-0': index === customFields.length - 1,
+                    }
+                  )}
+                  key={uniqueId()}>
+                  <td className="tableBody-cell">{field.name}</td>
+                  <td className="tableBody-cell">
+                    {getEntityName(field.fieldType)}
+                  </td>
+                  <td className="tableBody-cell">{field.description}</td>
+                  <td className="tableBody-cell">
+                    <div className="tw-flex">
+                      <button className="tw-cursor-pointer">
+                        <SVGIcons
+                          alt="edit"
+                          icon={Icons.EDIT}
+                          title="Edit"
+                          width="12px"
+                        />
+                      </button>
+                      <button
+                        className="tw-cursor-pointer tw-ml-4"
+                        onClick={() => setSelectedField(field)}>
+                        <SVGIcons
+                          alt="delete"
+                          icon={Icons.DELETE}
+                          title="Delete"
+                          width="12px"
+                        />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr className="tableBody-row">
+                <td
+                  className="tableBody-cell tw-text-grey-muted tw-text-center"
+                  colSpan={4}>
+                  No data
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {!isEmpty(selectedField) && (
+        <ConfirmationModal
+          bodyText={`Are you sure you want to delete the field ${selectedField.name}`}
+          cancelText="Cancel"
+          confirmText="Confirm"
+          header={`Delete field ${selectedField.name}`}
+          onCancel={onDeleteCancel}
+          onConfirm={handleFieldDelete}
+        />
+      )}
+    </Fragment>
   );
 };
