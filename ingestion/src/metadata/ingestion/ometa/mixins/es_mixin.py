@@ -14,7 +14,6 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import time
-from logging.config import DictConfigurator
 from typing import Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
@@ -110,15 +109,16 @@ class ESMixin(Generic[T]):
         :param retries: Number of retries for the ES query
         :return: List of entities
         """
-        filter_query = get_query_from_dict(filters)
-        query_string = self.search_from_service_url.format(
-            service=service_name,
-            filters=filter_query,
-            from_=from_count,
-            size=size,
-            index=ES_INDEX_MAP[entity_type.__name__],  # Fail if not exists
-        )
         try:
+            filter_query = get_query_from_dict(filters)
+            query_string = self.search_from_service_url.format(
+                service=service_name,
+                filters=filter_query,
+                from_=from_count,
+                size=size,
+                index=ES_INDEX_MAP[entity_type.__name__],  # Fail if not exists
+            )
+
             return self._search_es_entity_retry(
                 entity_type=entity_type, query_string=query_string, retries=retries
             )
@@ -131,3 +131,4 @@ class ESMixin(Generic[T]):
             logger.warning(
                 f"Elasticsearch search failed for query: {query_string} - {err}"
             )
+        return None

@@ -105,7 +105,7 @@ class SqlAlchemySource(Source, ABC):
 
     @abstractmethod
     def get_view_definition(
-        table_type, table_name: str, schema: str, inspector: Inspector
+        self, table_type, table_name: str, schema: str, inspector: Inspector
     ) -> Optional[str]:
         """
         Method to fetch view definition
