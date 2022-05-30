@@ -152,7 +152,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
-  hanldeIngestionRetry(type);
+  handleIngestionRetry(type);
 };
 
 export const goToAddNewServicePage = () => {
@@ -276,7 +276,7 @@ export const testSampleData = (entity) => {
 
   cy.get('[data-testid="run"]').should('be.visible').click();
   cy.reload();
-  hanldeIngestionRetry(entity.entityType, 1);
+  handleIngestionRetry(entity.entityType, 1);
 
   searchEntity(entity.term);
   cy.wait(500);
