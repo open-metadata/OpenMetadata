@@ -19,6 +19,7 @@ import { getEntityName, isEven } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
 interface CustomFieldTableProp {
   customFields: CustomField[];
@@ -50,11 +51,20 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
     resetSelectedField();
   };
 
-  const onDeleteCancel = () => {
+  const handleFieldUpdate = (updatedDescription: string) => {
+    const updatedFields = customFields.map((field) => {
+      if (field.name === selectedField.name) {
+        return { ...field, description: updatedDescription };
+      } else {
+        return field;
+      }
+    });
+    updateEntityType(updatedFields);
     resetSelectedField();
   };
 
   const deleteCheck = !isEmpty(selectedField) && operation === 'delete';
+  const updateCheck = !isEmpty(selectedField) && operation === 'update';
 
   return (
     <Fragment>
@@ -108,7 +118,13 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                   </td>
                   <td className="tableBody-cell">
                     <div className="tw-flex">
-                      <button className="tw-cursor-pointer">
+                      <button
+                        className="tw-cursor-pointer"
+                        data-testid="edit-button"
+                        onClick={() => {
+                          setSelectedField(field);
+                          setOperation('update');
+                        }}>
                         <SVGIcons
                           alt="edit"
                           icon={Icons.EDIT}
@@ -152,8 +168,17 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
           cancelText="Cancel"
           confirmText="Confirm"
           header={`Delete field ${selectedField.name}`}
-          onCancel={onDeleteCancel}
+          onCancel={resetSelectedField}
           onConfirm={handleFieldDelete}
+        />
+      )}
+      {updateCheck && (
+        <ModalWithMarkdownEditor
+          header={`Edit Field: "${selectedField.name}"`}
+          placeholder="Enter Field Description"
+          value={selectedField.description as string}
+          onCancel={resetSelectedField}
+          onSave={handleFieldUpdate}
         />
       )}
     </Fragment>
