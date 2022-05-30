@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS type_entity (
 );
 
 ALTER TABLE webhook_entity
+ADD status VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.status') NOT NULL,
 DROP COLUMN deleted;
 
 ALTER TABLE entity_relationship
