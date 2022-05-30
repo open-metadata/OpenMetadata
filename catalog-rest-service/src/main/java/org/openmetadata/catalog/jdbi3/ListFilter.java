@@ -42,7 +42,7 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
-    return condition.isEmpty() ? "WHERE true" : "WHERE " + condition;
+    return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
   public String getIncludeCondition(String tableName) {
