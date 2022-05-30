@@ -42,17 +42,23 @@ export const LeftPanel: FC<LeftPanelProp> = ({ typeList, selectedType }) => {
 
   return (
     <div className="tw-flex tw-flex-col tw-bg-white tw-h-screen tw-p-3 tw-border tw-border-main tw-rounded-md">
-      <h6 className="tw-heading tw-text-sm">Schema &amp; Custom Fields</h6>
+      <h6 className="tw-heading tw-text-sm" data-testid="panel-heading">
+        Schema &amp; Custom Fields
+      </h6>
       {typeList.map((type) => (
         <div
           className="tw-mb-3 tw-cursor-pointer"
+          data-testid={`entity-${type.displayName}`}
           key={uniqueId()}
           onClick={() => handleLabelClick(type.fullyQualifiedName || '')}>
           <p
             className={classNames(
               'tw-px-3 tw-py-2 tw--mx-3',
               getActiveClass(type.name)
-            )}>{`${startCase(type.displayName)}s`}</p>
+            )}
+            data-testid="entity-displayName">{`${startCase(
+            type.displayName
+          )}s`}</p>
         </div>
       ))}
     </div>
