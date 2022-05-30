@@ -16,7 +16,7 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 try:
     from typing import get_args
@@ -440,14 +440,14 @@ class OpenMetadata(
     def get_by_name(
         self,
         entity: Type[T],
-        fqdn: Union[str, FullyQualifiedEntityName],
+        fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{model_str(fqdn)}", fields=fields)
+        return self._get(entity=entity, path=f"name/{model_str(fqn)}", fields=fields)
 
     def get_by_id(
         self,
@@ -467,7 +467,7 @@ class OpenMetadata(
         """
         Generic GET operation for an entity
         :param entity: Entity Class
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
@@ -500,16 +500,16 @@ class OpenMetadata(
             return None
 
     def get_entity_reference(
-        self, entity: Type[T], fqdn: str
+        self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
-        a FQDN and the Entity class.
+        a FQN and the Entity class.
         :param entity: Entity Class
-        :param fqdn: Entity instance FQDN
+        :param fqn: Entity instance FQN
         :return: EntityReference or None
         """
-        instance = self.get_by_name(entity, fqdn)
+        instance = self.get_by_name(entity, fqn)
         if instance:
             return EntityReference(
                 id=instance.id,
@@ -519,7 +519,7 @@ class OpenMetadata(
                 href=instance.href,
             )
 
-        logger.error("Cannot find the Entity %s", fqdn)
+        logger.error("Cannot find the Entity %s", fqn)
         return None
 
     # pylint: disable=too-many-arguments,dangerous-default-value
@@ -551,6 +551,39 @@ class OpenMetadata(
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
+
+    def list_all_entities(
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        limit: int = 1000,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Iterable[T]:
+        """
+        Utility method that paginates over all EntityLists
+        to return a generator to fetch entities
+        :param entity: Entity Type, such as Table
+        :param fields: Extra fields to return
+        :param limit: Number of entities in each pagination
+        :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :return: Generator that will be yielding all Entities
+        """
+
+        # First batch of Entities
+        entity_list = self.list_entities(
+            entity=entity, fields=fields, limit=limit, params=params
+        )
+        for elem in entity_list.entities:
+            yield elem
+
+        after = entity_list.after
+        while after:
+            entity_list = self.list_entities(
+                entity=entity, fields=fields, limit=limit, params=params, after=after
+            )
+            for elem in entity_list.entities:
+                yield elem
+            after = entity_list.after
 
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
@@ -616,9 +649,10 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run endpoint health-check. Return `true` if OK
+        Run version api call. Return `true` if response is not None
         """
-        return self.client.get("/health-check")["status"] == "healthy"
+        raw_version = self.client.get("/version")["version"]
+        return raw_version is not None
 
     def close(self):
         """

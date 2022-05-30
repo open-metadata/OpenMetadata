@@ -52,6 +52,12 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/index_metadata' \
       "is_paused": false
       }'
 sleep 2
+curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_lineage' \
+  --header 'Authorization: Basic YWRtaW46YWRtaW4=' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "is_paused": false
+      }'
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
 

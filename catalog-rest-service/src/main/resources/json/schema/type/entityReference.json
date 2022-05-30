@@ -33,7 +33,7 @@
     },
     "description": {
       "description": "Optional description of entity.",
-      "type": "string"
+      "$ref": "basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Display Name that identifies this entity.",

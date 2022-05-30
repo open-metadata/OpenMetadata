@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Unique name of the tag category",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "associatedTags": {
       "description": "Fully qualified names of tags associated with this tag",

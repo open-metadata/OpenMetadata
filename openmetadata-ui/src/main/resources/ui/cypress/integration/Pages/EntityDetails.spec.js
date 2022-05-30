@@ -30,6 +30,7 @@ describe('Entity Details Page', () => {
       .click();
 
     // click on the 1st result and go to manage tab in entity details page
+    cy.wait(500);
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
     cy.get('[data-testid="Manage"]').should('be.visible').click();
 
@@ -61,8 +62,11 @@ describe('Entity Details Page', () => {
     cy.get('@confirmBtn').click();
 
     // success modal should be visible
-    cy.contains('Entity deleted successfully!').should('be.visible');
-    cy.get('.Toastify__close-button > svg').should('be.visible').click();
+    cy.contains('deleted successfully!').should('be.visible');
+    cy.get('.Toastify__close-button > svg')
+      .first()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="message-container"]')
       .first()
@@ -78,7 +82,10 @@ describe('Entity Details Page', () => {
         .should('be.visible')
         .should('contain', `${singuler} instance for ${fqn} not found`);
 
-      cy.get('.Toastify__close-button > svg').should('be.visible').click();
+      cy.get('.Toastify__close-button > svg')
+        .first()
+        .should('be.visible')
+        .click();
       cy.get('[data-testid="no-data-image"]').should('be.visible');
       cy.contains(
         `${Cypress._.startCase(singuler)} instance for ${fqn} not found`

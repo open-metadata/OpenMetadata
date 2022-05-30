@@ -55,5 +55,5 @@ export const TOOLBAR_ITEMS = [
   ['blockquote', 'code-block'],
   [{ list: 'ordered' }, { list: 'bullet' }],
   ['link'],
-  ['insertMention', 'insertRef'],
+  ['insertMention', 'insertRef', 'emoji'],
 ];

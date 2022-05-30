@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-const uuid = () => Cypress._.random(0, 1e6);
+export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 

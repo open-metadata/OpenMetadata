@@ -58,6 +58,7 @@ import org.openmetadata.catalog.jdbi3.MlModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.RestUtil;
@@ -100,6 +101,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @GET
   @Valid
   @Operation(
+      operationId = "listMlModels",
       summary = "List ML Models",
       tags = "mlModels",
       description =
@@ -146,6 +148,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getMlModelByID",
       summary = "Get an ML Model",
       tags = "mlModels",
       description = "Get an ML Model by `id`.",
@@ -178,6 +181,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getMlModelByFQN",
       summary = "Get an ML Model by name",
       tags = "mlModels",
       description = "Get an ML Model by fully qualified name.",
@@ -209,6 +213,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   @POST
   @Operation(
+      operationId = "createMlModel",
       summary = "Create an ML Model",
       tags = "mlModels",
       description = "Create a new ML Model.",
@@ -216,7 +221,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "ML Model",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateMlModel.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -229,6 +234,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchMlModel",
       summary = "Update an ML Model",
       tags = "mlModels",
       description = "Update an existing ML Model using JsonPatch.",
@@ -253,6 +259,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateMlModel",
       summary = "Create or update an ML Model",
       tags = "mlModels",
       description = "Create a new ML Model, if it does not exist or update an existing model.",
@@ -273,11 +280,15 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "mlModels",
       description = "Add a user identified by `userId` as follower of this model",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
   public Response addFollower(
@@ -294,9 +305,16 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollower",
       summary = "Remove a follower",
       tags = "mlModels",
-      description = "Remove the user identified `userId` as a follower of the model.")
+      description = "Remove the user identified `userId` as a follower of the model.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -313,6 +331,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllMlModelVersion",
       summary = "List Ml Model versions",
       tags = "mlModels",
       description = "Get a list of all the versions of an Ml Model identified by `id`",
@@ -333,6 +352,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificMlModelVersion",
       summary = "Get a version of the ML Model",
       tags = "mlModels",
       description = "Get a version of the ML Model by given `id`",
@@ -361,6 +381,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteMlModel",
       summary = "Delete an ML Model",
       tags = "mlModels",
       description = "Delete an ML Model by `id`.",

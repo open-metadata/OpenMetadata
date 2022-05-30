@@ -13,6 +13,7 @@
 
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
+import IconCognito from '../assets/img/icon-aws-cognito.png';
 import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
@@ -156,6 +157,7 @@ export const Icons = {
   AZURE_ICON: 'azure-icon',
   GOOGLE_ICON: 'google-icon',
   OKTA_ICON: 'okta-icon',
+  COGNITO_ICON: 'cognito-icon',
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
@@ -353,6 +355,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.OKTA_ICON:
       IconComponent = IconOkta;
+
+      break;
+    case Icons.COGNITO_ICON:
+      IconComponent = IconCognito;
 
       break;
     case Icons.GITHUB_ICON:

@@ -23,7 +23,7 @@ public abstract class AbstractEventPublisher implements EventPublisher {
   private int currentBackoffTime = BACKOFF_NORMAL;
   private final List<ChangeEvent> batch = new ArrayList<>();
   private final ConcurrentHashMap<EventType, List<String>> filter = new ConcurrentHashMap<>();
-  private int batchSize = 10;
+  private final int batchSize;
 
   protected AbstractEventPublisher(int batchSize, List<EventFilter> filters) {
     filters.forEach(f -> filter.put(f.getEventType(), f.getEntities()));

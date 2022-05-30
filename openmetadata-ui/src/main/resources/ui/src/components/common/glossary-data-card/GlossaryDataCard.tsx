@@ -13,7 +13,7 @@
 
 import React, { FunctionComponent } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getGlossaryTermsPath } from '../../../constants/constants';
+import { getGlossaryTermsPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import Avatar from '../avatar/Avatar';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';

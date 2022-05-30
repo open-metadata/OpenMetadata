@@ -73,6 +73,7 @@ public class SearchResource {
   @GET
   @Path("/query")
   @Operation(
+      operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
       tags = "search",
       description =
@@ -182,6 +183,7 @@ public class SearchResource {
   @GET
   @Path("/suggest")
   @Operation(
+      operationId = "getSuggestedEntities",
       summary = "Suggest entities",
       tags = "search",
       description = "Get suggested entities used for auto-completion.",
@@ -189,7 +191,7 @@ public class SearchResource {
         @ApiResponse(
             responseCode = "200",
             description = "Table Suggestion API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
       })
   public Response suggest(
       @Context UriInfo uriInfo,

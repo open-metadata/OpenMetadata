@@ -64,7 +64,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                     description="MlModel uses FeatureSource",
                     edge=EntitiesEdge(
                         fromEntity=self.get_entity_reference(
-                            entity=MlModel, fqdn=model.fullyQualifiedName
+                            entity=MlModel, fqn=model.fullyQualifiedName
                         ),
                         toEntity=entity_ref,
                     ),

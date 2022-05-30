@@ -15,10 +15,12 @@ Test Profiler behavior
 from unittest import TestCase
 
 import pytest
+import sqlalchemy.types
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import MissingMetricException, Profiler
@@ -132,3 +134,33 @@ class ProfilerTest(TestCase):
             Profiler(
                 like, like_ratio, session=self.session, table=User, use_cols=[User.age]
             )
+
+    def test_skipped_types(self):
+        """
+        Check that we are properly skipping computations for
+        not supported types
+        """
+
+        class NotCompute(Base):
+            __tablename__ = "not_compute"
+            id = Column(Integer, primary_key=True)
+            null_col = Column(sqlalchemy.types.NULLTYPE)
+            array_col = Column(sqlalchemy.ARRAY(Integer, dimensions=2))
+            json_col = Column(sqlalchemy.JSON)
+            map_col = Column(sqa_types.SQAMap)
+            struct_col = Column(sqa_types.SQAStruct)
+
+        profiler = Profiler(
+            Metrics.COUNT.value,
+            session=self.session,
+            table=NotCompute,
+            use_cols=[
+                NotCompute.null_col,
+                NotCompute.array_col,
+                NotCompute.json_col,
+                NotCompute.map_col,
+                NotCompute.struct_col,
+            ],
+        )
+
+        assert not profiler.column_results

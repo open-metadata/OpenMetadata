@@ -76,9 +76,8 @@ public class FeedResource {
   private final FeedRepository dao;
   private final Authorizer authorizer;
 
-  public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
+  public static void addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
-    return threads;
   }
 
   public static Thread addHref(UriInfo uriInfo, Thread thread) {
@@ -116,6 +115,7 @@ public class FeedResource {
 
   @GET
   @Operation(
+      operationId = "listThreads",
       summary = "List threads",
       tags = "feeds",
       description = "Get a list of threads, optionally filtered by `entityLink`.",
@@ -178,14 +178,14 @@ public class FeedResource {
     } else { // Forward paging or first page
       threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
     }
-    threads.getData().forEach(thread -> addHref(uriInfo, thread));
-
+    addHref(uriInfo, threads.getData());
     return threads;
   }
 
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getThreadByID",
       summary = "Get a thread",
       tags = "feeds",
       description = "Get a thread by `id`.",
@@ -203,6 +203,7 @@ public class FeedResource {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchThread",
       summary = "Update a thread by `id`.",
       tags = "feeds",
       description = "Update an existing thread using JsonPatch.",
@@ -230,6 +231,7 @@ public class FeedResource {
   @GET
   @Path("/count")
   @Operation(
+      operationId = "countThreads",
       summary = "count of threads",
       tags = "feeds",
       description = "Get a count of threads, optionally filtered by `entityLink` for each of the entities.",
@@ -249,13 +251,13 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
-          Boolean isResolved)
-      throws IOException {
+          Boolean isResolved) {
     return dao.getThreadsCount(entityLink, isResolved);
   }
 
   @POST
   @Operation(
+      operationId = "createThread",
       summary = "Create a thread",
       tags = "feeds",
       description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
@@ -263,7 +265,7 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The thread",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateThread.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
@@ -276,6 +278,7 @@ public class FeedResource {
   @POST
   @Path("/{id}/posts")
   @Operation(
+      operationId = "addPostToThread",
       summary = "Add post to a thread",
       tags = "feeds",
       description = "Add a post to an existing thread.",
@@ -283,7 +286,7 @@ public class FeedResource {
         @ApiResponse(
             responseCode = "200",
             description = "The post",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreatePost.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response addPost(
@@ -300,6 +303,7 @@ public class FeedResource {
   @DELETE
   @Path("/{threadId}/posts/{postId}")
   @Operation(
+      operationId = "deletePostFromThread",
       summary = "Delete a post from its thread",
       tags = "feeds",
       description = "Delete a post from an existing thread.",
@@ -328,6 +332,7 @@ public class FeedResource {
   @GET
   @Path("/{id}/posts")
   @Operation(
+      operationId = "getAllPostOfThread",
       summary = "Get all the posts of a thread",
       tags = "feeds",
       description = "Get all the posts of an existing thread.",

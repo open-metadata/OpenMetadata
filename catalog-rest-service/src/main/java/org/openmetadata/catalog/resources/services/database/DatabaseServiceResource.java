@@ -93,8 +93,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   @GET
   @Operation(
+      operationId = "listDatabaseServices",
       summary = "List database services",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a list of database services.",
       responses = {
         @ApiResponse(
@@ -143,8 +144,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDatabaseServiceByID",
       summary = "Get a database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a database service by `id`.",
       responses = {
         @ApiResponse(
@@ -176,8 +178,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getDatabaseServiceByFQN",
       summary = "Get database service by name",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a database service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -209,8 +212,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDatabaseServiceVersion",
       summary = "List database service versions",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a list of all the versions of a database service identified by `id`",
       responses = {
         @ApiResponse(
@@ -243,8 +247,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDatabaseServiceVersion",
       summary = "Get a version of the database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Get a version of the database service by given `id`",
       responses = {
         @ApiResponse(
@@ -271,17 +276,16 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   @POST
   @Operation(
+      operationId = "createDatabaseService",
       summary = "Create database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Create a new database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDatabaseService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -293,17 +297,16 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDatabaseService",
       summary = "Update database service",
-      tags = "services",
+      tags = "databaseService",
       description = "Update an existing or create a new database service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Database service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDatabaseService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DatabaseService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -316,8 +319,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDatabaseService",
       summary = "Delete a database service",
-      tags = "services",
+      tags = "databaseService",
       description =
           "Delete a database services. If databases (and tables) belong the service, it can't be " + "deleted.",
       responses = {
