@@ -96,11 +96,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
-        if (res.data) {
           setTableCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -113,11 +109,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTopics('', '', 0)
       .then((res) => {
-        if (res.data) {
           setTopicCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -130,11 +122,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllPipelines('', '', 0)
       .then((res) => {
-        if (res.data) {
           setPipelineCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -147,11 +135,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllDashboards('', '', 0)
       .then((res) => {
-        if (res.data) {
           setDashboardCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -165,11 +149,7 @@ const MyDataPage = () => {
   const fetchTeamsAndUsersCount = () => {
     getUsers('', 0)
       .then((res) => {
-        if (res.data) {
           setUserCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -181,11 +161,7 @@ const MyDataPage = () => {
 
     getTeams('', 0)
       .then((res) => {
-        if (res.data) {
           setTeamCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(

@@ -12,9 +12,32 @@
  */
 
 import axios from 'axios';
+import { showErrorToast } from '../utils/ToastUtils';
+
+const baseURL = '/api/v1';
 
 const axiosClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL,
 });
+
+export const AxiosClientWithError = axios.create({
+  baseURL,
+});
+
+AxiosClientWithError.interceptors.response.use(
+  (response) => {
+    if (response.data) {
+      return Promise.resolve(response);
+    } else {
+      throw null;
+    }
+  },
+  (error) => {
+    showErrorToast(
+      err,
+      jsonData['api-error-messages']['unexpected-server-response']
+    );
+  }
+);
 
 export default axiosClient;
