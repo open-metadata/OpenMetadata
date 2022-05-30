@@ -658,7 +658,6 @@ class SouceConnectionTest(TestCase):
             s3StagingDir="s3athena-postgres",
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
-            database=None,
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
@@ -669,7 +668,6 @@ class SouceConnectionTest(TestCase):
             s3StagingDir="s3athena-postgres",
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
-            database="test",
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
