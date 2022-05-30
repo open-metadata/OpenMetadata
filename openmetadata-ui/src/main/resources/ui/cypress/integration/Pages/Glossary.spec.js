@@ -11,7 +11,47 @@
  *  limitations under the License.
  */
 
-import { NEW_GLOSSARY } from '../../constants/constants';
+import { NEW_GLOSSARY, NEW_GLOSSARY_TERMS } from '../../constants/constants';
+
+const createGlossaryTerm = (term) => {
+  cy.get('[data-testid="header"]')
+    .should('be.visible')
+    .contains(NEW_GLOSSARY.name)
+    .should('exist');
+  cy.get('[data-testid="add-new-tag-button"]').should('be.visible').click();
+
+  cy.contains('Add Glossary Term').should('be.visible');
+  cy.get('[data-testid="name"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.name);
+  cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.description);
+  cy.get('[data-testid="synonyms"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term.synonyms);
+
+  cy.get('[data-testid="references"] > .tw-flex > .button-comp')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  cy.get('#name-0').scrollIntoView().should('be.visible').type('test');
+  cy.get('#url-0')
+    .scrollIntoView()
+    .should('be.visible')
+    .type('https://test.com');
+
+  cy.get('[data-testid="save-glossary-term"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.wait(200);
+  cy.get('#left-panel').contains(term.name).should('be.visible');
+};
 
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
@@ -82,5 +122,16 @@ describe('Glossary page should work properly', () => {
       });
   });
 
-  it('Create glossary term should work properly', () => {});
+  it('Create glossary term should work properly', () => {
+    // Todo: need to remove below uncaught exception once tree-view error resolves
+    cy.on('uncaught:exception', () => {
+      // return false to prevent the error from
+      // failing this test
+      return false;
+    });
+
+    const terms = Object.values(NEW_GLOSSARY_TERMS);
+
+    terms.forEach(createGlossaryTerm);
+  });
 });

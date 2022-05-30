@@ -166,3 +166,15 @@ export const NEW_GLOSSARY = {
   name: 'Business Glossary',
   description: 'This is the Business glossary',
 };
+export const NEW_GLOSSARY_TERMS = {
+  term_1: {
+    name: 'Purchase',
+    description: 'This is the Purchase',
+    synonyms: 'buy,collect,acquire',
+  },
+  term_2: {
+    name: 'Sales',
+    description: 'This is the Sales',
+    synonyms: 'give,disposal,deal',
+  },
+};
