@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
@@ -64,11 +64,14 @@ export const getUserDataFromOidc = (
   const images = oidcUser.profile.picture
     ? getImages(oidcUser.profile.picture)
     : undefined;
+  const profileEmail = oidcUser.profile.email;
+  const email = profileEmail ? profileEmail : userData.email;
 
   return {
     ...userData,
+    email,
     displayName: oidcUser.profile.name,
-    profile: !isEmpty(images) ? { images } : userData.profile,
+    profile: images ? { images } : userData.profile,
   };
 };
 
