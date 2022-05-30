@@ -204,4 +204,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
-        self.assertIn("2 validation errors for GlueConnection", str(err.exception))
+        self.assertIn(
+            "1 validation error for GlueConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )
