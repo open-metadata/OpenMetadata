@@ -167,4 +167,33 @@ describe('Glossary page should work properly', () => {
 
     terms.forEach(deleteGlossaryTerm);
   });
+
+  it('Delete glossary should work properly', () => {
+    cy.get('[data-testid="header"]')
+      .should('be.visible')
+      .contains(NEW_GLOSSARY.name)
+      .should('exist');
+
+    cy.get('[data-testid="delete-button"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .should('not.disabled')
+      .click();
+
+    cy.get('.Toastify__toast-body')
+      .contains('Glossary deleted successfully!')
+      .should('be.visible');
+    cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
+    cy.wait(1000);
+    cy.contains('No glossaries found').should('be.visible');
+  });
 });
