@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
 import { CustomField } from '../../generated/entity/type';
@@ -23,43 +24,51 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
   customFields,
 }) => {
   return (
-    <table className="tw-w-full" data-testid="entity-custom-fields-table">
-      <thead>
-        <tr className="tableHead-row">
-          <th className="tableHead-cell" data-testid="field-name">
-            Name
-          </th>
-          <th className="tableHead-cell" data-testid="field-type">
-            Type
-          </th>
-          <th className="tableHead-cell" data-testid="field-description">
-            Description
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {customFields.length ? (
-          customFields.map((field, index) => (
-            <tr
-              className={`tableBody-row ${!isEven(index + 1) && 'odd-row'}`}
-              key={uniqueId()}>
-              <td className="tableBody-cell">{field.name}</td>
-              <td className="tableBody-cell">
-                {getEntityName(field.fieldType)}
-              </td>
-              <td className="tableBody-cell">{field.description}</td>
-            </tr>
-          ))
-        ) : (
-          <tr className="tableBody-row">
-            <td
-              className="tableBody-cell tw-text-grey-muted tw-text-center"
-              colSpan={3}>
-              No data
-            </td>
+    <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
+      <table className="tw-w-full" data-testid="entity-custom-fields-table">
+        <thead>
+          <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
+            <th className="tableHead-cell" data-testid="field-name">
+              Name
+            </th>
+            <th className="tableHead-cell" data-testid="field-type">
+              Type
+            </th>
+            <th className="tableHead-cell" data-testid="field-description">
+              Description
+            </th>
           </tr>
-        )}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {customFields.length ? (
+            customFields.map((field, index) => (
+              <tr
+                className={classNames(
+                  `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
+                  {
+                    'tw-border-b-0 tw-border-l-0 tw-border-r-0':
+                      index === customFields.length - 1,
+                  }
+                )}
+                key={uniqueId()}>
+                <td className="tableBody-cell">{field.name}</td>
+                <td className="tableBody-cell">
+                  {getEntityName(field.fieldType)}
+                </td>
+                <td className="tableBody-cell">{field.description}</td>
+              </tr>
+            ))
+          ) : (
+            <tr className="tableBody-row">
+              <td
+                className="tableBody-cell tw-text-grey-muted tw-text-center"
+                colSpan={3}>
+                No data
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 };
