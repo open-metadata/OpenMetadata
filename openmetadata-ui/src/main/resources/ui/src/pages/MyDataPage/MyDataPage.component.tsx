@@ -96,7 +96,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
-          setTableCount(res.data.paging.total);
+        setTableCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -109,7 +109,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTopics('', '', 0)
       .then((res) => {
-          setTopicCount(res.data.paging.total);
+        setTopicCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -122,7 +122,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllPipelines('', '', 0)
       .then((res) => {
-          setPipelineCount(res.data.paging.total);
+        setPipelineCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -135,7 +135,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllDashboards('', '', 0)
       .then((res) => {
-          setDashboardCount(res.data.paging.total);
+        setDashboardCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -149,7 +149,7 @@ const MyDataPage = () => {
   const fetchTeamsAndUsersCount = () => {
     getUsers('', 0)
       .then((res) => {
-          setUserCount(res.data.paging.total);
+        setUserCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -161,7 +161,7 @@ const MyDataPage = () => {
 
     getTeams('', 0)
       .then((res) => {
-          setTeamCount(res.data.paging.total);
+        setTeamCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(

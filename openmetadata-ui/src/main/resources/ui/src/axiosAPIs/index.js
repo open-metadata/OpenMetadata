@@ -12,6 +12,7 @@
  */
 
 import axios from 'axios';
+import jsonData from '../jsons/en';
 import { showErrorToast } from '../utils/ToastUtils';
 
 const baseURL = '/api/v1';
@@ -34,7 +35,7 @@ AxiosClientWithError.interceptors.response.use(
   },
   (error) => {
     showErrorToast(
-      err,
+      error,
       jsonData['api-error-messages']['unexpected-server-response']
     );
   }
