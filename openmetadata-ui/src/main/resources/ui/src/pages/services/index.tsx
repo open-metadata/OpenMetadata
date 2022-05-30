@@ -308,7 +308,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
-                {pipelineService.pipelineUrl}
+                {pipelineService.connection.config?.hostPort}
               </span>
             </div>
           </>

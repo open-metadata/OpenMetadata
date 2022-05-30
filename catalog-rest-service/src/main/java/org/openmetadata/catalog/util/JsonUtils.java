@@ -16,6 +16,7 @@ package org.openmetadata.catalog.util;
 import static org.openmetadata.catalog.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -91,6 +92,13 @@ public final class JsonUtils {
       return null;
     }
     return OBJECT_MAPPER.readValue(json, clz);
+  }
+
+  public static <T> T readValue(String json, TypeReference<T> valueTypeRef) throws IOException {
+    if (json == null) {
+      return null;
+    }
+    return OBJECT_MAPPER.readValue(json, valueTypeRef);
   }
 
   /** Read an array of objects of type {@code T} from json */

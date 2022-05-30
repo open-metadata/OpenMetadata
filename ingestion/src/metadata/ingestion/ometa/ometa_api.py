@@ -440,14 +440,14 @@ class OpenMetadata(
     def get_by_name(
         self,
         entity: Type[T],
-        fqdn: Union[str, FullyQualifiedEntityName],
+        fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{model_str(fqdn)}", fields=fields)
+        return self._get(entity=entity, path=f"name/{model_str(fqn)}", fields=fields)
 
     def get_by_id(
         self,
@@ -467,7 +467,7 @@ class OpenMetadata(
         """
         Generic GET operation for an entity
         :param entity: Entity Class
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
@@ -500,16 +500,16 @@ class OpenMetadata(
             return None
 
     def get_entity_reference(
-        self, entity: Type[T], fqdn: str
+        self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
-        a FQDN and the Entity class.
+        a FQN and the Entity class.
         :param entity: Entity Class
-        :param fqdn: Entity instance FQDN
+        :param fqn: Entity instance FQN
         :return: EntityReference or None
         """
-        instance = self.get_by_name(entity, fqdn)
+        instance = self.get_by_name(entity, fqn)
         if instance:
             return EntityReference(
                 id=instance.id,
@@ -519,7 +519,7 @@ class OpenMetadata(
                 href=instance.href,
             )
 
-        logger.error("Cannot find the Entity %s", fqdn)
+        logger.error("Cannot find the Entity %s", fqn)
         return None
 
     # pylint: disable=too-many-arguments,dangerous-default-value
@@ -649,9 +649,10 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run endpoint health-check. Return `true` if OK
+        Run version api call. Return `true` if response is not None
         """
-        return self.client.get("/health-check")["status"] == "healthy"
+        raw_version = self.client.get("/version")["version"]
+        return raw_version is not None
 
     def close(self):
         """

@@ -90,7 +90,9 @@ class SqlAlchemySource(Source, ABC):
         """
 
     @abstractmethod
-    def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
+    def get_table_names(
+        self, schema: str, inspector: Inspector
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Method to fetch table & view names
         """
@@ -317,12 +319,12 @@ class SqlAlchemySource(Source, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def _build_database_state(self, schema_fqdn: str) -> List[EntityReference]:
+    def _build_database_state(self, schema_fqn: str) -> List[EntityReference]:
         after = None
         tables = []
         while True:
             table_entities = self.metadata.list_entities(
-                entity=Table, after=after, limit=100, params={"database": schema_fqdn}
+                entity=Table, after=after, limit=100, params={"database": schema_fqn}
             )
             tables.extend(table_entities.entities)
             if table_entities.after is None:
@@ -330,11 +332,11 @@ class SqlAlchemySource(Source, ABC):
             after = table_entities.after
         return tables
 
-    def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+    def delete_tables(self, schema_fqn: str) -> DeleteTable:
         """
         Returns Deleted tables
         """
-        database_state = self._build_database_state(schema_fqdn)
+        database_state = self._build_database_state(schema_fqn)
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)

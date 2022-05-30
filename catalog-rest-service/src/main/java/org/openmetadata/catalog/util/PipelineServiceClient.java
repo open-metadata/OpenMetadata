@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
@@ -86,4 +87,7 @@ public abstract class PipelineServiceClient {
 
   /* Get the status of a deployed pipeline */
   public abstract IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline);
+
+  /* Get the all last run logs of a deployed pipeline */
+  public abstract Map<String, String> getLastIngestionLogs(String pipelineName);
 }

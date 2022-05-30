@@ -30,7 +30,6 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -50,7 +49,6 @@ export interface DatasetDetailsProps {
   joins: TableJoins;
   tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
-  users: Array<User>;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
