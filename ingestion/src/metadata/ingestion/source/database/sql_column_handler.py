@@ -137,7 +137,7 @@ class SqlColumnHandler:
         )
         table_columns = []
         columns = inspector.get_columns(
-            table, schema, db_name=self.service_connection.database
+            table, schema, db_name=self._get_database_name()
         )
         for column in columns:
             try:

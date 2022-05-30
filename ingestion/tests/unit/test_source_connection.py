@@ -625,9 +625,9 @@ class SouceConnectionTest(TestCase):
         expected_args = {}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
-            connectionArguments=None,
+            warehouse="COMPUTE_WH",
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
@@ -637,8 +637,9 @@ class SouceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
+            warehouse="COMPUTE_WH",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
@@ -657,18 +658,16 @@ class SouceConnectionTest(TestCase):
             s3StagingDir="s3athena-postgres",
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
-            database=None,
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
         # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443/test?s3_staging_dir=s3athena-postgres&work_group=primary"
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
             s3StagingDir="s3athena-postgres",
             workgroup="primary",
             scheme=AthenaScheme.awsathena_rest,
-            database="test",
         )
         assert expected_url == get_connection_url(athena_conn_obj)
 
