@@ -61,6 +61,7 @@ import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 public class SearchResource {
   private final RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
+  private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
   private static final String DISPLAY_NAME = "display_name";
   private static final String DESCRIPTION = "description";
@@ -131,7 +132,9 @@ public class SearchResource {
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          String sortOrderParam)
+          String sortOrderParam,
+      @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
+          boolean trackTotalHits)
       throws IOException {
 
     SearchRequest searchRequest = new SearchRequest(index);
@@ -174,6 +177,16 @@ public class SearchResource {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
     LOG.debug(searchSourceBuilder.toString());
+    /* for performance reasons ElasticSearch doesn't provide accurate hits
+    if we enable trackTotalHits parameter it will try to match every result, count and return hits
+    however in most cases for search results an approximate value is good enough.
+    we are displaying total entity counts in landing page and explore page where we need the total count
+    https://github.com/elastic/elasticsearch/issues/33028 */
+    if (trackTotalHits) {
+      searchSourceBuilder.trackTotalHits(true);
+    } else {
+      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
+    }
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
