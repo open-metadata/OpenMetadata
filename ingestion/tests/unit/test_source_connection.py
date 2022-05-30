@@ -662,7 +662,7 @@ class SouceConnectionTest(TestCase):
         assert expected_url == get_connection_url(athena_conn_obj)
 
         # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443/test?s3_staging_dir=s3athena-postgres&work_group=primary"
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
         athena_conn_obj = AthenaConnection(
             awsConfig=awsCreds,
             s3StagingDir="s3athena-postgres",
