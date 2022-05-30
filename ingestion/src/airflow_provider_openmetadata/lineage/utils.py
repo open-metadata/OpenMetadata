@@ -32,7 +32,14 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
@@ -106,11 +113,11 @@ def get_xlets(
     set in inlets or outlets.
 
     We expect xlets to have the following structure:
-    [{'tables': ['FQDN']}]
+    [{'tables': ['FQN']}]
 
     :param operator: task to get xlets from
     :param xlet_mode: get inlet or outlet
-    :return: list of tables FQDN
+    :return: list of tables FQN
     """
     xlet = getattr(operator, xlet_mode)
     if is_airflow_version_1():
@@ -184,7 +191,7 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     )
     current_pipeline: Pipeline = metadata.get_by_name(
         entity=Pipeline,
-        fqdn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
+        fqn=f"{airflow_service_entity.name.__root__}.{dag.dag_id}",
         fields=["tasks"],
     )
 
@@ -347,7 +354,7 @@ def parse_lineage(
 
         operator.log.info("Parsing Lineage")
         for table in inlets if inlets else []:
-            table_entity = metadata.get_by_name(entity=Table, fqdn=table)
+            table_entity = metadata.get_by_name(entity=Table, fqn=table)
             operator.log.debug(f"from entity {table_entity}")
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -359,7 +366,7 @@ def parse_lineage(
             metadata.add_lineage(lineage)
 
         for table in outlets if outlets else []:
-            table_entity = metadata.get_by_name(entity=Table, fqdn=table)
+            table_entity = metadata.get_by_name(entity=Table, fqn=table)
             operator.log.debug(f"To entity {table_entity}")
             lineage = AddLineageRequest(
                 edge=EntitiesEdge(
@@ -395,14 +402,19 @@ def get_or_create_pipeline_service(
     """
     operator.log.info("Get Airflow Service ID")
     airflow_service_entity = metadata.get_by_name(
-        entity=PipelineService, fqdn=config.airflow_service_name
+        entity=PipelineService, fqn=config.airflow_service_name
     )
 
     if airflow_service_entity is None:
         pipeline_service = CreatePipelineServiceRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
-            pipelineUrl=conf.get("webserver", "base_url"),
+            connection=PipelineConnection(
+                config=AirflowConnection(
+                    hostPort=conf.get("webserver", "base_url"),
+                    connection=BackendConnection(),
+                ),
+            ),
         )
         airflow_service_entity = metadata.create_or_update(pipeline_service)
         operator.log.info("Created airflow service entity {}", airflow_service_entity)

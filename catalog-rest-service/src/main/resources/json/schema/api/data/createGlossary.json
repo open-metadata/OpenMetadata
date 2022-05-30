@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the glossary instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "reviewers": {
       "description": "User references of the reviewers for this glossary.",

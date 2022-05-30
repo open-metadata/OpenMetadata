@@ -14,9 +14,9 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -121,7 +122,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withDescription("Team2 description")
             .withUsers(List.of(USER2.getId()));
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
-    EntityReference TEAM2_REF = new EntityReference().withId(TEAM2.getId()).withType(Entity.TEAM);
+    EntityReference TEAM2_REF = TEAM2.getEntityReference();
+
     CreateTable createTable2 = tableResourceTest.createRequest(test);
     createTable2.withName("table2").withOwner(TEAM2_REF);
     TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
@@ -724,7 +726,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
-    TestUtils.put(target, userId.toString(), CREATED, authHeaders);
+    TestUtils.put(target, userId.toString(), OK, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
@@ -756,16 +758,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   protected final Thread patchThreadAndCheck(Thread updated, String originalJson, Map<String, String> authHeaders)
       throws IOException {
-
     // Validate information returned in patch response has the updates
     Thread returned = patchThread(updated.getId(), originalJson, updated, authHeaders);
-
     compareEntities(updated, returned, authHeaders);
 
     // GET the entity and Validate information returned
     Thread getEntity = getThread(updated.getId(), authHeaders);
     compareEntities(updated, getEntity, authHeaders);
-
     return returned;
   }
 
@@ -780,6 +779,6 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
     assertEquals(expected.getMessage(), patched.getMessage());
     assertEquals(expected.getResolved(), patched.getResolved());
-    assertEquals(TestUtils.getPrincipal(authHeaders), patched.getUpdatedBy());
+    assertEquals(getPrincipalName(authHeaders), patched.getUpdatedBy());
   }
 }

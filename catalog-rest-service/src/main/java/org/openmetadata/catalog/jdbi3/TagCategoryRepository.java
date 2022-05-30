@@ -87,7 +87,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   }
 
   @Override
-  public void prepare(TagCategory entity) throws IOException {
+  public void prepare(TagCategory entity) {
     setFullyQualifiedName(entity);
   }
 

@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Type, Union
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
 
+from metadata.ingestion.source import sqa_types
+
 
 def create_sqlalchemy_type(name: str):
     sqlalchemy_type = type(
@@ -45,6 +47,9 @@ class ColumnTypeParser:
         types.Integer: "INT",
         types.BigInteger: "BIGINT",
         types.VARBINARY: "VARBINARY",
+        # Custom wrapper types enriching SQA type system
+        sqa_types.SQAMap: "MAP",
+        sqa_types.SQAStruct: "STRUCT",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
@@ -181,6 +186,7 @@ class ColumnTypeParser:
         s: str, **kwargs: Any
     ) -> Union[object, Dict[str, object]]:
         s = s.strip()
+        s = s.replace(" ", "")
         if s.startswith("array<"):
             if s[-1] != ">":
                 raise ValueError("expected '>' found: %s" % s)

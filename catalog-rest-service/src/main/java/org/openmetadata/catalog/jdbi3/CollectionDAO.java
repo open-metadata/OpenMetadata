@@ -22,7 +22,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import lombok.Builder;
 import lombok.Getter;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -63,7 +65,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
@@ -284,11 +285,14 @@ public interface CollectionDAO {
   interface EntityExtensionDAO {
     @ConnectionAwareSqlUpdate(
         value =
-            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, :json)",
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO entity_extension(id, extension, jsonSchema, json) VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -306,7 +310,7 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
-    int deleteAll(@Bind("id") String id);
+    void deleteAll(@Bind("id") String id);
   }
 
   class EntityVersionPair {
@@ -336,45 +340,36 @@ public interface CollectionDAO {
     }
   }
 
+  @Getter
+  @Builder
+  class EntityRelationshipRecord {
+    private UUID id;
+    private String type;
+    private String json;
+  }
+
   interface EntityRelationshipDAO {
-    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
-      return insert(fromId, toId, fromEntity, toEntity, relation, null);
+    default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation) {
+      insert(fromId, toId, fromEntity, toEntity, relation, null);
     }
 
-    default int insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
-      return insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
+    default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
+      insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
     }
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
-                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
-        connectionType = POSTGRES)
-    int insert(
-        @Bind("fromId") String fromId,
-        @Bind("toId") String toId,
-        @Bind("fromEntity") String fromEntity,
-        @Bind("toEntity") String toEntity,
-        @Bind("relation") int relation);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT IGNORE INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
-                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json)",
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json) "
+                + "ON DUPLICATE KEY UPDATE json = :json",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) VALUES "
                 + "(:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
-                + "ON CONFLICT (fromId, toId, relation) DO NOTHING",
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
-    int insert(
+    void insert(
         @Bind("fromId") String fromId,
         @Bind("toId") String toId,
         @Bind("fromEntity") String fromEntity,
@@ -386,13 +381,14 @@ public interface CollectionDAO {
     // Find to operations
     //
     @SqlQuery(
-        "SELECT toId, toEntity FROM entity_relationship "
+        "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation "
             + "ORDER BY toId")
-    @RegisterRowMapper(ToEntityReferenceMapper.class)
-    List<EntityReference> findTo(
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findTo(
         @Bind("fromId") String fromId, @Bind("fromEntity") String fromEntity, @Bind("relation") int relation);
 
+    // TODO delete this
     @SqlQuery(
         "SELECT toId FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
@@ -428,11 +424,11 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, fromEntity FROM entity_relationship "
+        "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper.class)
-    List<EntityReference> findFrom(
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
     //
@@ -453,7 +449,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation AND toEntity = :toEntity")
-    int deleteFrom(
+    void deleteFrom(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -463,7 +459,7 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND fromEntity = :fromEntity")
-    int deleteTo(
+    void deleteTo(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -472,7 +468,29 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
-    int deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+
+    class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
+      @Override
+      public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipRecord.builder()
+            .id(UUID.fromString(rs.getString("fromId")))
+            .type(rs.getString("fromEntity"))
+            .json(rs.getString("json"))
+            .build();
+      }
+    }
+
+    class ToRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
+      @Override
+      public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipRecord.builder()
+            .id(UUID.fromString(rs.getString("toId")))
+            .type(rs.getString("toEntity"))
+            .json(rs.getString("json"))
+            .build();
+      }
+    }
   }
 
   interface FeedDAO {
@@ -721,7 +739,7 @@ public interface CollectionDAO {
                 + "VALUES (:fromFQN, :toFQN, :fromType, :toType, :relation, (:json :: jsonb)) "
                 + "ON CONFLICT (fromFQN, toFQN, relation) DO NOTHING",
         connectionType = POSTGRES)
-    int insert(
+    void insert(
         @Bind("fromFQN") String fromFQN,
         @Bind("toFQN") String toFQN,
         @Bind("fromType") String fromType,
@@ -765,7 +783,7 @@ public interface CollectionDAO {
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
-    List<List<String>> listFromByPrefix(
+    List<Triple<String, String, String>> listFromByPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
@@ -775,7 +793,7 @@ public interface CollectionDAO {
         "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
             + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType LIKE CONCAT(:toType, '%') AND relation = :relation")
     @RegisterRowMapper(FromFieldMapper.class)
-    List<List<String>> listFromByAllPrefix(
+    List<Triple<String, String, String>> listFromByAllPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
@@ -786,10 +804,36 @@ public interface CollectionDAO {
             + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :fromType AND toType = :toType "
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
-    List<List<String>> listToByPrefix(
+    List<Triple<String, String, String>> listToByPrefix(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
+            + "fromFQN = :fqn AND fromType = :type AND toType = :otherType AND relation = :relation "
+            + "UNION "
+            + "SELECT toFQN, fromFQN, json FROM field_relationship WHERE "
+            + "toFQN = :fqn AND toType = :type AND fromType = :otherType AND relation = :relation")
+    @RegisterRowMapper(ToFieldMapper.class)
+    List<Triple<String, String, String>> listBidirectional(
+        @Bind("fqn") String fqn,
+        @Bind("type") String type,
+        @Bind("otherType") String otherType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromFQN, toFQN, json FROM field_relationship WHERE "
+            + "fromFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType = :type AND toType = :otherType AND relation = :relation "
+            + "UNION "
+            + "SELECT toFQN, fromFQN, json FROM field_relationship WHERE "
+            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND toType = :type AND fromType = :otherType AND relation = :relation")
+    @RegisterRowMapper(ToFieldMapper.class)
+    List<Triple<String, String, String>> listBidirectionalByPrefix(
+        @Bind("fqnPrefix") String fqnPrefix,
+        @Bind("type") String type,
+        @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
     default void deleteAllByPrefix(String fqnPrefix) {
@@ -811,17 +855,17 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    class ToFieldMapper implements RowMapper<List<String>> {
+    class ToFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
-      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("fromFQN"), rs.getString("toFQN"), rs.getString("json"));
       }
     }
 
-    class FromFieldMapper implements RowMapper<List<String>> {
+    class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
-      public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return Arrays.asList(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
+      public Triple<String, String, String> map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return Triple.of(rs.getString("toFQN"), rs.getString("fromFQN"), rs.getString("json"));
       }
     }
   }
@@ -1379,7 +1423,7 @@ public interface CollectionDAO {
     UsageDetails getLatestUsage(@Bind("id") String id);
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
-    int delete(@Bind("id") String id);
+    void delete(@Bind("id") String id);
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
@@ -1452,9 +1496,6 @@ public interface CollectionDAO {
     default String getNameColumn() {
       return "name";
     }
-
-    @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
-    String findByEmail(@Bind("email") String email);
 
     @Override
     default int listCount(ListFilter filter) {

@@ -60,6 +60,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.topic.TopicSampleData;
@@ -101,6 +102,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @GET
   @Operation(
+      operationId = "listTopics",
       summary = "List topics",
       tags = "topics",
       description =
@@ -152,6 +154,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTopicVersion",
       summary = "List topic versions",
       tags = "topics",
       description = "Get a list of all the versions of a topic identified by `id`",
@@ -204,6 +207,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getTopicByFQN",
       summary = "Get a topic by name",
       tags = "topics",
       description = "Get a topic by fully qualified name.",
@@ -236,6 +240,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificTopicVersion",
       summary = "Get a version of the topic",
       tags = "topics",
       description = "Get a version of the topic by given `id`",
@@ -263,6 +268,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @POST
   @Operation(
+      operationId = "createTopic",
       summary = "Create a topic",
       tags = "topics",
       description = "Create a topic under an existing `service`.",
@@ -270,7 +276,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
@@ -282,6 +288,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchTopic",
       summary = "Update a topic",
       tags = "topics",
       description = "Update an existing topic using JsonPatch.",
@@ -306,6 +313,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateTopic",
       summary = "Update topic",
       tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
@@ -313,7 +321,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated topic ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
@@ -324,7 +332,17 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @PUT
   @Path("/{id}/sampleData")
-  @Operation(summary = "Add sample data", tags = "topics", description = "Add sample data to the topic.")
+  @Operation(
+      operationId = "addSampleData",
+      summary = "Add sample data",
+      tags = "topics",
+      description = "Add sample data to the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The topic",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+      })
   public Topic addSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -339,11 +357,15 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "topics",
       description = "Add a user identified by `userId` as followed of this topic",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response addFollower(
@@ -362,7 +384,13 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       summary = "Remove a follower",
       tags = "topics",
-      description = "Remove the user identified `userId` as a follower of the topic.")
+      description = "Remove the user identified `userId` as a follower of the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -379,6 +407,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTopic",
       summary = "Delete a topic",
       tags = "topics",
       description = "Delete a topic by `id`.",

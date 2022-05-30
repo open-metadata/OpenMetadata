@@ -46,7 +46,6 @@ import org.openmetadata.catalog.type.Webhook;
 import org.openmetadata.catalog.type.Webhook.Status;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 
 @Slf4j
@@ -232,7 +231,6 @@ public class WebhookResourceTest extends EntityResourceTest<Webhook, CreateWebho
   @Override
   public void validateCreatedEntity(Webhook webhook, CreateWebhook createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(webhook, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
     assertEquals(createRequest.getName(), webhook.getName());
     ArrayList<EventFilter> filters = new ArrayList<>(createRequest.getEventFilters());
     EntityUtil.addSoftDeleteFilter(filters);

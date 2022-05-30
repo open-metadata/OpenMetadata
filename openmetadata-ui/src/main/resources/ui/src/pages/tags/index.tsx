@@ -99,7 +99,6 @@ const TagsPage = () => {
       .then((res) => {
         if (res.data) {
           setCategoreis(res.data);
-          setCurrentCategory(res.data[0]);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
@@ -174,6 +173,7 @@ const TagsPage = () => {
       createTagCategory(data)
         .then((res: AxiosResponse) => {
           if (res.data) {
+            setCurrentCategory(res.data);
             fetchCategories();
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -387,6 +387,13 @@ const TagsPage = () => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    setCurrentCategory(categories[0]);
+    if (currentCategory) {
+      setCurrentCategory(currentCategory);
+    }
+  }, [categories, currentCategory]);
 
   const fetchLeftPanel = () => {
     return (

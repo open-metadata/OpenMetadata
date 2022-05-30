@@ -20,14 +20,10 @@ on:
 concurrency: 
   group: py-checkstyle-${{ github.head_ref }}
   cancel-in-progress: true
+
 jobs:
   py-checkstyle:
-    runs-on: ${{matrix.os}}
-
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -42,7 +38,7 @@ jobs:
 
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv antlr4
 
       - name: Install Python & Openmetadata related dependencies
         run: |

@@ -137,10 +137,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Override
   public void validateCreatedEntity(Type createdEntity, CreateType createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
-    // Entity specific validation
     assertEquals(createRequest.getSchema(), createdEntity.getSchema());
     // TODO
   }
@@ -148,9 +144,6 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   @Override
   public void compareEntities(Type expected, Type patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
-    // Entity specific validation
     assertEquals(expected.getSchema(), patched.getSchema());
     // TODO more checks
   }

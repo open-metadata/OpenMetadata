@@ -18,5 +18,5 @@ from metadata.generated.schema.entity.data.pipeline import PipelineStatus
 
 
 class OMetaPipelineStatus(BaseModel):
-    pipeline_fqdn: str
+    pipeline_fqn: str
     pipeline_status: PipelineStatus

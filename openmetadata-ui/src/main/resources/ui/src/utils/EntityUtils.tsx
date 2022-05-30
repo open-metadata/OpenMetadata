@@ -33,11 +33,10 @@ import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import SVGIcons from './SvgUtils';
 import {
   getDataTypeString,
-  getOwnerFromId,
   getTierFromTableTags,
   getUsagePercentile,
 } from './TableUtils';
@@ -94,7 +93,6 @@ export const getEntityOverview = (
         [FqnPart.Service, FqnPart.Database],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
       const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
@@ -125,9 +123,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -184,7 +182,6 @@ export const getEntityOverview = (
     case EntityType.PIPELINE: {
       const { owner, tags, pipelineUrl, service, fullyQualifiedName } =
         entityDetail;
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -199,9 +196,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -228,7 +225,6 @@ export const getEntityOverview = (
         fullyQualifiedName,
         displayName,
       } = entityDetail;
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -243,9 +239,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -461,6 +457,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
                     { 'tw-w-52': (displayVal as string).length > 32 }
                   )}
+                  data-testid="owner-name"
                   title={displayVal as string}>
                   {displayVal}
                 </span>

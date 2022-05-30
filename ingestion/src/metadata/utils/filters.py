@@ -175,3 +175,18 @@ def filter_by_database(
     :return: True for filtering, False otherwise
     """
     return _filter(database_filter_pattern, database_name)
+
+
+def filter_by_pipeline(
+    pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str
+) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param pipeline_filter_pattern: Model defining the pipeline filtering logic
+    :param pipeline_name: pipeline name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(pipeline_filter_pattern, pipeline_name)

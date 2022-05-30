@@ -133,6 +133,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
+    directTableJoins: [],
   });
   const [tableType, setTableType] = useState<TableType>(TableType.Regular);
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
@@ -1021,7 +1022,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
-          users={AppState.users}
           version={currentVersion}
           versionHandler={versionHandler}
         />

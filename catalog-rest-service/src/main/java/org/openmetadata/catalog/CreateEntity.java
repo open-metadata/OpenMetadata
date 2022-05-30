@@ -28,7 +28,7 @@ public interface CreateEntity {
 
   default Object getExtension() {
     return null;
-  };
+  }
 
   <K extends CreateEntity> K withName(String name);
 
@@ -42,5 +42,5 @@ public interface CreateEntity {
 
   default <K extends CreateEntity> K withExtension(Object extension) {
     return (K) this;
-  };
+  }
 }

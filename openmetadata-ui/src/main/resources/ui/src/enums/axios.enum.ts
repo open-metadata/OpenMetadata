@@ -18,3 +18,8 @@ export enum ClientErrors {
   FORBIDDEN = 403,
   NOT_FOUND = 404,
 }
+
+export enum SettledStatus {
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected',
+}

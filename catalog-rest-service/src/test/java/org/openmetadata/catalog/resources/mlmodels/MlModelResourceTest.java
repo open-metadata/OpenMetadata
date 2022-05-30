@@ -379,9 +379,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Override
   public void compareEntities(MlModel expected, MlModel updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        updated, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
-
     // Entity specific validations
     assertEquals(expected.getAlgorithm(), updated.getAlgorithm());
     assertEquals(expected.getDashboard(), updated.getDashboard());
@@ -435,10 +432,6 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Override
   public void validateCreatedEntity(MlModel createdEntity, CreateMlModel createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-
-    // Entity specific validations
     assertEquals(createRequest.getAlgorithm(), createdEntity.getAlgorithm());
     assertEquals(createRequest.getDashboard(), createdEntity.getDashboard());
     assertListProperty(createRequest.getMlFeatures(), createdEntity.getMlFeatures(), assertMlFeature);
