@@ -161,3 +161,8 @@ export const NEW_TAG = {
   name: 'test',
   description: 'This is the Test tag',
 };
+
+export const NEW_GLOSSARY = {
+  name: 'Business Glossary',
+  description: 'This is the Business glossary',
+};
