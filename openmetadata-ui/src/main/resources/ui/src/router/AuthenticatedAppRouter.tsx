@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
+import AddCustomField from '../components/CustomEntityDetail/AddCustomField/AddCustomField';
 import { ROUTES } from '../constants/constants';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
@@ -24,6 +25,7 @@ import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import BotsListPage from '../pages/BotsListpage/BotsListpage.component';
 import BotsPage from '../pages/BotsPage/BotsPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
+import CustomEntityPage from '../pages/CustomEntityPage/CustomEntityPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
@@ -171,6 +173,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={BotsPage}
         path={ROUTES.BOTS_PROFILE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomEntityPage}
+        path={ROUTES.CUSTOM_ENTITY}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomEntityPage}
+        path={ROUTES.CUSTOM_ENTITY_DETAIL}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddCustomField}
+        path={ROUTES.ADD_CUSTOM_FIELD}
       />
 
       <Redirect to={ROUTES.NOT_FOUND} />

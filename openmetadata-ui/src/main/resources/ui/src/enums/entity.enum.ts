@@ -26,6 +26,7 @@ export enum EntityType {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   WEBHOOK = 'webhook',
+  TYPE = 'type',
 }
 
 export enum AssetsType {
