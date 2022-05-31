@@ -1244,6 +1244,9 @@ public interface CollectionDAO {
         @Bind("labelType") int labelType,
         @Bind("state") int state);
 
+    @SqlQuery("SELECT targetFQN FROM tag_usage WHERE tagFQN = :tagFQN")
+    List<String> tagTargetFQN(@Bind("tagFQN") String tagFQN);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT tu.source, tu.tagFQN, tu.labelType, tu.state, "
