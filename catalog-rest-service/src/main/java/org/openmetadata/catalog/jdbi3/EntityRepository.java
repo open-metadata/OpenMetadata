@@ -409,6 +409,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     PutResponse<T> response = createOrUpdateInternal(uriInfo, updated);
     if (response.getStatus() == Status.CREATED) {
       postCreate(response.getEntity());
+    } else if (response.getStatus() == Status.OK) {
+      postUpdate(response.getEntity());
     }
     return response;
   }
@@ -1108,7 +1110,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    protected final void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
         throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
       origTags = listOrEmpty(origTags);

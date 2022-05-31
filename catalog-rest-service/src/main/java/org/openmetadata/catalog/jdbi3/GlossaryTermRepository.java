@@ -210,6 +210,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReviewers(original, updated);
     }
 
+    @Override
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+        throws IOException {
+      super.updateTags(fqn, fieldName, origTags, updatedTags);
+      List<String> targetFQNList = daoCollection.tagUsageDAO().tagTargetFQN(fqn);
+      for (String targetFQN : targetFQNList) {
+        applyTags(updatedTags, targetFQN);
+      }
+    }
+
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {
       // TODO Only list of allowed reviewers can change the status from DRAFT to APPROVED
       recordChange("status", origTerm.getStatus(), updatedTerm.getStatus());
