@@ -71,7 +71,7 @@ coverage:  ## Run all Python tests from ingestion/ and generate the coverage rep
 		coverage run -a --branch -m pytest --junitxml=junit/test-results-unit.xml tests/unit; \
 		coverage run -a --branch -m pytest --junitxml=junit/test-results-integration.xml tests/integration/ometa tests/integration/stage; \
 		coverage xml -o coverage.xml; \
-		sed "s/\/home\/runner\/work\/OpenMetadata\/OpenMetadata\/env\/lib\/python3.9\/site-packages/github\/workspace/g" coverage.xml >> ci-coverage.xml; \
+		sed -e "s/\<source\>\<\/source\>/\<source\>ingestion\/src\/\<\/source\>g" -e "s/\/home\/runner\/work\/OpenMetadata\/OpenMetadata\/env\/lib\/python3.9\/site-packages/github\/workspace/g" coverage.xml >> ci-coverage.xml; \
 		cat ci-coverage.xml
 
 .PHONY: sonar_ingestion
