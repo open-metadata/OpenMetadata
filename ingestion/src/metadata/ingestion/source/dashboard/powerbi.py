@@ -16,7 +16,7 @@ from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as Lineage_Dashboard,
+    Dashboard as LineageDashboard,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
@@ -137,12 +137,12 @@ class PowerbiSource(DashboardSourceService):
                         )
                         to_fqn = fqn.build(
                             self.metadata,
-                            entity_type=Lineage_Dashboard,
+                            entity_type=LineageDashboard,
                             service_name=self.config.serviceName,
                             dashboard_name=dashboard_details["id"],
                         )
                         to_entity = self.metadata.get_by_name(
-                            entity=Lineage_Dashboard,
+                            entity=LineageDashboard,
                             fqn=to_fqn,
                         )
                         if from_entity and to_entity:

@@ -529,3 +529,13 @@ def _(connection: PowerBIConnection, verbose: bool = False):
     from metadata.utils.powerbi_client import PowerBiApiClient
 
     return PowerBiClient(PowerBiApiClient(connection))
+
+
+@test_connection.register
+def _(connection: PowerBiClient) -> None:
+    try:
+        connection.client.fetch_dashboards()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
