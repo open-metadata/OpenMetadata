@@ -1,24 +1,32 @@
 ---
-description: Use your own Airflow instance to schedule and run the Clickhouse connector.
+description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Clickhouse Connector with the Airflow SDK
+# Run ClickHouse Connector with the CLI
 
-Configure and schedule Clickhouse **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
+Configure and schedule ClickHouse **metadata**, **usage**, and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-clickhouse-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-clickhouse-connector-with-the-airflow-sdk.md#metadata-ingestion)
-* [Query Usage and Lineage Ingestion](run-clickhouse-connector-with-the-airflow-sdk.md#query-usage-and-lineage-ingestion)
-* [Data Profiler and Quality Tests](run-clickhouse-connector-with-the-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-clickhouse-connector-with-the-airflow-sdk.md#dbt-integration)
+* [Requirements](run-clickhouse-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-clickhouse-connector-with-the-cli.md#metadata-ingestion)
+* [Query Usage and Lineage Ingestion](run-clickhouse-connector-with-the-cli.md#query-usage-and-lineage-ingestion)
+* [Data Profiler and Quality Tests](run-clickhouse-connector-with-the-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-clickhouse-connector-with-the-cli.md#dbt-integration)
 
 ## Requirements
 
-Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+
+### Python requirements
+
+To run the ClickHouse ingestion, you will need to install:
+
+```
+pip3 install 'openmetadata-ingestion[clickhouse]'
+```
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json) you can find the structure to create a connection to Clickhouse.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json) you can find the structure to create a connection to ClickHouse.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a JSON configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -26,7 +34,7 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the JSON Config
 
-This is a sample config for Clickhouse:
+This is a sample config for ClickHouse:
 
 ```json
 {
@@ -69,12 +77,12 @@ This is a sample config for Clickhouse:
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json).
 
-* **username**: Enter the username of your Clickhouse user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **password**: Enter the password for your Clickhouse user in the _Password_ field.
-* **hostPort**: Enter the fully qualified hostname and port number for your Clickhouse deployment in the _Host and Port_ field.
+* **username**: Enter the username of your ClickHouse user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password**: Enter the password for your ClickHouse user in the _Password_ field.
+* **hostPort**: Enter the fully qualified hostname and port number for your ClickHouse deployment in the _Host and Port_ field.
 * **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
-* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Clickhouse during the connection. These details must be added as Key-Value pairs.
-* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Clickhouse during the connection. These details must be added as Key-Value pairs.
+* **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
+* **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
 
 For the Connection Arguments, In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
@@ -88,13 +96,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
 * **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
 * **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
-* **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
+* **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
 "tableFilterPattern": {
@@ -139,60 +147,12 @@ We support different security providers. You can find their definitions [here](h
 }
 ```
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
 
-```python
-import pathlib
-import json
-from datetime import timedelta
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```
+metadata ingest -c <path-to-json>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
@@ -203,7 +163,7 @@ To ingest the Query Usage and Lineage information, the `serviceConnection` confi
 
 ### 1. Define the JSON Configuration
 
-This is a sample config for Clickhouse Usage:
+This is a sample config for ClickHouse Usage:
 
 ```json
 {
@@ -273,64 +233,29 @@ To specify where the staging files will be located.
 
 #### Workflow Configuration
 
-The same as the [metadata](run-clickhouse-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-clickhouse-connector-with-the-cli.md#workflow-configuration) ingestion.
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-For the usage workflow creation, the Airflow file will look the same as for the metadata ingestion. Updating the JSON configuration will be enough.
+#### Requirements
+
+There is an extra requirement to run the Usage pipelines. You will need to install:
+
+```
+pip3 install --upgrade 'openmetadata-ingestion[clickhouse-usage]'
+```
+
+#### Run the command
+
+After saving the JSON config, we will run the command the same way we did for the metadata ingestion:
+
+```
+metadata ingest -c <path-to-json>
+```
 
 ## Data Profiler and Quality Tests
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
-
-### 1. Define the JSON configuration
-
-This is a sample config for a Clickhouse profiler:
-
-```json
-{
-    "source": {
-        "type": "clickhouse",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-              "type": "Clickhouse",
-              "username":"<username>",
-              "password":"<password>",
-              "hostPort": "<hostPort>",
-              "database": "<database>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "Profiler",
-                "fqnFilterPattern": "<table FQN filtering regex>"
-            }
-        }
-    },
-    "processor": {
-        "type": "orm-profiler",
-        "config": {}
-    },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {}
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
-```
-
-#### Source Configuration
-
-* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json).
-* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
-
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {
@@ -380,66 +305,22 @@ To choose the `orm-profiler`. It can also be updated to define tests from the JS
   },
 ```
 
-`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../../data-quality/data-quality-overview/tests.md).
+`tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../data-quality/data-quality-overview/tests.md).
 
 #### Workflow Configuration
 
-The same as the [metadata](run-clickhouse-connector-with-the-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-clickhouse-connector-with-the-cli.md#workflow-configuration) ingestion.
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Here, we follow a similar approach as with the metadata and usage pipelines, although we will use a different Workflow class:
+Again, we will start by saving the JSON file.
 
-```python
-import json
-from datetime import timedelta
+Then, we can run the workflow as:
 
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
-
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
-
-
-default_args = {
-    "owner": "user_name",
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(seconds=10),
-    "execution_timeout": timedelta(minutes=60),
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = ProfilerWorkflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-with DAG(
-    "profiler_example",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="profile_and_test_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )pytho
+```
+metadata profile -c <path-to-json>
 ```
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../data-lineage/dbt-integration/).

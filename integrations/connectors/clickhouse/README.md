@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and references to use the Clickhouse
+  In this section, we provide the guides and references to use the ClickHouse
   connector.
 ---
 
-# Clickhouse
+# ClickHouse
 
-Configure and schedule **Clickhouse** **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
+Configure and schedule **ClickHouse** **metadata**, **usage**, and **profiler** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -28,7 +28,7 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../../overview/run-openmetadata-with-prefect.md) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../overview/run-openmetadata-with-prefect.md) guide.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -40,33 +40,33 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
-Select Clickhouse as the service type and click _Next_.
+Select ClickHouse as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (23).png>)
+![](<../../../.gitbook/assets/image (23).png>)
 
 Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Clickhouse services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other ClickHouse services that you might be ingesting metadata from.
 
-![](<../../../../.gitbook/assets/image (32).png>)
+![](<../../../.gitbook/assets/image (32).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Clickhouse service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.33.07 PM.png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.33.07 PM.png>)
 
 <details>
 
@@ -74,47 +74,35 @@ In this step, we will configure the connection settings required for this connec
 
 **Username**
 
-Enter the username of your Snowflake user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your ClickHouse user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Snowflake user in the _Password_ field.
+Enter the password for your ClickHouse user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Snowflake deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your ClickHouse deployment in the _Host and Port_ field.
 
 **Account**
 
-Enter the details for the Snowflake _Account_.
+Enter the details for the ClickHouse _Account_.
 
 **Role (Optional)**
 
-Enter the details of the Snowflake Account _Role_. This is an optional detail.
+Enter the details of the ClickHouse Account _Role_. This is an optional detail.
 
 **Database (optional)**
 
 If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
-**Warehouse (Optional)**
-
-Enter the details of the Snowflake warehouse. This is an optional requirement.
-
-**Private Key (Optional)**
-
-Connection to Snowflake instance via Private Key. Read about how to create a Private Key [here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#step-1-generate-the-private-key).
-
-**Snowflake Passphrase Key (Optional)**
-
-Snowflake Passphrase Key used with Private Key.
-
 **Connection Options (Optional)**
 
-Enter the details for any additional connection options that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Snowflake during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
 
 In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
@@ -126,13 +114,11 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.34.19 PM.png>)
-
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.35.34 PM.png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.35.34 PM.png>)
 
 <details>
 
@@ -224,13 +210,13 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 After configuring the workflow, you can click on Deploy to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../../.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
 
 ### 9. Workflow Deployment Error
 
@@ -238,7 +224,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (35).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -246,24 +232,24 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to configure the Usage Workflow to ingest Query and Lineage information from the UI below:
 
-{% content-ref url="../../../data-lineage/usage-workflow.md" %}
-[usage-workflow.md](../../../data-lineage/usage-workflow.md)
+{% content-ref url="../../../docs/data-lineage/usage-workflow.md" %}
+[usage-workflow.md](../../../docs/data-lineage/usage-workflow.md)
 {% endcontent-ref %}
 
 ## Data Profiler and Quality Tests
 
 You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-{% content-ref url="../../../data-quality/profiler-workflow.md" %}
-[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
+{% content-ref url="../../../docs/data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../docs/data-quality/profiler-workflow.md)
 {% endcontent-ref %}
 
 ## DBT Integration
 
 You can learn more about how to ingest DBT models' definitions and their lineage below:
 
-{% content-ref url="../../../../data-lineage/dbt-integration/" %}
-[dbt-integration](../../../../data-lineage/dbt-integration/)
+{% content-ref url="../../../data-lineage/dbt-integration/" %}
+[dbt-integration](../../../data-lineage/dbt-integration/)
 {% endcontent-ref %}
 
 ## Run using Airflow SDK
