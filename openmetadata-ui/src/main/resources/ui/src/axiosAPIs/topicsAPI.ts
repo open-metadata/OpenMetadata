@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
 import { Topic } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getTopicVersions: Function = (
   id: string
@@ -63,7 +63,7 @@ export const getAllTopics = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return AxiosClientWithError.get(url);
+  return APIClient.get(url);
 };
 
 export const getTopicDetails: Function = (
