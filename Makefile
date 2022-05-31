@@ -71,7 +71,8 @@ coverage:  ## Run all Python tests from ingestion/ and generate the coverage rep
 		coverage run -a --branch -m pytest --junitxml=junit/test-results-unit.xml tests/unit; \
 		coverage run -a --branch -m pytest --junitxml=junit/test-results-integration.xml tests/integration/ometa tests/integration/stage; \
 		coverage xml -o coverage.xml; \
-		cat coverage.xml
+		sed "s/\/home\/runner\/work\/OpenMetadata\/OpenMetadata\/env\/lib\/python3.9\/site-packages/github\/workspace/g" coverage.xml >> ci-coverage.xml
+		cat ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
