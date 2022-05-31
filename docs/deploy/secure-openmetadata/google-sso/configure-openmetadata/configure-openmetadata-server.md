@@ -14,7 +14,9 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-Then, update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
+Then, 
+- Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
+- Update the `principalDomain` to your company domain name. 
 
 ```
 authorizerConfiguration:
