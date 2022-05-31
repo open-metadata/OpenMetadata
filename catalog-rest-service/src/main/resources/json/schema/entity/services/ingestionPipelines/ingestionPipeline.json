@@ -147,8 +147,8 @@
       "description": "Name that uniquely identifies a Pipeline.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "source": {
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/source"
+    "sourceConfig": {
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sourceConfig"
     },
     "openMetadataServerConnection": {
       "$ref": "../connections/metadata/openMetadataConnection.json"
@@ -205,7 +205,7 @@
   "required": [
     "name",
     "pipelineType",
-    "source",
+    "sourceConfig",
     "openMetadataServerConnection",
     "airflowConfig"
   ],
