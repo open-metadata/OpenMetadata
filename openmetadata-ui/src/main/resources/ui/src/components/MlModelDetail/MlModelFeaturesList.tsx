@@ -156,6 +156,10 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       });
   };
 
+  const Separator = () => {
+    return <span className="tw-mx-2 tw-inline-block tw-text-gray-400">|</span>;
+  };
+
   if (mlFeatures && mlFeatures.length) {
     return (
       <Fragment>
@@ -168,16 +172,24 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
               data-testid="feature-card"
               key={uniqueId()}>
               <h6 className="tw-font-semibold">{feature.name}</h6>
-              {/* feature name and tags */}
-              <div className="tw-grid tw-grid-cols-3">
-                <div className="tw-grid tw-grid-cols-2">
-                  <span className="tw-text-grey-muted">Type:</span>{' '}
-                  <span>{feature.dataType || '--'}</span>
-                </div>
 
-                <div className="tw-grid tw-grid-cols-2">
+              <div className="tw-flex">
+                <div className="tw-flex">
+                  <span className="tw-text-grey-muted">Type:</span>{' '}
+                  <span className="tw-ml-2">{feature.dataType || '--'}</span>
+                </div>
+                <Separator />
+                <div className="tw-flex">
+                  <span className="tw-text-grey-muted">Algorithm:</span>{' '}
+                  <span className="tw-ml-2">
+                    {feature.featureAlgorithm || '--'}
+                  </span>
+                </div>
+                <Separator />
+                <div className="tw-flex">
                   <span className="tw-text-grey-muted">Tags:</span>{' '}
                   <div
+                    className="tw-ml-2 tw-mt-1 tw-self-center"
                     data-testid="feature-tags-wrapper"
                     onClick={() => {
                       setSelectedFeature(feature);
@@ -236,41 +248,34 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   </div>
                 </div>
               </div>
-              {/* description and algorithm */}
-              <div className="tw-grid tw-grid-cols-3 tw-mt-2">
-                <div className="tw-grid tw-grid-cols-2">
-                  <span className="tw-text-grey-muted">Description:</span>{' '}
-                  <div className="tw-flex">
-                    {feature.description ? (
-                      <RichTextEditorPreviewer markdown={feature.description} />
-                    ) : (
-                      <span className="tw-no-description">No description </span>
-                    )}
-                    <NonAdminAction
-                      html={getHtmlForNonAdminAction(Boolean(owner))}
-                      isOwner={hasEditAccess}
-                      permission={Operation.UpdateDescription}
-                      position="top">
-                      <button
-                        className="tw-self-start tw-w-8 tw-h-auto tw-ml-1 focus:tw-outline-none"
-                        onClick={() => {
-                          setSelectedFeature(feature);
-                          setEditDescription(true);
-                        }}>
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="Edit"
-                          width="12px"
-                        />
-                      </button>
-                    </NonAdminAction>
-                  </div>
-                </div>
 
-                <div className="tw-grid tw-grid-cols-2">
-                  <span className="tw-text-grey-muted">Algorithm:</span>{' '}
-                  <span>{feature.featureAlgorithm || '--'}</span>
+              <div className="tw-flex tw-flex-col tw-mt-2">
+                <span className="tw-text-grey-muted">Description:</span>{' '}
+                <div className="tw-flex tw-mt-2">
+                  {feature.description ? (
+                    <RichTextEditorPreviewer markdown={feature.description} />
+                  ) : (
+                    <span className="tw-no-description">No description </span>
+                  )}
+                  <NonAdminAction
+                    html={getHtmlForNonAdminAction(Boolean(owner))}
+                    isOwner={hasEditAccess}
+                    permission={Operation.UpdateDescription}
+                    position="top">
+                    <button
+                      className="tw-self-start tw-w-8 tw-h-auto focus:tw-outline-none"
+                      onClick={() => {
+                        setSelectedFeature(feature);
+                        setEditDescription(true);
+                      }}>
+                      <SVGIcons
+                        alt="edit"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="12px"
+                      />
+                    </button>
+                  </NonAdminAction>
                 </div>
               </div>
 
