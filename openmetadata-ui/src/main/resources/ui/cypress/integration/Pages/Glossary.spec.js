@@ -162,6 +162,43 @@ describe('Glossary page should work properly', () => {
     terms.forEach(createGlossaryTerm);
   });
 
+  it('Updating data to glossary should work properly', () => {
+    const newDescription = 'Updated description';
+    cy.get('[data-testid="tag-container"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="associatedTagName"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .type('personal');
+    cy.get('[data-testid="dropdown-list"] > .tw-py-1')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('#menu-item-0').scrollIntoView().click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="glossary-details"]')
+      .scrollIntoView()
+      .contains('PersonalData.Personal')
+      .should('be.visible');
+
+    cy.get('[data-testid="edit-description"] > [data-testid="image"]')
+      .should('be.visible')
+      .click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .should('be.visible')
+      .as('description');
+
+    cy.get('@description').clear();
+    cy.get('@description').type(newDescription);
+    cy.get('[data-testid="save"]').click();
+    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('[data-testid="viewer-container"]')
+      .contains(newDescription)
+      .should('be.visible');
+  });
+
   it('Delete glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
 
