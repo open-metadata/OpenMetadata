@@ -32,7 +32,7 @@ const CustomEntityPage = () => {
     setIsLoading(true);
     getTypeListByCategory(Category.Entity)
       .then((res: AxiosResponse) => {
-        setEntityTypes(res.data.data);
+        setEntityTypes(res.data.data || []);
       })
       .catch((err: AxiosError) => {
         setIsError(true);

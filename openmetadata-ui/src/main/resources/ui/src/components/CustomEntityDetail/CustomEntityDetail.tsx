@@ -19,8 +19,10 @@ import { useHistory } from 'react-router-dom';
 import { getTypeByFQN, updateType } from '../../axiosAPIs/metadataTypeAPI';
 import { getAddCustomFieldPath } from '../../constants/constants';
 import { Type } from '../../generated/entity/type';
+import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
+import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
 import PageLayout from '../containers/PageLayout';
@@ -87,6 +89,8 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
     },
   ];
 
+  const componentCheck = Boolean(entityTypes.length);
+
   const updateEntityType = (customFields: Type['customFields']) => {
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
@@ -119,48 +123,54 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
 
   return (
     <PageContainer>
-      <PageLayout
-        leftPanel={
-          <LeftPanel
-            selectedType={selectedEntityTypeDetail}
-            typeList={entityTypes}
+      {componentCheck ? (
+        <PageLayout
+          leftPanel={
+            <LeftPanel
+              selectedType={selectedEntityTypeDetail}
+              typeList={entityTypes}
+            />
+          }>
+          <TabsPane
+            activeTab={activeTab}
+            setActiveTab={onTabChange}
+            tabs={tabs}
           />
-        }>
-        <TabsPane
-          activeTab={activeTab}
-          setActiveTab={onTabChange}
-          tabs={tabs}
-        />
-        <div className="tw-mt-6">
-          {schemaCheck && (
-            <div data-testid="entity-schema">
-              <SchemaEditor
-                className="tw-border tw-border-main tw-rounded-md tw-py-4"
-                editorClass="custom-entity-schema"
-                value={JSON.parse(schemaValue)}
-              />
-            </div>
-          )}
-          {customFieldsCheck && (
-            <div data-testid="entity-custom-fields">
-              <div className="tw-flex tw-justify-end">
-                <Button
-                  className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
-                  data-testid="add-field-button"
-                  size="custom"
-                  theme="primary"
-                  onClick={() => handleAddField()}>
-                  Add Field
-                </Button>
+          <div className="tw-mt-6">
+            {schemaCheck && (
+              <div data-testid="entity-schema">
+                <SchemaEditor
+                  className="tw-border tw-border-main tw-rounded-md tw-py-4"
+                  editorClass="custom-entity-schema"
+                  value={JSON.parse(schemaValue)}
+                />
               </div>
-              <CustomFieldTable
-                customFields={customFields}
-                updateEntityType={updateEntityType}
-              />
-            </div>
-          )}
-        </div>
-      </PageLayout>
+            )}
+            {customFieldsCheck && (
+              <div data-testid="entity-custom-fields">
+                <div className="tw-flex tw-justify-end">
+                  <Button
+                    className="tw-mb-4 tw-py-1 tw-px-2 tw-rounded"
+                    data-testid="add-field-button"
+                    size="custom"
+                    theme="primary"
+                    onClick={() => handleAddField()}>
+                    Add Field
+                  </Button>
+                </div>
+                <CustomFieldTable
+                  customFields={customFields}
+                  updateEntityType={updateEntityType}
+                />
+              </div>
+            )}
+          </div>
+        </PageLayout>
+      ) : (
+        <ErrorPlaceHolder>
+          {jsonData['message']['no-custom-entity']}
+        </ErrorPlaceHolder>
+      )}
     </PageContainer>
   );
 };
