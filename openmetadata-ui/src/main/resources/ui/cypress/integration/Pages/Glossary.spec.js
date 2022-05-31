@@ -201,7 +201,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.only('Updating data of glossary term should work properly', () => {
+  it('Updating data of glossary term should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const uSynonyms = 'pick up,take,obtain';
     const newRef = { name: 'take', url: 'https://take.com' };
@@ -275,6 +275,30 @@ describe('Glossary page should work properly', () => {
     cy.get('.tw-modal-container').should('not.exist');
     cy.get('[data-testid="viewer-container"]')
       .contains(newDescription)
+      .should('be.visible');
+  });
+
+  it('Releted Terms should work properly', () => {
+    const term = NEW_GLOSSARY_TERMS.term_1.name;
+    const term2 = NEW_GLOSSARY_TERMS.term_2.name;
+    cy.get('#left-panel').should('be.visible').contains(term).click();
+    cy.wait(100);
+    cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
+
+    // add releted term
+    cy.get('[data-testid="add-related-term-button"]')
+      .should('be.visible')
+      .click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.wait(100);
+    cy.get('[data-testid="user-card-container"]')
+      .should('be.visible')
+      .find('[data-testid="checkboxAddUser"]')
+      .check();
+    cy.get('[data-testid="saveButton"]').should('be.visible').click();
+    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('.tableBody-row > :nth-child(1)')
+      .contains(term2)
       .should('be.visible');
   });
 
