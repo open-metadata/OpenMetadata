@@ -151,7 +151,9 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                 </tr>
               ))
             ) : (
-              <tr className="tableBody-row" data-testid="no-data-row">
+              <tr
+                className="tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0"
+                data-testid="no-data-row">
                 <td
                   className="tableBody-cell tw-text-grey-muted tw-text-center"
                   colSpan={4}>
