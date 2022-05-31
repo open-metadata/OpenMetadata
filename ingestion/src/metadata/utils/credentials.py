@@ -54,7 +54,8 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
     if isinstance(gcs_credentials.gcsConfig, GCSCredentialsPath):
         os.environ[GOOGLE_CREDENTIALS] = str(gcs_credentials.gcsConfig.__root__)
         return
-
+    if gcs_credentials.gcsConfig.projectId == None:
+        return
     if isinstance(gcs_credentials.gcsConfig, GCSValues):
         credentials_dict = {
             "type": gcs_credentials.gcsConfig.type,
