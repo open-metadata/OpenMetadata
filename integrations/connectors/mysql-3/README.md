@@ -1,6 +1,6 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the Superset
+  In this section, we provide the guides and reference to use the Metabase
   connector.
 ---
 
@@ -13,19 +13,19 @@ Configure and schedule Superset **metadata** workflows from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="../../../docs/integrations/connectors/mysql/run-metabase-connector-with-the-airflow-sdk.md" %}
+[run-metabase-connector-with-the-airflow-sdk.md](../../../docs/integrations/connectors/mysql/run-metabase-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="../mysql/run-metabase-connector-with-the-cli.md" %}
+[run-metabase-connector-with-the-cli.md](../mysql/run-metabase-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../overview/run-openmetadata-with-prefect.md) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md).
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -33,23 +33,23 @@ To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion C
 
 ### 1. Visit the _Services_ Page
 
-The first step is ingesting the metadata from your sources. Under Settings, you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Find Services under the Settings Menu](<../../../.gitbook/assets/image (13).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10).png>)
+![Add a New Service from the Services Page](<../../../.gitbook/assets/image (76).png>)
 
 ### 3. Select the Service Type
 
-Select Superset as the service type and click _Next_.
+Select Metabase as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (74).png>)
+![Select your Service type](<../../../.gitbook/assets/image (52).png>)
 
 ### 4. Name and Describe your Service
 
@@ -57,15 +57,15 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Superset services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Metabase services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (43).png>)
+![Provide a Name and a description for your Service](<../../../.gitbook/assets/image (115) (1).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Superset service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Metabase service as desired.
 
-![](<../../../.gitbook/assets/image (136).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (39).png>)
 
 <details>
 
@@ -73,15 +73,15 @@ In this step, we will configure the connection settings required for this connec
 
 **Username**
 
-Enter the username of your Superset user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Superset user in the _Password_ field.
+Enter the password for your Metabase user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Superset deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
 
 **Database Service Name (optional)**
 
@@ -89,13 +89,13 @@ Enter the Database Service Name for the Lineage creation.
 
 </details>
 
-![](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (9).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (130).png>)
 
 <details>
 
@@ -131,6 +131,8 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (84).png>)
+
 <details>
 
 <summary><strong>Scheduling Options</strong></summary>
@@ -143,21 +145,35 @@ Use the _Every_ drop down menu to select the interval at which you want to inges
 * _Day_: Ingest metadata once per day
 * _Week_: Ingest metadata once per week
 
+**Day**
+
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
+
 **Minute**
 
 The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
+
+**Time**
+
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
+
+**Start date (UTC)**
+
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
+
+**End date (UTC)**
+
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
 </details>
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
-
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (36) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (26).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,7 +181,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![](<../../../.gitbook/assets/image (18) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (2) (1) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -173,14 +189,14 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="../../../docs/integrations/connectors/mysql/run-metabase-connector-with-the-airflow-sdk.md" %}
+[run-metabase-connector-with-the-airflow-sdk.md](../../../docs/integrations/connectors/mysql/run-metabase-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="../mysql/run-metabase-connector-with-the-cli.md" %}
+[run-metabase-connector-with-the-cli.md](../mysql/run-metabase-connector-with-the-cli.md)
 {% endcontent-ref %}
