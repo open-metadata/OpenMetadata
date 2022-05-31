@@ -472,14 +472,13 @@ describe('TeamsAndUsers page', () => {
     cy.get('.tw-modal-container').should('be.visible');
     cy.contains('Are you sure you want to delete').should('be.visible');
     cy.get('[data-testid="save-button"]').should('be.visible').click();
+    cy.get('.tw-modal-container').should('not.exist');
 
+    cy.reload();
     cy.get('[data-testid="searchbar"]')
       .scrollIntoView()
       .should('be.visible')
-      .clear()
       .type(NEW_USER.display_name);
-
-    cy.wait(500);
 
     cy.get('[data-testid="no-data-image"]').should('be.visible');
     cy.contains('No user available').should('be.visible');
