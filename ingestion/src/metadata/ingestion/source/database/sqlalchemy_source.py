@@ -90,7 +90,9 @@ class SqlAlchemySource(Source, ABC):
         """
 
     @abstractmethod
-    def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
+    def get_table_names(
+        self, schema: str, inspector: Inspector
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Method to fetch table & view names
         """
@@ -125,12 +127,17 @@ class SqlAlchemySource(Source, ABC):
         Method to fetch tags associated with table
         """
 
-    def get_database_entity(self, database_name: Optional[str]) -> Database:
+    def _get_database_name(self) -> str:
+        if hasattr(self.service_connection, "database"):
+            return self.service_connection.database or "default"
+        return "default"
+
+    def get_database_entity(self) -> Database:
         """
         Method to get database enetity from db name
         """
         return Database(
-            name=database_name if database_name else "default",
+            name=self._get_database_name(),
             service=EntityReference(
                 id=self.service.id, type=self.service_connection.type.value
             ),
@@ -171,7 +178,7 @@ class SqlAlchemySource(Source, ABC):
                             self.metadata,
                             entity_type=DatabaseSchema,
                             service_name=self.config.serviceName,
-                            database_name=self.service_connection.database,
+                            database_name=self._get_database_name(),
                             schema_name=schema,
                         )
                         yield from self.delete_tables(schema_fqn)
@@ -251,7 +258,7 @@ class SqlAlchemySource(Source, ABC):
                     schema, table_name, table_type, inspector
                 )
 
-                database = self.get_database_entity(self.service_connection.database)
+                database = self.get_database_entity()
                 # check if we have any model to associate with
                 table_entity.dataModel = self.get_data_model(
                     database.name.__root__, schema, table_name
@@ -317,12 +324,12 @@ class SqlAlchemySource(Source, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def _build_database_state(self, schema_fqdn: str) -> List[EntityReference]:
+    def _build_database_state(self, schema_fqn: str) -> List[EntityReference]:
         after = None
         tables = []
         while True:
             table_entities = self.metadata.list_entities(
-                entity=Table, after=after, limit=100, params={"database": schema_fqdn}
+                entity=Table, after=after, limit=100, params={"database": schema_fqn}
             )
             tables.extend(table_entities.entities)
             if table_entities.after is None:
@@ -330,11 +337,11 @@ class SqlAlchemySource(Source, ABC):
             after = table_entities.after
         return tables
 
-    def delete_tables(self, schema_fqdn: str) -> DeleteTable:
+    def delete_tables(self, schema_fqn: str) -> DeleteTable:
         """
         Returns Deleted tables
         """
-        database_state = self._build_database_state(schema_fqdn)
+        database_state = self._build_database_state(schema_fqn)
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)

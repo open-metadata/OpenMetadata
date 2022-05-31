@@ -65,7 +65,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getOwnerFromId, getTierTags } from '../../utils/TableUtils';
+import { getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 export type VersionData = Partial<Table> &
@@ -134,7 +134,7 @@ const EntityVersionPage: FunctionComponent = () => {
     titleBreadCrumb: TitleBreadcrumbProps['titleLinks']
   ) => {
     setTier(getTierTags(tags));
-    setOwner(getOwnerFromId(owner?.id));
+    setOwner(owner);
     setCurrentVersionData(data);
     setSlashedEntityName(titleBreadCrumb);
   };

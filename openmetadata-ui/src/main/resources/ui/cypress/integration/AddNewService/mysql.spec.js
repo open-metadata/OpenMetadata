@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testSampleData, testServiceCreationAndIngestion } from '../../common/common';
+import { MY_SQL_TABLE } from '../../constants/constants';
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
@@ -38,5 +36,9 @@ describe('MySQL Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
+  });
+
+  it('Check for Sample data in table entry', () => {
+    testSampleData(MY_SQL_TABLE);
   });
 });

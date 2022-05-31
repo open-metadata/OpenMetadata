@@ -163,6 +163,7 @@ const jsonData = {
   message: {
     'no-services': 'No services',
     'fail-to-deploy-pipeline': 'Failed to deploy Ingestion Pipeline!',
+    'no-custom-entity': 'No custom entity data available',
   },
 };
 

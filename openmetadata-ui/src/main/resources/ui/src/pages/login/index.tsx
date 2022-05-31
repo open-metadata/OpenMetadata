@@ -80,6 +80,12 @@ const SigninPage = () => {
 
         break;
       }
+      case AuthTypes.AWS_COGNITO: {
+        ssoBrandLogo = Icons.COGNITO_ICON;
+        ssoBrandName = 'AWS Cognito';
+
+        break;
+      }
       case AuthTypes.AZURE: {
         ssoBrandLogo = Icons.AZURE_ICON;
         ssoBrandName = 'Azure';

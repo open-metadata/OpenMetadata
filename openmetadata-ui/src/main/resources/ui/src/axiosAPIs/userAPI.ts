@@ -13,13 +13,13 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { UserProfile } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
 import { User } from '../generated/entity/teams/user';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient from './index';
+import APIClient, { AxiosClientWithError } from './index';
 
 export const getUsers = (
   arrQueryFields?: string,
@@ -37,11 +37,11 @@ export const getUsers = (
   }
   const url =
     `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
-    (limit
+    (!isNil(limit)
       ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
       : '');
 
-  return APIClient.get(url);
+  return AxiosClientWithError.get(url);
 };
 
 export const updateUserDetail = (

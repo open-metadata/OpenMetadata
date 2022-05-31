@@ -30,7 +30,7 @@ import {
   updatePolicy,
   updateRole,
 } from '../../axiosAPIs/rolesAPI';
-import { patchTeamDetail } from '../../axiosAPIs/teamsAPI';
+import { getTeams, patchTeamDetail } from '../../axiosAPIs/teamsAPI';
 import { getUserCounts } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
@@ -211,6 +211,19 @@ const RolesPage = () => {
         setError(errMsg);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  const fetchTeams = () => {
+    getTeams('defaultRoles')
+      .then((res: AxiosResponse) => {
+        setTeamList(res.data.data);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
+      });
   };
 
   const createNewRole = (data: Role) => {
@@ -1076,13 +1089,10 @@ const RolesPage = () => {
 
   useEffect(() => {
     fetchRoles();
+    fetchTeams();
     fetchUserCounts();
     fetchDefualtPolicies();
   }, []);
-
-  useEffect(() => {
-    setTeamList(AppState.userTeams as Team[]);
-  }, [AppState.userTeams]);
 
   useEffect(() => {
     setCurrentRolePolicies([]);

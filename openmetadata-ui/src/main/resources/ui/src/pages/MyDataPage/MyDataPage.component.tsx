@@ -23,7 +23,9 @@ import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { getAllTopics } from '../../axiosAPIs/topicsAPI';
+import { getUsers } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
@@ -52,6 +54,8 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
+  const [countUsers, setCountUsers] = useState<number>();
+  const [countTeams, setCountTeams] = useState<number>();
 
   const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
@@ -81,18 +85,18 @@ const MyDataPage = () => {
   const setDashboardCount = (count = 0) => {
     setCountDashboards(count);
   };
+  const setUserCount = (count = 0) => {
+    setCountUsers(count);
+  };
+  const setTeamCount = (count = 0) => {
+    setCountTeams(count);
+  };
 
-  const fetchData = (fetchService = false) => {
-    setError('');
-
+  const fetchEntityCount = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0)
       .then((res) => {
-        if (res.data) {
-          setTableCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setTableCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -105,11 +109,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllTopics('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setTopicCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setTopicCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -122,11 +122,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllPipelines('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setPipelineCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setPipelineCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -139,11 +135,7 @@ const MyDataPage = () => {
     // limit=0 will fetch empty data list with total count
     getAllDashboards('', '', 0)
       .then((res) => {
-        if (res.data) {
-          setDashboardCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setDashboardCount(res.data.paging.total);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -152,23 +144,61 @@ const MyDataPage = () => {
         );
         setCountDashboards(0);
       });
+  };
+
+  const fetchTeamsAndUsersCount = () => {
+    getUsers('', 0)
+      .then((res) => {
+        setUserCount(res.data.paging.total);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setUserCount(0);
+      });
+
+    getTeams('', 0)
+      .then((res) => {
+        setTeamCount(res.data.paging.total);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTeamCount(0);
+      });
+  };
+
+  const fetchServiceCount = () => {
+    // limit=0 will fetch empty data list with total count
+    getAllServices(true, 0)
+      .then((res) => {
+        const total = res.reduce((prev, curr) => {
+          return prev + (curr?.paging?.total || 0);
+        }, 0);
+        setCountServices(total);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setCountServices(0);
+      });
+  };
+
+  const fetchData = (fetchService = false) => {
+    setError('');
+
+    fetchEntityCount();
+
+    fetchTeamsAndUsersCount();
 
     if (fetchService) {
-      // limit=0 will fetch empty data list with total count
-      getAllServices(true, 0)
-        .then((res) => {
-          const total = res.reduce((prev, curr) => {
-            return prev + (curr?.paging?.total || 0);
-          }, 0);
-          setCountServices(total);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
-          setCountServices(0);
-        });
+      fetchServiceCount();
     }
   };
 
@@ -342,14 +372,18 @@ const MyDataPage = () => {
       !isUndefined(countTables) &&
       !isUndefined(countTopics) &&
       !isUndefined(countDashboards) &&
-      !isUndefined(countPipelines) ? (
+      !isUndefined(countPipelines) &&
+      !isUndefined(countTeams) &&
+      !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
             countDashboards={countDashboards}
             countPipelines={countPipelines}
             countServices={countServices}
             countTables={countTables}
+            countTeams={countTeams}
             countTopics={countTopics}
+            countUsers={countUsers}
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}

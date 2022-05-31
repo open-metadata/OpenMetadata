@@ -181,6 +181,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         EntityType.DASHBOARD_SERVICE,
         EntityType.MESSAGING_SERVICE,
         EntityType.PIPELINE_SERVICE,
+        EntityType.TYPE,
       ].includes(entityType as EntityType)
     ) {
       displayName = getPartialNameFromFQN(entityFQN, ['service']);
@@ -207,6 +208,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       EntityType.WEBHOOK,
       EntityType.GLOSSARY,
       EntityType.GLOSSARY_TERM,
+      EntityType.TYPE,
     ];
 
     const entityLink = getEntityLink(entityType, entityFQN);

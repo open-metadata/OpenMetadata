@@ -26,6 +26,7 @@ export enum EntityType {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   WEBHOOK = 'webhook',
+  TYPE = 'type',
 }
 
 export enum AssetsType {
@@ -63,6 +64,7 @@ export enum TabSpecificField {
   TABLE_QUERIES = 'tableQueries',
   TESTS = 'tests',
   PIPELINE_STATUS = 'pipelineStatus',
+  TABLE_CONSTRAINTS = 'tableConstraints',
 }
 
 export enum FqnPart {

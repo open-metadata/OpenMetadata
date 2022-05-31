@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
@@ -38,6 +39,19 @@ const CreateUserPage = () => {
   const [roles, setRoles] = useState<Array<Role>>([]);
   const [teams, setTeams] = useState<Array<UserTeams>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
+
+  const fetchTeams = () => {
+    getTeams('defaultRoles')
+      .then((res: AxiosResponse) => {
+        setTeams(res.data.data);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
+      });
+  };
 
   const goToUserListPage = () => {
     history.push(getTeamAndUserDetailsPath(UserType.USERS));
@@ -69,7 +83,6 @@ const CreateUserPage = () => {
     createUser(userData)
       .then((res) => {
         if (res.data) {
-          AppState.addUser(res.data);
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
@@ -92,9 +105,10 @@ const CreateUserPage = () => {
   useEffect(() => {
     setRoles(AppState.userRoles);
   }, [AppState.userRoles]);
+
   useEffect(() => {
-    setTeams(AppState.userTeams);
-  }, [AppState.userTeams]);
+    fetchTeams();
+  }, []);
 
   return (
     <PageContainerV1>

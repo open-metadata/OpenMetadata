@@ -269,10 +269,10 @@ class ElasticsearchSink(Sink[Entity]):
             logger.debug(traceback.format_exc())
 
     def _create_table_es_doc(self, table: Table):
-        fqdn = table.fullyQualifiedName.__root__
+        table_fqn = table.fullyQualifiedName.__root__
         table_name = table.name
         suggest = [
-            {"input": [fqdn], "weight": 5},
+            {"input": [table_fqn], "weight": 5},
             {"input": [table_name], "weight": 10},
         ]
         column_names = []
@@ -329,17 +329,17 @@ class ElasticsearchSink(Sink[Entity]):
             daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
+            fqdn=table_fqn,
             owner=table.owner,
             followers=table_followers,
         )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
-        fqdn = topic.fullyQualifiedName.__root__
+        topic_fqn = topic.fullyQualifiedName.__root__
         topic_name = topic.name
         suggest = [
-            {"input": [fqdn], "weight": 5},
+            {"input": [topic_fqn], "weight": 5},
             {"input": [topic_name], "weight": 10},
         ]
         tags = set()
@@ -370,14 +370,14 @@ class ElasticsearchSink(Sink[Entity]):
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
+            fqdn=topic_fqn,
             owner=topic.owner,
             followers=topic_followers,
         )
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
-        fqdn = dashboard.fullyQualifiedName.__root__
+        dashboard_fqn = dashboard.fullyQualifiedName.__root__
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
         timestamp = dashboard.updatedAt.__root__
@@ -419,7 +419,7 @@ class ElasticsearchSink(Sink[Entity]):
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
+            fqdn=dashboard_fqn,
             owner=dashboard.owner,
             followers=dashboard_followers,
             monthly_stats=dashboard.usageSummary.monthlyStats.count,
@@ -433,7 +433,7 @@ class ElasticsearchSink(Sink[Entity]):
         return dashboard_doc
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
-        fqdn = pipeline.fullyQualifiedName.__root__
+        pipeline_fqn = pipeline.fullyQualifiedName.__root__
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
         timestamp = pipeline.updatedAt.__root__
@@ -475,7 +475,7 @@ class ElasticsearchSink(Sink[Entity]):
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
-            fqdn=fqdn,
+            fqdn=pipeline_fqn,
             owner=pipeline.owner,
             followers=pipeline_followers,
         )
@@ -552,9 +552,9 @@ class ElasticsearchSink(Sink[Entity]):
         glossary_term_doc = GlossaryTermESDocument(
             glossary_term_id=str(glossary_term.id.__root__),
             deleted=glossary_term.deleted,
-            name=glossary_term.name.__root__,
+            name=str(glossary_term.name.__root__),
             display_name=glossary_term.displayName,
-            fqdn=glossary_term.fullyQualifiedName,
+            fqdn=str(glossary_term.fullyQualifiedName.__root__),
             description=description,
             glossary_id=str(glossary_term.glossary.id.__root__),
             glossary_name=glossary_term.glossary.name,

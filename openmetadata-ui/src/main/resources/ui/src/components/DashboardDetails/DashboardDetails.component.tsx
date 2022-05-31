@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -35,7 +35,6 @@ import {
   getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
-  getUserTeams,
   isEven,
   pluralize,
 } from '../../utils/CommonUtils';
@@ -82,7 +81,6 @@ const DashboardDetails = ({
   dashboardUrl,
   dashboardTags,
   dashboardDetails,
-  users,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   tagUpdateHandler,
@@ -111,7 +109,6 @@ const DashboardDetails = ({
   paging,
   fetchFeedHandler,
 }: DashboardDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -137,10 +134,14 @@ const DashboardDetails = ({
     setSelectedField('');
   };
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
   const setFollowersData = (followers: Array<EntityReference>) => {
@@ -433,12 +434,6 @@ const DashboardDetails = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);

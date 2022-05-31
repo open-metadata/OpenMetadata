@@ -203,7 +203,9 @@ export const AuthProvider = ({
       .then((res: AxiosResponse) => {
         if (res.data) {
           const updatedUserData = getUserDataFromOidc(res.data, user);
-          if (!matchUserDetails(res.data, updatedUserData, ['profile'])) {
+          if (
+            !matchUserDetails(res.data, updatedUserData, ['profile', 'email'])
+          ) {
             getUpdatedUser(updatedUserData, res.data);
           } else {
             appState.updateUserDetails(res.data);
@@ -417,7 +419,8 @@ export const AuthProvider = ({
         );
       }
       case AuthTypes.GOOGLE:
-      case AuthTypes.CUSTOM_OIDC: {
+      case AuthTypes.CUSTOM_OIDC:
+      case AuthTypes.AWS_COGNITO: {
         return authConfig ? (
           <OidcAuthenticator
             childComponentType={childComponentType}

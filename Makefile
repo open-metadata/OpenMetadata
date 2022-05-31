@@ -67,18 +67,19 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
+	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
+	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage report
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage xml -i -o ingestion/coverage.xml
+	coverage xml -o ingestion/coverage.xml
+	cat ingestion/coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
