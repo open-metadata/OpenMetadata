@@ -114,24 +114,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
     ) -> Tuple[str, str]:
         return schema, table
 
-    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
-        """
-        Get some sample data from the source to be added
-        to the Table Entities
-        """
-        try:
-            query = self.source_config.sampleDataQuery.format(schema, table)
-            logger.info(query)
-            results = self.connection.execute(query)
-            cols = [col for col in results.keys()]
-            rows = [list(res) for res in results]
-            return TableData(columns=cols, rows=rows)
-        # Catch any errors and continue the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to generate sample data for {table} - {err}")
-        return None
-
     def get_databases(self) -> Iterable[Inspector]:
         yield inspect(self.engine)
 

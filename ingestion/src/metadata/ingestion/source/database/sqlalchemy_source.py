@@ -16,6 +16,9 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Tuple, Union
 
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
+
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
@@ -43,6 +46,9 @@ logger = ingestion_logger()
 
 
 class SqlAlchemySource(Source, ABC):
+
+    source_config: DatabaseServiceMetadataPipeline
+
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
@@ -208,23 +214,7 @@ class SqlAlchemySource(Source, ABC):
         )
         if self.table_constraints:
             table_entity.tableConstraints = self.table_constraints
-        try:
-            if self.source_config.generateSampleData:
-                table_data = self.fetch_sample_data(schema, table_name)
-                if table_data:
-                    table_entity.sampleData = table_data
-        # Catch any errors during the ingestion and continue
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(repr(err))
-            logger.error(err)
 
-        try:
-            if self.source_config.enableDataProfiler:
-                profile = self.run_profiler(table=table_entity, schema=schema)
-                table_entity.tableProfile = [profile] if profile else None
-        # Catch any errors during the profile runner and continue
-        except Exception as err:
-            logger.error(err)
         return table_entity
 
     def fetch_tables(

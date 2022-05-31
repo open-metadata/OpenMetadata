@@ -131,38 +131,6 @@ class BigquerySource(CommonDbSourceService):
             logger.error(err)
         return super().prepare()
 
-    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
-        partition_details = self.inspector.get_indexes(table, schema)
-        if partition_details and partition_details[0].get("name") == "partition":
-            try:
-                logger.info("Using Query for Partitioned Tables")
-                partition_details = self.inspector.get_indexes(table, schema)
-                start, end = get_start_and_end(
-                    self.connection_config.partitionQueryDuration
-                )
-
-                query = self.connection_config.partitionQuery.format(
-                    schema,
-                    table,
-                    partition_details[0]["column_names"][0]
-                    or self.connection_config.partitionField,
-                    start.strftime("%Y-%m-%d"),
-                )
-                logger.info(query)
-                results = self.connection.execute(query)
-                cols = []
-                for col in results.keys():
-                    cols.append(col)
-                rows = []
-                for res in results:
-                    row = list(res)
-                    rows.append(row)
-                return TableData(columns=cols, rows=rows)
-            except Exception as err:
-                logger.error(err)
-        else:
-            return super().fetch_sample_data(schema, table)
-
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         try:
             if (

@@ -25,7 +25,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -297,7 +297,7 @@ class OrmProfilerProcessor(Processor[Table]):
         return test_case_result
 
     def validate_config_tests(
-        self, table: Table, orm_table: DeclarativeMeta, profiler_results: TableProfile
+        self, orm: DeclarativeMeta, table: Table, profiler_results: TableProfile
     ) -> Optional[TestDef]:
         """
         Here we take care of new incoming tests in the workflow
@@ -306,7 +306,7 @@ class OrmProfilerProcessor(Processor[Table]):
         update the Table Entity.
 
         :param table: OpenMetadata Table Entity being processed
-        :param orm_table: Declarative Meta
+        :param orm: Declarative Meta
         :param profiler_results: TableProfile with computed metrics
         """
 
@@ -325,7 +325,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for table_test in table_tests:
             test_case_result = self.run_table_test(
                 table=table,
-                orm_table=orm_table,
+                orm_table=orm,
                 test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
@@ -335,7 +335,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for column_test in column_tests:
             test_case_result = self.run_column_test(
                 table=table,
-                orm_table=orm_table,
+                orm_table=orm,
                 column=column_test.columnName,
                 test_case=column_test.testCase,
                 profiler_results=profiler_results,
@@ -464,7 +464,16 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return record_tests
 
-    def process(self, record: Table) -> ProfilerResponse:
+    def fetch_sample_data(self, orm: DeclarativeMeta, table: Table) -> TableData:
+        """
+        Fetch the table data from a real sample
+        :param orm: SQA ORM table
+        :param table: record being processed
+        :return: TableData
+        """
+        ...
+
+    def process(self, record: Table, generate_sample_data: bool = True) -> ProfilerResponse:
         """
         Run the profiling and tests
         """
@@ -474,22 +483,27 @@ class OrmProfilerProcessor(Processor[Table]):
         )
         orm_table = ometa_to_orm(table=record, schema=schema)
 
-        entity_profile = self.profile_entity(orm_table, record)
+        entity_profile = self.profile_entity(orm=orm_table, table=record)
 
         # First, check if we have any tests directly configured in the workflow
         config_tests = None
         if self.config.test_suite:
-            config_tests = self.validate_config_tests(record, orm_table, entity_profile)
+            config_tests = self.validate_config_tests(
+                orm=orm_table, table=record, profiler_results=entity_profile
+            )
 
         # Then, Check if the entity has any tests
         record_tests = self.validate_entity_tests(
             record, orm_table, entity_profile, config_tests
         )
 
+        sample_data = self.fetch_sample_data(orm=orm_table, table=record) if generate_sample_data else None
+
         res = ProfilerResponse(
             table=record,
             profile=entity_profile,
             record_tests=record_tests,
+            sample_data=sample_data,
         )
 
         return res
