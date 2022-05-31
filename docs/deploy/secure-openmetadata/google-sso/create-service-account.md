@@ -16,7 +16,7 @@ description: This is a guide to create ingestion bot service account.
 
 * Click on **Manage service accounts** available on the center-right side.
 
-![](<../../../.gitbook/assets/image (18) (1) (1).png>)
+![](<../../../.gitbook/assets/image (18) (1) (1) (1) (1) (1).png>)
 
 * Click on **CREATE SERVICE ACCOUNT**
 

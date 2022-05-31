@@ -14,9 +14,9 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
-![Profiler tab of a Table Entity](<../../.gitbook/assets/image (14).png>)
+![Profiler tab of a Table Entity](<../.gitbook/assets/image (3) (1) (1) (1).png>)
 
-![Data Quality tab of a Table Entity](<../../.gitbook/assets/image (31).png>)
+![Data Quality tab of a Table Entity](<../.gitbook/assets/image (6) (1) (1) (1).png>)
 
 You can learn how to configure the Data Quality of a Table Entity [here](../../data-quality/data-quality-overview/).
 
@@ -24,7 +24,7 @@ You can learn how to configure the Data Quality of a Table Entity [here](../../d
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../../.gitbook/assets/image (37).png>)
+![Add Ingestion](<../.gitbook/assets/image (9) (2) (2).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 
@@ -32,7 +32,7 @@ If you already added a Usage ingestion, the button will directly specify to _Add
 
 Here you can enter the Profiler Ingestion details.
 
-![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1) (1) (1).png>)
+![Profiler Workflow Details](<../.gitbook/assets/image (19) (1) (1) (1) (1) (1) (1) (1) (1).png>)
 
 <details>
 

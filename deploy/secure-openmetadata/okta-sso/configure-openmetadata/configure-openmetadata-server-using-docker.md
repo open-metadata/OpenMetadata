@@ -6,7 +6,7 @@ description: This guide helps you enable security in OpenMetadata with Docker
 
 By default, security is not enabled when bringing up a cluster with the `metadata docker --start` command. To enable authentication and authorization, follow the below-mentioned steps:
 
-1.  Create an env file like the following in your machine and update the values as required.&#x20;
+1.  Create an env file like the following in your machine and update the values as required. Refer to the [Enable Security](../../auth0-sso/configure-openmetadata/broken-reference/) documentation to set up your preferred authentication provider. The variables `AIRFLOW_AUTH_PROVIDER` and `OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH` are required for UI based metadata ingestion.
 
     ```
     AUTHORIZER_CLASS_NAME=org.openmetadata.catalog.security.DefaultAuthorizer
@@ -14,17 +14,13 @@ By default, security is not enabled when bringing up a cluster with the `metadat
     AUTHORIZER_ADMIN_PRINCIPALS=[admin]
     AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
     AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org
-    AUTHENTICATION_PROVIDER=okta
-    AUTHENTICATION_PUBLIC_KEYS=[{ISSUER_URL}/v1/keys]
-    AUTHENTICATION_AUTHORITY={ISSUER_URL}
-    AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP}
+    AUTHENTICATION_PROVIDER=google
+    AUTHENTICATION_PUBLIC_KEY=https://www.googleapis.com/oauth2/v3/certs
+    AUTHENTICATION_AUTHORITY=https://accounts.google.com
+    AUTHENTICATION_CLIENT_ID=709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com
     AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
-    AIRFLOW_AUTH_PROVIDER=okta
-    OM_AUTH_AIRFLOW_OKTA_CLIENT_ID={CLIENT_ID - SPA APP}
-    OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL={ISSUER_URL}/v1/token
-    OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY={public/private keypair}
-    OM_AUTH_AIRFLOW_OKTA_SA_EMAIL={email}
-    OM_AUTH_AIRFLOW_OKTA_SCOPES=[token]
+    AIRFLOW_AUTH_PROVIDER=google
+    OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH=/tmp/secret.json
     ```
 2.  Start the Docker containers from metadata CLI with the above env file.
 

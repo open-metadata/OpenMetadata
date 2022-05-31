@@ -184,7 +184,7 @@ If you already have a production Airflow instance on which you would like to sch
 
 To view the metadata ingested from MLflow, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MLflow service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
 
-![](<../../../../.gitbook/assets/explore (1) (1) (1).png>)
+![](<../../../../.gitbook/assets/explore (1) (1).png>)
 
 ## **5. Troubleshooting**
 

@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings, you 
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10) (1).png>)
+![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10).png>)
 
 ### 3. Select the Service Type
 
 Select Superset as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (74) (1).png>)
+![](<../../../.gitbook/assets/image (74).png>)
 
 ### 4. Name and Describe your Service
 
@@ -59,7 +59,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Superset services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (43) (1).png>)
+![](<../../../.gitbook/assets/image (43).png>)
 
 ### 5. Configure the Service Connection
 
@@ -151,13 +151,13 @@ The _Minute_ dropdown is only active when ingesting metadata once per hour. Use 
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (18) (1) (1).png>)
+![](<../../../.gitbook/assets/image (36) (1).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,7 +165,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![](<../../../.gitbook/assets/image (36) (1).png>)
+![](<../../../.gitbook/assets/image (18) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

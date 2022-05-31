@@ -44,19 +44,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../../.gitbook/assets/image (13).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61) (1).png>)
+![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
 Select BigQuery as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (56) (1).png>)
+![](<../../../../.gitbook/assets/image (56).png>)
 
 ### 4. Name and Describe your Service
 
@@ -66,7 +66,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
 
-![Provide a Name and description for your Service](<../../../../.gitbook/assets/image (64).png>)
+![Provide a Name and description for your Service](<../../../.gitbook/assets/image (14) (1) (1) (1) (1).png>)
 
 ### 5. Configure the Service Connection
 
@@ -76,7 +76,7 @@ In this step, we will configure the connection settings required for this connec
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../../.gitbook/assets/image (92).png>)
+![Test Connection and save the Service](<../../../.gitbook/assets/image (20) (1) (1) (1) (1).png>)
 
 <details>
 
@@ -146,7 +146,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (39) (2) (1).png>)
 
 <details>
 
@@ -228,13 +228,13 @@ The _Time_ drop down menus are active when ingesting metadata either once per da
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -242,7 +242,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

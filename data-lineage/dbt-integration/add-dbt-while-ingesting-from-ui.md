@@ -21,7 +21,7 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 
 The name of the s3 bucket and prefix path to the folder in which `manifest.json` and `catalog.json` files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
-![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (87) (1) (1).png>)
+![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (4) (1) (1).png>)
 
 #### Google Cloud Storage Buckets
 
@@ -37,7 +37,7 @@ Entering the credentials directly into the form
 
 Entering the path of file in which the GCS bucket credentials are stored.
 
-![Enter the path of the GCS credentials file](<../../.gitbook/assets/image (5) (2).png>)
+![Enter the path of the GCS credentials file](<../../.gitbook/assets/image (5) (1) (1) (1).png>)
 
 For more information on Google Cloud Storage authentication click [here](https://cloud.google.com/docs/authentication/getting-started#create-service-account-console).
 
