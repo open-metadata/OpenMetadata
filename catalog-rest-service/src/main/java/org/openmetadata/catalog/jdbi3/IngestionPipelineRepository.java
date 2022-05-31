@@ -108,28 +108,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected void postUpdate(IngestionPipeline entity) {
-    deploy(entity); // Deploy the ingestion pipeline
-  }
-
-  @Override
-  protected void postCreate(IngestionPipeline entity) {
-    deploy(entity); // Deploy the ingestion pipeline
-  }
-
-  @Override
   protected void postDelete(IngestionPipeline entity) {
     pipelineServiceClient.deletePipeline(entity.getName());
   }
 
   public void setPipelineServiceClient(PipelineServiceClient client) {
     pipelineServiceClient = client;
-  }
-
-  private void deploy(IngestionPipeline ingestionPipeline) {
-    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
-      pipelineServiceClient.deployPipeline(ingestionPipeline);
-    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
