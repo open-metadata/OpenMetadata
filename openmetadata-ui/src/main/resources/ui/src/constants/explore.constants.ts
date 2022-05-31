@@ -25,6 +25,7 @@ export const ZERO_SIZE = 0;
 export const emptyValue = '';
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
+export const MAX_RESULT_HITS = 10000;
 
 export const UPDATABLE_AGGREGATION = ['Service', 'Tier', 'Tags'];
 

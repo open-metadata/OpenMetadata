@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import {
   Bucket,
   FilterObject,
@@ -144,7 +145,8 @@ const ExplorePage: FunctionComponent = () => {
         emptyValue,
         emptyValue,
         entity,
-        showDeleted
+        showDeleted,
+        true
       )
     );
 
@@ -310,6 +312,7 @@ const ExplorePage: FunctionComponent = () => {
             handlePathChange={handlePathChange}
             handleSearchText={handleSearchText}
             initialFilter={initialFilter}
+            isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
             searchFilter={searchFilter}
             searchQuery={searchQuery}
             searchResult={searchResult}
