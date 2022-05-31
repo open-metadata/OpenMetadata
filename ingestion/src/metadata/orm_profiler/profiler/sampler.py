@@ -14,7 +14,8 @@ for the profiler
 """
 from typing import Optional, Union
 
-from sqlalchemy.orm import DeclarativeMeta, Session, aliased
+from metadata.generated.schema.entity.data.table import TableData
+from sqlalchemy.orm import DeclarativeMeta, Session, aliased, Query
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
@@ -36,6 +37,13 @@ class Sampler:
         self.session = session
         self.table = table
 
+        self.sample_limit = 100
+
+    def get_sample_query(self) -> Query:
+        return self.session.query(self.table, (RandomNumFn() % 100).label("random")).cte(
+            f"{self.table.__tablename__}_rnd"
+        )
+
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
@@ -47,9 +55,7 @@ class Sampler:
             return self.table
 
         # Add new RandomNumFn column
-        rnd = self.session.query(self.table, (RandomNumFn() % 100).label("random")).cte(
-            f"{self.table.__tablename__}_rnd"
-        )
+        rnd = self.get_sample_query()
 
         # Prepare sampled CTE
         sampled = (
@@ -60,3 +66,16 @@ class Sampler:
 
         # Assign as an alias
         return aliased(self.table, sampled)
+
+    def fetch_sample_data(self) -> TableData:
+        """
+        Use the sampler to retrieve 100 sample data rows
+        :return: TableData to be added to the Table Entity
+        """
+
+        # Add new RandomNumFn column
+        rnd = self.get_sample_query()
+
+        sqa_sample = self.session.query(rnd).limit(self.sample_limit).all()
+        return sqa_sample  # TODO: convert me to TableData
+
