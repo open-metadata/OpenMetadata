@@ -1,4 +1,0 @@
-[run]
-relative_files = True
-branch = True
-source = ingestion/src/
