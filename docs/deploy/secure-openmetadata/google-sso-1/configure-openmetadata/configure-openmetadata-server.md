@@ -17,7 +17,9 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-Then, update authorizerConfiguration to add adminPrincipals.
+Then, 
+- Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
+- Update the `principalDomain` to your company domain name. 
 
 ```
 authorizerConfiguration:
@@ -25,7 +27,8 @@ authorizerConfiguration:
   # JWT Filter
   containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
   adminPrincipals:
-    - "suresh"
+    - "user1"
+    - "user2"
   botPrincipals:
     - "ingestion-bot"
   principalDomain: "open-metadata.org"
