@@ -59,19 +59,19 @@ class DBTSource:
             and self.dbt_catalog
         ):
             logger.info("Parsing Data Models")
-            manifest_entities = {
+            self.manifest_entities = {
                 **self.dbt_manifest["nodes"],
                 **self.dbt_manifest["sources"],
             }
-            catalog_entities = {
+            self.catalog_entities = {
                 **self.dbt_catalog["nodes"],
                 **self.dbt_catalog["sources"],
             }
 
-            for key, mnode in manifest_entities.items():
+            for key, mnode in self.manifest_entities.items():
                 try:
                     name = mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
-                    cnode = catalog_entities.get(key)
+                    cnode = self.catalog_entities.get(key)
                     columns = (
                         self._parse_data_model_columns(name, mnode, cnode)
                         if cnode
@@ -99,6 +99,7 @@ class DBTSource:
                     model_fqn = fqn.build(
                         self.metadata,
                         entity_type=DataModel,
+                        service_name=self.config.serviceName,
                         database_name=database,
                         schema_name=schema,
                         model_name=model_name,
@@ -113,16 +114,19 @@ class DBTSource:
         if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
             for node in mnode["depends_on"]["nodes"]:
                 try:
-                    _, database, table = node.split(".", 2)
+                    node_temp = self.manifest_entities[node]
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=None,  # issue-5093 Read proper schema and db from manifest
-                        schema_name=None,
-                        table_name=table,
+                        database_name=node_temp[
+                            "database"
+                        ],  # issue-5093 Read proper schema and db from manifest
+                        schema_name=node_temp["schema"],
+                        table_name=node_temp["name"],
                     )
-                    upstream_nodes.append(table_fqn)
+                    if table_fqn:
+                        upstream_nodes.append(table_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
                         f"Failed to parse the node {node} to capture lineage {err}"
