@@ -334,6 +334,63 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
+  it('Remove Glossary term from entity should work properly', () => {
+    const term = NEW_GLOSSARY_TERMS.term_1.name;
+    const entity = SEARCH_ENTITY_TABLE.table_3.term;
+    // go assets tab
+    goToAssetsTab(term);
+    cy.get('[data-testid="column"] > :nth-child(1) > a')
+      .contains(entity)
+      .should('be.visible')
+      .click();
+    cy.wait(100);
+    // redirect to entity detail page
+    cy.get(
+      '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > .tw-ml-1 > [data-testid="image"]'
+    )
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get(':nth-child(1) > [data-testid="remove"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get(':nth-child(1) > [data-testid="remove"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+
+    cy.get(
+      '[data-testid="tag-container"] > .tw-flex > .tw-opacity-0 > [data-testid="image"]'
+    )
+      .scrollIntoView()
+      .should('exist')
+      .click();
+    cy.get(':nth-child(1) > [data-testid="remove"]')
+      .scrollIntoView()
+      .should('exist')
+      .click();
+
+    cy.get(':nth-child(1) > [data-testid="remove"]')
+      .scrollIntoView()
+      .should('exist')
+      .click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get(
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+    cy.wait(100);
+    goToAssetsTab(term);
+    cy.get('.tableBody-cell')
+      .contains('No assets available.')
+      .should('be.visible');
+  });
+
   it('Delete glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
 
