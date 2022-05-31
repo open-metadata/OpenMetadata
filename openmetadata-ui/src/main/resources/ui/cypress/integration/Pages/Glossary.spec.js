@@ -162,8 +162,9 @@ describe('Glossary page should work properly', () => {
     terms.forEach(createGlossaryTerm);
   });
 
-  it('Updating data to glossary should work properly', () => {
+  it('Updating data of glossary should work properly', () => {
     const newDescription = 'Updated description';
+    // updating tags
     cy.get('[data-testid="tag-container"]')
       .scrollIntoView()
       .should('be.visible')
@@ -182,6 +183,7 @@ describe('Glossary page should work properly', () => {
       .contains('PersonalData.Personal')
       .should('be.visible');
 
+    // updating description
     cy.get('[data-testid="edit-description"] > [data-testid="image"]')
       .should('be.visible')
       .click();
@@ -190,6 +192,83 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .as('description');
 
+    cy.get('@description').clear();
+    cy.get('@description').type(newDescription);
+    cy.get('[data-testid="save"]').click();
+    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('[data-testid="viewer-container"]')
+      .contains(newDescription)
+      .should('be.visible');
+  });
+
+  it.only('Updating data of glossary term should work properly', () => {
+    const term = NEW_GLOSSARY_TERMS.term_1.name;
+    const uSynonyms = 'pick up,take,obtain';
+    const newRef = { name: 'take', url: 'https://take.com' };
+    const newDescription = 'Updated description';
+    cy.get('#left-panel').should('be.visible').contains(term).click();
+    cy.wait(100);
+    cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
+
+    // updating synonyms
+    cy.get('[data-testid="edit-synonyms"] > [data-testid="image"]')
+      .should('exist')
+      .click();
+    cy.get('[data-testid="synonyms"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .as('synonyms');
+    cy.get('@synonyms').clear();
+    cy.get('@synonyms').type(uSynonyms);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="glossary-term"] > :nth-child(1)')
+      .contains(uSynonyms)
+      .should('be.visible');
+
+    // updating References
+    cy.get('[data-testid="edit-reference"] > [data-testid="image"]')
+      .should('exist')
+      .click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('[data-testid="references"] > :nth-child(1) > .button-comp')
+      .should('be.visible')
+      .click();
+    cy.get('#name-1').should('be.visible').type(newRef.name);
+    cy.get('#url-1').should('be.visible').type(newRef.url);
+    cy.get('[data-testid="saveButton"]').should('be.visible').click();
+    cy.get('[data-testid="glossary-term"] > :nth-child(2)')
+      .contains(newRef.name)
+      .should('be.visible')
+      .invoke('attr', 'href')
+      .should('eq', newRef.url);
+
+    // updating tags
+    cy.get('[data-testid="tag-container"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="associatedTagName"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .type('personal');
+    cy.get('[data-testid="dropdown-list"] > .tw-py-1')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('#menu-item-0').scrollIntoView().click();
+    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+    cy.get('[data-testid="glossary-term"]')
+      .scrollIntoView()
+      .contains('PersonalData.Personal')
+      .should('be.visible');
+
+    // updating description
+    cy.get('[data-testid="edit-description"] > [data-testid="image"]')
+      .should('be.visible')
+      .click();
+    cy.get('.tw-modal-container').should('be.visible');
+    cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
+      .should('be.visible')
+      .as('description');
     cy.get('@description').clear();
     cy.get('@description').type(newDescription);
     cy.get('[data-testid="save"]').click();
