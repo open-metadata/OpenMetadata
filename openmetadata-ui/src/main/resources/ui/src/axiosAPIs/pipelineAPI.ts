@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient from './index';
+import APIClient, { AxiosClientWithError } from './index';
 
 export const getPipelineVersions: Function = (
   id: string
@@ -63,7 +63,7 @@ export const getAllPipelines = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return APIClient.get(url);
+  return AxiosClientWithError.get(url);
 };
 
 export const getPipelineDetails: Function = (

@@ -769,7 +769,7 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      ...serviceDetails,
+      connection: serviceDetails?.connection,
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
