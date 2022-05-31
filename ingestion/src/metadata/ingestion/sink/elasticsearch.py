@@ -552,9 +552,9 @@ class ElasticsearchSink(Sink[Entity]):
         glossary_term_doc = GlossaryTermESDocument(
             glossary_term_id=str(glossary_term.id.__root__),
             deleted=glossary_term.deleted,
-            name=glossary_term.name.__root__,
+            name=str(glossary_term.name.__root__),
             display_name=glossary_term.displayName,
-            fqdn=glossary_term.fullyQualifiedName,
+            fqdn=str(glossary_term.fullyQualifiedName.__root__),
             description=description,
             glossary_id=str(glossary_term.glossary.id.__root__),
             glossary_name=glossary_term.glossary.name,
