@@ -454,6 +454,7 @@ describe('TeamsAndUsers page', () => {
       'activeCategory'
     );
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(NEW_USER.display_name);
 
@@ -473,7 +474,9 @@ describe('TeamsAndUsers page', () => {
     cy.get('[data-testid="save-button"]').should('be.visible').click();
 
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
+      .clear()
       .type(NEW_USER.display_name);
 
     cy.wait(500);
