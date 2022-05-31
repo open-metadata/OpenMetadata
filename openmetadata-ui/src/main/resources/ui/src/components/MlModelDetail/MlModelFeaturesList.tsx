@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
@@ -160,6 +161,62 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     return <span className="tw-mx-2 tw-inline-block tw-text-gray-400">|</span>;
   };
 
+  const SourceList = ({ feature }: { feature: MlFeature }) => {
+    const [isActive, setIsActive] = useState(false);
+    const dataCheck =
+      feature.featureSources && feature.featureSources.length && isActive;
+
+    return (
+      <div className="tw-mt-4">
+        <div className="tw-font-semibold tw-mb-2">
+          {' '}
+          <span onClick={() => setIsActive((prev) => !prev)}>
+            <FontAwesomeIcon
+              className="tw-text-xs tw-text-primary tw-cursor-pointer"
+              icon={isActive ? 'chevron-down' : 'chevron-right'}
+            />
+          </span>
+          <span className={classNames('tw-ml-2', { 'tw-mb-2': !isActive })}>
+            Sources
+          </span>
+        </div>{' '}
+        {dataCheck &&
+          feature.featureSources?.map((source, i) => (
+            <div
+              className="tw-flex tw-justify-between tw-border-t tw-border-main tw-px-4 tw-py-2 tw--mx-4"
+              key={uniqueId()}>
+              <span className="tw-w-36">{String(i + 1).padStart(2, '0')}</span>
+
+              <span className="tw-w-36">
+                <span className="tw-text-grey-muted">Name:</span>
+                <span className="tw-ml-2">{source.name}</span>
+              </span>
+
+              <span className="tw-w-36">
+                <span className="tw-text-grey-muted">Type:</span>
+                <span className="tw-ml-2">{source.dataType}</span>
+              </span>
+
+              <span>
+                <span className="tw-text-grey-muted">Data Source:</span>
+                <span className="tw-ml-2">
+                  <Link
+                    to={getEntityLink(
+                      EntityType.TABLE,
+                      source.dataSource?.fullyQualifiedName ||
+                        source.dataSource?.name ||
+                        ''
+                    )}>
+                    {getEntityName(source.dataSource)}
+                  </Link>
+                </span>
+              </span>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
   if (mlFeatures && mlFeatures.length) {
     return (
       <Fragment>
@@ -168,7 +225,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           <h6 className="tw-font-medium tw-text-base">Features used</h6>
           {mlFeatures.map((feature) => (
             <div
-              className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-mb-8"
+              className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-pb-0 tw-mb-8"
               data-testid="feature-card"
               key={uniqueId()}>
               <h6 className="tw-font-semibold">{feature.name}</h6>
@@ -249,7 +306,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                 </div>
               </div>
 
-              <div className="tw-flex tw-flex-col tw-mt-2">
+              <div className="tw-flex tw-flex-col tw-mt-4">
                 <span className="tw-text-grey-muted">Description:</span>{' '}
                 <div className="tw-flex tw-mt-2">
                   {feature.description ? (
@@ -278,70 +335,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   </NonAdminAction>
                 </div>
               </div>
-
-              <div className="tw-mt-2">
-                <span className="tw-text-grey-muted">Sources:</span>{' '}
-                <table
-                  className="tw-w-full tw-mt-3"
-                  data-testid="sources-table"
-                  id="sources-table">
-                  <thead>
-                    <tr className="tableHead-row">
-                      <th className="tableHead-cell">Name</th>
-                      <th className="tableHead-cell">Data Type</th>
-                      <th className="tableHead-cell">Data Source</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tableBody">
-                    {feature.featureSources && feature.featureSources.length ? (
-                      feature.featureSources?.map((source) => (
-                        <tr
-                          className={classNames('tableBody-row')}
-                          data-testid="tableBody-row"
-                          key={uniqueId()}>
-                          <td
-                            className="tableBody-cell"
-                            data-testid="tableBody-cell">
-                            {source.name}
-                          </td>
-                          <td
-                            className="tableBody-cell"
-                            data-testid="tableBody-cell">
-                            {source.dataType || '--'}
-                          </td>
-                          <td
-                            className="tableBody-cell"
-                            data-testid="tableBody-cell">
-                            <span>
-                              <Link
-                                to={getEntityLink(
-                                  EntityType.TABLE,
-                                  source.dataSource?.fullyQualifiedName ||
-                                    source.dataSource?.name ||
-                                    ''
-                                )}>
-                                {getEntityName(source.dataSource)}
-                              </Link>
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr
-                        className={classNames('tableBody-row')}
-                        data-testid="tableBody-row"
-                        key={uniqueId()}>
-                        <td
-                          className="tableBody-cell tw-text-center tw-text-grey-muted"
-                          colSpan={2}
-                          data-testid="tableBody-cell">
-                          No data
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <SourceList feature={feature} />
             </div>
           ))}
         </div>
