@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { uniqueId } from 'lodash';
 import { EditorContentRef, FormErrorData } from 'Models';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FC, useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addFieldToEntity,
@@ -155,14 +155,6 @@ const AddCustomField: FC = () => {
     }
   };
 
-  // todo: remove this filter logic once category filter issue fixed
-  // https://github.com/open-metadata/OpenMetadata/issues/5036
-  const fieldTypeList = useMemo(() => {
-    return fieldTypes.filter(
-      (fieldType) => fieldType.category === Category.Field
-    );
-  }, [fieldTypes]);
-
   useEffect(() => {
     fetchTypeDetail(entityTypeFQN);
   }, [entityTypeFQN]);
@@ -210,7 +202,7 @@ const AddCustomField: FC = () => {
               value={formData.type || ''}
               onChange={onChangeHandler}>
               <option value="">Select type</option>
-              {fieldTypeList.map((fieldType) => (
+              {fieldTypes.map((fieldType) => (
                 <option key={uniqueId()} value={fieldType.id}>
                   {fieldType.displayName}
                 </option>

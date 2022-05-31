@@ -43,12 +43,6 @@ const CustomEntityPage = () => {
       });
   };
 
-  // todo: remove this method once category filter issue fixed
-  // https://github.com/open-metadata/OpenMetadata/issues/5036
-  const getEntityTypesList = () => {
-    return entityTypes.filter((type) => type.category === Category.Entity);
-  };
-
   useEffect(() => {
     fetchEntityType();
   }, []);
@@ -61,7 +55,7 @@ const CustomEntityPage = () => {
     ) : (
       <CustomEntityDetail
         entityTypeFQN={entityTypeFQN}
-        entityTypes={getEntityTypesList()}
+        entityTypes={entityTypes}
       />
     );
 
