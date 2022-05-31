@@ -85,24 +85,18 @@ const AddCustomField = () => {
   const handleError = (flag: boolean, field: string) => {
     const message =
       field === 'name' ? 'Invalid Field Name' : 'Type is required';
-    if (!flag) {
-      setFormErrorData((preVdata) => ({
-        ...preVdata,
-        [field]: message,
-      }));
-    } else {
-      setFormErrorData((preVdata) => ({
-        ...preVdata,
-        [field]: '',
-      }));
-    }
+
+    setFormErrorData((preVdata) => ({
+      ...preVdata,
+      [field]: !flag ? message : '',
+    }));
   };
 
   const onChangeHandler = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const name = e.target.name;
-    const value = e.target.value;
+    const { name, value } = e.target;
+
     switch (name) {
       case 'name': {
         const newData = { ...formData, name: value };

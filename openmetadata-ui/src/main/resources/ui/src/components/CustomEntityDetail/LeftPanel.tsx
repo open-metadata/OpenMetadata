@@ -27,12 +27,9 @@ export const LeftPanel: FC<LeftPanelProp> = ({ typeList, selectedType }) => {
   const history = useHistory();
 
   const getActiveClass = (typeName: string) => {
-    const flag = typeName === selectedType.name;
-    if (flag) {
-      return 'tw-bg-primary-lite tw-text-primary tw-font-bold tw-border-l-2 tw-border-primary';
-    } else {
-      return 'tw-bg-body-main';
-    }
+    return typeName === selectedType.name
+      ? 'tw-bg-primary-lite tw-text-primary tw-font-bold tw-border-l-2 tw-border-primary'
+      : 'tw-bg-body-main';
   };
 
   const handleLabelClick = (typeFQN: string) => {
