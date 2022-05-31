@@ -249,7 +249,7 @@ Username: `admin`
 
 Password: `admin`
 
-![Login to Airflow](<../../.gitbook/assets/image (5) (2).png>)
+![Login to Airflow](<../../.gitbook/assets/image (5) (1) (1) (1).png>)
 
 ### 10. Begin using OpenMetadata
 

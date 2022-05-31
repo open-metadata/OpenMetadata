@@ -6,7 +6,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 * Apache Druid
 * [Athena](athena/)
-* [Azure SQL](broken-reference)
+* [Azure SQL](../../../integrations/connectors/azure-sql/)
 * [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery/)
 * [ClickHouse](snowflake-2/)

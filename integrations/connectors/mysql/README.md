@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (13).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10) (1).png>)
+![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10).png>)
 
 ### 3. Select the Service Type
 
 From the dropdown menu, select Dashboard Services. Select Looker as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (3) (1) (2).png>)
+![](<../../../.gitbook/assets/image (3) (1).png>)
 
 ### 4. Name and Describe your Service
 
@@ -59,13 +59,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Looker services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (12) (1).png>)
+![](<../../../.gitbook/assets/image (12).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Looker service as desired.
 
-![](<../../../.gitbook/assets/image (22) (1).png>)
+![](<../../../.gitbook/assets/image (22).png>)
 
 <details>
 
@@ -89,13 +89,13 @@ Enter the Database Service Name for the Lineage creation.
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (9).png>)
+![Service has been saved](<../../../docs/.gitbook/assets/image (4).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (130).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (55).png>)
 
 <details>
 
@@ -167,13 +167,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (26).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../docs/.gitbook/assets/image (8).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -181,7 +181,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (2) (1) (2).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (2) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

@@ -8,7 +8,7 @@ Named volumes can persist data after we restart or remove a container. Also, itâ
 
 For example:
 
-![](../../.gitbook/assets/example.png)
+![](../../docs/.gitbook/assets/example.png)
 
 Here, the first field is a unique name of the volume on a host machine. The second field is the path in the container.
 

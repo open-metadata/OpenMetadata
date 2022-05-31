@@ -32,13 +32,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../../.gitbook/assets/image (13).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61) (1).png>)
+![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61).png>)
 
 ### 3. Select the Service Type
 
@@ -54,13 +54,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Athena services that you might be ingesting metadata from.
 
-![](<../../../../.gitbook/assets/image (69) (1).png>)
+![](<../../../../.gitbook/assets/image (69).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Athena service as desired.
 
-![](<../../../../.gitbook/assets/image (85) (1).png>)
+![](<../../../../.gitbook/assets/image (85).png>)
 
 <details>
 
@@ -120,7 +120,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../../.gitbook/assets/image (41) (1).png>)
+![](<../../../../.gitbook/assets/image (41).png>)
 
 ### 6. Configure the Metadata Ingestion
 
@@ -170,7 +170,7 @@ Set the _Ingest sample data to_ toggle to the on position to control whether or 
 
 </details>
 
-![](<../../../../.gitbook/assets/image (63) (1).png>)
+![](<../../../../.gitbook/assets/image (63).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -216,7 +216,7 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
 
 ### 8. View the Ingestion Pipeline
 
@@ -228,7 +228,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (45) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (29) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
