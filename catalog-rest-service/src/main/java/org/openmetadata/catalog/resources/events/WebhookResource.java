@@ -104,6 +104,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public ResultList<Webhook> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Filter webhooks by status", schema = @Schema(type = "string", example = "active"))
+          @QueryParam("status")
+          String statusParam,
       @Parameter(description = "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -123,7 +126,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("status", statusParam);
     return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 

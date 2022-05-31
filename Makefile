@@ -78,7 +78,8 @@ coverage:  ## Run all Python tests and generate the coverage report
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage xml -i -o ingestion/coverage.xml
+	coverage xml -o ingestion/coverage.xml
+	cat ingestion/coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
