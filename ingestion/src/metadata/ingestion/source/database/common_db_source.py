@@ -158,7 +158,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
 
     def get_table_names(
         self, schema: str, inspector: Inspector
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         if self.source_config.includeTables:
             for table in inspector.get_table_names(schema):
                 yield table, "Regular"

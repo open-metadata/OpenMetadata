@@ -18,7 +18,7 @@ import UserCard from './UserCard';
 
 const mockItem = {
   displayName: 'description1',
-  fqn: 'name1',
+  fqn: 'service.database.databaseSchema.table',
   id: 'id1',
   type: 'table',
 };
@@ -102,6 +102,7 @@ describe('Test userCard component', () => {
 
     expect(svgIcon).toBeInTheDocument();
     expect(datasetLink).toBeInTheDocument();
+    expect(datasetLink).toHaveTextContent('database/databaseSchema/table');
   });
 
   it('If isOwner is passed it should allow delete action', async () => {

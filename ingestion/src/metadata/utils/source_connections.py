@@ -97,7 +97,8 @@ def get_connection_url_common(connection):
         url += "@"
 
     url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
+    if hasattr(connection, "database"):
+        url += f"/{connection.database}" if connection.database else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -347,10 +348,10 @@ def _(connection: AthenaConnection):
     else:
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
-    if connection.database:
-        url += f"/{connection.database}"
+
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
-    url += f"&work_group={connection.workgroup}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
     return url
 
 
