@@ -27,6 +27,7 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
@@ -39,8 +40,9 @@ class UsageSource(Source[TableQuery]):
         self.config = config
         self.metadata_config = metadata_config
         self.connection = config.serviceConnection.__root__.config
-        start, _ = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        self.analysis_date = start
+        self.source_config = self.config.sourceConfig.config
+        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
+        self.analysis_date = self.start
         self.report = SQLSourceStatus()
         self.engine = get_connection(self.connection)
 
@@ -92,6 +94,17 @@ class UsageSource(Source[TableQuery]):
         """
         for row in self._get_raw_extract_iter():
             if row:
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_name=self.get_database(row),
+                ):
+                    continue
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    schema_name=row["schema_name"],
+                ):
+                    continue
+
                 try:
                     table_query = TableQuery(
                         query=row["query_text"],

@@ -33,7 +33,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.helpers import _get_formmated_table_name
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import ingest_lineage_by_query
+from metadata.utils.sql_lineage import get_column_fqn, ingest_lineage_by_query
 
 logger = ingestion_logger()
 
@@ -113,9 +113,9 @@ class MetadataUsageBulkSink(BulkSink):
                 table=value_dict["table_entity"],
                 table_queries=value_dict["sql_queries"],
             )
-            # self.ingest_sql_queries_lineage(
-            #     value_dict["sql_queries"], value_dict["database"]
-            # )
+            self.ingest_sql_queries_lineage(
+                value_dict["sql_queries"], value_dict["database"]
+            )
             table_usage_request = TableUsageRequest(
                 date=self.today, count=value_dict["usage_count"]
             )
@@ -248,10 +248,9 @@ class MetadataUsageBulkSink(BulkSink):
         )
         if not table_entities:
             return None
+
         for table_entity in table_entities:
-            for tbl_column in table_entity.columns:
-                if table_column.column.lower() == tbl_column.name.__root__.lower():
-                    return tbl_column.fullyQualifiedName.__root__
+            get_column_fqn(table_entity, table_column.column)
 
     def __get_table_entity(
         self, database: str, database_schema: Optional[str], table: str
