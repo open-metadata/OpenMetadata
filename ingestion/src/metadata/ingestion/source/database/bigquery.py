@@ -116,7 +116,6 @@ class BigquerySource(CommonDbSourceService):
         return segments[0], segments[1]
 
     def prepare(self):
-        self.service_connection.database = self.service_connection.projectId
         #  and "policy_tags" in column and column["policy_tags"]
         try:
             if self.source_config.includeTags:
@@ -196,14 +195,15 @@ class BigquerySource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def get_database_entity(self, database: Optional[str]) -> Database:
-        if not database:
-            database = (
-                self.connection_config.projectId
-                or self.connection_config.credentials.gcsConfig.projectId
-            )
+    def _get_database_name(self) -> str:
+        return (
+            self.service_connection.projectId
+            or self.connection_config.credentials.gcsConfig.projectId
+        )
+
+    def get_database_entity(self) -> Database:
         return Database(
-            name=database,
+            name=self._get_database_name(),
             service=EntityReference(
                 id=self.service.id, type=self.service_connection.type.value
             ),

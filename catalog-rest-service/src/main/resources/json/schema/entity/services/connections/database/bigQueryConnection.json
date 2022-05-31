@@ -98,5 +98,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["credentials"]
+  "required": ["credentials", "projectId"]
 }
