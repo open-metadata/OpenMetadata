@@ -4,8 +4,6 @@ description: Use your own Airflow instance to schedule and run the Looker Connec
 
 # Run Looker Connector with the Airflow SDK
 
-Configure and schedule Looker **metadata** workflows using your own Airflow instances.
-
 * [Requirements](run-metabase-connector-with-the-airflow-sdk.md#requirements)
 * [Metadata Ingestion](run-metabase-connector-with-the-airflow-sdk.md#metadata-ingestion)
 
@@ -22,8 +20,6 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
 ### 1. Define the JSON Config
-
-This is a sample config for Looker:
 
 ```json
 {
@@ -61,10 +57,6 @@ This is a sample config for Looker:
   }
 }
 ```
-
-#### Source Configuration - Service Connection
-
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json).
 
 * **username**: Enter the username of your Looker user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Looker user in the _Password_ field.

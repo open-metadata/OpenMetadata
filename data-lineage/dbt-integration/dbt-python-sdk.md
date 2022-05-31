@@ -50,7 +50,7 @@ dbtPrefixConfig: Bucket name and path of the dbt files in bucket
 
 ### Locate the DBT Files
 
-The `get_dbt_details` __ method takes in the source config provided in the json  and detects source type (gcs, s3, local or file server) based on the fields provided in the config.
+The `get_dbt_details` \_\_ method takes in the source config provided in the json and detects source type (gcs, s3, local or file server) based on the fields provided in the config.
 
 ```
 from metadata.utils.dbt_config import get_dbt_details
@@ -76,4 +76,4 @@ _parse_data_model()
 
 The models which are extracted are shown in the Openmetada UI in the `DBT` tab
 
-![DBT Models](<../../.gitbook/assets/image (9) (1).png>)
+![DBT Models](<../../.gitbook/assets/image (9) (1) (1).png>)

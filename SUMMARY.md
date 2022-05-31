@@ -308,5 +308,6 @@
     * [Generate Typescript Types From JSON Schema](developer/build-code-and-run-tests/generate-typescript-types-from-json-schema.md)
     * [OpenMetadata UI](docs/developer/build-code-and-run-tests/ui.md)
     * [Backend](docs/developer/build-code-and-run-tests/backend.md)
+    * [Cypress Integration Tests](developer/build-code-and-run-tests/cypress-integration-tests.md)
   * [UX Style Guide](docs/developer/ux-style-guide.md)
 * [🎆 Open Source Community](docs/open-source-community.md)

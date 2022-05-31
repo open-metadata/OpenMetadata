@@ -49,7 +49,7 @@ description: >-
   * Select the required option for **Controlled access**
 * Click **Save**.
 
-![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (20) (1) (1) (1) (1) (1) (1).png>)
 
 * The app is now configured.
 
@@ -121,11 +121,11 @@ This will generate the Issuer URL.
 * The **Client authentication** is enabled by default.
 * By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
-![](<../../../.gitbook/assets/image (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (1) (1) (1) (1).png>)
 
 * Click on the **Sign On** tab from the top navigation bar.
 * Click on Edit for **OpenID Connect ID Token**.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1) (1) (2).png>)
