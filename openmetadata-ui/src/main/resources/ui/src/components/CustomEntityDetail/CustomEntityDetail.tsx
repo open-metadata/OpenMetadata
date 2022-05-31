@@ -91,17 +91,20 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
 
   const componentCheck = Boolean(entityTypes.length);
 
-  const updateEntityType = (customFields: Type['customFields']) => {
+  const updateEntityType = (fields: Type['customFields']) => {
     const patch = compare(selectedEntityTypeDetail, {
       ...selectedEntityTypeDetail,
-      customFields,
+      customFields: fields,
     });
 
     updateType(selectedEntityTypeDetail.id as string, patch)
       .then((res: AxiosResponse) => {
-        const { customFields } = res.data;
+        const { customFields: Fields } = res.data;
 
-        setSelectedEntityTypeDetail((prev) => ({ ...prev, customFields }));
+        setSelectedEntityTypeDetail((prev) => ({
+          ...prev,
+          customFields: Fields,
+        }));
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };

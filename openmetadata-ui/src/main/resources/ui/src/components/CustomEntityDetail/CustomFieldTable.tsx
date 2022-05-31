@@ -178,7 +178,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
         <ModalWithMarkdownEditor
           header={`Edit Field: "${selectedField.name}"`}
           placeholder="Enter Field Description"
-          value={selectedField.description as string}
+          value={selectedField.description || ''}
           onCancel={resetSelectedField}
           onSave={handleFieldUpdate}
         />
