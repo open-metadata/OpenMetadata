@@ -17,15 +17,16 @@ export const RightPanel = () => {
   return (
     <Fragment>
       <h6 className="tw-heading tw-text-base" data-testid="header">
-        Lorem, ipsum.
+        Add a Custom Field
       </h6>
       <div className="tw-mb-5" data-testid="body">
-        Lorem ipsum dolor sit, amet consectetur adipisicing elit. Adipisci ab,
-        rem molestiae culpa iure fugit cumque vel, nisi quam sed reprehenderit
-        exercitationem assumenda odio doloribus corrupti magni perferendis
-        veniam minus porro. Itaque accusamus veritatis esse laborum odit, nobis
-        sit quibusdam modi dolores iusto voluptas labore excepturi, tempora
-        praesentium nemo voluptatem?
+        OpenMetadata supports custom fields in the Table entity. Create a custom
+        field by adding a unique field name. The name must start with a
+        lowercase letter, as preferred in the camelCase format. Uppercase
+        letters and numbers can be included in the field name; but spaces,
+        underscores, and dots are not supported. Select the preferred field Type
+        from among the options provided. Describe your custom field to provide
+        more information to your team.
       </div>
     </Fragment>
   );
