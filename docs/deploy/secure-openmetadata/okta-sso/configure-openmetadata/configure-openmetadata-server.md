@@ -22,10 +22,13 @@ authenticationConfiguration:
 
 ![](<../../../../.gitbook/assets/image (60) (1).png>)
 
+
+
 Update `authorizerConfiguration` to add `adminPrincipals`
 
-* For `adminPrincipals`, add the **Username**.
+* Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
 * For `botPrincipals`, add the **Ingestion Client ID** for the Service application. This can be found in **Okta -> Applications -> Applications**.
+* Update the `principalDomain` to your company domain name. 
 
 ![](<../../../../.gitbook/assets/image (35) (1).png>)
 
@@ -34,7 +37,8 @@ authorizerConfiguration:
   className: "org.openmetadata.catalog.security.DefaultAuthorizer"
   containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
   adminPrincipals:
-    - "<username>"
+    - "user1"
+    - "user2"
   botPrincipals:
     - "ingestion-bot"
     - "<Ingestion Client ID>"
