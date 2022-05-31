@@ -64,21 +64,12 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) py_antlr
 	$(MAKE) install
 
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -a --branch -m pytest --junitxml=junit/test-results-integration.xml tests/integration/ometa tests/integration/stage
-
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	coverage run -a --branch -m pytest --junitxml=junit/test-results-unit.xml tests/unit
-
 .PHONY: coverage
 coverage:  ## Run all Python tests from ingestion/ and generate the coverage report
 	cd ingestion; \
 		coverage erase; \
-		$(MAKE) unit_ingestion; \
-		$(MAKE) run_ometa_integration_tests; \
+		coverage run -a --branch -m pytest --junitxml=junit/test-results-unit.xml tests/unit; \
+		coverage run -a --branch -m pytest --junitxml=junit/test-results-integration.xml tests/integration/ometa tests/integration/stage; \
 		coverage xml -o coverage.xml; \
 		cat coverage.xml
 
