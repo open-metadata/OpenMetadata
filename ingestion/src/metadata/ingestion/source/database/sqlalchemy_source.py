@@ -90,12 +90,6 @@ class SqlAlchemySource(Source, ABC):
         """
 
     @abstractmethod
-    def fetch_sample_data(self, schema: str, table_name: str) -> Optional[TableData]:
-        """
-        Method to fetch sample data form table
-        """
-
-    @abstractmethod
     def get_table_names(
         self, schema: str, inspector: Inspector
     ) -> Optional[Iterable[Tuple[str, str]]]:
