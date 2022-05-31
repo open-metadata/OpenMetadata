@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS } from '../../constants/constants';
+import { addNewTagToEntity } from '../../common/common';
+import { DELETE_TERM, NEW_GLOSSARY, NEW_GLOSSARY_TERMS, SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const createGlossaryTerm = (term) => {
   cy.get('[data-testid="header"]')
@@ -79,6 +80,14 @@ const deleteGlossaryTerm = ({ name }) => {
 
   cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
   cy.wait(100);
+};
+
+const goToAssetsTab = (term) => {
+  cy.get('#left-panel').should('be.visible').contains(term).click();
+  cy.wait(100);
+  cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
+  cy.get('[data-testid="Assets"]').should('be.visible').click();
+  cy.get('[data-testid="Assets"]').should('have.class', 'active');
 };
 
 describe('Glossary page should work properly', () => {
@@ -299,6 +308,29 @@ describe('Glossary page should work properly', () => {
     cy.get('.tw-modal-container').should('not.exist');
     cy.get('.tableBody-row > :nth-child(1)')
       .contains(term2)
+      .should('be.visible');
+  });
+
+  it('Assets Tab should work properly', () => {
+    const term = NEW_GLOSSARY_TERMS.term_1.name;
+    const entity = SEARCH_ENTITY_TABLE.table_3.term;
+    goToAssetsTab(term);
+    cy.get('.tableBody-cell')
+      .contains('No assets available.')
+      .should('be.visible');
+
+    addNewTagToEntity(entity, term);
+
+    cy.get(
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
+    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
+    goToAssetsTab(term);
+    cy.get('[data-testid="column"] > :nth-child(1)')
+      .contains(entity)
       .should('be.visible');
   });
 
