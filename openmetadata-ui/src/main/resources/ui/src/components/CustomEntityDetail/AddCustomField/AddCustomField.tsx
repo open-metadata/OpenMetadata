@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { uniqueId } from 'lodash';
 import { EditorContentRef, FormErrorData } from 'Models';
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   addFieldToEntity,
@@ -36,7 +36,7 @@ const InitialFormData = {
   type: '',
 };
 
-const AddCustomField: FC = () => {
+const AddCustomField = () => {
   const { entityTypeFQN } = useParams<{ [key: string]: string }>();
   const history = useHistory();
   const markdownRef = useRef<EditorContentRef>();
@@ -168,7 +168,9 @@ const AddCustomField: FC = () => {
       <PageLayout
         classes="tw-max-w-full-hd tw-h-full tw-pt-4"
         rightPanel={<RightPanel />}>
-        <div className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded">
+        <div
+          className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded"
+          data-testid="form-container">
           <h6 className="tw-heading tw-text-base">Add Custom Field</h6>
 
           <Field>
