@@ -15,6 +15,47 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 
+export const handleIngestionRetry = (type, count = 0) => {
+  // ingestions page
+  const retryTimes = 25;
+  let retryCount = count;
+  const testIngestionsTab = () => {
+    cy.get('[data-testid="Ingestions"]').should('be.visible');
+    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
+      'have.text',
+      1
+    );
+    // click on the tab only for the first time
+    if (retryCount === 0) {
+      cy.get('[data-testid="Ingestions"]').click();
+    }
+    if (isDatabaseService(type)) {
+      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
+    }
+  };
+  const checkSuccessState = () => {
+    testIngestionsTab();
+    retryCount++;
+    // the latest run should be success
+    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
+      if (
+        ($ingestionStatus.text() === 'Running' ||
+          $ingestionStatus.text() === 'Queued') &&
+        retryCount <= retryTimes
+      ) {
+        // retry after waiting for 20 seconds
+        cy.wait(20000);
+        cy.reload();
+        checkSuccessState();
+      } else {
+        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
+      }
+    });
+  };
+
+  checkSuccessState();
+};
+
 export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
@@ -111,44 +152,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
-  // ingestions page
-  const retryTimes = 25;
-  let retryCount = 0;
-  const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').should('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
-      'have.text',
-      1
-    );
-    // click on the tab only for the first time
-    if (retryCount === 0) {
-      cy.get('[data-testid="Ingestions"]').click();
-    }
-    if (isDatabaseService(type)) {
-      cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
-    }
-  };
-  const checkSuccessState = () => {
-    testIngestionsTab();
-    retryCount++;
-    // the latest run should be success
-    cy.get('.tableBody-row > :nth-child(4)').then(($ingestionStatus) => {
-      if (
-        ($ingestionStatus.text() === 'Running' ||
-          $ingestionStatus.text() === 'Queued') &&
-        retryCount <= retryTimes
-      ) {
-        // retry after waiting for 20 seconds
-        cy.wait(20000);
-        cy.reload();
-        checkSuccessState();
-      } else {
-        cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
-      }
-    });
-  };
-
-  checkSuccessState();
+  handleIngestionRetry(type);
 };
 
 export const goToAddNewServicePage = () => {
@@ -217,4 +221,66 @@ export const searchEntity = (term) => {
   cy.get('[data-testid="searchBox"]').should('be.visible');
   cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
   cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+};
+
+export const testSampleData = (entity) => {
+  cy.goToHomePage();
+
+  // initially sample data should not be present
+  searchEntity(entity.term);
+  cy.get(`[data-testid="${entity.entity}-tab"]`).should('be.visible').click();
+  cy.get(`[data-testid="${entity.entity}-tab"]`)
+    .should('be.visible')
+    .should('have.class', 'active');
+  cy.wait(500);
+  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
+  cy.contains('No sample data available').should('be.visible');
+
+  // go to service details and modify ingestion to enable sample data
+  cy.get(':nth-child(1) > .link-title').should('be.visible').click();
+  cy.wait(500);
+
+  if (entity.entityType === 'database') {
+    cy.get('[data-testid="table-container"]').contains(entity.db);
+  }
+
+  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+  cy.get('[data-testid="edit"]').should('be.visible').click();
+  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .should('have.class', 'open');
+  cy.get('[data-testid="next-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+
+  cy.get('[data-testid="dbt-source"]').should('be.visible');
+  cy.get('[data-testid="submit-btn"]').should('be.visible').click();
+
+  cy.get('[data-testid="ingestion-type"]').should('be.visible');
+  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
+
+  cy.contains('has been updated and deployed successfully').should(
+    'be.visible'
+  );
+  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
+  cy.get('[data-testid="Ingestions"]')
+    .should('be.visible')
+    .should('have.class', 'active');
+
+  cy.get('[data-testid="run"]').should('be.visible').click();
+  cy.reload();
+  handleIngestionRetry(entity.entityType, 1);
+
+  searchEntity(entity.term);
+  cy.wait(500);
+  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
+  cy.contains('No sample data available').should('not.exist');
 };

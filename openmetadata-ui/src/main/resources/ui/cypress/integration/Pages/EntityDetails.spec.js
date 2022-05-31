@@ -30,6 +30,7 @@ describe('Entity Details Page', () => {
       .click();
 
     // click on the 1st result and go to manage tab in entity details page
+    cy.wait(500);
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
     cy.get('[data-testid="Manage"]').should('be.visible').click();
 

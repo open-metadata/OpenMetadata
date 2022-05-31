@@ -73,6 +73,7 @@ const UserCard = ({
       case AssetsType.TABLE:
         return getPartialNameFromTableFQN(fqn, [
           FqnPart.Database,
+          FqnPart.Schema,
           FqnPart.Table,
         ]);
 

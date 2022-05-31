@@ -90,7 +90,9 @@ class SqlAlchemySource(Source, ABC):
         """
 
     @abstractmethod
-    def get_table_names(self, schema: str, inspector: Inspector) -> Optional[List[str]]:
+    def get_table_names(
+        self, schema: str, inspector: Inspector
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Method to fetch table & view names
         """
@@ -125,12 +127,17 @@ class SqlAlchemySource(Source, ABC):
         Method to fetch tags associated with table
         """
 
-    def get_database_entity(self, database_name: Optional[str]) -> Database:
+    def _get_database_name(self) -> str:
+        if hasattr(self.service_connection, "database"):
+            return self.service_connection.database or "default"
+        return "default"
+
+    def get_database_entity(self) -> Database:
         """
         Method to get database enetity from db name
         """
         return Database(
-            name=database_name if database_name else "default",
+            name=self._get_database_name(),
             service=EntityReference(
                 id=self.service.id, type=self.service_connection.type.value
             ),
@@ -171,7 +178,7 @@ class SqlAlchemySource(Source, ABC):
                             self.metadata,
                             entity_type=DatabaseSchema,
                             service_name=self.config.serviceName,
-                            database_name=self.service_connection.database,
+                            database_name=self._get_database_name(),
                             schema_name=schema,
                         )
                         yield from self.delete_tables(schema_fqn)
@@ -251,7 +258,7 @@ class SqlAlchemySource(Source, ABC):
                     schema, table_name, table_type, inspector
                 )
 
-                database = self.get_database_entity(self.service_connection.database)
+                database = self.get_database_entity()
                 # check if we have any model to associate with
                 table_entity.dataModel = self.get_data_model(
                     database.name.__root__, schema, table_name
