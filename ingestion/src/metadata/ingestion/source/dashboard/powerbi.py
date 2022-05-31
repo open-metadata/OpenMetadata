@@ -18,24 +18,22 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.utils.connections import get_connection
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.logger import ingestion_logger
 
@@ -114,24 +112,54 @@ class PowerbiSource(DashboardSourceService):
         """
         Get lineage between dashboard and data sources
         """
-        metadata = OpenMetadata(self.metadata_config)
-        charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
-            "value"
-        )
-        for chart in charts:
-            dataset_id = chart.get("datasetId")
-            if dataset_id:
-                dataset = self.client.fetch_dataset_by_id(dataset_id=dataset_id)
-                if not dataset.get("error"):
-                    data_source_name = dataset.get("name")
-                    from_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=f"{self.source_config.dbServiceName}.{data_source_name}",
-                    )
-                    to_entity = self.metadata.get_by_name(
-                        entity=Lineage_Dashboard,
-                        fqn=f"{self.config.serviceName}.{dashboard_details['id']}",
-                    )
+        try:
+            charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
+                "value"
+            )
+            for chart in charts:
+                dataset_id = chart.get("datasetId")
+                if dataset_id:
+                    data_sources = self.client.fetch_data_sources(dataset_id=dataset_id)
+                    for data_source in data_sources.get("value"):
+                        database_name = data_source.get("connectionDetails").get(
+                            "database"
+                        )
+
+                        from_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Database,
+                            service_name=self.source_config.dbServiceName,
+                            database_name=database_name,
+                        )
+                        from_entity = self.metadata.get_by_name(
+                            entity=Database,
+                            fqn=from_fqn,
+                        )
+                        to_fqn = fqn.build(
+                            self.metadata,
+                            entity_type=Lineage_Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=dashboard_details["id"],
+                        )
+                        to_entity = self.metadata.get_by_name(
+                            entity=Lineage_Dashboard,
+                            fqn=to_fqn,
+                        )
+                        if from_entity and to_entity:
+                            lineage = AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id.__root__, type="database"
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_entity.id.__root__, type="dashboard"
+                                    ),
+                                )
+                            )
+                            yield lineage
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.error(err)
 
     def process_charts(self) -> Iterable[Chart]:
         """

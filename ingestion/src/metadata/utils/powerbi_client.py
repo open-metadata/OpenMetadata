@@ -113,7 +113,7 @@ class PowerBiApiClient:
             logger.error(err)
             logger.debug(traceback.format_exc())
 
-    def fetch_dataset_by_id(self, dataset_id: str) -> dict:
+    def fetch_data_sources(self, dataset_id: str) -> dict:
         """Get dataset by id method
         Args:
             dataset_id:
@@ -121,7 +121,9 @@ class PowerBiApiClient:
             dict
         """
         try:
-            response = self.client.get(f"/myorg/admin/datasets/{dataset_id}")
+            response = self.client.get(
+                f"/myorg/admin/datasets/{dataset_id}/datasources"
+            )
             return response
         except Exception as err:  # pylint: disable=broad-except
             logger.error(err)
