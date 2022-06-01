@@ -13,7 +13,7 @@ Snowflake usage module
 """
 
 from datetime import timedelta
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -28,6 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 
 # This import verifies that the dependencies are available.
@@ -37,6 +38,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 logger = ingestion_logger()
+SNOWFLAKE_ABORTED_CODE = "1969"
 
 
 class SnowflakeUsageSource(UsageSource):
@@ -74,9 +76,9 @@ class SnowflakeUsageSource(UsageSource):
             )
         return cls(config, metadata_config)
 
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
+    def _get_raw_extract_iter(self) -> Iterable[TableQuery]:
         if self.config.serviceConnection.__root__.config.database:
-            yield from super(SnowflakeUsageSource, self)._get_raw_extract_iter()
+            yield from super()._get_raw_extract_iter()
         else:
             query = "SHOW DATABASES"
             results = self.engine.execute(query)
@@ -89,9 +91,19 @@ class SnowflakeUsageSource(UsageSource):
                 self.engine = get_connection(self.connection)
                 rows = self.engine.execute(self.sql_stmt)
                 for row in rows:
-                    yield row
+                    yield TableQuery(
+                        query=row["query_text"],
+                        userName=row["user_name"],
+                        startTime=str(row["start_time"]),
+                        endTime=str(row["end_time"]),
+                        analysisDate=self.analysis_date,
+                        aborted=self.get_aborted_status(row),
+                        database=self.get_database_name(row),
+                        serviceName=self.config.serviceName,
+                        databaseSchema=row["schema_name"],
+                    )
 
-    def get_database(self, data: dict) -> str:
+    def get_database_name(self, data: dict) -> str:
         """
         Method to get database name
         """
@@ -103,4 +115,4 @@ class SnowflakeUsageSource(UsageSource):
         """
         Method to get aborted status of query
         """
-        return "1969" in str(data["end_time"])
+        return SNOWFLAKE_ABORTED_CODE in str(data["end_time"])

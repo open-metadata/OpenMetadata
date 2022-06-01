@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
@@ -74,36 +75,42 @@ class BigqueryUsageSource(UsageSource):
         for entry in entries:
             timestamp = entry.timestamp.isoformat()
             timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
-
-            if (
-                timestamp <= self.start
-                and timestamp >= self.end
-                and "query" not in str(entry.payload)
-                and type(entry.payload) != collections.OrderedDict
-            ):
-                continue
-
-            payload = list(entry.payload.items())[-1][1]
-            if ("jobChange" in payload) and (
-                "queryConfig" in payload["jobChange"]["job"]["jobConfig"]
-            ):
-                logger.debug(f"\nEntries: {payload}")
-                queryConfig = payload["jobChange"]["job"]["jobConfig"]["queryConfig"]
-                jobStats = payload["jobChange"]["job"]["jobStats"]
-                self.analysis_date = str(
-                    datetime.strptime(
-                        jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
-                    ).strftime("%Y-%m-%d %H:%M:%S")
-                )
-                yield {
-                    "query_text": queryConfig["query"],
-                    "user_name": entry.resource.labels["project_id"],
-                    "start_time": str(jobStats["startTime"]),
-                    "end_time": str(jobStats["endTime"]),
-                    "aborted": False,
-                    "database_name": self.project_id,
-                    "schema_name": None,
-                }
+            if timestamp >= self.start and timestamp <= self.end:
+                if ("query" in str(entry.payload)) and type(
+                    entry.payload
+                ) == collections.OrderedDict:
+                    payload = list(entry.payload.items())[-1][1]
+                    if "jobChange" in payload:
+                        logger.debug(f"\nEntries: {payload}")
+                        if "queryConfig" in payload["jobChange"]["job"]["jobConfig"]:
+                            queryConfig = payload["jobChange"]["job"]["jobConfig"][
+                                "queryConfig"
+                            ]
+                        else:
+                            continue
+                        jobStats = payload["jobChange"]["job"]["jobStats"]
+                        statementType = ""
+                        if hasattr(queryConfig, "statementType"):
+                            statementType = queryConfig["statementType"]
+                        database = self.project_id
+                        analysis_date = str(
+                            datetime.strptime(
+                                jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
+                            ).strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                        logger.debug(f"Query :{statementType}:{queryConfig['query']}")
+                        tq = TableQuery(
+                            query=queryConfig["query"],
+                            userName=entry.resource.labels["project_id"],
+                            startTime=str(jobStats["startTime"]),
+                            endTime=str(jobStats["endTime"]),
+                            analysisDate=analysis_date,
+                            aborted=0,
+                            database=str(database),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=None,
+                        )
+                        yield tq
 
     def close(self):
         super().close()

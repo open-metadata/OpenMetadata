@@ -26,14 +26,18 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
-from metadata.generated.schema.type.tableUsageRequest import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.helpers import _get_formmated_table_name
+from metadata.utils.helpers import get_formatted_entity_name
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sql_lineage import get_column_fqn, ingest_lineage_by_query
+from metadata.utils.sql_lineage import (
+    get_column_fqn,
+    ingest_lineage_by_query,
+    search_table_entities,
+)
 
 logger = ingestion_logger()
 
@@ -85,7 +89,8 @@ class MetadataUsageBulkSink(BulkSink):
         self, table_entity: Table, table_usage: TableUsageCount
     ) -> None:
         """
-        Method populate the table_usage_map dictionary
+        Method Either initialise the map data or
+        update existing data with information from new queries on the same table
         """
         if not self.table_usage_map.get(table_entity.id.__root__):
             self.table_usage_map[table_entity.id.__root__] = {
@@ -116,7 +121,7 @@ class MetadataUsageBulkSink(BulkSink):
             self.ingest_sql_queries_lineage(
                 value_dict["sql_queries"], value_dict["database"]
             )
-            table_usage_request = TableUsageRequest(
+            table_usage_request = UsageRequest(
                 date=self.today, count=value_dict["usage_count"]
             )
             try:
@@ -148,21 +153,28 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage = TableUsageCount(**json.loads(record))
             self.service_name = table_usage.serviceName
             if "." in table_usage.table:
-                databaseSchema, table = table_usage.table.split(".")[-2:]
+                databaseSchema, table = fqn.split(table_usage.table)[-2:]
                 table_usage.table = table
                 if not table_usage.databaseSchema:
                     table_usage.databaseSchema = databaseSchema
-            table_entities = self.__get_table_entity(
-                table_usage.database, table_usage.databaseSchema, table_usage.table
+            table_usage.database = get_formatted_entity_name(table_usage.database)
+            table_usage.databaseSchema = get_formatted_entity_name(
+                table_usage.databaseSchema
+            )
+            table_usage.table = get_formatted_entity_name(table_usage.table)
+            table_entities = search_table_entities(
+                self.metadata,
+                table_usage.serviceName,
+                table_usage.database,
+                table_usage.databaseSchema,
+                table_usage.table,
             )
             for table_entity in table_entities or []:
                 if table_entity is not None:
                     self.__populate_table_usage_map(
                         table_usage=table_usage, table_entity=table_entity
                     )
-                    table_join_request = self.__get_table_joins(
-                        table_usage, table_entity
-                    )
+                    table_join_request = self.__get_table_joins(table_usage)
                     logger.debug("table join request {}".format(table_join_request))
                     try:
                         if (
@@ -193,9 +205,7 @@ class MetadataUsageBulkSink(BulkSink):
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
-    def __get_table_joins(
-        self, table_usage: TableUsageCount, table_entity: Table
-    ) -> TableJoins:
+    def __get_table_joins(self, table_usage: TableUsageCount) -> TableJoins:
         table_joins: TableJoins = TableJoins(
             columnJoins=[], directTableJoins=[], startDate=table_usage.date
         )
@@ -243,43 +253,18 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to get column fqn
         """
-        table_entities = self.__get_table_entity(
-            database, database_schema, table_column.table
+        table_entities = search_table_entities(
+            self.metadata,
+            self.service_name,
+            database,
+            database_schema,
+            table_column.table,
         )
         if not table_entities:
             return None
 
         for table_entity in table_entities:
-            get_column_fqn(table_entity, table_column.column)
-
-    def __get_table_entity(
-        self, database: str, database_schema: Optional[str], table: str
-    ) -> Optional[List[Table]]:
-        """
-        Method to get table entity from database, database_schema & table name
-        """
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.service_name,
-            database_name=database,
-            schema_name=database_schema,
-            table_name=table,
-        )
-        table_fqn = _get_formmated_table_name(table_fqn)
-        table_entity = self.metadata.get_by_name(Table, fqn=table_fqn)
-        if table_entity:
-            return [table_entity]
-        es_result = self.metadata.es_search_from_service(
-            entity_type=Table,
-            service_name=self.service_name,
-            filters={
-                "database": database,
-                "database_schema": database_schema,
-                "name": table,
-            },
-        )
-        return es_result
+            return get_column_fqn(table_entity, table_column.column)
 
     def get_status(self):
         return self.status

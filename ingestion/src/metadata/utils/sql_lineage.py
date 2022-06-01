@@ -23,19 +23,22 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.helpers import _get_formmated_table_name
+from metadata.utils.helpers import get_formatted_entity_name
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 column_lineage_map = {}
 
 
-def _separate_fqn(database, fqn):
-    database_schema, table = fqn.split(".")[-2:]
-    if not database_schema:
-        database_schema = None
+def split_raw_table_name(database: str, raw_name: str) -> dict:
+    database_schema = None
+    if "." in raw_name:
+        database_schema, table = fqn.split(raw_name)[-2:]
+        if database_schema == "<default>":
+            database_schema = None
     return {"database": database, "database_schema": database_schema, "table": table}
 
 
@@ -48,30 +51,33 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
             return tbl_column.fullyQualifiedName.__root__
 
 
-def _get_table_entities(
-    table: str, database: str, metadata: OpenMetadata, service_name: str
-):
-    table_default = _get_formmated_table_name(str(table).replace("<default>", ""))
-    table_obj = _separate_fqn(database=database, fqn=table_default)
-    table_fqn = fqn.build(
+def search_table_entities(
+    metadata: OpenMetadata,
+    service_name: str,
+    database: str,
+    database_schema: Optional[str],
+    table: str,
+) -> Optional[List[Table]]:
+    """
+    Method to get table entity from database, database_schema & table name
+    """
+    table_fqns = fqn.build(
         metadata,
         entity_type=Table,
         service_name=service_name,
         database_name=database,
-        schema_name=table_obj.get("database_schema"),
-        table_name=table_obj.get("table"),
+        schema_name=database_schema,
+        table_name=table,
+        fetch_multiple_entities=True,
     )
-    if not table_fqn:
-        return
-    entity: Table = metadata.get_by_name(entity=Table, fqn=table_fqn)
-    if not entity:
-        table_obj = _separate_fqn(database=database, fqn=table_fqn)
-        return metadata.es_search_from_service(
-            entity_type=Table,
-            service_name=service_name,
-            filters=table_obj,
-        )
-    return [entity]
+    table_entities = []
+    for table_fqn in table_fqns or []:
+        try:
+            table_entity = metadata.get_by_name(Table, fqn=table_fqn)
+            table_entities.append(table_entity)
+        except APIError:
+            logger.debug(f"Table not found for fqn: {fqn}")
+    return table_entities
 
 
 def get_column_lineage(
@@ -109,15 +115,21 @@ def _create_lineage_by_table_name(
     """
 
     try:
-        from_entities = _get_table_entities(
-            table=from_table,
-            database=database,
+        from_raw_name = get_formatted_entity_name(str(from_table))
+        from_table_obj = split_raw_table_name(database=database, raw_name=from_raw_name)
+        from_entities = search_table_entities(
+            table=from_table_obj.get("table"),
+            database_schema=from_table_obj.get("database_schema"),
+            database=from_table_obj.get("database"),
             metadata=metadata,
             service_name=service_name,
         )
-        to_entities = _get_table_entities(
-            table=to_table,
-            database=database,
+        to_raw_name = get_formatted_entity_name(str(from_table))
+        to_table_obj = split_raw_table_name(database=database, raw_name=to_raw_name)
+        to_entities = search_table_entities(
+            table=to_table_obj.get("table"),
+            database_schema=to_table_obj.get("database_schema"),
+            database=to_table_obj.get("database"),
             metadata=metadata,
             service_name=service_name,
         )
@@ -155,16 +167,16 @@ def _create_lineage_by_table_name(
 
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(err)
+        logger.error(traceback.format_exc())
 
 
-def poplate_column_lineage_map(raw_column_lineage):
-    column_lineage_map.clear()
+def populate_column_lineage_map(raw_column_lineage):
+    lineage_map = {}
     if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
         return
     for source, target in raw_column_lineage:
-        if column_lineage_map.get(str(target.parent)):
-            ele = column_lineage_map.get(str(target.parent))
+        if lineage_map.get(str(target.parent)):
+            ele = lineage_map.get(str(target.parent))
             if ele.get(str(source.parent)):
                 ele[str(source.parent)].append(
                     (
@@ -175,9 +187,10 @@ def poplate_column_lineage_map(raw_column_lineage):
             else:
                 ele[str(source.parent)] = [(target.raw_name, source.raw_name)]
         else:
-            column_lineage_map[str(target.parent)] = {
+            lineage_map[str(target.parent)] = {
                 str(source.parent): [(target.raw_name, source.raw_name)]
             }
+    return lineage_map
 
 
 def ingest_lineage_by_query(
@@ -195,13 +208,14 @@ def ingest_lineage_by_query(
 
     # Reverting changes after import is done
     DictConfigurator.configure = configure
+    column_lineage_map.clear()
 
     try:
         result = LineageRunner(query)
         if not result.target_tables:
             return False
         raw_column_lineage = result.get_column_lineage()
-        poplate_column_lineage_map(raw_column_lineage)
+        column_lineage_map.update(populate_column_lineage_map(raw_column_lineage))
         for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
                 _create_lineage_by_table_name(

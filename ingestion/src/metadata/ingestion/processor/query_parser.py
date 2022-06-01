@@ -27,15 +27,6 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.utils.logger import ingestion_logger
 
-
-class QueryParserProcessorConfig(ConfigModel):
-    """
-    Query parser pydantic configuration model
-    """
-
-    filter: Optional[str] = None
-
-
 logger = ingestion_logger()
 
 
@@ -53,12 +44,12 @@ class QueryParserProcessor(Processor):
         status (ProcessorStatus):
     """
 
-    config: QueryParserProcessorConfig
+    config: ConfigModel
     status: ProcessorStatus
 
     def __init__(
         self,
-        config: QueryParserProcessorConfig,
+        config: ConfigModel,
         metadata_config: OpenMetadataConnection,
     ):
 
@@ -70,7 +61,7 @@ class QueryParserProcessor(Processor):
     def create(
         cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
     ):
-        config = QueryParserProcessorConfig.parse_obj(config_dict)
+        config = ConfigModel.parse_obj(config_dict)
         return cls(config, metadata_config)
 
     def process(self, record: TableQuery) -> Optional[QueryParserData]:
@@ -84,6 +75,7 @@ class QueryParserProcessor(Processor):
                     str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
                 ).date()
             parser = Parser(record.query)
+            parser._logger.setLevel("CRITICAL")  # To ignore sql_metadata logs
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(
                 tables=parser.tables,

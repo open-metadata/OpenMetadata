@@ -13,7 +13,7 @@ Usage Souce Module
 """
 import csv
 import traceback
-from typing import Any, Dict, Iterable, Optional
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -49,42 +49,54 @@ class UsageSource(Source[TableQuery]):
     def prepare(self):
         return super().prepare()
 
-    def get_database(self, data: dict) -> str:
+    def get_database_name(self, data: dict) -> str:
         """
         Method to get database name
         """
-        return data["database_name"]
+        return data.get("database_name")
 
     def get_aborted_status(self, data: dict) -> bool:
         """
         Method to get aborted status of query
         """
-        return data["aborted"]
+        return data.get("aborted", False)
 
-    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
+    def _get_raw_extract_iter(self) -> Optional[Iterable[TableQuery]]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data
+        """
         if self.config.sourceConfig.config.queryLogFilePath:
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
-                    row = {
-                        "user_name": query_dict.get("user_name", ""),
-                        "start_time": query_dict.get("start_time", ""),
-                        "end_time": query_dict.get("end_time", ""),
-                        "aborted": query_dict.get("aborted", False),
-                        "database_name": query_dict.get(
-                            "database_name",
-                            self.connection.database
-                            if self.connection.database
-                            else "default",
-                        ),
-                        "query_text": query_dict.get("query"),
-                        "schema_name": query_dict.get("schema_name"),
-                    }
-                    yield row
+                    yield TableQuery(
+                        query=row["query_text"],
+                        userName=query_dict.get("user_name", ""),
+                        startTime=query_dict.get("start_time", ""),
+                        endTime=query_dict.get("end_time", ""),
+                        analysisDate=self.analysis_date,
+                        aborted=self.get_aborted_status(query_dict),
+                        database=self.get_database_name(query_dict),
+                        serviceName=self.config.serviceName,
+                        databaseSchema=query_dict.get("schema_name"),
+                    )
         else:
             rows = self.engine.execute(self.sql_stmt)
             for row in rows:
-                yield row
+                row = dict(row)
+                print(row)
+                yield TableQuery(
+                    query=row["query_text"],
+                    userName=row["user_name"],
+                    startTime=str(row["start_time"]),
+                    endTime=str(row["end_time"]),
+                    analysisDate=self.analysis_date,
+                    aborted=self.get_aborted_status(row),
+                    database=self.get_database_name(row),
+                    serviceName=self.config.serviceName,
+                    databaseSchema=row["schema_name"],
+                )
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -92,38 +104,28 @@ class UsageSource(Source[TableQuery]):
         it groups to table and yields TableMetadata
         :return:
         """
-        for row in self._get_raw_extract_iter():
-            if row:
+        for table_query in self._get_raw_extract_iter():
+            if table_query:
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_name=self.get_database(row),
+                    database_name=table_query.database,
                 ):
                     continue
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern,
-                    schema_name=row["schema_name"],
+                    schema_name=table_query.databaseSchema,
                 ):
                     continue
 
                 try:
-                    table_query = TableQuery(
-                        query=row["query_text"],
-                        userName=row["user_name"],
-                        startTime=str(row["start_time"]),
-                        endTime=str(row["end_time"]),
-                        analysisDate=self.analysis_date,
-                        aborted=self.get_aborted_status(row),
-                        database=self.get_database(row),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=row["schema_name"],
-                    )
-                    logger.debug(f"Parsed Query: {row['query_text']}")
-                    if not row["schema_name"]:
+                    yield table_query
+                    logger.debug(f"Parsed Query: {table_query.query}")
+                    if not table_query.databaseSchema:
                         self.report.scanned(
-                            f"{row['database_name']}.{row['schema_name']}"
+                            f"{table_query.database}.{table_query.databaseSchema}"
                         )
                     else:
-                        self.report.scanned(f"{row['database_name']}")
+                        self.report.scanned(f"{table_query.database}")
                     yield table_query
                 except Exception as err:
                     logger.debug(traceback.format_exc())

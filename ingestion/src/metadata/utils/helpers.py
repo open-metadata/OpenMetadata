@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -185,9 +185,9 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp() * 1_000)
 
 
-def _get_formmated_table_name(table_name):
-    if table_name:
-        return table_name.replace("[", "").replace("]", "")
+def get_formatted_entity_name(name: str) -> Optional[str]:
+    if name:
+        return name.replace("[", "").replace("]", "")
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:

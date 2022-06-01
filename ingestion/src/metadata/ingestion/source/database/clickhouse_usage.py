@@ -44,7 +44,7 @@ class ClickhouseUsageSource(UsageSource):
 
         return cls(config, metadata_config)
 
-    def get_database(self, data: dict) -> str:
+    def get_database_name(self, data: dict) -> str:
         """
         Method to fetch database name from row data
         """
