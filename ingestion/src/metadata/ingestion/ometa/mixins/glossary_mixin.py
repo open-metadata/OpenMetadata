@@ -13,23 +13,42 @@ Mixin class containing Glossaries specific methods
 
 To be used be OpenMetadata
 """
-from typing import Type, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.ingestion.ometa.utils import ometa_logger
 
-T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
+T = TypeVar("T", bound=BaseModel)
 logger = ometa_logger()
 
 
 class GlossaryMixin:
-    def create_glossaries_category(self, entity: Type[T], glossaries_body):
+    """
+    OpenMetadata API methods related to Glossaries.
+
+    To be inherited by OpenMetadata
+    """
+
+    def create_glossary(self, glossaries_body):
         """Method to create new Glossary category
         Args:
+            entity: Type to create
             glossaries_body (Glossary): body of the request
         """
         resp = self.client.put(
-            path=self.get_suffix(entity), data=glossaries_body.json()
+            path=self.get_suffix(Glossary), data=glossaries_body.json()
         )
         logger.info(f"Created a Glossary: {resp}")
+
+    def create_glossary_term(self, glossary_term_body):
+        """Method to create new Glossary Term
+        Args:
+            glossary_term_body (Glossary): body of the request
+        """
+        resp = self.client.put(
+            path=self.get_suffix(GlossaryTerm), data=glossary_term_body.json()
+        )
+        logger.info(f"Created a Glossary Term: {resp}")
