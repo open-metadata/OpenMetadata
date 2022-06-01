@@ -15,7 +15,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import AsyncSelect from 'react-select/async';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Source } from '../../generated/type/tagLabel';
@@ -24,9 +30,10 @@ import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
 
-// const INPUT_COLLAPED = '1px';
-// const INPUT_EXPANDED = '150px';
-// const INPUT_AUTO = 'auto';
+interface Option {
+  label: string;
+  value: string;
+}
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
@@ -42,14 +49,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [hasFocus, setFocus] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const node = useRef<HTMLDivElement>(null);
-
-  // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
-  // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
-
-  // const expandInput = () => {
-  //   setInputWidth(INPUT_AUTO);
-  //   setInputMinWidth(INPUT_EXPANDED);
-  // };
 
   const focusInputBox = () => {
     if (editable && inputRef.current) {
@@ -78,12 +77,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const handleTagSelection = (selectedTag: unknown) => {
     if (!isEmpty(selectedTag)) {
       setTags(() => {
-        const updatedTags = (
-          selectedTag as {
-            label: string;
-            value: string;
-          }[]
-        ).map((t) => {
+        const updatedTags = (selectedTag as Option[]).map((t) => {
           return {
             tagFQN: t.value,
             source: (tagList as TagOption[]).find((tag) => tag.fqn === t.value)
@@ -134,16 +128,20 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   };
 
   const loadOptions = (inputValue: string) =>
-    new Promise<
-      {
-        label: string;
-        value: string;
-      }[]
-    >((resolve) => {
+    new Promise<Option[]>((resolve) => {
       setTimeout(() => {
         resolve(getTagList(inputValue));
       }, 1000);
     });
+
+  const getDefaultTags = () => {
+    return tags.map((tag) => {
+      return {
+        label: tag.tagFQN,
+        value: tag.tagFQN,
+      };
+    });
+  };
 
   useEffect(() => {
     setTags(selectedTags);
@@ -167,7 +165,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       }}>
       <div className="">
         {showTags && !editable && (
-          <>
+          <Fragment>
             {showAddTagButton && (
               <span className="tw-text-primary">
                 <Tags
@@ -178,8 +176,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
                 />
               </span>
             )}
-            {tags.map((tag, index) => getTagsElement(tag, index))}
-          </>
+            {tags.map(getTagsElement)}
+          </Fragment>
         )}
         {editable ? (
           <AsyncSelect
@@ -188,12 +186,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             isMulti
             className="tw-w-64"
             data-testid="tag-select"
-            defaultValue={tags.map((tag) => {
-              return {
-                label: tag.tagFQN,
-                value: tag.tagFQN,
-              };
-            })}
+            defaultValue={getDefaultTags}
             loadOptions={loadOptions}
             onChange={handleTagSelection}
           />
