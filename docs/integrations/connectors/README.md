@@ -35,7 +35,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Dashboard Services
 
-* [Looker](../../../integrations/connectors/mysql/)
+* [Looker](broken-reference)
 * [Metabase](../../../integrations/connectors/mysql-1/)
 * Power BI
 * [Redash](../../../integrations/connectors/mysql-1-2/)

@@ -13,12 +13,12 @@ Configure and schedule Looker **metadata** workflows from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-looker-connector-with-the-airflow-sdk.md" %}
+[run-looker-connector-with-the-airflow-sdk.md](run-looker-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="run-looker-connector-with-the-cli.md" %}
+[run-looker-connector-with-the-cli.md](run-looker-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -73,15 +73,15 @@ In this step, we will configure the connection settings required for this connec
 
 **Username**
 
-Enter the username of your Metabase user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+Enter the username of your Looker user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 
 **Password**
 
-Enter the password for your Metabase user in the _Password_ field.
+Enter the password for your Looker user in the _Password_ field.
 
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Looker deployment in the _Host and Port_ field.
 
 **Database Service Name (optional)**
 
@@ -189,14 +189,14 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-metabase-connector-with-the-airflow-sdk.md" %}
-[run-metabase-connector-with-the-airflow-sdk.md](run-metabase-connector-with-the-airflow-sdk.md)
+{% content-ref url="run-looker-connector-with-the-airflow-sdk.md" %}
+[run-looker-connector-with-the-airflow-sdk.md](run-looker-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-metabase-connector-with-the-cli.md" %}
-[run-metabase-connector-with-the-cli.md](run-metabase-connector-with-the-cli.md)
+{% content-ref url="run-looker-connector-with-the-cli.md" %}
+[run-looker-connector-with-the-cli.md](run-looker-connector-with-the-cli.md)
 {% endcontent-ref %}
