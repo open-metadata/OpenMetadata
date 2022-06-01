@@ -43,7 +43,11 @@ const CreateUserPage = () => {
   const fetchTeams = () => {
     getTeams('defaultRoles')
       .then((res: AxiosResponse) => {
-        setTeams(res.data.data);
+        if (res.data) {
+          setTeams(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(

@@ -20,7 +20,7 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 try:
     from typing import get_args
-except ImportError as err:
+except ImportError:
     from typing_compat import get_args
 
 from pydantic import BaseModel
@@ -168,7 +168,7 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data

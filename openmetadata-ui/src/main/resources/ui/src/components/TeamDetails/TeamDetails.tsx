@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isUndefined, orderBy } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -580,7 +580,7 @@ const TeamDetails = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
-      {teams.length && currentTeam ? (
+      {teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"

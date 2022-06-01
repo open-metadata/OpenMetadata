@@ -216,7 +216,11 @@ const RolesPage = () => {
   const fetchTeams = () => {
     getTeams('defaultRoles')
       .then((res: AxiosResponse) => {
-        setTeamList(res.data.data);
+        if (res.data) {
+          setTeamList(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(

@@ -19,7 +19,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { CreateUser } from '../generated/api/teams/createUser';
 import { User } from '../generated/entity/teams/user';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getUsers = (
   arrQueryFields?: string,
@@ -41,7 +41,7 @@ export const getUsers = (
       ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
       : '');
 
-  return AxiosClientWithError.get(url);
+  return APIClient.get(url);
 };
 
 export const updateUserDetail = (
