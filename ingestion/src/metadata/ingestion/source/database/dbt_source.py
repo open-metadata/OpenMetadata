@@ -117,49 +117,17 @@ class DBTSource:
         if "depends_on" in mnode and "nodes" in mnode["depends_on"]:
             for node in mnode["depends_on"]["nodes"]:
                 try:
-                    node_temp = self.manifest_entities[node]
-                    from_fqn = fqn.build(
+                    parent_node = self.manifest_entities[node]
+                    parent_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=node_temp[
-                            "database"
-                        ],  # issue-5093 Read proper schema and db from manifest
-                        schema_name=node_temp["schema"],
-                        table_name=node_temp["name"],
+                        database_name=parent_node["database"],
+                        schema_name=parent_node["schema"],
+                        table_name=parent_node["name"],
                     )
-                    from_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=from_fqn
-                    )
-                    to_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
-                        database_name=mnode[
-                            "database"
-                        ],  # issue-5093 Read proper schema and db from manifest
-                        schema_name=mnode["schema"],
-                        table_name=mnode["name"],
-                    )
-                    to_entity: Table = self.metadata.get_by_name(
-                        entity=Table, fqn=to_fqn
-                    )
-
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=from_entity.id.__root__,
-                                type="table",
-                            ),
-                            toEntity=EntityReference(
-                                id=to_entity.id.__root__,
-                                type="table",
-                            ),
-                        )
-                    )
-                    print(lineage)
-                    if from_fqn:
-                        upstream_nodes.append(from_fqn)
+                    if parent_fqn:
+                        upstream_nodes.append(parent_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
                         f"Failed to parse the node {node} to capture lineage {err}"
@@ -196,3 +164,33 @@ class DBTSource:
                 logger.error(f"Failed to parse column {col_name} due to {err}")
 
         return columns
+
+    def _create_dbt_lineage(self):
+        for data_model_name, data_model in self.data_models.items():
+            for upstream_node in data_model.upstream:
+                try:
+                    from_entity: Table = self.metadata.get_by_name(
+                        entity=Table, fqn=upstream_node
+                    )
+                    to_entity: Table = self.metadata.get_by_name(
+                        entity=Table, fqn=data_model_name
+                    )
+                    if from_entity and to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__,
+                                    type="table",
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__,
+                                    type="table",
+                                ),
+                            )
+                        )
+                        created_lineage = self.metadata.add_lineage(lineage)
+                        logger.info(f"Successfully added Lineage {created_lineage}")
+                except Exception as err:  # pylint: disable=broad-except
+                    logger.error(
+                        f"Failed to parse the node {upstream_node} to capture lineage {err}"
+                    )
