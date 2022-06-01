@@ -56,7 +56,7 @@ const createGlossaryTerm = (term) => {
 
 const deleteGlossaryTerm = ({ name }) => {
   cy.get('#left-panel').contains(name).should('be.visible').click();
-  cy.wait(100);
+  cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
   cy.get('[data-testid="Manage"]').should('be.visible').click();
@@ -79,12 +79,12 @@ const deleteGlossaryTerm = ({ name }) => {
     .should('be.visible');
 
   cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
-  cy.wait(100);
+  cy.wait(500);
 };
 
 const goToAssetsTab = (term) => {
   cy.get('#left-panel').should('be.visible').contains(term).click();
-  cy.wait(100);
+  cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
   cy.get('[data-testid="Assets"]').should('be.visible').click();
   cy.get('[data-testid="Assets"]').should('have.class', 'active');
@@ -216,7 +216,7 @@ describe('Glossary page should work properly', () => {
     const newRef = { name: 'take', url: 'https://take.com' };
     const newDescription = 'Updated description';
     cy.get('#left-panel').should('be.visible').contains(term).click();
-    cy.wait(100);
+    cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
     // updating synonyms
@@ -291,7 +291,7 @@ describe('Glossary page should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
     cy.get('#left-panel').should('be.visible').contains(term).click();
-    cy.wait(100);
+    cy.wait(500);
     cy.get('[data-testid="inactive-link"]').contains(term).should('be.visible');
 
     // add releted term
@@ -299,7 +299,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('.tw-modal-container').should('be.visible');
-    cy.wait(100);
+    cy.wait(500);
     cy.get('[data-testid="user-card-container"]')
       .should('be.visible')
       .find('[data-testid="checkboxAddUser"]')
@@ -343,7 +343,7 @@ describe('Glossary page should work properly', () => {
       .contains(entity)
       .should('be.visible')
       .click();
-    cy.wait(100);
+    cy.wait(500);
     // redirect to entity detail page
     cy.get(
       '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > .tw-ml-1 > [data-testid="image"]'
@@ -384,7 +384,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
-    cy.wait(100);
+    cy.wait(500);
     goToAssetsTab(term);
     cy.get('.tableBody-cell')
       .contains('No assets available.')
@@ -422,7 +422,7 @@ describe('Glossary page should work properly', () => {
       .contains('Glossary deleted successfully!')
       .should('be.visible');
     cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
-    cy.wait(1000);
+    cy.wait(500);
     cy.contains('No glossaries found').should('be.visible');
   });
 });
