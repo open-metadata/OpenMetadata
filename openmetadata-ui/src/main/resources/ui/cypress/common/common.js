@@ -284,3 +284,54 @@ export const testSampleData = (entity) => {
   cy.get('[data-testid="Sample Data"]').should('be.visible').click();
   cy.contains('No sample data available').should('not.exist');
 };
+
+// add new tag to entity and its table
+export const addNewTagToEntity = (entity, term) => {
+  searchEntity(entity);
+  cy.wait(500);
+  cy.get('[data-testid="table-link"]').first().contains(entity).click();
+  cy.get(
+    '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
+  )
+    .should('be.visible')
+    .scrollIntoView()
+    .click();
+
+  cy.get('[data-testid="tags-wrapper"] > [data-testid="tag-container"]').should(
+    'be.visible'
+  );
+  cy.get('[data-testid="associatedTagName"]').should('be.visible').type(term);
+  cy.get('[data-testid="list-item"] > .tw-truncate')
+    .should('be.visible')
+    .click();
+  cy.get(
+    '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
+  ).contains(term);
+  cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+  cy.get('[data-testid="entity-tags"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .contains(term);
+
+  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+    .contains('Add tag')
+    .should('be.visible')
+    .click();
+
+  cy.get(
+    ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"]'
+  ).should('be.visible');
+  cy.get('[data-testid="associatedTagName"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .type(term);
+  cy.get('#menu-item-0 > .tw-truncate').should('be.visible').click();
+  cy.get('[data-testid="saveAssociatedTag"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
+  cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
+    .scrollIntoView()
+    .contains(term)
+    .should('exist');
+};

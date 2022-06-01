@@ -151,6 +151,7 @@ describe('TeamsAndUsers page', () => {
     cy.get(
       '.tw-modal-body > [data-testid="search-bar-container"] > .tw-flex > [data-testid="searchbar"]'
     )
+      .scrollIntoView()
       .should('be.visible')
       .type(searchString);
 
@@ -204,7 +205,10 @@ describe('TeamsAndUsers page', () => {
       .invoke('text')
       .then((name) => {
         cy.get('[data-testid="dropdown-item"] > .tw-z-10').click();
-        cy.get('[data-testid="searchbar"]').should('be.visible').type(name);
+        cy.get('[data-testid="searchbar"]')
+          .scrollIntoView()
+          .should('be.visible')
+          .type(name);
         cy.get('.tw-grid > [data-testid="user-card-container"]')
           .should('be.visible')
           .contains(name)
@@ -285,7 +289,7 @@ describe('TeamsAndUsers page', () => {
 
     cy.get('[data-testid="Manage"]').should('be.visible').click();
     cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-    
+
     cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
@@ -422,7 +426,9 @@ describe('TeamsAndUsers page', () => {
     cy.get('[data-testid="save-user"]').should('be.visible').click();
 
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
+      .click()
       .type(NEW_USER.display_name);
 
     cy.wait(500);
@@ -448,6 +454,7 @@ describe('TeamsAndUsers page', () => {
       'activeCategory'
     );
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(NEW_USER.display_name);
 
@@ -465,12 +472,13 @@ describe('TeamsAndUsers page', () => {
     cy.get('.tw-modal-container').should('be.visible');
     cy.contains('Are you sure you want to delete').should('be.visible');
     cy.get('[data-testid="save-button"]').should('be.visible').click();
+    cy.get('.tw-modal-container').should('not.exist');
 
+    cy.reload();
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(NEW_USER.display_name);
-
-    cy.wait(500);
 
     cy.get('[data-testid="no-data-image"]').should('be.visible');
     cy.contains('No user available').should('be.visible');
