@@ -25,7 +25,8 @@ import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 public class NoopFilter implements ContainerRequestFilter {
   @Context private UriInfo uriInfo;
 
-  public NoopFilter(AuthenticationConfiguration authenticationConfiguration) {}
+  public NoopFilter(
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {}
 
   public void filter(ContainerRequestContext containerRequestContext) {
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal("anonymous");

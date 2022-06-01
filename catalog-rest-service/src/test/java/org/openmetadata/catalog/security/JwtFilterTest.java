@@ -49,6 +49,7 @@ import org.mockito.ArgumentCaptor;
 class JwtFilterTest {
 
   private static JwtFilter jwtFilter;
+  private static JwkProvider jwkProvider;
 
   private static Algorithm algorithm;
   private static UriInfo mockRequestURIInfo;
@@ -65,7 +66,7 @@ class JwtFilterTest {
     // This is used to verify the JWT
     Jwk mockJwk = mock(Jwk.class);
     when(mockJwk.getPublicKey()).thenReturn(keyPair.getPublic());
-    JwkProvider jwkProvider = mock(JwkProvider.class);
+    jwkProvider = mock(JwkProvider.class);
     when(jwkProvider.get(algorithm.getSigningKeyId())).thenReturn(mockJwk);
 
     // This is needed by JwtFilter for some metadata, not very important
@@ -75,7 +76,44 @@ class JwtFilterTest {
     when(mockRequestURIInfo.getRequestUri()).thenReturn(uri);
 
     List<String> principalClaims = List.of("sub", "email");
-    jwtFilter = new JwtFilter(jwkProvider, principalClaims);
+    String domain = "openmetadata.org";
+    boolean enforcePrincipalDomain = false;
+    jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+  }
+
+  @Test
+  void testPrincipalDomainEnforcement() {
+    List<String> principalClaims = List.of("EMAIL", "sub");
+    String domain = "openmetadata.org";
+    boolean enforcePrincipalDomain = true;
+    jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+
+    // success case
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "sam@openmetadata.org")
+            .sign(algorithm);
+
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    jwtFilter.filter(context);
+
+    ArgumentCaptor<SecurityContext> securityContextArgument = ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
+
+    assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+
+    // error case
+    jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "sam@gmail.com")
+            .sign(algorithm);
+    ContainerRequestContext newContext = createRequestContextWithJwt(jwt);
+
+    Exception exception = assertThrows(AuthenticationException.class, () -> jwtFilter.filter(newContext));
+    assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("email does not match the principal domain"));
   }
 
   @Test
