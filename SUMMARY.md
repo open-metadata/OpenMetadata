@@ -38,7 +38,6 @@
   * [DynamoDB](integrations/connectors/dynamodb/README.md)
     * [Run DynamoDB Connector Using Airflow SDK](integrations/connectors/dynamodb/run-dynamodb-connector-using-airflow-sdk.md)
     * [Run DynamoDB Connector with the CLI](integrations/connectors/dynamodb/run-dynamodb-connector-with-the-cli.md)
-  * [Elasticsearch](docs/integrations/connectors/elastic-search.md)
   * [Glue Catalog](docs/integrations/connectors/glue-catalog/README.md)
     * [Run Glue Connector Using Airflow SDK](docs/integrations/connectors/glue-catalog/glue-metadata-extraction.md)
     * [Run Glue Connector with the CLI](docs/integrations/connectors/glue-catalog/run-glue-connector-with-the-cli.md)

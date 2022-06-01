@@ -40,7 +40,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -68,7 +68,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../docs/.gitbook/assets/image (55) (1).png>)
+![](<../../../docs/.gitbook/assets/image (55) (1) (1) (1) (1).png>)
 
 <details>
 
@@ -122,13 +122,13 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (54) (3).png>)
+![](<../../../docs/.gitbook/assets/image (54).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116).png>)
 
 <details>
 
@@ -174,7 +174,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (14) (1).png>)
+![](<../../../docs/.gitbook/assets/image (14) (1) (1) (1) (2).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 
@@ -228,7 +228,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../docs/.gitbook/assets/image (18) (2).png>)
+![](<../../../docs/.gitbook/assets/image (18).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -236,7 +236,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

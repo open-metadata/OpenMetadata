@@ -14,7 +14,6 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Databricks](../../../integrations/connectors/databricks/)
 * [Delta Lake](../../../integrations/connectors/delta-lake/)
 * [DynamoDB](../../../integrations/connectors/dynamodb/)
-* [ElasticSearch](elastic-search.md)
 * [Glue Catalog](glue-catalog/)
 * [Hive](hive/)
 * [IBM Db2](ibm-db2.md)
