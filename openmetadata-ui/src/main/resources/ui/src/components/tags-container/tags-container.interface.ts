@@ -23,6 +23,7 @@ export type TagsContainerProps = {
   tagList: Array<TagOption | string>;
   type?: TagProps['type'];
   showTags?: boolean;
+  showAddTagButton?: boolean;
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   onCancel: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
 };

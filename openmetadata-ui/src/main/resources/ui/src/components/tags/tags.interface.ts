@@ -16,7 +16,7 @@ import { TagLabel } from '../../generated/type/tagLabel';
 export type TagProps = {
   className?: string;
   editable?: boolean;
-  type?: 'contained' | 'outlined' | 'label';
+  type?: 'contained' | 'outlined' | 'label' | 'border';
   startWith?: '#' | '+ ';
   tag: string | TagLabel;
   isRemovable?: boolean;
