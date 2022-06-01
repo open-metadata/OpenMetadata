@@ -31,15 +31,16 @@
       "type": "string",
       "format": "password"
     },
-    "credentials": {
-      "title": "Credentials",
-      "description": "Credentials for PowerBI.",
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Tenant ID for PowerBI.",
       "type": "string"
     },
-    "redirectURI": {
-      "title": "Redirect URI",
-      "description": "Dashboard redirect URI for the PowerBI service.",
-      "type": "string"
+    "authorityURI": {
+      "title": "Authority URI",
+      "description": "Authority URI for the PowerBI service.",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
     },
     "hostPort": {
       "title": "Host and Port",
@@ -55,7 +56,7 @@
       "items": {
         "type": "string"
       },
-      "default": null
+      "default": ["https://analysis.windows.net/powerbi/api/.default"]
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -63,5 +64,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "clientId", "clientSecret"]
+  "required": ["clientId", "clientSecret", "tenantId"]
 }
