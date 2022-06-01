@@ -71,6 +71,7 @@ export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
+const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -215,6 +216,9 @@ export const ROUTES = {
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
   MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
   MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CUSTOM_ENTITY: `/custom-entity`,
+  CUSTOM_ENTITY_DETAIL: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_CUSTOM_FIELD: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -375,6 +379,20 @@ export const getMlModelPath = (mlModelFqn: string, tab = '') => {
   return path;
 };
 
+export const getAddCustomFieldPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_FIELD;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getCustomEntityPath = (entityTypeFQN: string) => {
+  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -388,6 +406,12 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
+  {
+    name: 'Custom Entity',
+    to: '/custom-entity',
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },

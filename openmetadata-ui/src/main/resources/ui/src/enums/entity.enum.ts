@@ -27,6 +27,7 @@ export enum EntityType {
   PIPELINE_SERVICE = 'pipelineService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
+  TYPE = 'type',
 }
 
 export enum AssetsType {

@@ -206,8 +206,10 @@ const TeamsAndUsersPage = () => {
     setIsTeamMemberLoading(true);
     getUsers('', PAGE_SIZE_MEDIUM, { team, ...pagin })
       .then((res: AxiosResponse) => {
-        setCurrentTeamUsers(res.data.data);
-        setTeamUserPagin(res.data.paging);
+        if (res.data) {
+          setCurrentTeamUsers(res.data.data);
+          setTeamUserPagin(res.data.paging);
+        }
       })
       .catch(() => {
         setCurrentTeamUsers([]);
@@ -222,13 +224,17 @@ const TeamsAndUsersPage = () => {
   const fetchTeams = () => {
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
-        if (!teamAndUser && res.data.data.length > 0) {
-          getCurrentTeamUsers(res.data.data[0].name);
-          setCurrentTeam(res.data.data[0]);
-          setIsRightPannelLoading(false);
+        if (res.data) {
+          if (!teamAndUser && res.data.data.length > 0) {
+            getCurrentTeamUsers(res.data.data[0].name);
+            setCurrentTeam(res.data.data[0]);
+            setIsRightPannelLoading(false);
+          }
+          setTeams(res.data.data);
+          AppState.updateUserTeam(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
-        setTeams(res.data.data);
-        AppState.updateUserTeam(res.data.data);
       })
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(
@@ -249,9 +255,13 @@ const TeamsAndUsersPage = () => {
     return new Promise<void>((resolve, reject) => {
       getUsers('profile,teams,roles', API_RES_MAX_SIZE)
         .then((res: AxiosResponse) => {
-          const resUsers = res.data.data;
-          setUserList(resUsers);
-          resolve();
+          if (res.data) {
+            const resUsers = res.data.data;
+            setUserList(resUsers);
+            resolve();
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
         })
         .catch((err: AxiosError) => {
           const errMsg = getErrorText(

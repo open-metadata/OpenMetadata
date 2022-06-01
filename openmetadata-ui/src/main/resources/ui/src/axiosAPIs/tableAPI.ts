@@ -19,7 +19,7 @@ import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import { ColumnTestType } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getTableDetails: Function = (
   id: string,
@@ -76,7 +76,7 @@ export const getAllTables = (
     searchParams.toString()
   );
 
-  return AxiosClientWithError.get(url);
+  return APIClient.get(url);
 };
 
 export const getDatabaseTables: Function = (
