@@ -15,12 +15,12 @@ Configure and schedule Salesforce **metadata** and **profiler** workflows from t
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-salesforce-connector-using-airflow-sdk.md" %}
+[run-salesforce-connector-using-airflow-sdk.md](run-salesforce-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
+{% content-ref url="run-salesforce-connector-using-cli.md" %}
+[run-salesforce-connector-using-cli.md](run-salesforce-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select BigQuery as the service type and click _Next_.
+Select Salesforce as the service type and click _Next_.
 
 ![](<../../../.gitbook/assets/image (39).png>)
 
@@ -59,13 +59,13 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other BigQuery services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Salesforce services that you might be ingesting metadata from.
 
 ![](<../../../.gitbook/assets/image (12).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Salesforce service as desired.
 
 ![](<../../../.gitbook/assets/image (37).png>)
 
@@ -81,11 +81,11 @@ Host and Port of the data source.
 
 **Username**
 
-Specify the User to connect to SingleStore. It should have enough privileges to read all the metadata.
+Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
 
 **Password (Optional)**
 
-SingleStore instance password.
+Salesforce instance password.
 
 **Database (Optional)**
 
@@ -93,11 +93,11 @@ The database of the data source is an optional parameter, if you would like to r
 
 **Connection Options (Optional)**
 
-Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection options that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**
 
-Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key-Value pairs.
+Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
 
 In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
@@ -243,14 +243,14 @@ You can learn more about how to ingest DBT models' definitions and their lineage
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
-[run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% content-ref url="run-salesforce-connector-using-airflow-sdk.md" %}
+[run-salesforce-connector-using-airflow-sdk.md](run-salesforce-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
+{% content-ref url="run-salesforce-connector-using-cli.md" %}
+[run-salesforce-connector-using-cli.md](run-salesforce-connector-using-cli.md)
 {% endcontent-ref %}

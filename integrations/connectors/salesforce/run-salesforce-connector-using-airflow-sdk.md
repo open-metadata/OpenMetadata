@@ -6,10 +6,10 @@ description: Use your own Airflow instance to schedule and run the Salesforce Co
 
 Configure and schedule Salesforce **metadata** and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-singlestore-connector-using-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-singlestore-connector-using-airflow-sdk.md#metadata-ingestion)
-* [Data Profiler and Quality Tests](run-singlestore-connector-using-airflow-sdk.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-singlestore-connector-using-airflow-sdk.md#dbt-integration)
+* [Requirements](run-salesforce-connector-using-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-salesforce-connector-using-airflow-sdk.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-salesforce-connector-using-airflow-sdk.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-salesforce-connector-using-airflow-sdk.md#dbt-integration)
 
 ## Requirements
 
@@ -269,7 +269,7 @@ processor:
 
 #### Workflow Configuration
 
-The same as the [metadata](run-singlestore-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
+The same as the [metadata](run-salesforce-connector-using-airflow-sdk.md#workflow-configuration) ingestion.
 
 ### 2. Prepare the Ingestion DAG
 

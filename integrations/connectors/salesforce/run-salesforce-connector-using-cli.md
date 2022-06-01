@@ -6,10 +6,10 @@ description: Use the 'metadata' CLI to run a one-time ingestion
 
 Configure and schedule Salesforce **metadata** and **profiler** workflows using your own Airflow instances.
 
-* [Requirements](run-singlestore-connector-using-cli.md#requirements)
-* [Metadata Ingestion](run-singlestore-connector-using-cli.md#metadata-ingestion)
-* [Data Profiler and Quality Tests](run-singlestore-connector-using-cli.md#data-profiler-and-quality-tests)
-* [DBT Integration](run-singlestore-connector-using-cli.md#dbt-integration)
+* [Requirements](run-salesforce-connector-using-cli.md#requirements)
+* [Metadata Ingestion](run-salesforce-connector-using-cli.md#metadata-ingestion)
+* [Data Profiler and Quality Tests](run-salesforce-connector-using-cli.md#data-profiler-and-quality-tests)
+* [DBT Integration](run-salesforce-connector-using-cli.md#dbt-integration)
 
 ## Requirements
 
@@ -75,7 +75,7 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 * **username** (Optional): Specify the User to connect to Salesforce. It should have enough privileges to read all the metadata.
 * **password** (Optional): Connection password.
-* **securityToken: C**onnection security Token
+* **securityToken:** Connection security token
 * **database** (Optional): The database of the data source is an optional parameter if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 * **sobjectName :** object name where data is stored
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to Salesforce during the connection. These details must be added as Key-Value pairs.
@@ -229,7 +229,7 @@ processor:
 
 #### Workflow Configuration
 
-The same as the [metadata](run-singlestore-connector-using-cli.md#workflow-configuration) ingestion.
+The same as the [metadata](run-salesforce-connector-using-cli.md#workflow-configuration) ingestion.
 
 ### 2. Run with the CLI
 

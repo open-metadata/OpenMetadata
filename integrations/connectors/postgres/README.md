@@ -71,7 +71,7 @@ In this step, we will configure the connection settings required for this connec
 
 <details>
 
-<summary>Metadata Ingestion Options</summary>
+<summary>Connection Options</summary>
 
 **Username**
 
