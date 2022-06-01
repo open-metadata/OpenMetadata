@@ -17,9 +17,9 @@ from typing import Tuple
 import msal
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import utils_logger
 
-logger = ingestion_logger()
+logger = utils_logger()
 
 
 class PowerBiApiClient:
