@@ -27,7 +27,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/)
 * [Salesforce](../../../integrations/connectors/salesforce/)
-* [SingleStore](../../../integrations/connectors/singlestore-1/)
+* [SingleStore](../../../integrations/connectors/singlestore/)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake/)
 * [Trino](trino/)
@@ -39,7 +39,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Metabase](../../../integrations/connectors/metabase/)
 * Power BI
 * [Redash](../../../integrations/connectors/mysql-1-2/)
-* [Superset](../../../integrations/connectors/mysql-3/)
+* [Superset](../../../integrations/connectors/superset/)
 * [Tableau](tableau.md)
 
 #### Messaging Services

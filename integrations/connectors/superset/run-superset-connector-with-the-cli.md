@@ -1,17 +1,25 @@
 ---
-description: Use your own Airflow instance to schedule and run the Superset Connector.
+description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Superset Connector with the Airflow SDK
+# Run Superset Connector with the CLI
 
-Configure and schedule Superset **metadata** workflows using your own Airflow instances.
+Configure and schedule Superset **metadata** workflows using CLI.
 
-* [Requirements](run-metabase-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-metabase-connector-with-the-airflow-sdk.md#metadata-ingestion)
+* [Requirements](run-superset-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-superset-connector-with-the-cli.md#metadata-ingestion)
 
 ## Requirements
 
 Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+
+### Python requirements
+
+To run the Superset ingestion, you will need to install:
+
+```
+pip3 install 'openmetadata-ingestion[superset]'
+```
 
 ## Metadata Ingestion
 
@@ -73,7 +81,7 @@ dashboardFilterPattern:
 
 #### Sink Configuration
 
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
+To send the metadata to OpenMetadata, it needs to be specified as `"type": "metadata-rest"`.
 
 #### Workflow Configuration
 
@@ -103,60 +111,12 @@ workflowConfig:
       domain: <domain>
 ```
 
-### 2. Prepare the Ingestion DAG
+### 2. Run with the CLI
 
-Create a Python file in your Airflow DAGs directory with the following contents:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
-```python
-import pathlib
-import json
-from datetime import timedelta
-from airflow import DAG
-
-try:
-    from airflow.operators.python import PythonOperator
-except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
-
-from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
-}
-
-config = """
-<your JSON configuration>
-"""
-
-def metadata_ingestion_workflow():
-    workflow_config = json.loads(config)
-    workflow = Workflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-
-
-with DAG(
-    "sample_data",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
-    catchup=False,
-) as dag:
-    ingest_task = PythonOperator(
-        task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow,
-    )
+```
+metadata ingest -c <path-to-yaml>
 ```
 
 Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration, you will be able to extract metadata from different sources.

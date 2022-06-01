@@ -15,12 +15,12 @@ Configure and schedule SingleStore **metadata** and **profiler** workflows from 
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-singlestore-connector-using-cli.md" %}
-[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
-{% endcontent-ref %}
-
 {% content-ref url="run-singlestore-connector-using-airflow-sdk.md" %}
 [run-singlestore-connector-using-airflow-sdk.md](run-singlestore-connector-using-airflow-sdk.md)
+{% endcontent-ref %}
+
+{% content-ref url="run-singlestore-connector-using-cli.md" %}
+[run-singlestore-connector-using-cli.md](run-singlestore-connector-using-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
