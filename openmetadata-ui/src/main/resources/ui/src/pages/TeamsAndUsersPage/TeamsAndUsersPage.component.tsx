@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormErrorData, SearchResponse } from 'Models';
+import { FormattedUsersData, FormErrorData, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -35,10 +35,12 @@ import {
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   API_RES_MAX_SIZE,
   getTeamAndUserDetailsPath,
   INITIAL_PAGIN_VALUE,
+  PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
@@ -63,28 +65,32 @@ const TeamsAndUsersPage = () => {
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRightPannelLoading, setIsRightPannelLoading] = useState(true);
-  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState(true);
-  const [isTeamVisible, setIsTeamVisible] = useState(true);
-  const [isUsersLoading, setIsUsersLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [isRightPannelLoading, setIsRightPannelLoading] =
+    useState<boolean>(true);
+  const [isTeamMemberLoading, setIsTeamMemberLoading] = useState<boolean>(true);
+  const [isTeamVisible, setIsTeamVisible] = useState<boolean>(true);
+  const [isUsersLoading, setIsUsersLoading] = useState<boolean>(true);
   const [teams, setTeams] = useState<Team[]>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [currentTeamUsers, setCurrentTeamUsers] = useState<User[]>([]);
   const [teamUserPagin, setTeamUserPagin] = useState<Paging>({} as Paging);
+  const [userPaging, setUserPaging] = useState<Paging>({} as Paging);
   const [currentTeamUserPage, setCurrentTeamUserPage] =
     useState(INITIAL_PAGIN_VALUE);
-  const [teamUsersSearchText, setTeamUsersSearchText] = useState('');
-  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
+  const [currentUserPage, setCurrentUserPage] = useState(INITIAL_PAGIN_VALUE);
+  const [teamUsersSearchText, setTeamUsersSearchText] = useState<string>('');
+  const [isDescriptionEditable, setIsDescriptionEditable] =
+    useState<boolean>(false);
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
   const [activeUserTab, setactiveUserTab] = useState<UserType>();
   const [userList, setUserList] = useState<Array<User>>([]);
-  const [users, setUsers] = useState<Array<User>>([]);
-  const [admins, setAdmins] = useState<Array<User>>([]);
-  const [bots, setBots] = useState<Array<User>>([]);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [usersCount, setUsersCount] = useState<number>(0);
+  const [adminsCount, setAdminsCount] = useState<number>(0);
+  const [userSearchTerm, setUserSearchTerm] = useState<string>('');
   const [selectedUserList, setSelectedUserList] = useState<Array<User>>([]);
 
   const descriptionHandler = (value: boolean) => {
@@ -107,71 +113,132 @@ const TeamsAndUsersPage = () => {
     return toLower(name).includes(toLower(term));
   };
 
-  const setAllTabList = (users: User[], type = '') => {
+  /**
+   * Make API call to fetch all the users
+   */
+  const fetchUsers = (
+    limit = API_RES_MAX_SIZE,
+    paging = {} as Record<string, string>
+  ) => {
+    return new Promise<Array<User>>((resolve) => {
+      getUsers('profile,teams,roles', limit, paging)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            const resUsers = res.data.data;
+            if (limit !== API_RES_MAX_SIZE) {
+              setUserPaging(res.data.paging);
+            }
+            resolve(resUsers);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-teams-error']
+          );
+          showErrorToast(errMsg);
+          resolve([]);
+        });
+    });
+  };
+
+  const userQuerySearch = (text = WILD_CARD_CHAR, currentPage = 1) => {
+    return new Promise<Array<FormattedUsersData>>((resolve) => {
+      searchData(
+        text,
+        currentPage,
+        PAGE_SIZE_BASE,
+        '',
+        '',
+        '',
+        SearchIndex.USER
+      )
+        .then((res: SearchResponse) => {
+          const data = formatUsersResponse(res.data.hits.hits);
+          setUserPaging({
+            total: res.data.hits.total.value,
+          });
+          resolve(data);
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-users-error']
+          );
+          resolve([]);
+        });
+    });
+  };
+
+  const getAdmins = (text?: string) => {
+    let admins = userList.filter((user) => user.isAdmin);
+    if (text) {
+      admins = admins.filter((user) =>
+        isIncludes(user.displayName || user.name, text)
+      );
+    }
+
+    return admins;
+  };
+
+  const setAllTabList = (type: string, cursorValue?: string | number) => {
     setIsUsersLoading(true);
-    const dBots = users.filter((user) => user.isBot);
-    const dUsers = users.filter((user) => !user.isBot);
-    const dAdmins = users.filter((user) => user.isAdmin);
-    setUsers(dUsers);
-    setAdmins(dAdmins);
-    setBots(dBots);
 
     if (type) {
-      switch (type) {
-        case UserType.ADMINS:
-          setSelectedUserList(dAdmins);
-
-          break;
-
-        case UserType.BOTS:
-          setSelectedUserList(dBots);
-
-          break;
-        case UserType.USERS:
-        default:
-          setSelectedUserList(dUsers);
-
-          break;
+      if (type === UserType.ADMINS) {
+        const dAdmins = getAdmins();
+        setSelectedUserList(dAdmins);
+        setIsUsersLoading(false);
+      } else {
+        const paging = cursorValue
+          ? { [cursorValue]: userPaging[cursorValue as keyof Paging] as string }
+          : {};
+        fetchUsers(PAGE_SIZE_BASE, paging).then((res) => {
+          setSelectedUserList(res);
+          setIsUsersLoading(false);
+        });
       }
     }
     setIsRightPannelLoading(false);
-    setIsUsersLoading(false);
+  };
+
+  const getSearchedUsers = (value: string, pageNumber: number) => {
+    setIsUsersLoading(true);
+    if (activeUserTab === UserType.ADMINS) {
+      const updatedList = getAdmins(value);
+      setSelectedUserList(updatedList);
+      setIsUsersLoading(false);
+    } else {
+      userQuerySearch(value, pageNumber).then((resUsers) => {
+        setSelectedUserList(resUsers as unknown as User[]);
+        setIsUsersLoading(false);
+      });
+    }
   };
 
   const handleUserSearchTerm = (value: string) => {
-    setIsUsersLoading(true);
     setUserSearchTerm(value);
+    setCurrentUserPage(INITIAL_PAGIN_VALUE);
     if (value) {
-      let updatedList: User[] = [];
-
-      switch (activeUserTab) {
-        case UserType.ADMINS:
-          updatedList = admins.filter((user) =>
-            isIncludes(user.displayName || user.name, value)
-          );
-
-          break;
-
-        case UserType.BOTS:
-          updatedList = bots.filter((user) =>
-            isIncludes(user.displayName || user.name, value)
-          );
-
-          break;
-        case UserType.USERS:
-        default:
-          updatedList = users.filter((user) =>
-            isIncludes(user.displayName || user.name, value)
-          );
-
-          break;
-      }
-
-      setSelectedUserList(updatedList);
+      getSearchedUsers(value, INITIAL_PAGIN_VALUE);
     } else {
-      setAllTabList(userList, activeUserTab);
+      setAllTabList(activeUserTab || '');
     }
-    setIsUsersLoading(false);
+  };
+
+  const userPagingHandler = (
+    cursorValue: string | number,
+    activePage?: number
+  ) => {
+    if (userSearchTerm) {
+      setCurrentUserPage(cursorValue as number);
+      getSearchedUsers(userSearchTerm, cursorValue as number);
+    } else {
+      setCurrentUserPage(activePage as number);
+      setAllTabList(activeUserTab || '', cursorValue);
+    }
   };
 
   const handleAddNewUser = () => {
@@ -242,36 +309,14 @@ const TeamsAndUsersPage = () => {
           jsonData['api-error-messages']['fetch-teams-error']
         );
         showErrorToast(errMsg);
+        if (!teamAndUser) {
+          setCurrentTeam({} as Team);
+        }
       })
       .finally(() => {
         setIsLoading(false);
+        setIsDataLoading(false);
       });
-  };
-
-  /**
-   * Make API call to fetch all the teams
-   */
-  const fetchUsers = () => {
-    return new Promise<void>((resolve, reject) => {
-      getUsers('profile,teams,roles', API_RES_MAX_SIZE)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            const resUsers = res.data.data;
-            setUserList(resUsers);
-            resolve();
-          } else {
-            throw jsonData['api-error-messages']['unexpected-server-response'];
-          }
-        })
-        .catch((err: AxiosError) => {
-          const errMsg = getErrorText(
-            err,
-            jsonData['api-error-messages']['fetch-teams-error']
-          );
-          showErrorToast(errMsg);
-          reject();
-        });
-    });
   };
 
   /**
@@ -306,10 +351,13 @@ const TeamsAndUsersPage = () => {
             jsonData['api-error-messages']['fetch-teams-error']
           );
           showErrorToast(errMsg);
+          setCurrentTeam({} as Team);
         })
         .finally(() => {
           setIsRightPannelLoading(false);
         });
+    } else {
+      setIsRightPannelLoading(false);
     }
   };
 
@@ -393,7 +441,7 @@ const TeamsAndUsersPage = () => {
    * @param data
    */
   const addUsersToTeam = (data: Array<UserTeams>) => {
-    if (!isUndefined(currentTeam)) {
+    if (!isUndefined(currentTeam) && !isUndefined(currentTeam.users)) {
       const updatedTeam = {
         ...currentTeam,
         users: [...(currentTeam.users as Array<UserTeams>), ...data],
@@ -476,7 +524,7 @@ const TeamsAndUsersPage = () => {
       history.push(getTeamAndUserDetailsPath(name));
       if (isUsersCategory) {
         setIsTeamVisible(false);
-        setCurrentTeam(undefined);
+        setCurrentTeam({} as Team);
       } else {
         setIsTeamVisible(true);
         setactiveUserTab(undefined);
@@ -586,6 +634,7 @@ const TeamsAndUsersPage = () => {
       ...currentTeam,
       users: newUsers,
     };
+
     const jsonPatch = compare(currentTeam as Team, updatedTeam);
 
     return new Promise<void>((resolve) => {
@@ -646,83 +695,100 @@ const TeamsAndUsersPage = () => {
   };
 
   useEffect(() => {
-    if (teamAndUser) {
-      if (Object.values(UserType).includes(teamAndUser as UserType)) {
-        setIsTeamVisible(false);
-        setactiveUserTab(teamAndUser as UserType);
-        setCurrentTeam(undefined);
+    if (!isDataLoading) {
+      if (teamAndUser) {
+        if (Object.values(UserType).includes(teamAndUser as UserType)) {
+          setIsTeamVisible(false);
+          setactiveUserTab(teamAndUser as UserType);
+          setCurrentTeam({} as Team);
+          setCurrentUserPage(INITIAL_PAGIN_VALUE);
+          setAllTabList(teamAndUser as UserType);
+          setUserPaging({} as Paging);
+        } else {
+          fetchCurrentTeam(teamAndUser);
+        }
       } else {
-        fetchCurrentTeam(teamAndUser);
+        setactiveUserTab('' as UserType);
+        setIsTeamVisible(true);
       }
-    } else {
-      setactiveUserTab(undefined);
-      setIsTeamVisible(true);
+      setUserSearchTerm('');
+      setTeamUsersSearchText('');
     }
-    setAllTabList(userList, teamAndUser as UserType);
-    setUserSearchTerm('');
-    setTeamUsersSearchText('');
-  }, [teamAndUser, userList]);
+  }, [teamAndUser, isDataLoading]);
 
   useEffect(() => {
     fetchUsers()
-      .then(() => {
-        fetchTeams();
+      .then((resUsers) => {
+        setUsersCount(resUsers.filter((user) => !user.isBot).length);
+        setAdminsCount(resUsers.filter((user) => user.isAdmin).length);
+        setUserList(resUsers);
+        if (teams.length <= 0) {
+          fetchTeams();
+        }
       })
       .catch(() => {
         // ignore exception handling, as its handled in previous promises.
       });
   }, []);
 
+  const isLoaded = () => {
+    return (
+      !isLoading && !isDataLoading && Boolean(activeUserTab || currentTeam)
+    );
+  };
+
+  const render = () => {
+    return (
+      <TeamsAndUsers
+        activeUserTab={activeUserTab}
+        activeUserTabHandler={activeUserTabHandler}
+        addUsersToTeam={addUsersToTeam}
+        adminsCount={adminsCount}
+        afterDeleteAction={afterDeleteAction}
+        changeCurrentTeam={changeCurrentTeam}
+        createNewTeam={createNewTeam}
+        currentTeam={currentTeam || ({} as Team)}
+        currentTeamUserPage={currentTeamUserPage}
+        currentTeamUsers={currentTeamUsers}
+        currentUserPage={currentUserPage}
+        descriptionHandler={descriptionHandler}
+        errorNewTeamData={errorNewTeamData}
+        getUniqueUserList={getUniqueUserList}
+        handleAddNewUser={handleAddNewUser}
+        handleAddTeam={handleAddTeam}
+        handleAddUser={handleAddUser}
+        handleDeleteUser={handleDeleteUser}
+        handleJoinTeamClick={handleJoinTeamClick}
+        handleLeaveTeamClick={handleLeaveTeamClick}
+        handleTeamUsersSearchAction={handleTeamUsersSearchAction}
+        handleUserSearchTerm={handleUserSearchTerm}
+        hasAccess={isAuthDisabled || isAdminUser}
+        isAddingTeam={isAddingTeam}
+        isAddingUsers={isAddingUsers}
+        isDescriptionEditable={isDescriptionEditable}
+        isRightPannelLoading={isRightPannelLoading}
+        isTeamMemberLoading={isTeamMemberLoading}
+        isTeamVisible={isTeamVisible}
+        isUsersLoading={isUsersLoading}
+        removeUserFromTeam={removeUserFromTeam}
+        selectedUserList={selectedUserList}
+        teamUserPagin={teamUserPagin}
+        teamUserPaginHandler={teamUserPaginHandler}
+        teamUsersSearchText={teamUsersSearchText}
+        teams={teams}
+        updateTeamHandler={updateTeamHandler}
+        userPaging={userPaging}
+        userPagingHandler={userPagingHandler}
+        userSearchTerm={userSearchTerm}
+        usersCount={usersCount}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onNewTeamDataChange={onNewTeamDataChange}
+      />
+    );
+  };
+
   return (
-    <PageContainerV1>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <TeamsAndUsers
-          activeUserTab={activeUserTab}
-          activeUserTabHandler={activeUserTabHandler}
-          addUsersToTeam={addUsersToTeam}
-          admins={admins}
-          afterDeleteAction={afterDeleteAction}
-          bots={bots}
-          changeCurrentTeam={changeCurrentTeam}
-          createNewTeam={createNewTeam}
-          currentTeam={currentTeam}
-          currentTeamUserPage={currentTeamUserPage}
-          currentTeamUsers={currentTeamUsers}
-          descriptionHandler={descriptionHandler}
-          errorNewTeamData={errorNewTeamData}
-          getUniqueUserList={getUniqueUserList}
-          handleAddNewUser={handleAddNewUser}
-          handleAddTeam={handleAddTeam}
-          handleAddUser={handleAddUser}
-          handleDeleteUser={handleDeleteUser}
-          handleJoinTeamClick={handleJoinTeamClick}
-          handleLeaveTeamClick={handleLeaveTeamClick}
-          handleTeamUsersSearchAction={handleTeamUsersSearchAction}
-          handleUserSearchTerm={handleUserSearchTerm}
-          hasAccess={isAuthDisabled || isAdminUser}
-          isAddingTeam={isAddingTeam}
-          isAddingUsers={isAddingUsers}
-          isDescriptionEditable={isDescriptionEditable}
-          isRightPannelLoading={isRightPannelLoading}
-          isTeamMemberLoading={isTeamMemberLoading}
-          isTeamVisible={isTeamVisible}
-          isUsersLoading={isUsersLoading}
-          removeUserFromTeam={removeUserFromTeam}
-          selectedUserList={selectedUserList}
-          teamUserPagin={teamUserPagin}
-          teamUserPaginHandler={teamUserPaginHandler}
-          teamUsersSearchText={teamUsersSearchText}
-          teams={teams}
-          updateTeamHandler={updateTeamHandler}
-          userSearchTerm={userSearchTerm}
-          users={users}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onNewTeamDataChange={onNewTeamDataChange}
-        />
-      )}
-    </PageContainerV1>
+    <PageContainerV1>{isLoaded() ? render() : <Loader />}</PageContainerV1>
   );
 };
 
