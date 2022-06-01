@@ -20,10 +20,9 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentialsPath,
     GCSValues,
 )
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import utils_logger
 
-logger = ingestion_logger()
-
+logger = utils_logger()
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
 
