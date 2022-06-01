@@ -91,7 +91,9 @@ class DashboardSourceService(Source, ABC):
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.process_dashboards()
-        yield from self.process_charts()
+        processed_charts = self.process_charts()
+        if processed_charts:
+            yield from processed_charts
 
     def process_dashboards(
         self,

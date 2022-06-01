@@ -104,7 +104,7 @@ class PowerbiSource(DashboardSourceService):
             url=dashboard_details["webUrl"],
             displayName=dashboard_details["displayName"],
             description="",
-            charts=[chart["id"] for chart in self.charts],
+            charts=self.charts,
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
@@ -166,7 +166,6 @@ class PowerbiSource(DashboardSourceService):
         Method to fetch Charts
         """
         logger.info("Fetch Charts Not implemented for PowerBi")
-        yield []
 
     def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
         """Get chart method
@@ -200,9 +199,9 @@ class PowerbiSource(DashboardSourceService):
                         id=self.service.id, type="dashboardService"
                     ),
                 )
-                self.charts.append(chart)
+                self.charts.append(chart["id"])
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
-                logger.error(repr(err))
+                logger.error(err)
                 self.status.failure(chart["title"], repr(err))
