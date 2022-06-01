@@ -20,6 +20,10 @@ from metadata.generated.schema.security.credentials.gcsCredentials import (
     GCSCredentialsPath,
     GCSValues,
 )
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
 
 GOOGLE_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
 
@@ -55,6 +59,9 @@ def set_google_credentials(gcs_credentials: GCSCredentials) -> None:
         os.environ[GOOGLE_CREDENTIALS] = str(gcs_credentials.gcsConfig.__root__)
         return
     if gcs_credentials.gcsConfig.projectId is None:
+        logger.info(
+            "No credentials available, using the current environment permissions authenticated via gcloud SDK ."
+        )
         return
     if isinstance(gcs_credentials.gcsConfig, GCSValues):
         credentials_dict = {
