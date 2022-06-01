@@ -14,12 +14,15 @@ DBT source methods.
 import traceback
 from typing import Dict, List
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     ModelType,
     Table,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.dbt_config import get_dbt_details
@@ -115,7 +118,7 @@ class DBTSource:
             for node in mnode["depends_on"]["nodes"]:
                 try:
                     node_temp = self.manifest_entities[node]
-                    table_fqn = fqn.build(
+                    from_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
@@ -125,8 +128,38 @@ class DBTSource:
                         schema_name=node_temp["schema"],
                         table_name=node_temp["name"],
                     )
-                    if table_fqn:
-                        upstream_nodes.append(table_fqn)
+                    from_entity: Table = self.metadata.get_by_name(
+                        entity=Table, fqn=from_fqn
+                    )
+                    to_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.config.serviceName,
+                        database_name=mnode[
+                            "database"
+                        ],  # issue-5093 Read proper schema and db from manifest
+                        schema_name=mnode["schema"],
+                        table_name=mnode["name"],
+                    )
+                    to_entity: Table = self.metadata.get_by_name(
+                        entity=Table, fqn=to_fqn
+                    )
+
+                    lineage = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_entity.id.__root__,
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id.__root__,
+                                type="table",
+                            ),
+                        )
+                    )
+                    print(lineage)
+                    if from_fqn:
+                        upstream_nodes.append(from_fqn)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
                         f"Failed to parse the node {node} to capture lineage {err}"
