@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Team } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getTeams = (
   arrQueryFields?: string | string[],
@@ -22,9 +22,7 @@ export const getTeams = (
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields('/teams', arrQueryFields);
 
-  return AxiosClientWithError.get(
-    `${url}${arrQueryFields ? '&' : '?'}limit=${limit}`
-  );
+  return APIClient.get(`${url}${arrQueryFields ? '&' : '?'}limit=${limit}`);
 };
 
 export const getTeamByName: Function = (

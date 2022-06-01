@@ -11,10 +11,20 @@
  *  limitations under the License.
  */
 
-import axios from 'axios';
+import { render } from '@testing-library/react';
+import React from 'react';
+import { RightPanel } from './RightPanel';
 
-const axiosClient = axios.create({
-  baseURL: '/api/v1',
+describe('Test Add custom field right panel component', () => {
+  it('Should render right panel component', async () => {
+    const { findByTestId } = render(<RightPanel />);
+
+    const panelHeader = await findByTestId('header');
+
+    const panelBody = await findByTestId('body');
+
+    expect(panelHeader).toBeInTheDocument();
+
+    expect(panelBody).toBeInTheDocument();
+  });
 });
-
-export default axiosClient;

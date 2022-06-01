@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { isNil } from 'lodash';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getDashboardVersions: Function = (
   id: string
@@ -63,7 +63,7 @@ export const getAllDashboards = (
     `${searchParams.toString()}${paging ? `&${paging}` : ''}`
   );
 
-  return AxiosClientWithError.get(url);
+  return APIClient.get(url);
 };
 
 export const getDashboardDetails: Function = (
