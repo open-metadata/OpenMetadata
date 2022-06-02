@@ -24,7 +24,6 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -486,10 +485,8 @@ class OrmProfilerProcessor(Processor[Table]):
         Run the profiling and tests
         """
         # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
-        schema = self.metadata.get_by_id(
-            entity=DatabaseSchema, entity_id=record.databaseSchema.id
-        )
-        orm_table = ometa_to_orm(table=record, schema=schema)
+
+        orm_table = ometa_to_orm(table=record, metadata=self.metadata)
 
         entity_profile = self.profile_entity(orm=orm_table, table=record)
 
