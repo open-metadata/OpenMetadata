@@ -65,7 +65,7 @@ const DescriptionV1 = ({
 
   return (
     <div className="schema-description tw-relative">
-      <div className="tw-px-3 tw-py-1 tw-flex">
+      <div className="tw-flex">
         <div className="tw-relative tw-bg-white tw-border tw-rounded-md tw-shadow">
           <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">
             <span className="tw-font-semibold">Description</span>
