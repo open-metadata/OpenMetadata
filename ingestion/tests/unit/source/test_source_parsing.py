@@ -546,17 +546,18 @@ def test_powerbi():
             "config": {
                 "clientId": "client_id",
                 "clientSecret": "client_secret",
-                "redirectURI": "http://localhost:8585/callback",
-                "hostPort": "https://analysis.windows.net/powerbi",
-                "scope": [
-                    "scope",
-                    "https://analysis.windows.net/powerbi/api/App.Read.All",
-                ],
-                "credentials": "path",
+                "tenantId": "tenant_id",
+                "scope": ["https://analysis.windows.net/powerbi/api/.default"],
                 "type": "PowerBI",
             }
         },
-        "sourceConfig": {"config": {}},
+        "sourceConfig": {
+            "config": {
+                "dashboardFilterPattern": {
+                    "includes": ["Supplier Quality Analysis Sample"]
+                }
+            }
+        },
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)

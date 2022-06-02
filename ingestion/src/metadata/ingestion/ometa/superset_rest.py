@@ -13,8 +13,6 @@ REST Auth & Client for Apache Superset
 """
 import json
 
-from pydantic import SecretStr
-
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -41,6 +39,8 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
             allow_redirects=True,
         )
         self.client = REST(client_config)
+        self.generated_auth_token = None
+        self.expiry = None
         super().__init__()
 
     @classmethod
@@ -81,7 +81,7 @@ class SupersetAPIClient:
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
         )
@@ -177,5 +177,5 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-        response = self.client.get(f"/menu/")
+        response = self.client.get("/menu/")
         return response

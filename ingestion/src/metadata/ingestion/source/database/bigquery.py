@@ -229,6 +229,7 @@ class BigquerySource(CommonDbSourceService):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):
+        self._create_dbt_lineage()
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)

@@ -21,6 +21,7 @@ export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
+export const PAGE_SIZE_BASE = 12;
 export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;

@@ -336,7 +336,7 @@ const GlossaryTermsV1 = ({
           className={classNames('tw-h-8 tw-rounded', {
             'tw-opacity-40': isHasAccess,
           })}
-          data-testid="add-new-tag-button"
+          data-testid="add-related-term-button"
           size="small"
           theme="primary"
           variant="contained"
@@ -500,7 +500,7 @@ const GlossaryTermsV1 = ({
             <NonAdminAction position="right" title={TITLE_FOR_NON_ADMIN_ACTION}>
               <button
                 className="tw-opacity-0 tw-ml-2 group-hover:tw-opacity-100 focus:tw-outline-none"
-                data-testid="edit-synonyms"
+                data-testid="edit-reference"
                 onClick={() => setIsReferencesEditing(true)}>
                 <SVGIcons
                   alt="edit"
