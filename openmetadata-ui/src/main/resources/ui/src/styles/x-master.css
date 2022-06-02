@@ -968,10 +968,15 @@ code {
   -webkit-box-orient: vertical;
 }
 
-.ant-card-body{
+.ant-card-body {
   padding: 18px;
 }
 
-.ant-card-head-title{
+.ant-card-head-title {
   padding: 8px 0px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #dce3ec;
+  padding: 0 18px;
 }

@@ -27,7 +27,7 @@ interface Prop {
 
 interface AntdEntityListProp {
   entityList: Array<FormatedTableData>;
-  headerText: string | JSX.Element;
+  headerText?: string | JSX.Element;
   headerTextLabel: string;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
@@ -92,7 +92,6 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
       style={{
         border: '2px #e0e7ef solid',
         borderRadius: '8px',
-        marginTop: '3px',
       }}
       title={headerTextLabel}>
       {entityList.length

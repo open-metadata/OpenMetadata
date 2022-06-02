@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -115,7 +115,11 @@ const MyAssetStats: FunctionComponent<Props> = ({
   }, []);
 
   return (
-    <div data-testid="data-summary-container" id="assetStatsCount">
+    <Card
+      style={{
+        border: '2px #e0e7ef solid',
+        borderRadius: '8px',
+      }}>
       {Object.values(dataSummary).map((data, index) => (
         <div
           className="tw-flex tw-items-center tw-justify-between tw-mb-2"
@@ -162,7 +166,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
           {!isNil(data.count) && getCountBadge(data.count, '', false)}
         </div>
       ))}
-    </div>
+    </Card>
   );
 };
 

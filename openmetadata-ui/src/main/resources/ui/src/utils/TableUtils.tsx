@@ -318,10 +318,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
                       icon="check-square"
                     />
                   </div>
-                  <p>{`${passingTests.length} tests`}</p>
+                  <>{`${passingTests.length} tests`}</>
                 </div>
               ) : (
-                <p>{`${tableTestLength} tests`}</p>
+                <>{`${tableTestLength} tests`}</>
               )}
             </Fragment>
           )}

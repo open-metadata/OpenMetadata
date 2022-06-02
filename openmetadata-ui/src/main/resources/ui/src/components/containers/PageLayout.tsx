@@ -35,12 +35,8 @@ const PageLayout: FC<PageLayoutProp> = ({
 }: PageLayoutProp) => {
   const getLeftPanel = () => {
     return (
-      <Row className="tw-my-4">
-        <Col
-          className="tw-bg-white tw-px-4 tw-drop-shadow-md tw-rounded-lg"
-          offset={1}
-          span={22}
-          style={{ border: '2px #e0e7ef solid', borderRadius: '8px' }}>
+      <Row>
+        <Col offset={1} span={22}>
           {leftPanel && <div id="left-panel">{leftPanel}</div>}
         </Col>
       </Row>
@@ -50,12 +46,9 @@ const PageLayout: FC<PageLayoutProp> = ({
   const getRightPanel = () => {
     return (
       rightPanel && (
-        <Row className="tw-my-4">
+        <Row>
           <Col offset={1} span={22}>
-            <div className="tw-py-1" id="right-panel">
-              {rightPanel}
-            </div>
-            <div />
+            <div id="right-panel">{rightPanel}</div>
           </Col>
         </Row>
       )
@@ -68,7 +61,14 @@ const PageLayout: FC<PageLayoutProp> = ({
         {header && <div className="tw-px-6">{header}</div>}
         <Row>
           <Col span={5}>{getLeftPanel()}</Col>
-          <Col span={14}>{children}</Col>
+          <Col
+            span={14}
+            style={{
+              height: '100vh',
+              overflowY: 'auto',
+            }}>
+            {children}
+          </Col>
           <Col span={5}>{getRightPanel()}</Col>
         </Row>
       </Fragment>

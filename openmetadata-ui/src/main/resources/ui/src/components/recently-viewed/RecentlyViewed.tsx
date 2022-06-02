@@ -14,7 +14,7 @@
 import { FormatedTableData } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
-import EntityList from '../EntityList/EntityList';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 
 const RecentlyViewed: FunctionComponent = () => {
@@ -49,9 +49,9 @@ const RecentlyViewed: FunctionComponent = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <EntityList
+        <EntityListWithAntd
           entityList={data}
-          headerText="Recent Views"
+          headerTextLabel="Recent Views"
           noDataPlaceholder={<>No recently viewed data.</>}
           testIDText="Recently Viewed"
         />

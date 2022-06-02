@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -61,67 +62,77 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
 
                 return (
                   <Fragment key={index}>
-                    <div data-testid="main-message">
-                      <ActivityFeedCard
-                        isEntityFeed
-                        className="tw-mb-6"
-                        entityLink={thread.about}
-                        feed={mainFeed}
-                      />
-                    </div>
-                    {postLength > 0 ? (
-                      <div data-testid="replies-container">
-                        {postLength > 1 ? (
-                          <div className="tw-mb-6">
-                            <div className="tw-ml-9 tw-flex tw-mb-6">
-                              <FeedCardFooter
-                                isFooterVisible
-                                className="tw--mt-4"
-                                lastReplyTimeStamp={lastPost?.postTs}
-                                repliedUsers={repliedUsers}
-                                replies={replies}
-                                threadId={thread.id}
-                                onThreadSelect={() => onThreadSelect(thread.id)}
-                              />
-                            </div>
-                          </div>
-                        ) : null}
-                        <div data-testid="latest-reply">
-                          <ActivityFeedCard
-                            isEntityFeed
-                            className="tw-mb-6 tw-ml-9"
-                            feed={lastPost}
-                            threadId={thread.id}
-                            onConfirmation={onConfirmation}
-                          />
-                        </div>
-
-                        <p
-                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
-                          data-testid="quick-reply-button"
-                          onClick={() => {
-                            toggleReplyEditor(thread.id);
-                          }}>
-                          Reply
-                        </p>
-                      </div>
-                    ) : (
-                      <p
-                        className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                        data-testid="main-message-reply-button"
-                        onClick={() => onThreadSelect(thread.id)}>
-                        Reply
-                      </p>
-                    )}
-                    {selectedThreadId === thread.id ? (
-                      <div data-testid="quick-reply-editor">
-                        <ActivityFeedEditor
-                          buttonClass="tw-mr-4"
-                          className="tw-ml-5 tw-mr-2 tw-mb-6"
-                          onSave={postFeed}
+                    <Card
+                      style={{
+                        border: '2px #e0e7ef solid',
+                        borderRadius: '8px',
+                        marginBottom: '20px',
+                      }}
+                      key={`${index} - card`}>
+                      <div data-testid="main-message">
+                        <ActivityFeedCard
+                          isEntityFeed
+                          className="tw-mb-6"
+                          entityLink={thread.about}
+                          feed={mainFeed}
                         />
                       </div>
-                    ) : null}
+                      {postLength > 0 ? (
+                        <div data-testid="replies-container">
+                          {postLength > 1 ? (
+                            <div className="tw-mb-6">
+                              <div className="tw-ml-9 tw-flex tw-mb-6">
+                                <FeedCardFooter
+                                  isFooterVisible
+                                  className="tw--mt-4"
+                                  lastReplyTimeStamp={lastPost?.postTs}
+                                  repliedUsers={repliedUsers}
+                                  replies={replies}
+                                  threadId={thread.id}
+                                  onThreadSelect={() =>
+                                    onThreadSelect(thread.id)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          <div data-testid="latest-reply">
+                            <ActivityFeedCard
+                              isEntityFeed
+                              className="tw-mb-6 tw-ml-9"
+                              feed={lastPost}
+                              threadId={thread.id}
+                              onConfirmation={onConfirmation}
+                            />
+                          </div>
+
+                          <p
+                            className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw-mt-4 tw-mb-2"
+                            data-testid="quick-reply-button"
+                            onClick={() => {
+                              toggleReplyEditor(thread.id);
+                            }}>
+                            Reply
+                          </p>
+                        </div>
+                      ) : (
+                        <p
+                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
+                          data-testid="main-message-reply-button"
+                          onClick={() => onThreadSelect(thread.id)}>
+                          Reply
+                        </p>
+                      )}
+                      {selectedThreadId === thread.id ? (
+                        <div data-testid="quick-reply-editor">
+                          <ActivityFeedEditor
+                            buttonClass="tw-mr-4"
+                            className="tw-ml-5 tw-mr-2 tw-mb-6"
+                            onSave={postFeed}
+                          />
+                        </div>
+                      ) : null}
+                    </Card>
                   </Fragment>
                 );
               })}

@@ -38,7 +38,7 @@ import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
-import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
+import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsAntd';
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
@@ -115,10 +115,10 @@ const MyData: React.FC<MyDataProps> = ({
           countTopics={countTopics}
           countUsers={countUsers}
         />
-        <div className="tw-filter-seperator" />
+        <div className="tw-mb-3" />
         <RecentlyViewed />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <RecentSearchedTerms />
+        <div className="tw-mb-3" />
+        <RecentSearchedTermsAntd />
       </div>
     );
   };
