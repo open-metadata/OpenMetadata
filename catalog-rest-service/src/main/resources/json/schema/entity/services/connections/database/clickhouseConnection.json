@@ -15,7 +15,7 @@
     "clickhouseScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["clickhouse+http"],
+      "enum": ["clickhouse+http", "clickhouse+native"],
       "default": "clickhouse+http"
     }
   },
