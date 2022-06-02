@@ -79,8 +79,12 @@ openmetadata-ui/src/main/resources/ui/cypress/fixtures
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
 
+#UI - Generated TS
+openmetadata-ui/src/main/resources/ui/src/generated
+
 #vscode
 */.vscode/*
+.vscode/*
 
 # Python generated sources
 ingestion-core/src/metadata/generated/**
