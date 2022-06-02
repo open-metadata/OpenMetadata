@@ -13,12 +13,17 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 from airflow import DAG
 
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
 
@@ -33,9 +38,56 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
-    WorkflowConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
+
+
+def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
+    """
+    Use the service EntityReference to build the Source.
+    Building the source dynamically helps us to not store any
+    sensitive info.
+    :param ingestion_pipeline: With the service ref
+    :return: WorkflowSource
+    """
+
+    metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+
+    service_type = ingestion_pipeline.service.type
+    service: Optional[
+        Union[DatabaseService, MessagingService, PipelineService, DashboardService]
+    ] = None
+
+    if service_type == "databaseService":
+        service: DatabaseService = metadata.get_by_name(
+            entity=DatabaseService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "pipelineService":
+        service: PipelineService = metadata.get_by_name(
+            entity=PipelineService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "dashboardService":
+        service: MessagingService = metadata.get_by_name(
+            entity=MessagingService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "messagingService":
+        service: DashboardService = metadata.get_by_name(
+            entity=DashboardService, fqn=ingestion_pipeline.service.name
+        )
+
+    if not service:
+        raise ValueError(f"Could not get service from type {service_type}")
+
+    return WorkflowSource(
+        type=service.serviceType.value.lower(),
+        serviceName=service.name.__root__,
+        serviceConnection=service.connection,
+        sourceConfig=ingestion_pipeline.sourceConfig,
+    )
 
 
 def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
