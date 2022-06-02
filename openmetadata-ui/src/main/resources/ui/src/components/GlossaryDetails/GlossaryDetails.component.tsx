@@ -24,7 +24,6 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
 import { getEntityName } from '../../utils/CommonUtils';
 import {
   getTagCategories,
@@ -37,6 +36,7 @@ import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 
 type props = {
@@ -213,15 +213,14 @@ const GlossaryDetails = ({
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <Button
-          className={classNames('tw-h-8 tw-mr-1 tw-rounded', {
-            'tw-opacity-40': isHasAccess,
-          })}
+          className="tw-mr-1"
           data-testid="add-new-reviewer"
+          disabled={isHasAccess}
           size="small"
           theme="primary"
-          variant="outlined"
+          variant="text"
           onClick={() => setShowRevieweModal(true)}>
-          Add Reviewer
+          + Add
         </Button>
       </NonAdminAction>
     );
@@ -229,35 +228,33 @@ const GlossaryDetails = ({
 
   const getReviewerTabData = () => {
     return (
-      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
-        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
-          <div className="tw-w-10/12">
-            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
-            <p className="tw-text-grey-muted tw-text-xs">
-              Add users as reviewer
-            </p>
-          </div>
+      <div className="tw--mx-5">
+        {glossary.reviewers && glossary.reviewers.length > 0 ? (
+          <div className="tw-flex tw-flex-col tw-gap-4">
+            {glossary.reviewers.map((term, i) => (
+              <div
+                className={classNames('tw-flex tw-items-center tw-px-5', {
+                  'tw-border-b tw-pb-2':
+                    i !== (glossary.reviewers || []).length - 1,
+                })}
+                key={i}>
+                <div className="tw-inline-block tw-mr-2">
+                  <ProfilePicture
+                    displayName={getEntityName(term)}
+                    id={term.id}
+                    name={term?.name || ''}
+                    textClass="tw-text-xs"
+                    width="25"
+                  />
+                </div>
 
-          {AddReviewerButton()}
-        </div>
-        {glossary.reviewers && glossary.reviewers.length > 0 && (
-          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
-            {glossary.reviewers?.map((term) => (
-              <UserCard
-                isActionVisible
-                isIconVisible
-                item={{
-                  fqn: term.fullyQualifiedName || '',
-                  displayName: term.displayName || term.name || '',
-                  id: term.id,
-                  type: term.type,
-                  name: term.name,
-                }}
-                key={term.name}
-                onRemove={handleRemoveReviewer}
-                onTitleClick={handleUserRedirection}
-              />
+                <span>{getEntityName(term)}</span>
+              </div>
             ))}
+          </div>
+        ) : (
+          <div className="tw-text-grey-muted tw-mx-5 tw-text-center">
+            No reviewer
           </div>
         )}
       </div>
@@ -268,25 +265,6 @@ const GlossaryDetails = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-mb-3 tw-flex tw-items-center">
-        {glossary.owner && getEntityName(glossary.owner) && (
-          <div className="tw-inline-block tw-mr-2">
-            <ProfilePicture
-              displayName={getEntityName(glossary.owner)}
-              id={glossary.owner?.id || ''}
-              name={glossary.owner?.name || ''}
-              textClass="tw-text-xs"
-              width="20"
-            />
-          </div>
-        )}
-        {glossary.owner && getEntityName(glossary.owner) ? (
-          <span>{getEntityName(glossary.owner)}</span>
-        ) : (
-          <span className="tw-text-grey-muted">No owner</span>
-        )}
-      </div>
-
       <div className="tw-flex tw-gap-4">
         <div className="tw-w-9/12">
           <div data-testid="description-container">
@@ -340,7 +318,32 @@ const GlossaryDetails = ({
           </Card>
         </div>
         <div className="tw-w-3/12">
-          <div />
+          <Card heading="Owner">
+            <div className="tw-flex tw-items-center">
+              {glossary.owner && getEntityName(glossary.owner) && (
+                <div className="tw-inline-block tw-mr-2">
+                  <ProfilePicture
+                    displayName={getEntityName(glossary.owner)}
+                    id={glossary.owner?.id || ''}
+                    name={glossary.owner?.name || ''}
+                    textClass="tw-text-xs"
+                    width="25"
+                  />
+                </div>
+              )}
+              {glossary.owner && getEntityName(glossary.owner) ? (
+                <span>{getEntityName(glossary.owner)}</span>
+              ) : (
+                <span className="tw-text-grey-muted">No owner</span>
+              )}
+            </div>
+          </Card>
+          <Card
+            action={AddReviewerButton()}
+            className="tw-mt-4"
+            heading="Reviewer">
+            <div>{getReviewerTabData()}</div>
+          </Card>
         </div>
       </div>
       {/* <div className="tw-flex tw-flex-col tw-flex-grow">
@@ -379,16 +382,16 @@ const GlossaryDetails = ({
             </div>
           )}
         </div>
-
-        {showRevieweModal && (
-          <ReviewerModal
-            header="Add Reviewer"
-            reviewer={reviewer}
-            onCancel={onReviewerModalCancel}
-            onSave={handleReviewerSave}
-          />
-        )}
       </div> */}
+
+      {showRevieweModal && (
+        <ReviewerModal
+          header="Add Reviewer"
+          reviewer={reviewer}
+          onCancel={onReviewerModalCancel}
+          onSave={handleReviewerSave}
+        />
+      )}
     </div>
   );
 };
