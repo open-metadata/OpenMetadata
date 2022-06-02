@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/* eslint-disable */
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
