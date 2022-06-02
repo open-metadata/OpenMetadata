@@ -44,6 +44,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.tableauConn
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
+    ClickhouseConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -117,6 +120,17 @@ def get_connection(
     Given an SQL configuration, build the SQLAlchemy Engine
     """
     return create_generic_connection(connection, verbose)
+
+
+@get_connection.register
+def _(connection: ClickhouseConnection, verbose: bool = False):
+    engine = create_engine(
+        get_connection_url(connection),
+        connect_args=get_connection_args(connection),
+        echo=verbose,
+    )
+
+    return engine
 
 
 @get_connection.register

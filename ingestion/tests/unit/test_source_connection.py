@@ -12,6 +12,9 @@
 
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionOptions,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
@@ -309,6 +312,18 @@ class SouceConnectionTest(TestCase):
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
             database="default",
+        )
+        assert expected_url == get_connection_url(clickhouse_conn_obj)
+
+        expected_url = (
+            "clickhouse+http://username:@localhost:8123/default?protocol=https"
+        )
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="username",
+            hostPort="localhost:8123",
+            scheme=ClickhouseScheme.clickhouse_http,
+            database="default",
+            connectionOptions=ConnectionOptions(protocol="https"),
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
