@@ -189,7 +189,7 @@ class AmundsenSource(Source[Entity]):
             )
 
             # TODO: use metadata.get_service_or_create
-            service_entity = self.get_database_service_or_create(service_name)
+            service_entity = self.get_database_service(service_name)
             database = Database(
                 id=uuid.uuid4(),
                 name="default",
@@ -340,7 +340,7 @@ class AmundsenSource(Source[Entity]):
                 return p_type
         return data_type
 
-    def get_database_service_or_create(self, service_name: str) -> DatabaseService:
+    def get_database_service(self, service_name: str) -> DatabaseService:
         service = self.metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
         if service is not None:
             return service
