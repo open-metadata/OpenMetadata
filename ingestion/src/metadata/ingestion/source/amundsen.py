@@ -51,6 +51,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
@@ -80,6 +81,7 @@ class AmundsenConfig(ConfigModel):
 
 PRIMITIVE_TYPES = ["int", "char", "varchar"]
 AMUNDSEN_TAG_CATEGORY = "AmundsenTags"
+AMUNDSEN_TABLE_TAG = "amundsen_table"
 
 
 @dataclass
@@ -141,16 +143,7 @@ class AmundsenSource(Source[Entity]):
         return cls(config, metadata_config)
 
     def prepare(self):
-        try:
-            self.metadata.create_tag_category(
-                CreateTagCategoryRequest(
-                    name=AMUNDSEN_TAG_CATEGORY,
-                    description="Tags associates with amundsen entities",
-                    categoryType="Classification",
-                )
-            )
-        except APIError:
-            logger.info(f"Tag category {AMUNDSEN_TAG_CATEGORY} already exists")
+        pass
 
     def next_record(self) -> Iterable[Entity]:
         user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
@@ -184,30 +177,20 @@ class AmundsenSource(Source[Entity]):
         except Exception as err:
             logger.error(err)
 
-    def get_table_tags(self, tags):
-        tag_lable_list = []
+    def create_tags(self, tags):
         for tag in tags:
-            try:
-                self.metadata.create_primary_tag(
-                    category_name=AMUNDSEN_TAG_CATEGORY,
-                    primary_tag_body=CreateTagRequest(
-                        name=tag,
-                        description="Amundsen Table Tag",
-                    ),
-                )
-            except APIError:
-                logger.info(
-                    f"Tag: {tag} already exists in category: {AMUNDSEN_TAG_CATEGORY}"
-                )
-            tag_lable_list.append(
-                TagLabel(
-                    tagFQN=get_fqdn(Tag, AMUNDSEN_TAG_CATEGORY, tag),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Tag",
-                )
+            tag_category = OMetaTagAndCategory(
+                category_name=CreateTagCategoryRequest(
+                    name=AMUNDSEN_TAG_CATEGORY,
+                    description="Tags associates with amundsen entities",
+                    categoryType="Descriptive",
+                ),
+                category_details=CreateTagRequest(
+                    name=tag, description="Amundsen Table Tag"
+                ),
             )
-        return tag_lable_list
+            yield tag_category
+            logger.info(f"Tag Category {tag_category}, Primary Tag {tag} Ingested")
 
     def create_table_entity(self, table):
         try:
@@ -252,7 +235,38 @@ class AmundsenSource(Source[Entity]):
                 database_schema.name.__root__,
                 table["name"],
             )
-            tags = self.get_table_tags(table["tags"])
+            amundsen_table_tag = OMetaTagAndCategory(
+                category_name=CreateTagCategoryRequest(
+                    name=AMUNDSEN_TAG_CATEGORY,
+                    description="Tags associates with amundsen entities",
+                    categoryType="Descriptive",
+                ),
+                category_details=CreateTagRequest(
+                    name=AMUNDSEN_TABLE_TAG, description="Amundsen Table Tag"
+                ),
+            )
+            yield amundsen_table_tag
+            tags = [
+                TagLabel(
+                    tagFQN=get_fqdn(Tag, AMUNDSEN_TAG_CATEGORY, AMUNDSEN_TABLE_TAG),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
+            ]
+            if table["tags"]:
+                yield from self.create_tags(table["tags"])
+                tags.extend(
+                    [
+                        TagLabel(
+                            tagFQN=get_fqdn(Tag, AMUNDSEN_TAG_CATEGORY, tag),
+                            labelType="Automated",
+                            state="Suggested",
+                            source="Tag",
+                        )
+                        for tag in table["tags"]
+                    ]
+                )
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],
@@ -280,7 +294,7 @@ class AmundsenSource(Source[Entity]):
             service_entity = get_dashboard_service_or_create(
                 service_name,
                 DashboardServiceType.Superset.name,
-                {"username": "", "hostPort": ""},
+                {"username": "test", "hostPort": "http://localhost:8088"},
                 self.metadata_config,
             )
             self.status.scanned(dashboard["name"])
@@ -303,7 +317,7 @@ class AmundsenSource(Source[Entity]):
         service_entity = get_dashboard_service_or_create(
             service_name,
             DashboardServiceType.Superset.name,
-            {"username": "", "hostPort": ""},
+            {"username": "test", "hostPort": "http://localhost:8088"},
             self.metadata_config,
         )
 
