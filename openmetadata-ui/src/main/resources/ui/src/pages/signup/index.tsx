@@ -24,7 +24,6 @@ import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
 import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import { ROUTES } from '../../constants/constants';
-import { Team } from '../../generated/entity/teams/team';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
@@ -42,7 +41,6 @@ const Signup = () => {
     name: getNameFromEmail(appState.newUser.email),
     email: appState.newUser.email || '',
   });
-  const [teams, setTeams] = useState<Array<Team>>([]);
   const [countTeams, setCountTeams] = useState<number>(0);
   const [teamError, setTeamError] = useState<boolean>(false);
 
