@@ -125,7 +125,6 @@ HiveDialect.get_view_names = get_view_names
 
 class HiveSource(CommonDbSourceService):
     def prepare(self):
-        self.service_connection.database = "default"
         return super().prepare()
 
     @classmethod

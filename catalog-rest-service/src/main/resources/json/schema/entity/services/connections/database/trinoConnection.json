@@ -53,11 +53,6 @@
       "description": "Catalog of the data source.",
       "type": "string"
     },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases in the selected catalog.",
-      "type": "string"
-    },
     "proxies": {
       "title": "Proxies",
       "description": "Proxies for the connection to Trino data source",

@@ -185,8 +185,6 @@ def _(connection: TrinoConnection):
 @get_connection_url.register
 def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    if connection.database:
-        url += f"/{connection.database}"
     return url
 
 
@@ -200,8 +198,6 @@ def _(connection: PrestoConnection):
         url += "@"
     url += f"{connection.hostPort}"
     url += f"/{connection.catalog}"
-    if connection.database:
-        url += f"?schema={quote_plus(connection.database)}"
     return url
 
 
@@ -280,7 +276,6 @@ def _(connection: HiveConnection):
                 url += "@"
 
     url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -288,8 +283,7 @@ def _(connection: HiveConnection):
         else connection.connectionOptions
     )
     if options:
-        if not connection.database:
-            url += "/"
+        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
