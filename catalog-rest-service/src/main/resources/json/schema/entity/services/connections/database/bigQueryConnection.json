@@ -38,11 +38,6 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
-    "projectId": {
-      "title": "Project ID",
-      "description": "BigQuery project ID. Only required if using credentials path instead of values.",
-      "type": "string"
-    },
     "credentials": {
       "title": "GCS Credentials",
       "description": "GCS Credentials",
@@ -93,5 +88,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["credentials", "projectId"]
+  "required": ["credentials"]
 }

@@ -48,6 +48,11 @@
       "description": "Host and port of the Hive service.",
       "type": "string"
     },
+    "databaseSchema": {
+      "title": "databaseSchema",
+      "description": "databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.",
+      "type": "string"
+    },
     "authOptions": {
       "title": "URL Authentication Options",
       "description": "Authentication options to pass to Hive connector. These options are based on SQLAlchemy.",

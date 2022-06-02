@@ -71,3 +71,10 @@ class TrinoSource(CommonDbSourceService):
                 id=self.service.id, type=self.service_connection.type.value
             ),
         )
+
+    def get_schemas(self, inspector: Inspector) -> str:
+        return (
+            inspector.get_schema_names()
+            if not self.service_connection.databaseSchema
+            else [self.service_connection.databaseSchema]
+        )

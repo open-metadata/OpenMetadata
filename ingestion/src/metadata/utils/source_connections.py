@@ -14,6 +14,7 @@ Hosts the singledispatch to build source URLs
 from functools import singledispatch
 from urllib.parse import quote_plus
 
+from google import auth
 from pydantic import SecretStr
 from requests import Session
 
@@ -99,6 +100,9 @@ def get_connection_url_common(connection):
     url += connection.hostPort
     if hasattr(connection, "database"):
         url += f"/{connection.database}" if connection.database else ""
+
+    elif hasattr(connection, "databaseSchema"):
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -295,7 +299,7 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    project_id = connection.projectId
+    _, project_id = auth.default()
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:
