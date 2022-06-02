@@ -20,6 +20,10 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.tags.createTag import CreateTagRequest
+from metadata.generated.schema.api.tags.createTagCategory import (
+    CreateTagCategoryRequest,
+)
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -38,15 +42,18 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.column_type_parser import ColumnTypeParser
@@ -72,6 +79,7 @@ class AmundsenConfig(ConfigModel):
 
 
 PRIMITIVE_TYPES = ["int", "char", "varchar"]
+AMUNDSEN_TAG_CATEGORY = "AmundsenTags"
 
 
 @dataclass
@@ -94,6 +102,7 @@ class AmundsenSource(Source[Entity]):
         self.config = config
         self.metadata_config = metadata_config
         self.service_connection = config.serviceConnection.__root__.config
+        self.metadata = OpenMetadata(self.metadata_config)
 
         neo4j_config = Neo4JConfig(
             username=self.service_connection.username,
@@ -105,6 +114,17 @@ class AmundsenSource(Source[Entity]):
         )
         self.neo4j_helper = Neo4jHelper(neo4j_config)
         self.status = AmundsenStatus()
+        {
+            "glue": DatabaseServiceType.Glue.value,
+            "snowflake": DatabaseServiceType.Snowflake.value,
+            "athena": DatabaseServiceType.Athena.value,
+            "bigquery": DatabaseServiceType.BigQuery.value,
+            "db2": DatabaseServiceType.Db2.value,
+            "druid": DatabaseServiceType.Druid.value,
+            "delta": DatabaseServiceType.DeltaLake.value,
+            "salesforce": DatabaseServiceType.Salesforce.value,
+            "oracle": DatabaseServiceType.Oracle.value,
+        }
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
         }
@@ -121,7 +141,16 @@ class AmundsenSource(Source[Entity]):
         return cls(config, metadata_config)
 
     def prepare(self):
-        pass
+        try:
+            self.metadata.create_tag_category(
+                CreateTagCategoryRequest(
+                    name=AMUNDSEN_TAG_CATEGORY,
+                    description="Tags associates with amundsen entities",
+                    categoryType="Classification",
+                )
+            )
+        except APIError:
+            logger.info(f"Tag category {AMUNDSEN_TAG_CATEGORY} already exists")
 
     def next_record(self) -> Iterable[Entity]:
         user_entities = self.neo4j_helper.execute_query(NEO4J_AMUNDSEN_USER_QUERY)
@@ -155,15 +184,40 @@ class AmundsenSource(Source[Entity]):
         except Exception as err:
             logger.error(err)
 
+    def get_table_tags(self, tags):
+        tag_lable_list = []
+        for tag in tags:
+            try:
+                self.metadata.create_primary_tag(
+                    category_name=AMUNDSEN_TAG_CATEGORY,
+                    primary_tag_body=CreateTagRequest(
+                        name=tag,
+                        description="Amundsen Table Tag",
+                    ),
+                )
+            except APIError:
+                logger.info(
+                    f"Tag: {tag} already exists in category: {AMUNDSEN_TAG_CATEGORY}"
+                )
+            tag_lable_list.append(
+                TagLabel(
+                    tagFQN=get_fqdn(Tag, AMUNDSEN_TAG_CATEGORY, tag),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
+            )
+        return tag_lable_list
+
     def create_table_entity(self, table):
         try:
-            service_name = table["cluster"]
-            service_type = table["database"]
+            service_name = table["database"]
+            service_type = self.database_service_map.get(
+                service_name.lower(), DatabaseServiceType.Mysql.value
+            )
 
             # TODO: use metadata.get_service_or_create
-            service_entity = self.get_database_service_or_create(
-                service_name, service_type
-            )
+            service_entity = self.get_database_service_or_create(service_name)
             database = Database(
                 id=uuid.uuid4(),
                 name="default",
@@ -187,6 +241,7 @@ class AmundsenSource(Source[Entity]):
                 parsed_string = ColumnTypeParser._parse_datatype_string(data_type)
                 parsed_string["name"] = name
                 parsed_string["dataLength"] = 1
+                parsed_string["description"] = description
                 col = Column(**parsed_string)
                 columns.append(col)
 
@@ -197,12 +252,14 @@ class AmundsenSource(Source[Entity]):
                 database_schema.name.__root__,
                 table["name"],
             )
+            tags = self.get_table_tags(table["tags"])
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=table["name"],
                 tableType="Regular",
                 description=table["description"],
                 fullyQualifiedName=fqn,
+                tags=tags,
                 columns=columns,
             )
 
@@ -280,26 +337,12 @@ class AmundsenSource(Source[Entity]):
                 return p_type
         return data_type
 
-    def get_database_service_or_create(
-        self, service_name: str, service_type: str
-    ) -> DatabaseService:
-        metadata = OpenMetadata(self.metadata_config)
-        service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+    def get_database_service_or_create(self, service_name: str) -> DatabaseService:
+        service = self.metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
         if service is not None:
             return service
         else:
-            service = {
-                "name": service_name,
-                "description": "",
-                "serviceType": self.database_service_map.get(
-                    service_type.lower(), DatabaseServiceType.Mysql.value
-                ),
-                "connection": {"config": {}},
-            }
-            created_service = metadata.create_or_update(
-                CreateDatabaseServiceRequest(**service)
-            )
-            return created_service
+            logger.error(f"Please create a service with name {service_name}")
 
     def test_connection(self) -> None:
         pass
