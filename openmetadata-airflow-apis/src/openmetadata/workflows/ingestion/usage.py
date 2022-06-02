@@ -16,6 +16,7 @@ from pathlib import Path
 from airflow import DAG
 from openmetadata.workflows.ingestion.common import (
     build_dag,
+    build_source,
     build_workflow_config_property,
     metadata_ingestion_workflow,
 )
@@ -49,11 +50,12 @@ def build_usage_config_from_file(
     :param filename: staging location file
     :return: OpenMetadataWorkflowConfig
     """
-    usage_source = ingestion_pipeline.source
-    usage_source.type = f"{usage_source.type}-usage"  # Mark the source as usage
+
+    source = build_source(ingestion_pipeline)
+    source.type = f"{source.type}-usage"  # Mark the source as usage
 
     return OpenMetadataWorkflowConfig(
-        source=usage_source,
+        source=source,
         processor=Processor(type="query-parser", config={"filter": ""}),
         stage=Stage(
             type="table-usage",
@@ -73,7 +75,7 @@ def build_usage_workflow_config(
     """
     Given an airflow_pipeline, prepare the workflow config JSON
     """
-    location = ingestion_pipeline.source.sourceConfig.config.stageFileLocation
+    location = ingestion_pipeline.sourceConfig.config.stageFileLocation
 
     if not location:
         with tempfile.NamedTemporaryFile() as tmp_file:

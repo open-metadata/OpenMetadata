@@ -32,7 +32,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -61,12 +60,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -507,61 +501,15 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
-    Source source = buildIngestionSource(create);
     OpenMetadataServerConnection openMetadataServerConnection =
         OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withSource(source)
+        .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withService(create.getService());
-  }
-
-  private Source buildIngestionSource(CreateIngestionPipeline create) throws IOException {
-    Source source;
-    String serviceType = create.getService().getType();
-    Fields serviceFields = new Fields(List.of("connection"));
-    switch (serviceType) {
-      case Entity.DATABASE_SERVICE:
-        DatabaseService databaseService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceConnection(databaseService.getConnection())
-                .withServiceName(databaseService.getName())
-                .withType(databaseService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      case Entity.DASHBOARD_SERVICE:
-        DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceName(dashboardService.getName())
-                .withServiceConnection(dashboardService.getConnection())
-                .withType(dashboardService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      case Entity.MESSAGING_SERVICE:
-        MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceName(messagingService.getName())
-                .withServiceConnection(messagingService.getConnection())
-                .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      case Entity.PIPELINE_SERVICE:
-        PipelineService pipelineService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceName(pipelineService.getName())
-                .withServiceConnection(pipelineService.getConnection())
-                .withType(pipelineService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Ingestion Pipeline is not supported for service %s", serviceType));
-    }
-    source.setSourceConfig(create.getSourceConfig());
-    return source;
   }
 
   public void addStatus(List<IngestionPipeline> ingestionPipelines) {
