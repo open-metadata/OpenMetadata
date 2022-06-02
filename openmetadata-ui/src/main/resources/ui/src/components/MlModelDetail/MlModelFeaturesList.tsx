@@ -247,7 +247,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                   <div className="tw-flex">
                     <span className="tw-text-grey-muted">Tags:</span>{' '}
                     <div
-                      className="tw-ml-2 tw-mt-1 tw-self-center"
+                      className="tw-ml-1 tw-self-center"
                       data-testid="feature-tags-wrapper"
                       onClick={() => {
                         setSelectedFeature(feature);
@@ -279,7 +279,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           onCancel={handleCancelEditTags}
                           onSelectionChange={handleTagsChange}>
                           {feature.tags?.length ? (
-                            <button className="tw-ml-1 tw--mt-1 focus:tw-outline-none">
+                            <button className="tw-ml-1 focus:tw-outline-none">
                               <SVGIcons
                                 alt="edit"
                                 icon="icon-edit"
@@ -290,7 +290,6 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           ) : (
                             <span className="tw-text-grey-muted hover:tw-text-primary">
                               <Tags
-                                className="tw--ml-2"
                                 startWith="+ "
                                 tag="Add tag"
                                 type="outlined"
