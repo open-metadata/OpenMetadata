@@ -87,7 +87,7 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: INFO
+  level: ${LOG_LEVEL:-TRACE}
   loggers:
     org.openmetadata.catalog.events: DEBUG
     io.swagger: ERROR
