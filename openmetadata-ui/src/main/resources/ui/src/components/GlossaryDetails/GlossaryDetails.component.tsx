@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
@@ -33,6 +33,7 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
+import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -286,144 +287,62 @@ const GlossaryDetails = ({
         )}
       </div>
 
-      {/* <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
-        {!isTagEditable && (
-          <>
-            {glossary?.tags && glossary.tags.length > 0 && (
-              <>
-                <SVGIcons
-                  alt="icon-tag"
-                  className="tw-mx-1"
-                  icon="icon-tag-grey"
-                  width="16"
-                />
-                <TagsViewer tags={glossary.tags} />
-              </>
-            )}
-          </>
-        )}
-        <NonAdminAction
-          isOwner={Boolean(glossary.owner)}
-          permission={Operation.UpdateTags}
-          position="bottom"
-          title={TITLE_FOR_NON_OWNER_ACTION}
-          trigger="click">
-          <div
-            className="tw-inline-block"
-            onClick={() => {
-              fetchTags();
-              setIsTagEditable(true);
-            }}>
-            <TagsContainer
-              dropDownHorzPosRight={false}
-              editable={isTagEditable}
-              isLoading={isTagLoading}
-              selectedTags={getSelectedTags()}
-              showTags={false}
-              size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {glossary?.tags && glossary?.tags.length ? (
-                <button className=" tw-ml-1 focus:tw-outline-none">
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="12px"
-                  />
-                </button>
-              ) : (
-                <span>
-                  <Tags
-                    className="tw-text-primary"
-                    startWith="+ "
-                    tag="Add tag"
-                    type="label"
-                  />
-                </span>
-              )}
-            </TagsContainer>
+      <div className="tw-flex tw-gap-4">
+        <div className="tw-w-9/12">
+          <div data-testid="description-container">
+            <DescriptionV1
+              removeBlur
+              description={glossary?.description}
+              entityName={glossary?.displayName ?? glossary?.name}
+              isEdit={isDescriptionEditable}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
           </div>
-        </NonAdminAction>
-      </div> */}
 
-      <div data-testid="description-container">
-        <DescriptionV1
-          removeBlur
-          description={glossary?.description}
-          entityName={glossary?.displayName ?? glossary?.name}
-          isEdit={isDescriptionEditable}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-        />
-      </div>
-
-      <div className="tw-mt-5 tw-bg-white tw-border tw-rounded-md tw-shadow">
-        <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">
-          <span className="tw-font-semibold">Related Terms</span>
+          <Card heading="Related Terms">
+            <Fragment>
+              <p className="tw-text-grey-muted tw-mb-2">Tags</p>
+              <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+                <NonAdminAction
+                  isOwner={Boolean(glossary.owner)}
+                  permission={Operation.UpdateTags}
+                  position="bottom"
+                  title={TITLE_FOR_NON_OWNER_ACTION}
+                  trigger="click">
+                  <div
+                    className="tw-inline-block"
+                    onClick={() => {
+                      fetchTags();
+                      setIsTagEditable(true);
+                    }}>
+                    <TagsContainer
+                      showAddTagButton
+                      dropDownHorzPosRight={false}
+                      editable={isTagEditable}
+                      isLoading={isTagLoading}
+                      selectedTags={getSelectedTags()}
+                      size="small"
+                      tagList={getTagOptionsFromFQN(tagList)}
+                      type="label"
+                      onCancel={() => {
+                        handleTagSelection();
+                      }}
+                      onSelectionChange={(tags) => {
+                        handleTagSelection(tags);
+                      }}
+                    />
+                  </div>
+                </NonAdminAction>
+              </div>
+            </Fragment>
+          </Card>
         </div>
-        <div className="tw-px-5 tw-py-3">
-          <div>
-            <p className="tw-text-grey-muted tw-mb-3">Tags</p>
-            <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
-              {/* {!isTagEditable && (
-                <>
-                  {glossary?.tags && glossary.tags.length > 0 && (
-                    <>
-                      <SVGIcons
-                        alt="icon-tag"
-                        className="tw-mx-1"
-                        icon="icon-tag-grey"
-                        width="16"
-                      />
-                      <TagsViewer tags={glossary.tags} />
-                    </>
-                  )}
-                </>
-              )} */}
-              <NonAdminAction
-                isOwner={Boolean(glossary.owner)}
-                permission={Operation.UpdateTags}
-                position="bottom"
-                title={TITLE_FOR_NON_OWNER_ACTION}
-                trigger="click">
-                <div
-                  className="tw-inline-block"
-                  onClick={() => {
-                    fetchTags();
-                    setIsTagEditable(true);
-                  }}>
-                  <TagsContainer
-                    showAddTagButton
-                    dropDownHorzPosRight={false}
-                    editable={isTagEditable}
-                    isLoading={isTagLoading}
-                    selectedTags={getSelectedTags()}
-                    //   showTags={false}
-                    size="small"
-                    tagList={getTagOptionsFromFQN(tagList)}
-                    type="label"
-                    onCancel={() => {
-                      handleTagSelection();
-                    }}
-                    onSelectionChange={(tags) => {
-                      handleTagSelection(tags);
-                    }}
-                  />
-                </div>
-              </NonAdminAction>
-            </div>
-          </div>
+        <div className="tw-w-3/12">
+          <div />
         </div>
       </div>
-
       {/* <div className="tw-flex tw-flex-col tw-flex-grow">
         <TabsPane
           activeTab={activeTab}
