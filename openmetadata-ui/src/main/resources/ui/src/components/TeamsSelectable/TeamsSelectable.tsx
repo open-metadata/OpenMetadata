@@ -64,27 +64,25 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
   };
 
   return (
-    <>
-      <AsyncSelect
-        cacheOptions
-        defaultOptions
-        isClearable
-        isMulti
-        aria-label="Select teams"
-        components={{
-          DropdownIndicator: null,
-        }}
-        inputValue={teamSearchText}
-        isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
-        loadOptions={loadOptions}
-        placeholder="Teams..."
-        styles={reactSingleSelectCustomStyle}
-        onChange={(value) => handleSelectionChange(value as SelectableOption[])}
-        onInputChange={(newText) => {
-          setTeamSearchText(newText);
-        }}
-      />
-    </>
+    <AsyncSelect
+      cacheOptions
+      defaultOptions
+      isClearable
+      isMulti
+      aria-label="Select teams"
+      components={{
+        DropdownIndicator: null,
+      }}
+      inputValue={teamSearchText}
+      isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
+      loadOptions={loadOptions}
+      placeholder="Teams..."
+      styles={reactSingleSelectCustomStyle}
+      onChange={(value) => handleSelectionChange(value as SelectableOption[])}
+      onInputChange={(newText) => {
+        setTeamSearchText(newText);
+      }}
+    />
   );
 };
 
