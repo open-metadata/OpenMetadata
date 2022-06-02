@@ -221,9 +221,6 @@ def execute_workflow(config_dict):
 
 class BigQueryIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_indexes")
-    @patch(
-        "metadata.ingestion.source.database.bigquery.BigquerySource.fetch_sample_data"
-    )
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_definition")
     @patch("sqlalchemy.engine.reflection.Inspector.get_view_names")
     @patch("sqlalchemy.engine.reflection.Inspector.get_table_comment")
@@ -246,7 +243,6 @@ class BigQueryIngestionTest(TestCase):
         get_table_comment,
         get_view_names,
         get_view_definition,
-        fetch_sample_data,
         get_indexes,
     ):
         get_schema_names.return_value = MOCK_GET_SCHEMA_NAMES
@@ -257,7 +253,6 @@ class BigQueryIngestionTest(TestCase):
         get_columns.return_value = MOCK_GET_COLUMN
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
-        fetch_sample_data.return_value = []
         get_indexes.return_value = MOCK_GET_INDEXES
 
         execute_workflow(json.loads(CONFIG))
