@@ -10,7 +10,7 @@
 #  limitations under the License.
 import traceback
 import uuid
-from typing import Iterable, Optional, Union
+from typing import Iterable, Union
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -204,7 +204,7 @@ class SnowflakeSource(CommonDbSourceService):
                 yield from self.add_tags_to_table(
                     schema=schema, table_name=table_name, table_entity=table_entity
                 )
-                database = self.get_database_entity(self.service_connection.database)
+                database = self.get_database_entity()
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,

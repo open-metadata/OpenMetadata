@@ -39,6 +39,7 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
+from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
 
@@ -464,16 +465,23 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return record_tests
 
-    def fetch_sample_data(self, orm: DeclarativeMeta, table: Table) -> TableData:
+    def fetch_sample_data(self, orm: DeclarativeMeta) -> TableData:
         """
         Fetch the table data from a real sample
         :param orm: SQA ORM table
-        :param table: record being processed
         :return: TableData
         """
-        ...
+        try:
+            sampler = Sampler(session=self.session, table=orm)
+            return sampler.fetch_sample_data()
+        except Exception as err:
+            logger.error(
+                f"Could not obtain sample data from {orm.__tablename__} - {err}"
+            )
 
-    def process(self, record: Table, generate_sample_data: bool = True) -> ProfilerResponse:
+    def process(
+        self, record: Table, generate_sample_data: bool = True
+    ) -> ProfilerResponse:
         """
         Run the profiling and tests
         """
@@ -497,7 +505,9 @@ class OrmProfilerProcessor(Processor[Table]):
             record, orm_table, entity_profile, config_tests
         )
 
-        sample_data = self.fetch_sample_data(orm=orm_table, table=record) if generate_sample_data else None
+        sample_data = (
+            self.fetch_sample_data(orm=orm_table) if generate_sample_data else None
+        )
 
         res = ProfilerResponse(
             table=record,

@@ -50,7 +50,7 @@
     },
     "tagCategoryName": {
       "title": "Tag Category Name",
-      "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
+      "description": "Custom OpenMetadata Tag category name for BigQuery policy tags.",
       "type": "string",
       "default": "BigqueryPolicyTags"
     },

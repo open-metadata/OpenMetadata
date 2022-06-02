@@ -101,7 +101,7 @@ def ometa_to_orm(table: Table, schema: Union[DatabaseSchema, str]) -> Declarativ
     }
 
     schema_name = get_schema_name(schema)
-    orm_name = f"{schema_name}_{table.name}".replace(".", "_")
+    orm_name = f"{schema_name}_{table.name.__root__}".replace(".", "_")
 
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
@@ -110,7 +110,7 @@ def ometa_to_orm(table: Table, schema: Union[DatabaseSchema, str]) -> Declarativ
         {
             "__tablename__": str(table.name.__root__),
             "__table_args__": {
-                "schema": schema_name,
+                "schema": schema_name,  # TODO: Add database? Needed for snowflake
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
             },
             **cols,

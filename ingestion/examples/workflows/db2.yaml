@@ -10,7 +10,7 @@ source:
       database: custom_database_name
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

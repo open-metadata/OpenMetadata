@@ -7,12 +7,19 @@ source:
       username: openmetadata_user
       password: openmetadata_password
       hostPort: localhost:3306
-      database: openmetadata_db
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:
     config:
-      type: DatabaseMetadata
+      type: Profiler
+      generateSampleData: true
+      fqnFilterPattern:
+        includes:
+        - local_mysql.openmetadata_db*
+
+processor:
+  type: "orm-profiler"
+  config: {}
 sink:
   type: metadata-rest
   config: {}

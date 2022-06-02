@@ -1,6 +1,6 @@
 import traceback
 import uuid
-from typing import Iterable, Optional
+from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema

@@ -14,11 +14,15 @@ for the profiler
 """
 from typing import Optional, Union
 
-from metadata.generated.schema.entity.data.table import TableData
-from sqlalchemy.orm import DeclarativeMeta, Session, aliased, Query
+from sqlalchemy import inspect
+from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+
+RANDOM_LABEL = "random"
 
 
 class Sampler:
@@ -40,9 +44,9 @@ class Sampler:
         self.sample_limit = 100
 
     def get_sample_query(self) -> Query:
-        return self.session.query(self.table, (RandomNumFn() % 100).label("random")).cte(
-            f"{self.table.__tablename__}_rnd"
-        )
+        return self.session.query(
+            self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+        ).cte(f"{self.table.__tablename__}_rnd")
 
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
@@ -75,7 +79,16 @@ class Sampler:
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
+        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
 
-        sqa_sample = self.session.query(rnd).limit(self.sample_limit).all()
-        return sqa_sample  # TODO: convert me to TableData
+        sqa_sample = (
+            self.session.query(*sqa_columns)
+            .select_from(rnd)
+            .limit(self.sample_limit)
+            .all()
+        )
 
+        return TableData(
+            columns=[column.name for column in sqa_columns],
+            rows=[list(row) for row in sqa_sample],
+        )

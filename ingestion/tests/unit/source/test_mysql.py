@@ -51,7 +51,7 @@ CONFIG = """
         },
         "sourceConfig": {
             "config": {
-                "enableDataProfiler": false,
+            "type": "DatabaseMetadata",
                 "schemaFilterPattern": {
                     "excludes": [
                         "system.*",

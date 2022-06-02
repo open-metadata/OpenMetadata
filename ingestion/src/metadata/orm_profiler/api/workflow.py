@@ -182,7 +182,7 @@ class ProfilerWorkflow:
 
             profile_and_tests: ProfilerResponse = self.processor.process(
                 record=entity,
-                generate_sample_data=self.source_config.generateSampleData
+                generate_sample_data=self.source_config.generateSampleData,
             )
 
             if hasattr(self, "sink"):

@@ -9,7 +9,7 @@ source:
       hostPort: localhost:3306
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

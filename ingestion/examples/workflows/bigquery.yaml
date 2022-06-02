@@ -20,7 +20,7 @@ source:
           clientX509CertUrl: clientX509CertUrl
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

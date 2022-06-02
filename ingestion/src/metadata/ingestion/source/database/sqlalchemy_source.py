@@ -16,9 +16,6 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Tuple, Union
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
-
-from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
@@ -30,6 +27,10 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source
@@ -261,36 +262,6 @@ class SqlAlchemySource(Source, ABC):
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
                 )
-
-    def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
-        """
-        Convert the table to an ORM object and run the ORM
-        profiler.
-
-        :param table: Table Entity to be ingested
-        :param schema: Table schema
-        :return: TableProfile
-        """
-        try:
-            orm = ometa_to_orm(table=table, schema=schema)
-            profiler = DefaultProfiler(
-                session=self.session, table=orm, profile_date=self.profile_date
-            )
-            profiler.execute()
-            return profiler.get_profile()
-
-        # Catch any errors during profiling init and continue ingestion
-        except ModuleNotFoundError as err:
-            logger.error(
-                f"Profiling not available for this databaseService: {str(err)}"
-            )
-            self.source_config.enableDataProfiler = False
-
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Error running ingestion profiler {repr(exc)}")
-
-        return None
 
     def register_record(self, table_schema_and_db: OMetaDatabaseAndTable) -> None:
         """

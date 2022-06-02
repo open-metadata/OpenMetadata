@@ -12,7 +12,6 @@
 Generic source to build SQL connectors.
 """
 
-import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Iterable, List, Optional, Tuple
@@ -21,14 +20,11 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import Session
 
-from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -40,11 +36,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt_souce import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -93,7 +85,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         self.engine: Engine = get_connection(self.service_connection)
         self.test_connection()
 
-        self._session = None  # We will instantiate this just if needed
         self._connection = None  # Lazy init as well
         self.data_profiler = None
         self.data_models = {}
@@ -168,16 +159,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         can properly reach the source
         """
         test_connection(self.engine)
-
-    @property
-    def session(self) -> Session:
-        """
-        Return the SQLAlchemy session from the engine
-        """
-        if not self._session:
-            self._session = create_and_bind_session(self.engine)
-
-        return self._session
 
     @property
     def connection(self) -> Connection:
