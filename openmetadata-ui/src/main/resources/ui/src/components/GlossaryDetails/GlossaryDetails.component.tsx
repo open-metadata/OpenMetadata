@@ -35,7 +35,7 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import Description from '../common/description/Description';
+import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -361,8 +361,7 @@ const GlossaryDetails = ({
       </div>
 
       <div className="tw--ml-5" data-testid="description-container">
-        <Description
-          blurWithBodyBG
+        <DescriptionV1
           removeBlur
           description={glossary?.description}
           entityName={glossary?.displayName ?? glossary?.name}

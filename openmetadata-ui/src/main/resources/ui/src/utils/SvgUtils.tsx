@@ -48,6 +48,7 @@ import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
@@ -163,6 +164,7 @@ export const Icons = {
   EDIT: 'icon-edit',
   EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
+  EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
@@ -692,6 +694,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
+
+      break;
+    case Icons.EDIT_OUTLINE_PRIMARY:
+      IconComponent = IconEditOutlinePrimary;
 
       break;
 
