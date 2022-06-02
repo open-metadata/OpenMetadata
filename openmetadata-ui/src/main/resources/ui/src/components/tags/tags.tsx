@@ -55,7 +55,8 @@ const Tags: FunctionComponent<TagProps> = ({
             textBaseStyle,
             textLayoutStyles,
             textEditStyles
-          )}>
+          )}
+          title={tag}>
           {`${startWith}${tagName}`}
         </span>
         {editable && isRemovable && (

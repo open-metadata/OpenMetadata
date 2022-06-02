@@ -42,6 +42,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   tagList,
   onCancel,
   onSelectionChange,
+  className,
   showTags = true,
   showAddTagButton = false,
 }: TagsContainerProps) => {
@@ -163,7 +164,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           focusInputBox();
         }
       }}>
-      <div className="">
+      <div>
         {showTags && !editable && (
           <Fragment>
             {showAddTagButton && (
@@ -184,8 +185,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
             cacheOptions
             defaultOptions
             isMulti
-            className="tw-w-64"
-            data-testid="tag-select"
+            className={classNames('tw-min-w-64', className)}
             defaultValue={getDefaultTags}
             loadOptions={loadOptions}
             onChange={handleTagSelection}
