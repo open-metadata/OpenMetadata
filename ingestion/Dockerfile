@@ -27,7 +27,7 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[snowflake-usage,snowflake,airflow-container]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 
 RUN airflow db init
