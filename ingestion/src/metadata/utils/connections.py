@@ -27,7 +27,6 @@ from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
-    ConnectionOptions,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
@@ -101,11 +100,9 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-    options = connection.connectionOptions or ConnectionOptions()
 
     engine = create_engine(
         get_connection_url(connection),
-        **options.dict(),
         connect_args=get_connection_args(connection),
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
