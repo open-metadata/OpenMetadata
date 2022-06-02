@@ -62,7 +62,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { DataObj, ServiceDataObj } from '../../interface/service.interface';
+import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityDeleteMessage,
@@ -843,7 +843,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as DataObj}
+            serviceDetails={serviceDetails as ServiceDataObj}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
