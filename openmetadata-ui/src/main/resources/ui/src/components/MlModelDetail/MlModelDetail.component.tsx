@@ -66,10 +66,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   settingsUpdateHandler,
   updateMlModelFeatures,
 }) => {
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
-  const [isEdit, setIsEdit] = useState(false);
+  const [isEdit, setIsEdit] = useState<boolean>(false);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -204,12 +204,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
+  const onDescriptionEdit = () => setIsEdit(true);
+
+  const onCancel = () => setIsEdit(false);
 
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (mlModelDetail.description !== updatedHTML) {

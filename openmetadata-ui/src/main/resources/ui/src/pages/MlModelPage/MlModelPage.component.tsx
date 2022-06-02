@@ -44,7 +44,7 @@ const MlModelPage = () => {
   const history = useHistory();
   const { mlModelFqn, tab } = useParams<{ [key: string]: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(getCurrentMlModelTab(tab));
   const USERId = getCurrentUserId();
 

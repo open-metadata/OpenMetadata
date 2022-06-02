@@ -276,12 +276,8 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           size="small"
                           tagList={allTags}
                           type="label"
-                          onCancel={() => {
-                            handleTagsChange();
-                          }}
-                          onSelectionChange={(tags) => {
-                            handleTagsChange(tags);
-                          }}>
+                          onCancel={handleCancelEditTags}
+                          onSelectionChange={handleTagsChange}>
                           {feature.tags?.length ? (
                             <button className="tw-ml-1 tw--mt-1 focus:tw-outline-none">
                               <SVGIcons
