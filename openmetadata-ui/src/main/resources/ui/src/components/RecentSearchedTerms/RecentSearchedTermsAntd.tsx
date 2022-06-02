@@ -41,8 +41,11 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
     <>
       <Card
         style={{
-          border: '2px #e0e7ef solid',
+          border: '1px rgb(221, 227, 234) solid',
           borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
         }}
         title="Recent Search Terms">
         {recentlySearchedTerms.length ? (

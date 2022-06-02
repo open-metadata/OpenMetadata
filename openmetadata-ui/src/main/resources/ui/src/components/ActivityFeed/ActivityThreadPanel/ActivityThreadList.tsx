@@ -64,9 +64,12 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   <Fragment key={index}>
                     <Card
                       style={{
-                        border: '2px #e0e7ef solid',
+                        border: '1px rgb(221, 227, 234) solid',
                         borderRadius: '8px',
                         marginBottom: '20px',
+                        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+                        marginRight: '4px',
+                        marginLeft: '4px',
                       }}
                       key={`${index} - card`}>
                       <div data-testid="main-message">
