@@ -43,7 +43,6 @@ export interface IngestionData {
   }>;
   nextExecutionDate?: string;
   connectorConfig?: ConnectorConfig;
-  forceDeploy?: boolean;
   owner?: { id: string; name?: string; type: string };
   startDate?: string;
   endDate?: string;
