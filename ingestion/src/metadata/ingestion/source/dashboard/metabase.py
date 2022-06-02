@@ -204,7 +204,7 @@ class MetabaseSource(DashboardSourceService):
                         self.metadata,
                         entity_type=Table,
                         service_name=self.source_config.dbServiceName,
-                        database_name=table.get("db").get("details").get("db"),
+                        database_name=table["db"]["details"]["db"],
                         schema_name=table.get("schema"),
                         table_name=table.get("display_name"),
                     )
