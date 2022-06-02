@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
@@ -53,7 +51,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
   owner,
   hasEditAccess,
   handleFeaturesUpdate,
-}) => {
+}: MlModelFeaturesListProp) => {
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
     {} as MlFeature
   );
@@ -219,146 +217,150 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     );
   };
 
-  if (mlFeatures && mlFeatures.length) {
-    return (
-      <Fragment>
-        <div className="tw-flex tw-flex-col" data-testid="feature-list">
-          <hr className="tw-my-4" />
-          <h6 className="tw-font-medium tw-text-base">Features used</h6>
-          {mlFeatures.map((feature) => (
-            <div
-              className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-pb-0 tw-mb-8"
-              data-testid="feature-card"
-              key={uniqueId()}>
-              <h6 className="tw-font-semibold">{feature.name}</h6>
+  const render = () => {
+    if (mlFeatures && mlFeatures.length) {
+      return (
+        <Fragment>
+          <div className="tw-flex tw-flex-col" data-testid="feature-list">
+            <hr className="tw-my-4" />
+            <h6 className="tw-font-medium tw-text-base">Features used</h6>
+            {mlFeatures.map((feature: MlFeature) => (
+              <div
+                className="tw-bg-white tw-shadow-md tw-border tw-border-main tw-rounded-md tw-p-4 tw-pb-0 tw-mb-8"
+                data-testid="feature-card"
+                key={uniqueId()}>
+                <h6 className="tw-font-semibold">{feature.name}</h6>
 
-              <div className="tw-flex">
                 <div className="tw-flex">
-                  <span className="tw-text-grey-muted">Type:</span>{' '}
-                  <span className="tw-ml-2">{feature.dataType || '--'}</span>
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Type:</span>{' '}
+                    <span className="tw-ml-2">{feature.dataType || '--'}</span>
+                  </div>
+                  <Separator />
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Algorithm:</span>{' '}
+                    <span className="tw-ml-2">
+                      {feature.featureAlgorithm || '--'}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="tw-flex">
+                    <span className="tw-text-grey-muted">Tags:</span>{' '}
+                    <div
+                      className="tw-ml-2 tw-mt-1 tw-self-center"
+                      data-testid="feature-tags-wrapper"
+                      onClick={() => {
+                        setSelectedFeature(feature);
+                        setEditTag(true);
+                        // Fetch tags and terms only once
+                        if (allTags.length === 0 || tagFetchFailed) {
+                          fetchTagsAndGlossaryTerms();
+                        }
+                      }}>
+                      <NonAdminAction
+                        html={getHtmlForNonAdminAction(Boolean(owner))}
+                        isOwner={hasEditAccess}
+                        permission={Operation.UpdateTags}
+                        position="left"
+                        trigger="click">
+                        <TagsContainer
+                          editable={
+                            selectedFeature?.name === feature.name && editTag
+                          }
+                          isLoading={
+                            isTagLoading &&
+                            selectedFeature?.name === feature.name &&
+                            editTag
+                          }
+                          selectedTags={feature.tags || []}
+                          size="small"
+                          tagList={allTags}
+                          type="label"
+                          onCancel={() => {
+                            handleTagsChange();
+                          }}
+                          onSelectionChange={(tags) => {
+                            handleTagsChange(tags);
+                          }}>
+                          {feature.tags?.length ? (
+                            <button className="tw-ml-1 tw--mt-1 focus:tw-outline-none">
+                              <SVGIcons
+                                alt="edit"
+                                icon="icon-edit"
+                                title="Edit"
+                                width="12px"
+                              />
+                            </button>
+                          ) : (
+                            <span className="tw-text-grey-muted hover:tw-text-primary">
+                              <Tags
+                                className="tw--ml-2"
+                                startWith="+ "
+                                tag="Add tag"
+                                type="outlined"
+                              />
+                            </span>
+                          )}
+                        </TagsContainer>
+                      </NonAdminAction>
+                    </div>
+                  </div>
                 </div>
-                <Separator />
-                <div className="tw-flex">
-                  <span className="tw-text-grey-muted">Algorithm:</span>{' '}
-                  <span className="tw-ml-2">
-                    {feature.featureAlgorithm || '--'}
-                  </span>
-                </div>
-                <Separator />
-                <div className="tw-flex">
-                  <span className="tw-text-grey-muted">Tags:</span>{' '}
-                  <div
-                    className="tw-ml-2 tw-mt-1 tw-self-center"
-                    data-testid="feature-tags-wrapper"
-                    onClick={() => {
-                      setSelectedFeature(feature);
-                      setEditTag(true);
-                      // Fetch tags and terms only once
-                      if (allTags.length === 0 || tagFetchFailed) {
-                        fetchTagsAndGlossaryTerms();
-                      }
-                    }}>
+
+                <div className="tw-flex tw-flex-col tw-mt-4">
+                  <span className="tw-text-grey-muted">Description:</span>{' '}
+                  <div className="tw-flex tw-mt-2">
+                    {feature.description ? (
+                      <RichTextEditorPreviewer markdown={feature.description} />
+                    ) : (
+                      <span className="tw-no-description">No description </span>
+                    )}
                     <NonAdminAction
                       html={getHtmlForNonAdminAction(Boolean(owner))}
                       isOwner={hasEditAccess}
-                      permission={Operation.UpdateTags}
-                      position="left"
-                      trigger="click">
-                      <TagsContainer
-                        editable={
-                          selectedFeature?.name === feature.name && editTag
-                        }
-                        isLoading={
-                          isTagLoading &&
-                          selectedFeature?.name === feature.name &&
-                          editTag
-                        }
-                        selectedTags={feature.tags || []}
-                        size="small"
-                        tagList={allTags}
-                        type="label"
-                        onCancel={() => {
-                          handleTagsChange();
-                        }}
-                        onSelectionChange={(tags) => {
-                          handleTagsChange(tags);
+                      permission={Operation.UpdateDescription}
+                      position="top">
+                      <button
+                        className="tw-self-start tw-w-8 tw-h-auto focus:tw-outline-none"
+                        onClick={() => {
+                          setSelectedFeature(feature);
+                          setEditDescription(true);
                         }}>
-                        {feature.tags?.length ? (
-                          <button className="tw-ml-1 tw--mt-1 focus:tw-outline-none">
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              title="Edit"
-                              width="12px"
-                            />
-                          </button>
-                        ) : (
-                          <span className="tw-text-grey-muted hover:tw-text-primary">
-                            <Tags
-                              className="tw--ml-2"
-                              startWith="+ "
-                              tag="Add tag"
-                              type="outlined"
-                            />
-                          </span>
-                        )}
-                      </TagsContainer>
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
+                      </button>
                     </NonAdminAction>
                   </div>
                 </div>
+                <SourceList feature={feature} />
               </div>
-
-              <div className="tw-flex tw-flex-col tw-mt-4">
-                <span className="tw-text-grey-muted">Description:</span>{' '}
-                <div className="tw-flex tw-mt-2">
-                  {feature.description ? (
-                    <RichTextEditorPreviewer markdown={feature.description} />
-                  ) : (
-                    <span className="tw-no-description">No description </span>
-                  )}
-                  <NonAdminAction
-                    html={getHtmlForNonAdminAction(Boolean(owner))}
-                    isOwner={hasEditAccess}
-                    permission={Operation.UpdateDescription}
-                    position="top">
-                    <button
-                      className="tw-self-start tw-w-8 tw-h-auto focus:tw-outline-none"
-                      onClick={() => {
-                        setSelectedFeature(feature);
-                        setEditDescription(true);
-                      }}>
-                      <SVGIcons
-                        alt="edit"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="12px"
-                      />
-                    </button>
-                  </NonAdminAction>
-                </div>
-              </div>
-              <SourceList feature={feature} />
-            </div>
-          ))}
+            ))}
+          </div>
+          {!isEmpty(selectedFeature) && editDescription && (
+            <ModalWithMarkdownEditor
+              header={`Edit feature: "${selectedFeature.name}"`}
+              placeholder="Enter feature description"
+              value={selectedFeature.description as string}
+              onCancel={handleCancelEditDescription}
+              onSave={handleDescriptionChange}
+            />
+          )}
+        </Fragment>
+      );
+    } else {
+      return (
+        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+          No features data available
         </div>
-        {!isEmpty(selectedFeature) && editDescription && (
-          <ModalWithMarkdownEditor
-            header={`Edit feature: "${selectedFeature.name}"`}
-            placeholder="Enter feature description"
-            value={selectedFeature.description as string}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
-        )}
-      </Fragment>
-    );
-  } else {
-    return (
-      <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-        No features data available
-      </div>
-    );
-  }
+      );
+    }
+  };
+
+  return render();
 };
 
 export default MlModelFeaturesList;
