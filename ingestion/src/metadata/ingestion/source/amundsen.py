@@ -116,17 +116,6 @@ class AmundsenSource(Source[Entity]):
         )
         self.neo4j_helper = Neo4jHelper(neo4j_config)
         self.status = AmundsenStatus()
-        {
-            "glue": DatabaseServiceType.Glue.value,
-            "snowflake": DatabaseServiceType.Snowflake.value,
-            "athena": DatabaseServiceType.Athena.value,
-            "bigquery": DatabaseServiceType.BigQuery.value,
-            "db2": DatabaseServiceType.Db2.value,
-            "druid": DatabaseServiceType.Druid.value,
-            "delta": DatabaseServiceType.DeltaLake.value,
-            "salesforce": DatabaseServiceType.Salesforce.value,
-            "oracle": DatabaseServiceType.Oracle.value,
-        }
         self.database_service_map = {
             service.value.lower(): service.value for service in DatabaseServiceType
         }
