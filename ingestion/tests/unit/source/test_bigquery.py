@@ -47,7 +47,7 @@ CONFIG = """
           }
       }
     },
-    "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    "sourceConfig": {"config": {"type": "DatabaseMetadata"}}
   },
   "sink": {
     "type": "file",
