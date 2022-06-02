@@ -15,13 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-import React, {
-  Fragment,
-  FunctionComponent,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { Source } from '../../generated/type/tagLabel';
@@ -47,16 +41,6 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   showAddTagButton = false,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
-  const [hasFocus, setFocus] = useState<boolean>(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const node = useRef<HTMLDivElement>(null);
-
-  const focusInputBox = () => {
-    if (editable && inputRef.current) {
-      inputRef.current.focus();
-      setFocus(true);
-    }
-  };
 
   const getTagList = (inputValue: string) => {
     const newTags = (tagList as TagOption[])
@@ -149,21 +133,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   }, [selectedTags]);
 
   return (
-    <div
-      className={classNames(
-        'tw-cursor-pointer',
-        { 'tw-border-primary': hasFocus },
-        { 'hover:tw-border-main': !hasFocus }
-      )}
-      data-testid="tag-container"
-      ref={node}
-      onClick={(event) => {
-        if (editable) {
-          event.preventDefault();
-          event.stopPropagation();
-          focusInputBox();
-        }
-      }}>
+    <div className="tw-cursor-pointer" data-testid="tag-container">
       <div>
         {showTags && !editable && (
           <Fragment>
