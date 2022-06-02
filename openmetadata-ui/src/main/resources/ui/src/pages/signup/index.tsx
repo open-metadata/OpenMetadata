@@ -255,17 +255,6 @@ const Signup = () => {
                       )}>
                       Select teams
                     </label>
-                    {/* <DropDown
-                      className={classNames('tw-bg-white', {
-                        'tw-bg-gray-100 tw-cursor-not-allowed':
-                          teams.length === 0,
-                      })}
-                      dropDownList={getTeamsData(teams)}
-                      label="Select..."
-                      selectedItems={selectedTeams as Array<string>}
-                      type="checkbox"
-                      onSelect={(_e, value) => selectedTeamsHandler(value)}
-                    /> */}
                     <TeamsSelectable onSelectionChange={setSelectedTeams} />
                     {teamError && errorMsg('Atleast one team is required')}
                     {countTeams === 0 ? (
