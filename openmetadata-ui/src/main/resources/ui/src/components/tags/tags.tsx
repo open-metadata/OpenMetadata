@@ -42,7 +42,9 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getTag = (tag: string, startWith = '') => {
-    const tagName = showOnlyName ? tag.split(FQN_SEPARATOR_CHAR).pop() : tag;
+    const tagName = showOnlyName
+      ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
+      : tag;
 
     return (
       <span
@@ -53,7 +55,8 @@ const Tags: FunctionComponent<TagProps> = ({
             textBaseStyle,
             textLayoutStyles,
             textEditStyles
-          )}>
+          )}
+          title={tag}>
           {`${startWith}${tagName}`}
         </span>
         {editable && isRemovable && (
@@ -65,7 +68,7 @@ const Tags: FunctionComponent<TagProps> = ({
               e.stopPropagation();
               removeTag && removeTag(e, getTagString(tag));
             }}>
-            <FontAwesomeIcon className="tw-text-grey-300" icon="times" />
+            <FontAwesomeIcon className="tw-text-primary" icon="times" />
           </span>
         )}
       </span>

@@ -598,7 +598,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={topic.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={topic.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -611,7 +616,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={dashboard.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={dashboard.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -624,7 +634,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {pipeline.tags && pipeline.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={pipeline.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={pipeline.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}

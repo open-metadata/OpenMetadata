@@ -291,19 +291,15 @@ export const addNewTagToEntity = (entity, term) => {
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().contains(entity).click();
   cy.get(
-    '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
+    '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > div > :nth-child(1) > [data-testid="tags"] > .tw-no-underline'
   )
     .should('be.visible')
     .scrollIntoView()
     .click();
 
-  cy.get('[data-testid="tags-wrapper"] > [data-testid="tag-container"]').should(
-    'be.visible'
-  );
-  cy.get('[data-testid="associatedTagName"]').should('be.visible').type(term);
-  cy.get('[data-testid="list-item"] > .tw-truncate')
-    .should('be.visible')
-    .click();
+  cy.get('[class*="-control"]').should('be.visible').type(term);
+  cy.wait(500);
+  cy.get('[id*="-option-0"]').should('be.visible').click();
   cy.get(
     '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
   ).contains(term);
@@ -314,18 +310,16 @@ export const addNewTagToEntity = (entity, term) => {
     .contains(term);
 
   cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
-    .contains('Add tag')
+    .contains('+ Tags')
     .should('be.visible')
     .click();
 
-  cy.get(
-    ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"]'
-  ).should('be.visible');
-  cy.get('[data-testid="associatedTagName"]')
+  cy.get('[class*="-control"]')
     .scrollIntoView()
     .should('be.visible')
     .type(term);
-  cy.get('#menu-item-0 > .tw-truncate').should('be.visible').click();
+  cy.wait(500);
+  cy.get('[id*="-option-0"]').should('be.visible').click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')
