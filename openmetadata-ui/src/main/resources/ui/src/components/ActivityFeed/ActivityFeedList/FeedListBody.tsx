@@ -53,11 +53,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     threadId: string
   ) => {
     return postLength > 1 ? (
-      <div className="tw-mb-6">
-        <div className="tw-ml-9 tw-flex tw-mb-6">
+      <div className="tw-mb-2">
+        <div className="tw-ml-9 tw-flex">
           <FeedCardFooter
             isFooterVisible
-            className="tw--mt-4"
             lastReplyTimeStamp={lastPost?.postTs}
             repliedUsers={repliedUsers}
             replies={replies}
@@ -93,6 +92,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
           return (
             <Card
+              key={`${index} - card`}
               style={{
                 border: '1px rgb(221, 227, 234) solid',
                 borderRadius: '8px',
@@ -100,8 +100,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
                 marginRight: '4px',
                 marginLeft: '4px',
-              }}
-              key={`${index} - card`}>
+              }}>
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   data-testid="main-message"
@@ -127,7 +126,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                       onConfirmation={onConfirmation}
                     />
                     <p
-                      className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw-mt-4 tw-mb-2"
+                      className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
                       data-testid="quick-reply"
                       onClick={() => {
                         toggleReplyEditor(feed.id);

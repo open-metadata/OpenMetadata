@@ -820,13 +820,13 @@ body .profiler-graph .recharts-active-dot circle {
   position: relative;
 }
 .page-layout-container.l3-col {
-  grid-template-columns: 256px auto 256px;
+  grid-template-columns: 300px auto 300px;
 }
 .page-layout-container.l2-ltr-col {
-  grid-template-columns: 300px auto auto;
+  grid-template-columns: 350px auto auto;
 }
 .page-layout-container.l2-rtl-col {
-  grid-template-columns: auto auto 300px;
+  grid-template-columns: auto auto 350px;
 }
 
 .page-layout-container-left-center-right {

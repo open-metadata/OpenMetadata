@@ -231,7 +231,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
             <Fragment>
               <span data-testid="entityType">{entityType} </span>
               <Link data-testid="entitylink" to={prepareFeedLink()}>
-                <button className="link-text" disabled={AppState.isTourOpen}>
+                <button className="tw-text-info" disabled={AppState.isTourOpen}>
                   {entityDisplayName()}
                 </button>
               </Link>
@@ -245,7 +245,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   return (
-    <div className={classNames('tw-flex tw-mb-1.5', className)}>
+    <div className={classNames('tw-flex tw-mb-4', className)}>
       <PopOver
         hideDelay={500}
         html={getUserData()}

@@ -77,13 +77,12 @@ const MyData: React.FC<MyDataProps> = ({
   const getFilterDropDown = () => {
     return (
       <Fragment>
-        <div className="tw-relative tw-my-5">
+        <div className="tw-relative tw-mt-5">
           <Button
             className="hover:tw-no-underline focus:tw-no-underline"
             data-testid="feeds"
             size="custom"
             tag="button"
-            theme="primary"
             variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
             <span className="tw-font-medium tw-text-grey">
@@ -115,9 +114,9 @@ const MyData: React.FC<MyDataProps> = ({
           countTopics={countTopics}
           countUsers={countUsers}
         />
-        <div className="tw-mb-3" />
+        <div className="tw-mb-5" />
         <RecentlyViewed />
-        <div className="tw-mb-3" />
+        <div className="tw-mb-5" />
         <RecentSearchedTermsAntd />
       </div>
     );
@@ -139,7 +138,7 @@ const MyData: React.FC<MyDataProps> = ({
                       AppState.userDetails,
                       AppState.nonSecureUserDetails
                     )}>
-                    <span className="link-text tw-font-normal tw-text-xs">
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="my-data-total-count">
                         ({ownedDataCount})
@@ -154,7 +153,7 @@ const MyData: React.FC<MyDataProps> = ({
             testIDText="My data"
           />
         </div>
-        <div className="tw-mt-3" />
+        <div className="tw-mt-5" />
         <div data-testid="following-data-container">
           <EntityListWithAntd
             entityList={followedData}
@@ -168,7 +167,7 @@ const MyData: React.FC<MyDataProps> = ({
                       AppState.userDetails,
                       AppState.nonSecureUserDetails
                     )}>
-                    <span className="link-text tw-font-normal tw-text-xs">
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="following-data-total-count">
                         ({followedDataCount})
@@ -183,7 +182,7 @@ const MyData: React.FC<MyDataProps> = ({
             testIDText="Following data"
           />
         </div>
-        <div className="tw-mt-3" />
+        <div className="tw-mt-5" />
       </div>
     );
   }, [ownedData, followedData]);

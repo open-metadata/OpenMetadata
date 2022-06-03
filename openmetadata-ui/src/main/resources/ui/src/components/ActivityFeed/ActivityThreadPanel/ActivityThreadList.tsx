@@ -63,6 +63,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 return (
                   <Fragment key={index}>
                     <Card
+                      key={`${index} - card`}
                       style={{
                         border: '1px rgb(221, 227, 234) solid',
                         borderRadius: '8px',
@@ -70,8 +71,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
                         marginRight: '4px',
                         marginLeft: '4px',
-                      }}
-                      key={`${index} - card`}>
+                      }}>
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed

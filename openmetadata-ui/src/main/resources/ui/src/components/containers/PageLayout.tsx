@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import React, { FC, Fragment, ReactNode } from 'react';
 import { PageLayoutType } from '../../enums/layout.enum';
@@ -35,22 +34,26 @@ const PageLayout: FC<PageLayoutProp> = ({
 }: PageLayoutProp) => {
   const getLeftPanel = () => {
     return (
-      <Row>
-        <Col offset={1} span={22}>
-          {leftPanel && <div id="left-panel">{leftPanel}</div>}
-        </Col>
-      </Row>
+      leftPanel && (
+        <div>
+          <div className="tw-py-1" id="left-panel">
+            {leftPanel}
+          </div>
+          <div />
+        </div>
+      )
     );
   };
 
   const getRightPanel = () => {
     return (
       rightPanel && (
-        <Row>
-          <Col offset={1} span={22}>
-            <div id="right-panel">{rightPanel}</div>
-          </Col>
-        </Row>
+        <div>
+          <div className="tw-py-1" id="right-panel">
+            {rightPanel}
+          </div>
+          <div />
+        </div>
       )
     );
   };
@@ -59,18 +62,28 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
-        <Row>
-          <Col span={5}>{getLeftPanel()}</Col>
-          <Col
-            span={14}
-            style={{
-              height: '100vh',
-              overflowY: 'auto',
-            }}>
-            {children}
-          </Col>
-          <Col span={5}>{getRightPanel()}</Col>
-        </Row>
+        <div
+          className={classNames(
+            'page-layout-container l3-col tw-gap-x-3 tw-px-6 centered-layout',
+            classes,
+            {
+              'page-layout-container-left-center-right':
+                leftPanel && children && rightPanel,
+            },
+            {
+              'page-layout-container-left-center': !rightPanel,
+            },
+            {
+              'page-layout-container-center-right': !leftPanel,
+            },
+            {
+              'page-layout-container-center': !leftPanel && !rightPanel,
+            }
+          )}>
+          {getLeftPanel()}
+          <div id="center">{children}</div>
+          {getRightPanel()}
+        </div>
       </Fragment>
     );
   };
