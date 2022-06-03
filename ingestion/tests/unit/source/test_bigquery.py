@@ -63,7 +63,7 @@ CONFIG = """
   }
 }
 """
-
+MOCK_GET_SOURCE_CONNECTION = "XXXXX-XXXX-XXXXX"
 MOCK_GET_TABLE_NAMES = ["test_schema_1.test_table_1", "test_schema_1.test_table_2"]
 
 GET_TABLE_DESCRIPTIONS = {"text": "Test"}
@@ -232,12 +232,14 @@ class BigQueryIngestionTest(TestCase):
     @patch("sqlalchemy.engine.reflection.Inspector.get_unique_constraints")
     @patch("sqlalchemy.engine.reflection.Inspector.get_pk_constraint")
     @patch("sqlalchemy.engine.reflection.Inspector.get_columns")
+    @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
     def test_bigquery_ingestion(
         self,
         mock_connect,
         mock_create_bigquery_client,
+        auth_default,
         get_columns,
         get_pk_constraint,
         get_unique_constraints,
@@ -258,6 +260,7 @@ class BigQueryIngestionTest(TestCase):
         get_view_names.return_value = MOCK_GET_VIEW_NAMES
         get_view_definition.return_value = MOCK_GET_VIEW_DEFINITION
         fetch_sample_data.return_value = []
+        auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
         get_indexes.return_value = MOCK_GET_INDEXES
 
         execute_workflow(json.loads(CONFIG))
