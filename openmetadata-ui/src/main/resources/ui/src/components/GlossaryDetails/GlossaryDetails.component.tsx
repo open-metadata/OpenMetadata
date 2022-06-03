@@ -11,31 +11,44 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, includes, isEqual } from 'lodash';
+import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { getEntityName } from '../../utils/CommonUtils';
+import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
+import { getOwnerList } from '../../utils/ManageUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  isCurrentUserAdmin,
+  searchFormattedUsersAndTeams,
+  suggestFormattedUsersAndTeams,
+} from '../../utils/UserDataUtils';
 import { Button } from '../buttons/Button/Button';
 import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import DropDownList from '../dropdown/DropDownList';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 
@@ -47,35 +60,20 @@ type props = {
   handleUserRedirection?: (name: string) => void;
 };
 
-const GlossaryDetails = ({
-  isHasAccess,
-  glossary,
-  updateGlossary,
-  afterDeleteAction,
-  handleUserRedirection,
-}: props) => {
-  const [activeTab, setActiveTab] = useState(1);
+const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
+  const { userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
+  const [listOwners, setListOwners] = useState(getOwnerList());
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
+  const [listVisible, setListVisible] = useState(false);
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
-
-  const tabs = [
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      position: 1,
-    },
-  ];
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -131,6 +129,66 @@ const GlossaryDetails = ({
     setIsDescriptionEditable(false);
   };
 
+  const handleSelectOwnerDropdown = () => {
+    setListVisible((visible) => !visible);
+  };
+
+  const getOwnerSearch = useCallback(
+    (searchQuery = WILD_CARD_CHAR, from = 1) => {
+      setIsUserLoading(true);
+      searchFormattedUsersAndTeams(searchQuery, from)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const getOwnerSuggestion = useCallback(
+    (qSearchText = '') => {
+      setIsUserLoading(true);
+      suggestFormattedUsersAndTeams(qSearchText)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      if (text) {
+        getOwnerSuggestion(text);
+      } else {
+        getOwnerSearch();
+      }
+    },
+    [getOwnerSuggestion, getOwnerSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
+
+  const handleOwnerSearch = (text: string) => {
+    setSearchText(text);
+    debounceOnSearch(text);
+  };
+
   const getSelectedTags = () => {
     return (glossary.tags || []).map((tag) => ({
       tagFQN: tag.tagFQN,
@@ -178,22 +236,34 @@ const GlossaryDetails = ({
     updateGlossary(updatedGlossary);
   };
 
-  const setActiveTabHandler = (value: number) => {
-    setActiveTab(value);
+  const prepareOwner = (updatedOwner?: EntityReference) => {
+    return !isEqual(updatedOwner, glossary.owner) ? updatedOwner : undefined;
   };
 
-  const handleUpdateOwner = (owner: Glossary['owner']) => {
-    const updatedData = {
-      ...glossary,
-      owner,
-    };
+  const handleOwnerSelection = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value = ''
+  ) => {
+    const owner = listOwners.find((item) => item.value === value);
 
-    return new Promise<void>((_, reject) => {
-      updateGlossary(updatedData);
-      setTimeout(() => {
-        reject();
-      }, 500);
-    });
+    if (owner) {
+      const newOwner = prepareOwner({ type: owner.type, id: owner.value });
+      if (newOwner) {
+        const updatedData = {
+          ...glossary,
+          owner: newOwner,
+        };
+        updateGlossary(updatedData);
+      }
+    }
+    setListVisible(false);
+  };
+
+  const isOwner = () => {
+    return hasEditAccess(
+      glossary?.owner?.type || '',
+      glossary?.owner?.id || ''
+    );
   };
 
   useEffect(() => {
@@ -226,6 +296,59 @@ const GlossaryDetails = ({
     );
   };
 
+  const ownerAction = () => {
+    return (
+      <span className="tw-relative">
+        <NonAdminAction
+          html={
+            <Fragment>
+              <p>You do not have permissions to update the owner.</p>
+            </Fragment>
+          }
+          isOwner={isOwner()}
+          permission={Operation.UpdateOwner}
+          position="left">
+          <Button
+            data-testid="owner-dropdown"
+            disabled={
+              !userPermissions[Operation.UpdateOwner] &&
+              !isAuthDisabled &&
+              !hasEditAccess
+            }
+            size="custom"
+            theme="primary"
+            variant="text"
+            onClick={handleSelectOwnerDropdown}>
+            <span className="tw-mr-2">
+              <SVGIcons
+                alt="edit"
+                icon={Icons.EDIT_OUTLINE_PRIMARY}
+                title="Edit"
+                width="12px"
+              />
+            </span>
+            <span>Edit</span>
+          </Button>
+        </NonAdminAction>
+        {listVisible && (
+          <DropDownList
+            horzPosRight
+            showEmptyList
+            controlledSearchStr={searchText}
+            dropDownList={listOwners}
+            groupType="tab"
+            isLoading={isUserLoading}
+            listGroups={['Teams', 'Users']}
+            showSearchBar={isCurrentUserAdmin()}
+            value={glossary.owner?.id || ''}
+            onSearchTextChange={handleOwnerSearch}
+            onSelect={handleOwnerSelection}
+          />
+        )}
+      </span>
+    );
+  };
+
   const getReviewerTabData = () => {
     return (
       <div className="tw--mx-5">
@@ -233,22 +356,45 @@ const GlossaryDetails = ({
           <div className="tw-flex tw-flex-col tw-gap-4">
             {glossary.reviewers.map((term, i) => (
               <div
-                className={classNames('tw-flex tw-items-center tw-px-5', {
-                  'tw-border-b tw-pb-2':
-                    i !== (glossary.reviewers || []).length - 1,
-                })}
+                className={classNames(
+                  'tw-flex tw-justify-between tw-items-center tw-px-5',
+                  {
+                    'tw-border-b tw-pb-2':
+                      i !== (glossary.reviewers || []).length - 1,
+                  }
+                )}
                 key={i}>
-                <div className="tw-inline-block tw-mr-2">
-                  <ProfilePicture
-                    displayName={getEntityName(term)}
-                    id={term.id}
-                    name={term?.name || ''}
-                    textClass="tw-text-xs"
-                    width="25"
-                  />
-                </div>
+                <div className={classNames('tw-flex tw-items-center')}>
+                  <div className="tw-inline-block tw-mr-2">
+                    <ProfilePicture
+                      displayName={getEntityName(term)}
+                      id={term.id}
+                      name={term?.name || ''}
+                      textClass="tw-text-xs"
+                      width="25"
+                    />
+                  </div>
 
-                <span>{getEntityName(term)}</span>
+                  <span>{getEntityName(term)}</span>
+                </div>
+                <span>
+                  <NonAdminAction
+                    html={
+                      <>You do not have permission to update the reviewer.</>
+                    }
+                    isOwner={isOwner()}
+                    position="bottom">
+                    <span
+                      className={classNames('tw-h-8 tw-rounded tw-mb-3')}
+                      data-testid="remove"
+                      onClick={() => handleRemoveReviewer(term.id)}>
+                      <FontAwesomeIcon
+                        className="tw-cursor-pointer"
+                        icon="remove"
+                      />
+                    </span>
+                  </NonAdminAction>
+                </span>
               </div>
             ))}
           </div>
@@ -318,7 +464,7 @@ const GlossaryDetails = ({
           </Card>
         </div>
         <div className="tw-w-3/12">
-          <Card heading="Owner">
+          <Card action={ownerAction()} heading="Owner">
             <div className="tw-flex tw-items-center">
               {glossary.owner && getEntityName(glossary.owner) && (
                 <div className="tw-inline-block tw-mr-2">
@@ -346,43 +492,6 @@ const GlossaryDetails = ({
           </Card>
         </div>
       </div>
-      {/* <div className="tw-flex tw-flex-col tw-flex-grow">
-        <TabsPane
-          activeTab={activeTab}
-          className="tw-flex-initial"
-          setActiveTab={setActiveTabHandler}
-          tabs={tabs}
-        />
-
-        <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-          {activeTab === 1 && (
-            <div
-              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
-              data-testid="manage-glossary">
-              <div className="tw-max-w-3xl tw-mx-auto">
-                {getReviewerTabData()}
-              </div>
-              <div className="tw-mt-7">
-                <ManageTabComponent
-                  allowDelete
-                  hideTier
-                  isRecursiveDelete
-                  afterDeleteAction={afterDeleteAction}
-                  currentUser={glossary?.owner}
-                  entityId={glossary.id}
-                  entityName={glossary?.name}
-                  entityType={EntityType.GLOSSARY}
-                  hasEditAccess={hasEditAccess(
-                    glossary?.owner?.type || '',
-                    glossary?.owner?.id || ''
-                  )}
-                  onSave={handleUpdateOwner}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </div> */}
 
       {showRevieweModal && (
         <ReviewerModal
