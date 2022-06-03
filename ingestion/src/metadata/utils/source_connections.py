@@ -201,6 +201,8 @@ def _(connection: PrestoConnection):
         url += "@"
     url += f"{connection.hostPort}"
     url += f"/{connection.catalog}"
+    if connection.databaseSchema:
+        url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
 
 
@@ -279,6 +281,7 @@ def _(connection: HiveConnection):
                 url += "@"
 
     url += connection.hostPort
+    url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -286,6 +289,8 @@ def _(connection: HiveConnection):
         else connection.connectionOptions
     )
     if options:
+        if not connection.databaseSchema:
+            url += "/"
         url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
