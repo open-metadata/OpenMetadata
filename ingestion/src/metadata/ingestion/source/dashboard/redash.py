@@ -103,7 +103,6 @@ class RedashSource(DashboardSourceService):
         if dashboard_id is not None:
             self.status.item_scanned_status()
             dashboard_data = self.client.get_dashboard(dashboard_id)
-            dashboard_url = f"{self.service_connection.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
             dashboard_description = ""
             for widgets in dashboard_data.get("widgets", []):
                 dashboard_description = widgets.get("text")
@@ -115,7 +114,7 @@ class RedashSource(DashboardSourceService):
                 charts=self.dashboards_to_charts[dashboard_id],
                 usageSummary=None,
                 service=EntityReference(id=self.service.id, type="dashboardService"),
-                url=dashboard_url,
+                url=f"/dashboard/{dashboard_data.get('slug', '')}",
             )
 
     def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
@@ -123,6 +122,7 @@ class RedashSource(DashboardSourceService):
         Get lineage between dashboard and data sources
         """
         logger.info("Lineage not implemented for redash")
+        return None
 
     def process_charts(self) -> Optional[Iterable[Chart]]:
         """
@@ -173,9 +173,7 @@ class RedashSource(DashboardSourceService):
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
-                    url=(
-                        f"{self.service_connection.hostPort}/dashboard/{dashboard_data.get('slug', '')}"
-                    ),
+                    url=f"/dashboard/{dashboard_data.get('slug', '')}",
                     description=visualization["description"] if visualization else "",
                 )
 

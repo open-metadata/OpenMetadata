@@ -298,13 +298,20 @@ class AirflowLineageTest(TestCase):
                 },
             )
 
-        pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqn="local_airflow_3.task_group_lineage", fields=["tasks"]
+        pipeline: Pipeline = self.metadata.get_by_name(
+            entity=Pipeline, fqn="airflow.task_group_lineage", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("group1.task1", {task.name for task in pipeline.tasks})
         self.assertIn("group1.task2", {task.name for task in pipeline.tasks})
         self.assertIn("end", {task.name for task in pipeline.tasks})
+
+        # Validate URL building
+        self.assertEqual("/tree?dag_id=task_group_lineage", pipeline.pipelineUrl)
+        self.assertIn(
+            "/taskinstance/list/?flt1_dag_id_equals=task_group_lineage&_flt_3_task_id=end",
+            {task.taskUrl for task in pipeline.tasks},
+        )
 
     def test_clean_tasks(self):
         """

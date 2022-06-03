@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import replace_special_with
 from metadata.utils.logger import ingestion_logger
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -128,11 +129,16 @@ class MetabaseSource(DashboardSourceService):
         """
         Method to Get Dashboard Entity
         """
+        dashboard_url = (
+            f"/dashboard/{dashboard_details['id']}-"
+            f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
+        )
+
         yield from self.fetch_dashboard_charts(dashboard_details)
         yield Dashboard(
             id=uuid.uuid4(),
             name=dashboard_details["name"],
-            url=self.service_connection.hostPort,
+            url=dashboard_url,
             displayName=dashboard_details["name"],
             description=dashboard_details["description"]
             if dashboard_details["description"] is not None
@@ -145,7 +151,7 @@ class MetabaseSource(DashboardSourceService):
         """Get chart method
 
         Args:
-            charts:
+            dashboard_details:
         Returns:
             Iterable[Chart]
         """
@@ -153,6 +159,12 @@ class MetabaseSource(DashboardSourceService):
         for chart in charts:
             try:
                 chart_details = chart["card"]
+
+                chart_url = (
+                    f"/question/{chart_details['id']}-"
+                    f"{replace_special_with(raw=chart_details['name'].lower(), replacement='-')}"
+                )
+
                 if not ("name" in chart_details):
                     continue
                 if filter_by_chart(
@@ -170,7 +182,7 @@ class MetabaseSource(DashboardSourceService):
                     if chart_details["description"] is not None
                     else "",
                     chart_type=str(chart_details["display"]),
-                    url=self.service_connection.hostPort,
+                    url=chart_url,
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
