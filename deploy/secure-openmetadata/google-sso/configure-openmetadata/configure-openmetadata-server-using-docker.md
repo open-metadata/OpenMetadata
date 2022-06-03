@@ -15,7 +15,7 @@ By default, security is not enabled when bringing up a cluster with the `metadat
     AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot]
     AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org
     AUTHENTICATION_PROVIDER=google
-    AUTHENTICATION_PUBLIC_KEY=https://www.googleapis.com/oauth2/v3/certs
+    AUTHENTICATION_PUBLIC_KEYS=[https://www.googleapis.com/oauth2/v3/certs]
     AUTHENTICATION_AUTHORITY=https://accounts.google.com
     AUTHENTICATION_CLIENT_ID=709849217090-n7s8oc4cvpffubraoi5vbr1s0qfboqvv.apps.googleusercontent.com
     AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
