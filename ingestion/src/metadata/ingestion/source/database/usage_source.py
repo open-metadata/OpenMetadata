@@ -71,7 +71,7 @@ class UsageSource(Source[TableQuery]):
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
                     yield TableQuery(
-                        query=row["query_text"],
+                        query=query_dict["query_text"],
                         userName=query_dict.get("user_name", ""),
                         startTime=query_dict.get("start_time", ""),
                         endTime=query_dict.get("end_time", ""),
