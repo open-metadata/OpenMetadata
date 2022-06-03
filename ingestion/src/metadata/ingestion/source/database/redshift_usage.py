@@ -27,7 +27,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.helpers import get_start_and_end
 
 # pylint: disable=useless-super-delegation
 from metadata.utils.logger import ingestion_logger
@@ -37,24 +36,14 @@ logger = ingestion_logger()
 
 
 class RedshiftUsageSource(UsageSource):
-    # SELECT statement from mysql information_schema to extract table and column metadata
+
     SQL_STATEMENT = REDSHIFT_SQL_STATEMENT
-    # CONFIG KEYS
-    WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
-    CLUSTER_SOURCE = "cluster_source"
-    CLUSTER_KEY = "cluster_key"
-    USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
-    DATABASE_KEY = "database_key"
-    SERVICE_TYPE = DatabaseServiceType.Redshift.value
-    DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
     def __init__(self, config: WorkflowSource, metadata_config: WorkflowConfig):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
         self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
-            start_time=start, end_time=end
+            start_time=self.start, end_time=self.end
         )
-        self.analysis_date = start
         self._extract_iter: Union[None, Iterator] = None
         self._database = "redshift"
 

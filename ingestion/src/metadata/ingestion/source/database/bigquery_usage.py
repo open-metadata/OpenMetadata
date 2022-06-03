@@ -15,7 +15,7 @@ import collections
 import logging as log
 import os
 from datetime import datetime
-from typing import Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from google.cloud import logging
 
@@ -31,34 +31,29 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
-from metadata.utils.helpers import get_start_and_end
 
 logger = log.getLogger(__name__)
 
 
-class BigqueryUsageSource(Source[TableQuery]):
+class BigqueryUsageSource(UsageSource):
     SERVICE_TYPE = DatabaseServiceType.BigQuery.value
     scheme = "bigquery"
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
+        super().__init__(config, metadata_config)
         self.temp_credentials = None
-        self.metadata_config = metadata_config
-        self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
-
         # Used as db
         self.project_id = (
-            self.service_connection.projectId
-            or self.service_connection.credentials.gcsConfig.projectId
+            self.connection.projectId or self.connection.credentials.gcsConfig.projectId
         )
-
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
-        self.status = SQLSourceStatus()
+        self.logging_client = logging.Client()
+        self.usage_logger = self.logging_client.logger(self.logger_name)
+        logger.debug("Listing entries for logger {}:".format(self.usage_logger.name))
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -75,69 +70,47 @@ class BigqueryUsageSource(Source[TableQuery]):
 
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
-
-    def next_record(self) -> Iterable[TableQuery]:
-        logging_client = logging.Client()
-        usage_logger = logging_client.logger(self.logger_name)
-        logger.debug("Listing entries for logger {}:".format(usage_logger.name))
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        try:
-            entries = usage_logger.list_entries()
-            for entry in entries:
-                timestamp = entry.timestamp.isoformat()
-                timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
-                if timestamp >= start and timestamp <= end:
-                    if ("query" in str(entry.payload)) and type(
-                        entry.payload
-                    ) == collections.OrderedDict:
-                        payload = list(entry.payload.items())[-1][1]
-                        if "jobChange" in payload:
-                            logger.debug(f"\nEntries: {payload}")
-                            if (
+    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
+        entries = self.usage_logger.list_entries()
+        for entry in entries:
+            timestamp = entry.timestamp.isoformat()
+            timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
+            if timestamp >= self.start and timestamp <= self.end:
+                if ("query" in str(entry.payload)) and type(
+                    entry.payload
+                ) == collections.OrderedDict:
+                    payload = list(entry.payload.items())[-1][1]
+                    if "jobChange" in payload:
+                        logger.debug(f"\nEntries: {payload}")
+                        if "queryConfig" in payload["jobChange"]["job"]["jobConfig"]:
+                            queryConfig = payload["jobChange"]["job"]["jobConfig"][
                                 "queryConfig"
-                                in payload["jobChange"]["job"]["jobConfig"]
-                            ):
-                                queryConfig = payload["jobChange"]["job"]["jobConfig"][
-                                    "queryConfig"
-                                ]
-                            else:
-                                continue
-                            jobStats = payload["jobChange"]["job"]["jobStats"]
-                            statementType = ""
-                            if hasattr(queryConfig, "statementType"):
-                                statementType = queryConfig["statementType"]
-                            database = self.project_id
-                            analysis_date = str(
-                                datetime.strptime(
-                                    jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
-                                ).strftime("%Y-%m-%d %H:%M:%S")
-                            )
-                            logger.debug(
-                                f"Query :{statementType}:{queryConfig['query']}"
-                            )
-                            tq = TableQuery(
-                                query=statementType,
-                                user_name=entry.resource.labels["project_id"],
-                                starttime=str(jobStats["startTime"]),
-                                endtime=str(jobStats["endTime"]),
-                                analysis_date=analysis_date,
-                                aborted=0,
-                                database=str(database),
-                                sql=queryConfig["query"],
-                                service_name=self.config.serviceName,
-                            )
-                            yield tq
-
-        except Exception as err:
-            logger.error(repr(err))
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def test_connection(self) -> SourceStatus:
-        pass
+                            ]
+                        else:
+                            continue
+                        jobStats = payload["jobChange"]["job"]["jobStats"]
+                        statementType = ""
+                        if hasattr(queryConfig, "statementType"):
+                            statementType = queryConfig["statementType"]
+                        database = self.project_id
+                        analysis_date = str(
+                            datetime.strptime(
+                                jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
+                            ).strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                        logger.debug(f"Query :{statementType}:{queryConfig['query']}")
+                        tq = TableQuery(
+                            query=queryConfig["query"],
+                            userName=entry.resource.labels["project_id"],
+                            startTime=str(jobStats["startTime"]),
+                            endTime=str(jobStats["endTime"]),
+                            analysisDate=analysis_date,
+                            aborted=0,
+                            database=str(database),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=None,
+                        )
+                        yield tq
 
     def close(self):
         super().close()
