@@ -210,15 +210,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
         filter =
             Class.forName(filterClazzName)
                 .asSubclass(ContainerRequestFilter.class)
-                .getConstructor(AuthenticationConfiguration.class)
-                .newInstance(authenticationConfiguration);
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         environment.jersey().register(filter);
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = new NoopAuthorizer();
-      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration);
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       environment.jersey().register(filter);
     }
   }

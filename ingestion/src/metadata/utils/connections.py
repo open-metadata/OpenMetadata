@@ -27,10 +27,12 @@ from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
-    ConnectionOptions,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
@@ -72,6 +74,7 @@ from metadata.utils.connection_clients import (
     GlueClient,
     KafkaClient,
     MetabaseClient,
+    PowerBiClient,
     RedashClient,
     SalesforceClient,
     SupersetClient,
@@ -97,11 +100,9 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-    options = connection.connectionOptions or ConnectionOptions()
 
     engine = create_engine(
         get_connection_url(connection),
-        **options.dict(),
         connect_args=get_connection_args(connection),
         pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
@@ -514,6 +515,23 @@ def _(connection: TableauClient) -> None:
     try:
         connection.client.server_info()
 
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: PowerBIConnection, verbose: bool = False):
+    from metadata.utils.powerbi_client import PowerBiApiClient
+
+    return PowerBiClient(PowerBiApiClient(connection))
+
+
+@test_connection.register
+def _(connection: PowerBiClient) -> None:
+    try:
+        connection.client.fetch_dashboards()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

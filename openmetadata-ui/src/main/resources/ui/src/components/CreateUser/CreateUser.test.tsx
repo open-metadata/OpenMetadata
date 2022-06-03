@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByText,
-  findByTestId,
-  findByText,
-  render,
-} from '@testing-library/react';
+import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
@@ -33,6 +28,10 @@ jest.mock('../dropdown/DropDown', () => {
   return jest.fn().mockReturnValue(<p>Dropdown component</p>);
 });
 
+jest.mock('../TeamsSelectable/TeamsSelectable', () => {
+  return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
+});
+
 jest.mock('../common/rich-text-editor/RichTextEditor', () => {
   return jest.fn().mockReturnValue(<p>MarkdownWithPreview component</p>);
 });
@@ -41,7 +40,6 @@ const propsValue: CreateUserProps = {
   allowAccess: true,
   saveState: 'initial',
   roles: [],
-  teams: [],
   onSave: jest.fn(),
   onCancel: jest.fn(),
 };
@@ -62,14 +60,19 @@ describe('Test CreateUser component', () => {
       container,
       /MarkdownWithPreview component/i
     );
-    const dropdown = await findAllByText(container, /Dropdown component/i);
+    const dropdown = await findByText(container, /Dropdown component/i);
+    const teamsSelectable = await findByText(
+      container,
+      /TeamsSelectable component/i
+    );
 
     expect(PageLayout).toBeInTheDocument();
     expect(email).toBeInTheDocument();
     expect(bot).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(dropdown.length).toBe(2);
+    expect(dropdown).toBeInTheDocument();
+    expect(teamsSelectable).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();
   });

@@ -34,6 +34,7 @@ public final class SecurityUtil {
   public static final int BOT = 2;
   public static final int OWNER = 4;
   public static final int PERMISSIONS = 8;
+  public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
 
   private SecurityUtil() {}
 
