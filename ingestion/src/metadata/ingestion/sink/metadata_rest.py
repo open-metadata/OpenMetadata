@@ -609,6 +609,7 @@ class MetadataRestSink(Sink[Entity]):
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,
                     db_schema_and_table.database.name.__root__,
+                    db_schema_and_table.table.viewDefinition.__root__,
                 )
         except Exception as e:
             logger.error("Failed to create view lineage")
