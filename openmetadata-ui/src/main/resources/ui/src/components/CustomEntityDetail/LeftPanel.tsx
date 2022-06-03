@@ -40,7 +40,7 @@ export const LeftPanel: FC<LeftPanelProp> = ({ typeList, selectedType }) => {
   return (
     <div className="tw-flex tw-flex-col tw-bg-white tw-h-screen tw-p-3 tw-border tw-border-main tw-rounded-md">
       <h6 className="tw-heading tw-text-sm" data-testid="panel-heading">
-        Schema &amp; Custom Fields
+        Schema &amp; Custom Properties
       </h6>
       {typeList.map((type) => (
         <div

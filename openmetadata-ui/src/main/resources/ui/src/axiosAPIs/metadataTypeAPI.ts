@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Category, CustomField } from '../generated/entity/type';
+import { Category, CustomProperty } from '../generated/entity/type';
 import APIClient from './index';
 
 export const getTypeListByCategory = (
@@ -29,14 +29,14 @@ export const getTypeListByCategory = (
 export const getTypeByFQN = (typeFQN: string): Promise<AxiosResponse> => {
   const path = `/metadata/types/name/${typeFQN}`;
 
-  const params = { fields: 'customFields' };
+  const params = { fields: 'customProperties' };
 
   return APIClient.get(path, { params });
 };
 
-export const addFieldToEntity = (
+export const addPropertyToEntity = (
   entityTypeId: string,
-  data: CustomField
+  data: CustomProperty
 ): Promise<AxiosResponse> => {
   const path = `/metadata/types/${entityTypeId}`;
 

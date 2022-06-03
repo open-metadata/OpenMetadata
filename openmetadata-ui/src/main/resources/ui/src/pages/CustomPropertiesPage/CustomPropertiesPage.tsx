@@ -22,7 +22,7 @@ import { Category, Type } from '../../generated/entity/type';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
 
-const CustomEntityPage = () => {
+const CustomPropertiesPage = () => {
   const { entityTypeFQN } = useParams<{ [key: string]: string }>();
   const [entityTypes, setEntityTypes] = useState<Array<Type>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -62,4 +62,4 @@ const CustomEntityPage = () => {
   return <Fragment>{isLoading ? <Loader /> : <Component />}</Fragment>;
 };
 
-export default CustomEntityPage;
+export default CustomPropertiesPage;

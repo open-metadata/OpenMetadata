@@ -17,7 +17,7 @@ import { EditorContentRef, FormErrorData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  addFieldToEntity,
+  addPropertyToEntity,
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../axiosAPIs/metadataTypeAPI';
@@ -36,14 +36,14 @@ const InitialFormData = {
   type: '',
 };
 
-const AddCustomField = () => {
+const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ [key: string]: string }>();
   const history = useHistory();
   const markdownRef = useRef<EditorContentRef>();
 
   const [typeDetail, setTypeDetail] = useState<Type>({} as Type);
 
-  const [fieldTypes, setFieldTypes] = useState<Array<Type>>([]);
+  const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);
 
   const [formData, setFormData] =
     useState<Record<string, string>>(InitialFormData);
@@ -54,10 +54,10 @@ const AddCustomField = () => {
 
   const getDescription = () => markdownRef.current?.getEditorContent() || '';
 
-  const fetchFieldType = () => {
+  const fetchPropertyType = () => {
     getTypeListByCategory(Category.Field)
       .then((res: AxiosResponse) => {
-        setFieldTypes(res.data.data);
+        setPropertyTypes(res.data.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
@@ -82,13 +82,13 @@ const AddCustomField = () => {
     return Boolean(type);
   };
 
-  const handleError = (flag: boolean, field: string) => {
+  const handleError = (flag: boolean, property: string) => {
     const message =
-      field === 'name' ? 'Invalid Field Name' : 'Type is required';
+      property === 'name' ? 'Invalid Property Name' : 'Type is required';
 
     setFormErrorData((preVdata) => ({
       ...preVdata,
-      [field]: !flag ? message : '',
+      [property]: !flag ? message : '',
     }));
   };
 
@@ -128,15 +128,15 @@ const AddCustomField = () => {
     const isValidName = validateName(formData.name);
     const isValidType = validateType(formData.type);
     if (isValidName && isValidType) {
-      const fieldData = {
+      const propertyData = {
         description: getDescription(),
         name: formData.name,
-        fieldType: {
+        propertyType: {
           id: formData.type,
           type: 'type',
         },
       };
-      addFieldToEntity(typeDetail.id as string, fieldData)
+      addPropertyToEntity(typeDetail.id as string, propertyData)
         .then(() => {
           history.goBack();
         })
@@ -154,7 +154,7 @@ const AddCustomField = () => {
   }, [entityTypeFQN]);
 
   useEffect(() => {
-    fetchFieldType();
+    fetchPropertyType();
   }, []);
 
   return (
@@ -165,7 +165,7 @@ const AddCustomField = () => {
         <div
           className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded"
           data-testid="form-container">
-          <h6 className="tw-heading tw-text-base">Add Custom Field</h6>
+          <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
 
           <Field>
             <label className="tw-block tw-form-label" htmlFor="name">
@@ -198,9 +198,9 @@ const AddCustomField = () => {
               value={formData.type || ''}
               onChange={onChangeHandler}>
               <option value="">Select type</option>
-              {fieldTypes.map((fieldType) => (
-                <option key={uniqueId()} value={fieldType.id}>
-                  {fieldType.displayName}
+              {propertyTypes.map((propertyType) => (
+                <option key={uniqueId()} value={propertyType.id}>
+                  {propertyType.displayName}
                 </option>
               ))}
             </select>
@@ -244,4 +244,4 @@ const AddCustomField = () => {
   );
 };
 
-export default AddCustomField;
+export default AddCustomProperty;

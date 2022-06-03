@@ -15,7 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
-import AddCustomField from '../components/CustomEntityDetail/AddCustomField/AddCustomField';
+import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
 import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
 import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
@@ -25,7 +25,7 @@ import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
 import BotsListPage from '../pages/BotsListpage/BotsListpage.component';
 import BotsPage from '../pages/BotsPage/BotsPage.component';
 import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
-import CustomEntityPage from '../pages/CustomEntityPage/CustomEntityPage';
+import CustomPropertiesPage from '../pages/CustomPropertiesPage/CustomPropertiesPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
@@ -193,18 +193,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <AdminProtectedRoute
         exact
-        component={CustomEntityPage}
-        path={ROUTES.CUSTOM_ENTITY}
+        component={CustomPropertiesPage}
+        path={ROUTES.CUSTOM_PROPERTIES}
       />
       <AdminProtectedRoute
         exact
-        component={CustomEntityPage}
+        component={CustomPropertiesPage}
         path={ROUTES.CUSTOM_ENTITY_DETAIL}
       />
       <AdminProtectedRoute
         exact
-        component={AddCustomField}
-        path={ROUTES.ADD_CUSTOM_FIELD}
+        component={AddCustomProperty}
+        path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
 
       <Redirect to={ROUTES.NOT_FOUND} />
