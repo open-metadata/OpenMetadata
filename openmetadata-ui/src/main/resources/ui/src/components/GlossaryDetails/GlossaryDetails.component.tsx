@@ -453,9 +453,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                       onCancel={() => {
                         handleTagSelection();
                       }}
-                      onSelectionChange={(tags) => {
-                        handleTagSelection(tags);
-                      }}
+                      onSelectionChange={handleTagSelection}
                     />
                   </div>
                 </NonAdminAction>
