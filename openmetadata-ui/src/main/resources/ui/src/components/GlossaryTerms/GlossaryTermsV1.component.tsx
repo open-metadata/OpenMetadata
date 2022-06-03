@@ -22,15 +22,19 @@ import {
   GlossaryTermAssets,
 } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import {
+  TITLE_FOR_NON_ADMIN_ACTION,
+  TITLE_FOR_NON_OWNER_ACTION,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../generated/entity/policies/policy';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
+import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
@@ -39,16 +43,16 @@ import {
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
-import Description from '../common/description/Description';
+import Card from '../common/Card/Card';
+import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import TabsPane from '../common/TabsPane/TabsPane';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryReferenceModal';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
-import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
 type Props = {
@@ -94,17 +98,17 @@ const GlossaryTermsV1 = ({
 
   const tabs = [
     {
-      name: 'Related Terms',
+      name: 'Summery',
       isProtected: false,
       position: 1,
     },
     {
-      name: 'Assets',
+      name: 'Related Terms',
       isProtected: false,
       position: 2,
     },
     {
-      name: 'Manage',
+      name: 'Assets',
       isProtected: false,
       position: 3,
     },
@@ -314,17 +318,13 @@ const GlossaryTermsV1 = ({
   const AddReviewerButton = () => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <Button
-          className={classNames('tw-h-8 tw-rounded', {
-            'tw-opacity-40': isHasAccess,
-          })}
+        <button
+          className="tw-text-primary"
           data-testid="add-new-reviewer"
-          size="small"
-          theme="primary"
-          variant="outlined"
+          disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          Add Reviewer
-        </Button>
+          + Add
+        </button>
       </NonAdminAction>
     );
   };
@@ -349,35 +349,53 @@ const GlossaryTermsV1 = ({
 
   const getReviewerTabData = () => {
     return (
-      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
-        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
-          <div className="tw-w-10/12">
-            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
-            <p className="tw-text-grey-muted tw-text-xs">
-              Add users as reviewer
-            </p>
-          </div>
+      <div className="tw--mx-5">
+        {glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 ? (
+          <div className="tw-flex tw-flex-col tw-gap-4">
+            {glossaryTerm.reviewers?.map((term, i) => (
+              <div
+                className={classNames(
+                  'tw-flex tw-justify-between tw-items-center tw-px-5',
+                  {
+                    'tw-border-b tw-pb-2':
+                      i !== (glossaryTerm.reviewers || []).length - 1,
+                  }
+                )}
+                key={i}>
+                <div className={classNames('tw-flex tw-items-center')}>
+                  <div className="tw-inline-block tw-mr-2">
+                    <ProfilePicture
+                      displayName={getEntityName(term)}
+                      id={term.id}
+                      name={term?.name || ''}
+                      textClass="tw-text-xs"
+                      width="25"
+                    />
+                  </div>
 
-          {AddReviewerButton()}
-        </div>
-        {glossaryTerm.reviewers && glossaryTerm.reviewers.length > 0 && (
-          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
-            {glossaryTerm.reviewers?.map((term) => (
-              <UserCard
-                isActionVisible
-                isIconVisible
-                item={{
-                  fqn: term.fullyQualifiedName || '',
-                  displayName: term.displayName || term.name || '',
-                  id: term.id,
-                  type: term.type,
-                  name: term.name,
-                }}
-                key={term.name}
-                onRemove={handleRemoveReviewer}
-                onTitleClick={handleUserRedirection}
-              />
+                  <span>{getEntityName(term)}</span>
+                </div>
+                <span>
+                  <NonAdminAction
+                    html={<p>{TITLE_FOR_NON_OWNER_ACTION}</p>}
+                    position="bottom">
+                    <span
+                      className={classNames('tw-h-8 tw-rounded tw-mb-3')}
+                      data-testid="remove"
+                      onClick={() => handleRemoveReviewer(term.id)}>
+                      <FontAwesomeIcon
+                        className="tw-cursor-pointer"
+                        icon="remove"
+                      />
+                    </span>
+                  </NonAdminAction>
+                </span>
+              </div>
             ))}
+          </div>
+        ) : (
+          <div className="tw-text-grey-muted tw-mx-5 tw-text-center">
+            No reviewer
           </div>
         )}
       </div>
@@ -385,11 +403,147 @@ const GlossaryTermsV1 = ({
   };
 
   const getTabPaneButton = () => {
-    if (activeTab === 1) {
+    if (activeTab === 2) {
       return relatedTerms.length ? AddRelatedTermButton() : undefined;
     } else {
       return;
     }
+  };
+
+  const summaryTab = () => {
+    return (
+      <div className="tw-flex tw-gap-4">
+        <div className="tw-w-9/12">
+          <div data-testid="description-container">
+            <DescriptionV1
+              removeBlur
+              description={glossaryTerm.description || ''}
+              entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
+              isEdit={isDescriptionEditable}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </div>
+          <Card heading="Related Terms">
+            <Fragment>
+              <div>
+                <p className="tw-text-grey-muted tw-mb-2">Tags</p>
+                <div
+                  className="tw-flex tw-flex-wrap tw-group"
+                  data-testid="tags">
+                  <NonAdminAction
+                    permission={Operation.UpdateTags}
+                    position="bottom"
+                    title={TITLE_FOR_NON_OWNER_ACTION}
+                    trigger="click">
+                    <div
+                      className="tw-inline-block"
+                      onClick={() => {
+                        if (!isTagEditable) {
+                          fetchTags();
+                          setIsTagEditable(true);
+                        }
+                      }}>
+                      <TagsContainer
+                        showAddTagButton
+                        dropDownHorzPosRight={false}
+                        editable={isTagEditable}
+                        isLoading={isTagLoading}
+                        selectedTags={getSelectedTags()}
+                        size="small"
+                        tagList={getTagOptionsFromFQN(tagList)}
+                        type="label"
+                        onCancel={() => {
+                          handleTagSelection();
+                        }}
+                        onSelectionChange={handleTagSelection}
+                      />
+                    </div>
+                  </NonAdminAction>
+                </div>
+              </div>
+              <div className="tw-mt-6">
+                <p className="tw-text-grey-muted tw-mb-2">Synonyms</p>
+                <div>
+                  {isSynonymsEditing ? (
+                    <div className="tw-flex tw-items-center tw-gap-1">
+                      <input
+                        className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+                        data-testid="synonyms"
+                        id="synonyms"
+                        name="synonyms"
+                        placeholder="Enter comma seprated term"
+                        type="text"
+                        value={synonyms}
+                        onChange={handleValidation}
+                      />
+                      <div
+                        className="tw-flex tw-justify-end"
+                        data-testid="buttons">
+                        <Button
+                          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                          data-testid="cancelAssociatedTag"
+                          size="custom"
+                          theme="primary"
+                          variant="contained"
+                          onMouseDown={() => setIsSynonymsEditing(false)}>
+                          <FontAwesomeIcon
+                            className="tw-w-3.5 tw-h-3.5"
+                            icon="times"
+                          />
+                        </Button>
+                        <Button
+                          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                          data-testid="saveAssociatedTag"
+                          size="custom"
+                          theme="primary"
+                          variant="contained"
+                          onMouseDown={handleSynonymsSave}>
+                          <FontAwesomeIcon
+                            className="tw-w-3.5 tw-h-3.5"
+                            icon="check"
+                          />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="tw-flex tw-group">
+                      <span>{synonyms || '--'}</span>
+                      <div className={classNames('tw-w-5 tw-min-w-max')}>
+                        <NonAdminAction
+                          position="right"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="tw-opacity-0 tw-ml-2 group-hover:tw-opacity-100 focus:tw-outline-none"
+                            data-testid="edit-synonyms"
+                            onClick={() => setIsSynonymsEditing(true)}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Fragment>
+          </Card>
+        </div>
+        <div className="tw-w-3/12">
+          <Card
+            action={AddReviewerButton()}
+            className="tw-mt-4"
+            heading="Reviewer">
+            <div>{getReviewerTabData()}</div>
+          </Card>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -520,84 +674,6 @@ const GlossaryTermsV1 = ({
         <div>{glossaryTerm.status}</div>
       </div> */}
 
-      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
-        {!isTagEditable && (
-          <>
-            {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
-              <>
-                <SVGIcons
-                  alt="icon-tag"
-                  className="tw-mx-1"
-                  icon="icon-tag-grey"
-                  width="16"
-                />
-                <TagsViewer tags={glossaryTerm.tags} />
-              </>
-            )}
-          </>
-        )}
-        <NonAdminAction
-          position="bottom"
-          title={TITLE_FOR_NON_ADMIN_ACTION}
-          trigger="click">
-          <div
-            className="tw-inline-block"
-            onClick={() => {
-              fetchTags();
-              setIsTagEditable(true);
-            }}>
-            <TagsContainer
-              dropDownHorzPosRight={false}
-              editable={isTagEditable}
-              isLoading={isTagLoading}
-              selectedTags={getSelectedTags()}
-              showTags={false}
-              size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
-              type="label"
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
-                <button className="tw-ml-1 focus:tw-outline-none">
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="12px"
-                  />
-                </button>
-              ) : (
-                <span>
-                  <Tags
-                    className="tw-text-primary"
-                    startWith="+ "
-                    tag="Add tag"
-                    type="label"
-                  />
-                </span>
-              )}
-            </TagsContainer>
-          </div>
-        </NonAdminAction>
-      </div>
-
-      <div className="tw--ml-5" data-testid="description-container">
-        <Description
-          blurWithBodyBG
-          removeBlur
-          description={glossaryTerm.description || ''}
-          entityName={glossaryTerm?.displayName ?? glossaryTerm?.name}
-          isEdit={isDescriptionEditable}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-        />
-      </div>
-
       <div className="tw-flex tw-flex-col tw-flex-grow">
         <TabsPane
           activeTab={activeTab}
@@ -608,21 +684,23 @@ const GlossaryTermsV1 = ({
         />
 
         <div className="tw-flex-grow tw-py-4">
-          {activeTab === 1 && (
+          {activeTab === 1 && summaryTab()}
+
+          {activeTab === 2 && (
             <RelationshipTab
               addButton={<>{AddRelatedTermButton()}</>}
               data={relatedTerms}
               onRelatedTermClick={onRelatedTermClick}
             />
           )}
-          {activeTab === 2 && (
+          {activeTab === 3 && (
             <AssetsTabs
               assetData={assetData}
               currentPage={currentPage}
               onAssetPaginate={onAssetPaginate}
             />
           )}
-          {activeTab === 3 && (
+          {activeTab === 4 && (
             <div
               className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
               data-testid="manage-glossary-term">

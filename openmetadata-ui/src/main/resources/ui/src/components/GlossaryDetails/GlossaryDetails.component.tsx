@@ -283,16 +283,13 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   const AddReviewerButton = () => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <Button
-          className="tw-mr-1"
+        <button
+          className="tw-text-primary"
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
-          size="small"
-          theme="primary"
-          variant="text"
           onClick={() => setShowRevieweModal(true)}>
           + Add
-        </Button>
+        </button>
       </NonAdminAction>
     );
   };
