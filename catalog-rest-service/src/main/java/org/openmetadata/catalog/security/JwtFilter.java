@@ -80,7 +80,7 @@ public class JwtFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (uriInfo.getPath().contains("config")) {
+    if (uriInfo.getPath().contains("config") || uriInfo.getPath().contains("version")) {
       return;
     }
 

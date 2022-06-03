@@ -21,27 +21,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CustomRequestInterceptor<K> implements RequestInterceptor {
-    private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
-    private final Class<K> type;
-    ObjectMapper mapper;
-    public CustomRequestInterceptor(ObjectMapper iMapper, Class<K> type){
-        this.type = type;
-        mapper = iMapper;
-    }
+  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadata.class);
+  private final Class<K> type;
+  ObjectMapper mapper;
 
-    @Override
-    public void apply(RequestTemplate requestTemplate) {
-        try{
-            LOG.debug("Trying to Convert from generated class to org.openmetadata");
-            String body =new String(requestTemplate.body());
-            K value = mapper.readValue(body, this.getType());
-            requestTemplate.body(mapper.writeValueAsString(value));
-        }catch (Exception ex){
-            LOG.error("[CustomInterceptor] Failed in transforming request with exception :" + ex.getMessage());
-        }
-    }
+  public CustomRequestInterceptor(ObjectMapper iMapper, Class<K> type) {
+    this.type = type;
+    mapper = iMapper;
+  }
 
-    public Class<K> getType() {
-        return this.type;
+  @Override
+  public void apply(RequestTemplate requestTemplate) {
+    try {
+      LOG.debug("Trying to Convert from generated class to org.openmetadata");
+      String body = new String(requestTemplate.body());
+      K value = mapper.readValue(body, this.getType());
+      requestTemplate.body(mapper.writeValueAsString(value));
+    } catch (Exception ex) {
+      LOG.error("[CustomInterceptor] Failed in transforming request with exception :" + ex.getMessage());
     }
+  }
+
+  public Class<K> getType() {
+    return this.type;
+  }
 }

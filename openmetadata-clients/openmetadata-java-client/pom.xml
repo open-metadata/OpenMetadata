@@ -70,26 +70,15 @@
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
         </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>0.11.5</version>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>0.11.5</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId> <!-- or jjwt-gson if Gson is preferred -->
-            <version>0.11.5</version>
-            <scope>runtime</scope>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
+            <!--Reformat Code to comply with Google Java Style -->
+            <plugin>
+                <groupId>com.theoryinpractise</groupId>
+                <artifactId>googleformatter-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -128,11 +117,6 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <!--Note>
-                            This might not be proper way because we don't want to depend on catalog-rest-service
-                            but catalog-rest-service target/classes/assets/swagger.yaml is a generated file which
-                            we have to use because we want to have all the changes done in our resources/
-                            <Note-->
                             <inputSpec>${project.basedir}/../../catalog-rest-service/target/classes/assets/swagger.yaml</inputSpec>
                             <language>java</language>
                             <library>feign</library>
