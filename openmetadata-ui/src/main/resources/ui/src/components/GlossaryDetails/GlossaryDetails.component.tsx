@@ -22,6 +22,7 @@ import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
+  TITLE_FOR_UPDATE_OWNER,
 } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -300,11 +301,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     return (
       <span className="tw-relative">
         <NonAdminAction
-          html={
-            <Fragment>
-              <p>You do not have permissions to update the owner.</p>
-            </Fragment>
-          }
+          html={<p>{TITLE_FOR_UPDATE_OWNER}</p>}
           isOwner={isOwner()}
           permission={Operation.UpdateOwner}
           position="left">
@@ -379,9 +376,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                 </div>
                 <span>
                   <NonAdminAction
-                    html={
-                      <>You do not have permission to update the reviewer.</>
-                    }
+                    html={<p>{TITLE_FOR_NON_OWNER_ACTION}</p>}
                     isOwner={isOwner()}
                     position="bottom">
                     <span
