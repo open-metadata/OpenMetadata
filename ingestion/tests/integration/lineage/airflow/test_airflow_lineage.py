@@ -17,8 +17,9 @@ Other airflow versions require a different way to
 mock the DAG and Task runs.
 """
 
+import os
 from datetime import datetime, timedelta
-from unittest import TestCase
+from unittest import TestCase, mock
 
 # The DAG object; we'll need this to instantiate a DAG
 from airflow import DAG
@@ -193,6 +194,11 @@ class AirflowLineageTest(TestCase):
         self.assertIsNone(get_xlets(self.dag.get_task("task3"), "_inlets"))
         self.assertIsNone(get_xlets(self.dag.get_task("task3"), "_outlets"))
 
+    @mock.patch.dict(
+        os.environ,
+        {"AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME": "int_airflow"},
+        clear=True,
+    )
     def test_lineage(self):
         """
         Test end to end
@@ -214,16 +220,21 @@ class AirflowLineageTest(TestCase):
         )
 
         self.assertIsNotNone(
-            self.metadata.get_by_name(entity=Pipeline, fqn="local_airflow_3.lineage")
+            self.metadata.get_by_name(entity=Pipeline, fqn="int_airflow.lineage")
         )
 
         lineage = self.metadata.get_lineage_by_name(
-            entity=Pipeline, fqn="local_airflow_3.lineage"
+            entity=Pipeline, fqn="int_airflow.lineage"
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
         self.assertIn(str(self.table.id.__root__), nodes)
 
+    @mock.patch.dict(
+        os.environ,
+        {"AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME": "int_airflow"},
+        clear=True,
+    )
     def test_lineage_task_group(self):
         """
         Test end to end for task groups.
@@ -299,7 +310,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline: Pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqn="airflow.task_group_lineage", fields=["tasks"]
+            entity=Pipeline, fqn="int_airflow.task_group_lineage", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("group1.task1", {task.name for task in pipeline.tasks})
@@ -313,6 +324,11 @@ class AirflowLineageTest(TestCase):
             {task.taskUrl for task in pipeline.tasks},
         )
 
+    @mock.patch.dict(
+        os.environ,
+        {"AIRFLOW__LINEAGE__AIRFLOW_SERVICE_NAME": "int_airflow"},
+        clear=True,
+    )
     def test_clean_tasks(self):
         """
         Check that we can safely remove tasks from a Pipeline
@@ -367,7 +383,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqn="local_airflow_3.clean_test", fields=["tasks"]
+            entity=Pipeline, fqn="int_airflow.clean_test", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("task1", {task.name for task in pipeline.tasks})
@@ -422,7 +438,7 @@ class AirflowLineageTest(TestCase):
             )
 
         pipeline: Pipeline = self.metadata.get_by_name(
-            entity=Pipeline, fqn="local_airflow_3.clean_test", fields=["tasks"]
+            entity=Pipeline, fqn="int_airflow.clean_test", fields=["tasks"]
         )
         self.assertIsNotNone(pipeline)
         self.assertIn("task1", {task.name for task in pipeline.tasks})
