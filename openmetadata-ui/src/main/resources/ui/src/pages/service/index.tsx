@@ -755,20 +755,17 @@ const ServicePage: FunctionComponent = () => {
       const { id } = serviceDetails;
 
       const updatedServiceDetails = {
-        ...serviceDetails,
+        connection: serviceDetails?.connection,
         name: serviceDetails.name,
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
+        owner: serviceDetails.owner,
       };
 
       updateService(serviceName, id, updatedServiceDetails)
-        .then(() => {
+        .then((res: AxiosResponse) => {
           setDescription(updatedHTML);
-          setServiceDetails({
-            ...updatedServiceDetails,
-            id,
-            owner: serviceDetails?.owner,
-          });
+          setServiceDetails(res.data);
           setIsEdit(false);
         })
         .catch((error: AxiosError) => {
@@ -788,6 +785,7 @@ const ServicePage: FunctionComponent = () => {
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
+      description: serviceDetails?.description,
     };
 
     return new Promise<void>((resolve, reject) => {
