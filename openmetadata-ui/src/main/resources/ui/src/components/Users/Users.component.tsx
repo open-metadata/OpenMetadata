@@ -97,11 +97,7 @@ const Users = ({
   const fetchTeams = () => {
     getTeams(['users'])
       .then((res: AxiosResponse) => {
-        if (res.data) {
-          setTeams(res.data.data);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
+        setTeams(res.data.data);
       })
       .catch((err: AxiosError) => {
         showErrorToast(

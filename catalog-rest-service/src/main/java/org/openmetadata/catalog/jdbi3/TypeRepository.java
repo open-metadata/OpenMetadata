@@ -84,7 +84,12 @@ public class TypeRepository extends EntityRepository<Type> {
 
   @Override
   protected void postDelete(Type entity) {
-    TypeRegistry.removeType(entity.getName());
+    TypeRegistry.instance().removeType(entity.getName());
+  }
+
+  @Override
+  protected void postUpdate(Type entity) {
+    TypeRegistry.instance().addType(entity);
   }
 
   @Override
@@ -95,6 +100,7 @@ public class TypeRepository extends EntityRepository<Type> {
   public PutResponse<Type> addCustomField(UriInfo uriInfo, String updatedBy, String id, CustomField field)
       throws IOException {
     Type type = dao.findEntityById(UUID.fromString(id), Include.NON_DELETED);
+    field.setFieldType(dao.findEntityReferenceById(field.getFieldType().getId(), Include.NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
       throw new IllegalArgumentException("Field types can't be extended");
     }

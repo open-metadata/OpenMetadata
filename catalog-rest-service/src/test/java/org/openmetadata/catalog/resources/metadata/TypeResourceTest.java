@@ -41,6 +41,7 @@ import org.openmetadata.catalog.entity.type.CustomField;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -91,9 +92,13 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertEquals(fieldA, tableEntity.getCustomFields().get(0));
 
     // Add a second field with name intB with type integer
-    CustomField fieldB =
-        new CustomField().withName("intB").withDescription("intB").withFieldType(INT_TYPE.getEntityReference());
+    EntityReference typeRef =
+        new EntityReference()
+            .withType(INT_TYPE.getEntityReference().getType())
+            .withId(INT_TYPE.getEntityReference().getId());
+    CustomField fieldB = new CustomField().withName("intB").withDescription("intB").withFieldType(typeRef);
     tableEntity = addCustomField(tableEntity.getId(), fieldB, Status.OK, ADMIN_AUTH_HEADERS);
+    fieldB.setFieldType(INT_TYPE.getEntityReference());
     assertEquals(2, tableEntity.getCustomFields().size());
     assertEquals(fieldA, tableEntity.getCustomFields().get(0));
     assertEquals(fieldB, tableEntity.getCustomFields().get(1));
