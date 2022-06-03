@@ -215,7 +215,4 @@ module.exports = {
       openAnalyzer: false,
     }),
   ],
-
-  // Source map
-  devtool: 'source-map',
 };
