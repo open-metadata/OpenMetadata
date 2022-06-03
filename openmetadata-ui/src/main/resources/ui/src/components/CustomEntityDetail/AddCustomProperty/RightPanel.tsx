@@ -17,16 +17,16 @@ export const RightPanel = () => {
   return (
     <Fragment>
       <h6 className="tw-heading tw-text-base" data-testid="header">
-        Add a Custom Field
+        Add a Custom Property
       </h6>
       <div className="tw-mb-5" data-testid="body">
-        OpenMetadata supports custom fields in the Table entity. Create a custom
-        field by adding a unique field name. The name must start with a
-        lowercase letter, as preferred in the camelCase format. Uppercase
+        OpenMetadata supports custom properties in the Table entity. Create a
+        custom property by adding a unique property name. The name must start
+        with a lowercase letter, as preferred in the camelCase format. Uppercase
         letters and numbers can be included in the field name; but spaces,
-        underscores, and dots are not supported. Select the preferred field Type
-        from among the options provided. Describe your custom field to provide
-        more information to your team.
+        underscores, and dots are not supported. Select the preferred property
+        Type from among the options provided. Describe your custom property to
+        provide more information to your team.
       </div>
     </Fragment>
   );
