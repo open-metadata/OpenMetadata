@@ -14,6 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Paging } from '../../generated/type/paging';
 import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
 import TeamsAndUsers from './TeamsAndUsers.component';
 import { MOCK_SELECTED_TEAM } from './TeamsAndUsers.mock';
@@ -25,10 +26,11 @@ const mockProps: TeamsAndUsersProps = {
   isTeamVisible: false,
   activeUserTab: undefined,
   activeUserTabHandler: jest.fn(),
-  users: [],
-  admins: [],
+  usersCount: 0,
+  adminsCount: 0,
+  userPaging: {} as Paging,
+  currentUserPage: 1,
   selectedUserList: [],
-  bots: [],
   teams: [],
   currentTeam: MOCK_SELECTED_TEAM,
   currentTeamUsers: [],
@@ -60,6 +62,7 @@ const mockProps: TeamsAndUsersProps = {
   userSearchTerm: '',
   handleAddNewUser: jest.fn(),
   afterDeleteAction: jest.fn(),
+  userPagingHandler: jest.fn(),
 };
 
 jest.mock(

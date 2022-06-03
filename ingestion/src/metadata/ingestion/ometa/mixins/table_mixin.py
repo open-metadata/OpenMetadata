@@ -113,7 +113,6 @@ class OMetaTableMixin:
                 f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
                 data=query.json(),
             )
-        return None
 
     def publish_table_usage(
         self, table: Table, table_usage_request: TableUsageRequest

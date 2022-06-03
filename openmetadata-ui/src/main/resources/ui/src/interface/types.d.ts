@@ -618,4 +618,9 @@ declare module 'Models' {
   }
 
   export type ImageShape = 'circle' | 'square';
+
+  export interface SelectableOption {
+    readonly label: string;
+    readonly value: string;
+  }
 }

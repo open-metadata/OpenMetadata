@@ -122,6 +122,37 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
+export const BIG_QUERY_TABLE = {
+  term: 'users',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'modified-leaf-330420',
+  schema: 'stackoverflow',
+  entityType: 'database',
+};
+
+export const MY_SQL_TABLE = {
+  term: 'user_entity',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'openmetadata_db',
+  schema: 'openmetadata_db',
+  entityType: 'database',
+};
+
+export const RED_SHIFT_TABLE = {
+  term: 'raw_customers',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'dev',
+  schema: 'dbt_jaffle',
+  entityType: 'database',
+};
+
+export const SNOWFLAKE_TABLE = {
+  term: 'snow_t1',
+  entity: MYDATA_SUMMARY_OPTIONS.tables,
+  db: 'TESTDB',
+  schema: 'PUBLIC',
+  entityType: 'database',
+};
 export const NEW_TAG_CATEGORY = {
   name: 'TestCategory',
   description: 'This is the TestCategory',
@@ -129,4 +160,21 @@ export const NEW_TAG_CATEGORY = {
 export const NEW_TAG = {
   name: 'test',
   description: 'This is the Test tag',
+};
+
+export const NEW_GLOSSARY = {
+  name: 'Business Glossary',
+  description: 'This is the Business glossary',
+};
+export const NEW_GLOSSARY_TERMS = {
+  term_1: {
+    name: 'Purchase',
+    description: 'This is the Purchase',
+    synonyms: 'buy,collect,acquire',
+  },
+  term_2: {
+    name: 'Sales',
+    description: 'This is the Sales',
+    synonyms: 'give,disposal,deal',
+  },
 };

@@ -37,7 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.dbt_souce import DBTSource
+from metadata.ingestion.source.database.dbt_source import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils.connections import (
@@ -158,7 +158,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
 
     def get_table_names(
         self, schema: str, inspector: Inspector
-    ) -> Optional[Tuple[str, str]]:
+    ) -> Optional[Iterable[Tuple[str, str]]]:
         if self.source_config.includeTables:
             for table in inspector.get_table_names(schema):
                 yield table, "Regular"
@@ -208,6 +208,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         return self._connection
 
     def close(self):
+        self._create_dbt_lineage()
         if self.connection is not None:
             self.connection.close()
 

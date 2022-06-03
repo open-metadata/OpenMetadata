@@ -88,6 +88,7 @@ describe('Test SearchedData Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -106,6 +107,7 @@ describe('Test SearchedData Component', () => {
   it('Should display table card according to data provided in props', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -124,6 +126,7 @@ describe('Test SearchedData Component', () => {
   it('If children is provided it should display', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -141,6 +144,7 @@ describe('Test SearchedData Component', () => {
   it('Pagination Should be there if data is more than 10 count', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={mockData}
         paginate={mockPaginate}
@@ -158,6 +162,7 @@ describe('Test SearchedData Component', () => {
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         showOnboardingTemplate
         currentPage={0}
         data={[]}
@@ -175,6 +180,7 @@ describe('Test SearchedData Component', () => {
   it('ErrorPlaceHolderES component should display if there is no data', () => {
     const { container } = render(
       <SearchedData
+        isFilterSelected
         currentPage={0}
         data={[]}
         paginate={mockPaginate}

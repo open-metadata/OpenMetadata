@@ -156,6 +156,7 @@ const TourPage = () => {
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
+            isFilterSelected
             error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}

@@ -91,6 +91,7 @@ const Explore: React.FC<ExploreProps> = ({
   updateTopicCount,
   updateDashboardCount,
   updatePipelineCount,
+  isFilterSelected,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -619,6 +620,7 @@ const Explore: React.FC<ExploreProps> = ({
             showResultCount
             currentPage={currentPage}
             data={data}
+            isFilterSelected={isFilterSelected}
             isLoading={
               !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
             }

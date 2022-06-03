@@ -1,19 +1,27 @@
 source:
   type: powerbi
-  serviceName: local_powerbi
+  serviceName: local_power11
   serviceConnection:
     config:
       clientId: client_id
       clientSecret: client_secret
-      redirectURI: http://localhost:8585/callback
-      hostPort: https://analysis.windows.net/powerbi
+      tenantId: tenant_id
       scope:
-      - scope
-      - https://analysis.windows.net/powerbi/api/App.Read.All
-      credentials: path
+        - https://analysis.windows.net/powerbi/api/.default
       type: PowerBI
   sourceConfig:
-    config: {}
+    config:
+      chartFilterPattern:
+        includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
+          - Total Revenue
+      dashboardFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
 sink:
   type: metadata-rest
   config: {}

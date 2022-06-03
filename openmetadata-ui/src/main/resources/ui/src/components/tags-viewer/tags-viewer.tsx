@@ -24,6 +24,8 @@ import { TagsViewerProps } from './tags-viewer.interface';
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
+  type = 'label',
+  showStartWith = true,
 }: TagsViewerProps) => {
   const getTagsElement = (tag: EntityTags, index?: number) => {
     const otherProps: Record<string, string | number> = {};
@@ -38,9 +40,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
           { 'diff-removed': tag?.removed }
         )}
         showOnlyName={tag.source === Source.Glossary}
-        startWith="#"
+        startWith={showStartWith ? '#' : undefined}
         tag={tag}
-        type="label"
+        type={type}
         {...otherProps}
       />
     );

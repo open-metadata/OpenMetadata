@@ -62,7 +62,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { DataObj, ServiceDataObj } from '../../interface/service.interface';
+import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityDeleteMessage,
@@ -598,7 +598,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={topic.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={topic.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -611,7 +616,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={dashboard.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={dashboard.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -624,7 +634,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {pipeline.tags && pipeline.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={pipeline.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={pipeline.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -769,7 +784,7 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      ...serviceDetails,
+      connection: serviceDetails?.connection,
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
@@ -843,7 +858,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as DataObj}
+            serviceDetails={serviceDetails as ServiceDataObj}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}

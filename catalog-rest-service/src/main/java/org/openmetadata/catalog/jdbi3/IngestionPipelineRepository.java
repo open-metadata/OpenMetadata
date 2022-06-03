@@ -21,8 +21,8 @@ import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.metadataIngestion.LogLevels;
+import org.openmetadata.catalog.metadataIngestion.SourceConfig;
 import org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityReference;
@@ -33,8 +33,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,source,airflowConfig,loggerLevel";
-  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,source,airflowConfig,loggerLevel";
+  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel";
+  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel";
   private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
@@ -108,28 +108,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  protected void postUpdate(IngestionPipeline entity) {
-    deploy(entity); // Deploy the ingestion pipeline
-  }
-
-  @Override
-  protected void postCreate(IngestionPipeline entity) {
-    deploy(entity); // Deploy the ingestion pipeline
-  }
-
-  @Override
   protected void postDelete(IngestionPipeline entity) {
     pipelineServiceClient.deletePipeline(entity.getName());
   }
 
   public void setPipelineServiceClient(PipelineServiceClient client) {
     pipelineServiceClient = client;
-  }
-
-  private void deploy(IngestionPipeline ingestionPipeline) {
-    if (Boolean.TRUE.equals(ingestionPipeline.getAirflowConfig().getForceDeploy())) {
-      pipelineServiceClient.deployPipeline(ingestionPipeline);
-    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -140,24 +124,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateSource(original.getSource(), updated.getSource());
+      updateSourceConfig(original.getSourceConfig(), updated.getSourceConfig());
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateOpenMetadataServerConnection(
           original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
     }
 
-    private void updateSource(Source origSource, Source updatedSource) throws JsonProcessingException {
-      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getSourceConfig().getConfig()));
-      JSONObject updatedSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(updatedSource.getSourceConfig().getConfig()));
-      JSONObject origSourceConnection = new JSONObject(JsonUtils.pojoToJson(origSource.getServiceConnection()));
-      JSONObject updatedSourceConnection = new JSONObject(JsonUtils.pojoToJson(updatedSource.getServiceConnection()));
+    private void updateSourceConfig(SourceConfig origSource, SourceConfig updatedSource)
+        throws JsonProcessingException {
+      JSONObject origSourceConfig = new JSONObject(JsonUtils.pojoToJson(origSource.getConfig()));
+      JSONObject updatedSourceConfig = new JSONObject(JsonUtils.pojoToJson(updatedSource.getConfig()));
 
-      if (!origSource.getServiceName().equals(updatedSource.getServiceName())
-          || !origSourceConfig.similar(updatedSourceConfig)
-          || !origSourceConnection.similar(updatedSourceConnection)) {
-        recordChange("source", origSource, updatedSource);
+      if (!origSourceConfig.similar(updatedSourceConfig)) {
+        recordChange("sourceConfig", origSource, updatedSource);
       }
     }
 
