@@ -29,9 +29,7 @@ description: >-
 ![](<../../../.gitbook/assets/image (60).png>)
 
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
-* Provide the User Type.
-  * Chose **External** if you are testing,
-  * Otherwise chose **Internal**
+* Choose User Type **Internal**.
 
 ![](<../../../.gitbook/assets/image (52) (2) (1) (1).png>)
 
