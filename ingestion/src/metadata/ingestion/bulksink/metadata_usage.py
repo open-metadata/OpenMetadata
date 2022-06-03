@@ -236,7 +236,7 @@ class MetadataUsageBulkSink(BulkSink):
                         fullyQualifiedName=str(joined_column_fqn), joinCount=1
                     )
                 else:
-                    logger.info(
+                    logger.debug(
                         f"Skipping join columns for {column} {joined_column_fqn}"
                     )
             column_joins_dict[column_join.tableColumn.column] = joined_with

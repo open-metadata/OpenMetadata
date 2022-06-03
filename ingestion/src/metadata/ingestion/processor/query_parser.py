@@ -75,7 +75,6 @@ class QueryParserProcessor(Processor):
                     str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
                 ).date()
             parser = Parser(record.query)
-            parser._logger.setLevel("CRITICAL")  # To ignore sql_metadata logs
             columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(
                 tables=parser.tables,

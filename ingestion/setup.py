@@ -37,7 +37,7 @@ base_requirements = {
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
-    "sql-metadata~=2.5.0",
+    "sql-metadata~=2.0.0",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",

@@ -46,6 +46,8 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     """
     Get fqn of column if exist in table entity
     """
+    if not table_entity:
+        return
     for tbl_column in table_entity.columns:
         if column.lower() == tbl_column.name.__root__.lower():
             return tbl_column.fullyQualifiedName.__root__
@@ -61,23 +63,27 @@ def search_table_entities(
     """
     Method to get table entity from database, database_schema & table name
     """
-    table_fqns = fqn.build(
-        metadata,
-        entity_type=Table,
-        service_name=service_name,
-        database_name=database,
-        schema_name=database_schema,
-        table_name=table,
-        fetch_multiple_entities=True,
-    )
-    table_entities = []
-    for table_fqn in table_fqns or []:
-        try:
-            table_entity = metadata.get_by_name(Table, fqn=table_fqn)
-            table_entities.append(table_entity)
-        except APIError:
-            logger.debug(f"Table not found for fqn: {fqn}")
-    return table_entities
+    try:
+        table_fqns = fqn.build(
+            metadata,
+            entity_type=Table,
+            service_name=service_name,
+            database_name=database,
+            schema_name=database_schema,
+            table_name=table,
+            fetch_multiple_entities=True,
+        )
+        table_entities = []
+        for table_fqn in table_fqns or []:
+            try:
+                table_entity = metadata.get_by_name(Table, fqn=table_fqn)
+                table_entities.append(table_entity)
+            except APIError:
+                logger.debug(f"Table not found for fqn: {fqn}")
+        return table_entities
+    except Exception as err:
+        logger.debug(traceback.format_exc())
+        logger.error(err)
 
 
 def get_column_lineage(
