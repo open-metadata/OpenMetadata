@@ -62,15 +62,16 @@ export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
+export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
+export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
-const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-const PLAEHOLDER_ROUTE_VERSION = ':version';
-const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
-const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
-const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-const PLACEHOLDER_USER_NAME = ':username';
-const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_USER_NAME = ':username';
+export const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
@@ -169,6 +170,8 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
+  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
+  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -214,9 +217,11 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
-  CUSTOM_ENTITY: `/custom-entity`,
-  CUSTOM_ENTITY_DETAIL: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
-  ADD_CUSTOM_FIELD: `/custom-entity/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
+  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CUSTOM_PROPERTIES: `/custom-properties`,
+  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -368,8 +373,17 @@ export const getBotsPath = (botsName: string) => {
   return path;
 };
 
-export const getAddCustomFieldPath = (entityTypeFQN: string) => {
-  let path = ROUTES.ADD_CUSTOM_FIELD;
+export const getMlModelPath = (mlModelFqn: string, tab = '') => {
+  let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
+export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_PROPERTY;
   path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
   return path;
@@ -396,8 +410,8 @@ export const navLinkDevelop = [
 export const navLinkSettings = [
   { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
   {
-    name: 'Custom Entity',
-    to: '/custom-entity',
+    name: 'Custom Properties',
+    to: '/custom-properties',
     disabled: false,
     isAdminOnly: true,
   },

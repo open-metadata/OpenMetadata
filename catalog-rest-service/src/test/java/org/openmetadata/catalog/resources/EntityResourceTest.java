@@ -108,7 +108,7 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.entity.type.Category;
-import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
@@ -1139,27 +1139,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TypeResourceTest typeResourceTest = new TypeResourceTest();
     INT_TYPE = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
-    Type entity = typeResourceTest.getEntityByName(this.entityType, "customFields", ADMIN_AUTH_HEADERS);
-    CustomField fieldA =
-        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
-    CustomField fieldB =
-        new CustomField()
+    Type entity = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
+    CustomProperty fieldA =
+        new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    CustomProperty fieldB =
+        new CustomProperty()
             .withName("stringB")
             .withDescription("stringB")
-            .withFieldType(STRING_TYPE.getEntityReference());
-    typeResourceTest.addCustomField(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
-    typeResourceTest.addCustomField(entity.getId(), fieldB, OK, ADMIN_AUTH_HEADERS);
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addCustomProperty(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
+    typeResourceTest.addCustomProperty(entity.getId(), fieldB, OK, ADMIN_AUTH_HEADERS);
 
     // Add invalid custom fields to the entity - custom field has invalid type
     Type INVALID_TYPE =
         new Type().withId(UUID.randomUUID()).withName("invalid").withCategory(Category.Field).withSchema("{}");
-    CustomField fieldInvalid =
-        new CustomField()
+    CustomProperty fieldInvalid =
+        new CustomProperty()
             .withName("invalid")
             .withDescription("invalid")
-            .withFieldType(INVALID_TYPE.getEntityReference());
+            .withPropertyType(INVALID_TYPE.getEntityReference());
     assertResponse(
-        () -> typeResourceTest.addCustomField(entity.getId(), fieldInvalid, OK, ADMIN_AUTH_HEADERS),
+        () -> typeResourceTest.addCustomProperty(entity.getId(), fieldInvalid, OK, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         CatalogExceptionMessage.entityNotFound(Entity.TYPE, INVALID_TYPE.getId()));
 

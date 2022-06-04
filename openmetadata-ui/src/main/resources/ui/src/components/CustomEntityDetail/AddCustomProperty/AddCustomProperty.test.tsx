@@ -14,10 +14,10 @@
 import { findByTestId, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { addFieldToEntity } from '../../../axiosAPIs/metadataTypeAPI';
-import AddCustomField from './AddCustomField';
+import { addPropertyToEntity } from '../../../axiosAPIs/metadataTypeAPI';
+import AddCustomProperty from './AddCustomProperty';
 
-const mockFieldTypes = [
+const mockPropertyTypes = [
   {
     id: '153a0c07-6480-404e-990b-555a42c8a7b5',
     name: 'date',
@@ -185,16 +185,16 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../axiosAPIs/metadataTypeAPI', () => ({
-  addFieldToEntity: jest
+  addPropertyToEntity: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockFieldTypes[0] })),
+    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
   getTypeByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockFieldTypes[0] })),
+    .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes[0] })),
   getTypeListByCategory: jest
     .fn()
     .mockImplementation(() =>
-      Promise.resolve({ data: { data: mockFieldTypes } })
+      Promise.resolve({ data: { data: mockPropertyTypes } })
     ),
 }));
 
@@ -239,9 +239,9 @@ jest.mock(
       )
 );
 
-describe('Test Add Custom Field Component', () => {
+describe('Test Add Custom Property Component', () => {
   it('Should render component', async () => {
-    const { container } = render(<AddCustomField />, {
+    const { container } = render(<AddCustomProperty />, {
       wrapper: MemoryRouter,
     });
 
@@ -272,7 +272,7 @@ describe('Test Add Custom Field Component', () => {
   });
 
   it('Test create field flow', async () => {
-    const { container } = render(<AddCustomField />, {
+    const { container } = render(<AddCustomProperty />, {
       wrapper: MemoryRouter,
     });
 
@@ -304,6 +304,6 @@ describe('Test Add Custom Field Component', () => {
 
     fireEvent.click(createButton);
 
-    expect(addFieldToEntity).toBeCalled();
+    expect(addPropertyToEntity).toBeCalled();
   });
 });

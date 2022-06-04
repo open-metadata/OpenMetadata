@@ -62,7 +62,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { DataObj, ServiceDataObj } from '../../interface/service.interface';
+import { ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityDeleteMessage,
@@ -755,20 +755,17 @@ const ServicePage: FunctionComponent = () => {
       const { id } = serviceDetails;
 
       const updatedServiceDetails = {
-        ...serviceDetails,
+        connection: serviceDetails?.connection,
         name: serviceDetails.name,
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
+        owner: serviceDetails.owner,
       };
 
       updateService(serviceName, id, updatedServiceDetails)
-        .then(() => {
+        .then((res: AxiosResponse) => {
           setDescription(updatedHTML);
-          setServiceDetails({
-            ...updatedServiceDetails,
-            id,
-            owner: serviceDetails?.owner,
-          });
+          setServiceDetails(res.data);
           setIsEdit(false);
         })
         .catch((error: AxiosError) => {
@@ -788,6 +785,7 @@ const ServicePage: FunctionComponent = () => {
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
+      description: serviceDetails?.description,
     };
 
     return new Promise<void>((resolve, reject) => {
@@ -858,7 +856,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as DataObj}
+            serviceDetails={serviceDetails as ServiceDataObj}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}

@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 
@@ -115,7 +115,7 @@ class OMetaTableMixin:
             )
 
     def publish_table_usage(
-        self, table: Table, table_usage_request: TableUsageRequest
+        self, table: Table, table_usage_request: UsageRequest
     ) -> None:
         """
         POST usage details for a Table

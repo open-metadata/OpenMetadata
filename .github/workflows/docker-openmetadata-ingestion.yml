@@ -32,6 +32,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get install -y python3-venv antlr4
+
+      - name: Install open-metadata dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_dev generate
       
       - name: Build and push
         uses: docker/build-push-action@v2

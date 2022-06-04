@@ -101,6 +101,7 @@ class PowerbiSource(DashboardSourceService):
         yield from self.fetch_dashboard_charts(dashboard_details)
         yield Dashboard(
             name=dashboard_details["id"],
+            # PBI has no hostPort property. All URL details are present in the webUrl property.
             url=dashboard_details["webUrl"],
             displayName=dashboard_details["displayName"],
             description="",
@@ -193,7 +194,8 @@ class PowerbiSource(DashboardSourceService):
                     name=chart["id"],
                     displayName=chart["title"],
                     description="",
-                    chart_type="",
+                    chart_type="",  # Fix this with https://github.com/open-metadata/OpenMetadata/issues/1673
+                    # PBI has no hostPort property. All URL details are present in the webUrl property.
                     url=chart["embedUrl"],
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
