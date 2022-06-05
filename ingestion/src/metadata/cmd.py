@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import List, Optional, Tuple
 
 import click
@@ -99,49 +100,31 @@ def profile(config: str) -> None:
 
 
 @metadata.command()
-@click.option(
-    "-c",
-    "--config",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Workflow config",
-    required=True,
-)
-def report(config: str) -> None:
-    """Report command to generate static pages with metadata"""
-    config_file = pathlib.Path(config)
-    workflow_config = load_config_file(config_file)
-    file_sink = {"type": "file", "config": {"filename": "/tmp/datasets.json"}}
+@click.option("-h", "--host", help="Webserver Host", type=str, default="0.0.0.0")
+@click.option("-p", "--port", help="Webserver Port", type=int, default=8000)
+def webhook(host: str, port: int) -> None:
+    """Simple Webserver to test webhook metadata events"""
 
-    try:
-        logger.info(f"Using config: {workflow_config}")
-        if workflow_config.get("sink"):
-            del workflow_config["sink"]
-        workflow_config["sink"] = file_sink
-        ### add json generation as the sink
-        workflow = Workflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
-        sys.exit(1)
+    class WebhookHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
 
-    workflow.execute()
-    workflow.stop()
-    ret = workflow.print_status()
-    os.environ.setdefault(
-        "DJANGO_SETTINGS_MODULE", "metadata_server.openmetadata.settings"
-    )
-    try:
-        from django.core.management import call_command
-        from django.core.wsgi import get_wsgi_application
+            message = "Hello, World! Here is a GET response"
+            self.wfile.write(bytes(message, "utf8"))
 
-        application = get_wsgi_application()
-        call_command("runserver", "localhost:8000")
-    except ImportError as exc:
-        logger.error(exc)
-        raise ImportError(
-            "Couldn't import Django. Are you sure it's installed and "
-            "available on your PYTHONPATH environment variable? Did you "
-            "forget to activate a virtual environment?"
-        ) from exc
+        def do_POST(self):
+            content_len = int(self.headers.get("Content-Length"))
+            post_body = self.rfile.read(content_len)
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            logger.info(post_body)
+
+    logger.info(f"Starting server at {host}:{port}")
+    with HTTPServer((host, port), WebhookHandler) as server:
+        server.serve_forever()
 
 
 @metadata.command()
