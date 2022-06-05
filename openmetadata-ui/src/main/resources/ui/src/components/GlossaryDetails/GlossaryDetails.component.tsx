@@ -267,6 +267,13 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     );
   };
 
+  const handleTagContainerClick = () => {
+    if (!isTagEditable) {
+      fetchTags();
+      setIsTagEditable(true);
+    }
+  };
+
   useEffect(() => {
     if (glossary.reviewers && glossary.reviewers.length) {
       setReviewer(
@@ -429,12 +436,11 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                   trigger="click">
                   <div
                     className="tw-inline-block"
-                    onClick={() => {
-                      fetchTags();
-                      setIsTagEditable(true);
-                    }}>
+                    onClick={handleTagContainerClick}>
                     <TagsContainer
                       showAddTagButton
+                      buttonContainerClass="tw--mt-0"
+                      containerClass="tw-flex tw-items-center tw-gap-2"
                       dropDownHorzPosRight={false}
                       editable={isTagEditable}
                       isLoading={isTagLoading}

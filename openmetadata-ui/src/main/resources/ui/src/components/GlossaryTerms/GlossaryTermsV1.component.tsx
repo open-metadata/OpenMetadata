@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, includes, isEqual } from 'lodash';
+import { cloneDeep, includes, isEmpty, isEqual, isUndefined } from 'lodash';
 import {
   EntityTags,
   FormattedGlossaryTermData,
@@ -32,10 +32,10 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/entity/type';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
@@ -53,6 +53,7 @@ import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryRef
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
+import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
 type Props = {
@@ -75,22 +76,26 @@ const GlossaryTermsV1 = ({
   onAssetPaginate,
   onRelatedTermClick,
   afterDeleteAction,
-  handleUserRedirection,
   currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
-  const [activeTab, setActiveTab] = useState(1);
-  const [showRevieweModal, setShowRevieweModal] = useState(false);
-  const [showRelatedTermsModal, setShowRelatedTermsModal] = useState(false);
-  const [isSynonymsEditing, setIsSynonymsEditing] = useState(false);
-  const [isReferencesEditing, setIsReferencesEditing] = useState(false);
-  const [synonyms, setSynonyms] = useState(
+  const [isDescriptionEditable, setIsDescriptionEditable] =
+    useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<number>(1);
+  const [showRevieweModal, setShowRevieweModal] = useState<boolean>(false);
+  const [showRelatedTermsModal, setShowRelatedTermsModal] =
+    useState<boolean>(false);
+  const [isSynonymsEditing, setIsSynonymsEditing] = useState<boolean>(false);
+  const [isReferencesEditing, setIsReferencesEditing] =
+    useState<boolean>(false);
+  const [synonyms, setSynonyms] = useState<string>(
     glossaryTerm.synonyms?.join(',') || ''
   );
-  const [references, setReferences] = useState(glossaryTerm.references || []);
+  const [references, setReferences] = useState<TermReference[]>(
+    glossaryTerm.references || []
+  );
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
   const [relatedTerms, setRelatedTerms] = useState<FormattedGlossaryTermData[]>(
     []
@@ -106,6 +111,7 @@ const GlossaryTermsV1 = ({
       name: 'Related Terms',
       isProtected: false,
       position: 2,
+      count: glossaryTerm.relatedTerms?.length || 0,
     },
     {
       name: 'Assets',
@@ -170,7 +176,7 @@ const GlossaryTermsV1 = ({
     setActiveTab(tab);
   };
 
-  const onDescriptionEdit = (): void => {
+  const onDescriptionEdit = () => {
     setIsDescriptionEditable(true);
   };
   const onCancel = () => {
@@ -296,6 +302,25 @@ const GlossaryTermsV1 = ({
     }
   };
 
+  const handleRemoveSynonym = (_e: React.MouseEvent, synonym: string) => {
+    if (!isUndefined(glossaryTerm.synonyms)) {
+      const synonyms = glossaryTerm.synonyms.filter((d) => d !== synonym);
+      const updatedGlossaryTerm = {
+        ...glossaryTerm,
+        synonyms: synonyms,
+      };
+      setSynonyms(synonyms.join(','));
+      handleGlossaryTermUpdate(updatedGlossaryTerm);
+    }
+  };
+
+  const handleTagContainerClick = () => {
+    if (!isTagEditable) {
+      fetchTags();
+      setIsTagEditable(true);
+    }
+  };
+
   useEffect(() => {
     if (glossaryTerm.reviewers && glossaryTerm.reviewers.length) {
       setReviewer(
@@ -339,7 +364,7 @@ const GlossaryTermsV1 = ({
           data-testid="add-related-term-button"
           size="small"
           theme="primary"
-          variant="contained"
+          variant="outlined"
           onClick={() => setShowRelatedTermsModal(true)}>
           Add Related Term
         </Button>
@@ -402,6 +427,25 @@ const GlossaryTermsV1 = ({
     );
   };
 
+  const getSynonyms = (synonyms: string) => {
+    return !isEmpty(synonyms) ? (
+      synonyms
+        .split(',')
+        .map((synonym) => (
+          <Tags
+            editable
+            isRemovable
+            key={synonym}
+            removeTag={handleRemoveSynonym}
+            tag={synonym}
+            type="border"
+          />
+        ))
+    ) : (
+      <></>
+    );
+  };
+
   const getTabPaneButton = () => {
     if (activeTab === 2) {
       return relatedTerms.length ? AddRelatedTermButton() : undefined;
@@ -439,14 +483,11 @@ const GlossaryTermsV1 = ({
                     trigger="click">
                     <div
                       className="tw-inline-block"
-                      onClick={() => {
-                        if (!isTagEditable) {
-                          fetchTags();
-                          setIsTagEditable(true);
-                        }
-                      }}>
+                      onClick={handleTagContainerClick}>
                       <TagsContainer
                         showAddTagButton
+                        buttonContainerClass="tw--mt-0"
+                        containerClass="tw-flex tw-items-center tw-gap-2"
                         dropDownHorzPosRight={false}
                         editable={isTagEditable}
                         isLoading={isTagLoading}
@@ -463,13 +504,13 @@ const GlossaryTermsV1 = ({
                   </NonAdminAction>
                 </div>
               </div>
-              <div className="tw-mt-6">
+              <div className="tw-mt-5">
                 <p className="tw-text-grey-muted tw-mb-2">Synonyms</p>
                 <div>
                   {isSynonymsEditing ? (
                     <div className="tw-flex tw-items-center tw-gap-1">
                       <input
-                        className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+                        className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-72"
                         data-testid="synonyms"
                         id="synonyms"
                         name="synonyms"
@@ -509,24 +550,70 @@ const GlossaryTermsV1 = ({
                     </div>
                   ) : (
                     <div className="tw-flex tw-group">
-                      <span>{synonyms || '--'}</span>
-                      <div className={classNames('tw-w-5 tw-min-w-max')}>
-                        <NonAdminAction
-                          position="right"
-                          title={TITLE_FOR_NON_ADMIN_ACTION}>
-                          <button
-                            className="tw-opacity-0 tw-ml-2 group-hover:tw-opacity-100 focus:tw-outline-none"
-                            data-testid="edit-synonyms"
-                            onClick={() => setIsSynonymsEditing(true)}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              title="Edit"
-                              width="12px"
-                            />
-                          </button>
-                        </NonAdminAction>
-                      </div>
+                      <NonAdminAction
+                        position="right"
+                        title={TITLE_FOR_NON_ADMIN_ACTION}>
+                        <button
+                          className="focus:tw-outline-none tw-text-primary"
+                          data-testid="edit-synonyms"
+                          onClick={() => setIsSynonymsEditing(true)}>
+                          <Tags
+                            className="tw-font-semibold"
+                            startWith="+ "
+                            tag="Synonyms"
+                            type="border"
+                          />
+                        </button>
+                      </NonAdminAction>
+                      {getSynonyms(synonyms)}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="tw-mt-5">
+                <div className="tw-flex tw-items-center tw-mb-2">
+                  <p className="tw-text-grey-muted tw-mr-2">References</p>
+                  <NonAdminAction
+                    position="right"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className="tw-h-5 tw-px-2"
+                      data-testid="edit-reference"
+                      size="x-small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => setIsReferencesEditing(true)}>
+                      <FontAwesomeIcon icon="plus" />
+                    </Button>
+                  </NonAdminAction>
+                </div>
+                <div>
+                  {references && references.length > 0 && (
+                    <div className="tw-flex">
+                      {references.map((d, i) => (
+                        <Fragment key={i}>
+                          {i > 0 && (
+                            <span className="tw-mr-2 tw-text-info">,</span>
+                          )}
+                          <a
+                            className="link-text-info tw-flex"
+                            data-testid="owner-link"
+                            href={d?.endpoint}
+                            rel="noopener noreferrer"
+                            target="_blank">
+                            <span
+                              className={classNames(
+                                'tw-mr-1 tw-inline-block tw-truncate',
+                                {
+                                  'tw-w-52': (d?.name as string).length > 32,
+                                }
+                              )}
+                              title={d?.name as string}>
+                              {d?.name}
+                            </span>
+                          </a>
+                        </Fragment>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -535,10 +622,7 @@ const GlossaryTermsV1 = ({
           </Card>
         </div>
         <div className="tw-w-3/12">
-          <Card
-            action={AddReviewerButton()}
-            className="tw-mt-4"
-            heading="Reviewer">
+          <Card action={AddReviewerButton()} heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>
         </div>
@@ -550,124 +634,9 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      <div className="tw-flex tw-gap-5 tw-mb-2">
-        <div className="tw-font-medium">Synonyms</div>
-        <div>
-          {isSynonymsEditing ? (
-            <div className="tw-flex tw-items-center tw-gap-1">
-              <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
-                data-testid="synonyms"
-                id="synonyms"
-                name="synonyms"
-                placeholder="Enter comma seprated term"
-                type="text"
-                value={synonyms}
-                onChange={handleValidation}
-              />
-              <div className="tw-flex tw-justify-end" data-testid="buttons">
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                  data-testid="cancelAssociatedTag"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onMouseDown={() => setIsSynonymsEditing(false)}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
-                </Button>
-                <Button
-                  className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                  data-testid="saveAssociatedTag"
-                  size="custom"
-                  theme="primary"
-                  variant="contained"
-                  onMouseDown={handleSynonymsSave}>
-                  <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="tw-flex tw-group">
-              <span>{synonyms || '--'}</span>
-              <div className={classNames('tw-w-5 tw-min-w-max')}>
-                <NonAdminAction
-                  position="right"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <button
-                    className="tw-opacity-0 tw-ml-2 group-hover:tw-opacity-100 focus:tw-outline-none"
-                    data-testid="edit-synonyms"
-                    onClick={() => setIsSynonymsEditing(true)}>
-                    <SVGIcons
-                      alt="edit"
-                      icon="icon-edit"
-                      title="Edit"
-                      width="12px"
-                    />
-                  </button>
-                </NonAdminAction>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="tw-flex tw-gap-5 tw-mb-2">
-        <div className="tw-font-medium">References</div>
-        <div className="tw-flex tw-group">
-          <div>
-            {references && references.length ? (
-              <div className="tw-flex">
-                {references.map((d, i) => (
-                  <Fragment key={i}>
-                    {i > 0 && <span className="tw-mr-2">,</span>}
-                    <a
-                      className="link-text tw-flex"
-                      data-testid="owner-link"
-                      href={d?.endpoint}
-                      rel="noopener noreferrer"
-                      target="_blank">
-                      <span
-                        className={classNames(
-                          'tw-mr-1 tw-inline-block tw-truncate',
-                          {
-                            'tw-w-52': (d?.name as string).length > 32,
-                          }
-                        )}
-                        title={d?.name as string}>
-                        {d?.name}
-                      </span>
-                      <SVGIcons
-                        alt="external-link"
-                        className="tw-align-middle"
-                        icon="external-link"
-                        width="12px"
-                      />
-                    </a>
-                  </Fragment>
-                ))}
-              </div>
-            ) : (
-              '--'
-            )}
-          </div>
-          <div className={classNames('tw-w-5 tw-min-w-max')}>
-            <NonAdminAction position="right" title={TITLE_FOR_NON_ADMIN_ACTION}>
-              <button
-                className="tw-opacity-0 tw-ml-2 group-hover:tw-opacity-100 focus:tw-outline-none"
-                data-testid="edit-reference"
-                onClick={() => setIsReferencesEditing(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </button>
-            </NonAdminAction>
-          </div>
-        </div>
-      </div>
-
+      <p className="tw-text-lg tw-font-medium tw--mt-3">
+        {getEntityName(glossaryTerm as unknown as EntityReference)}
+      </p>
       {/* TODO: Add this stat when supporting status updation  */}
       {/* <div className="tw-flex tw-gap-11 tw-mb-2">
         <div className="tw-font-medium">Status</div>
