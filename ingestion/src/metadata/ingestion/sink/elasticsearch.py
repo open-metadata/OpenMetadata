@@ -90,6 +90,7 @@ class ElasticSearchConfig(ConfigModel):
     verify_certs: bool = False
     timeout: int = 30
     ca_certs: Optional[str] = None
+    recreate_indexes: Optional[bool] = False
 
 
 class ElasticsearchSink(Sink[Entity]):
@@ -175,7 +176,10 @@ class ElasticsearchSink(Sink[Entity]):
         Retrieve all indices that currently have {elasticsearch_alias} alias
         :return: list of elasticsearch indices
         """
-        if self.elasticsearch_client.indices.exists(index_name):
+        if (
+            self.elasticsearch_client.indices.exists(index_name)
+            and not self.config.recreate_indexes
+        ):
             mapping = self.elasticsearch_client.indices.get_mapping()
             if not mapping[index_name]["mappings"]:
                 logger.debug(
@@ -196,6 +200,9 @@ class ElasticsearchSink(Sink[Entity]):
                 + "The index doesn't exist for a newly created ES. It's OK on first run."
             )
             # create new index with mapping
+            self.elasticsearch_client.indices.delete(
+                index=index_name, request_timeout=self.config.timeout
+            )
             self.elasticsearch_client.indices.create(
                 index=index_name, body=es_mapping, request_timeout=self.config.timeout
             )
@@ -315,7 +322,7 @@ class ElasticsearchSink(Sink[Entity]):
             name=table.name.__root__,
             suggest=suggest,
             database_schema=str(database_schema_entity.name.__root__),
-            description=table.description,
+            description=str(table.description.__root__),
             table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
@@ -365,7 +372,7 @@ class ElasticsearchSink(Sink[Entity]):
             service_category="messagingService",
             name=topic.name.__root__,
             suggest=suggest,
-            description=topic.description,
+            description=topic.description.__root__,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -399,7 +406,7 @@ class ElasticsearchSink(Sink[Entity]):
         for chart in charts:
             chart_names.append(chart.displayName)
             if chart.description is not None:
-                chart_descriptions.append(chart.description)
+                chart_descriptions.append(chart.description.__root__)
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN.__root__)
@@ -414,7 +421,7 @@ class ElasticsearchSink(Sink[Entity]):
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
             suggest=suggest,
-            description=dashboard.description,
+            description=dashboard.description.__root__,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -455,7 +462,7 @@ class ElasticsearchSink(Sink[Entity]):
         for task in tasks:
             task_names.append(task.displayName)
             if task.description:
-                task_descriptions.append(task.description)
+                task_descriptions.append(task.description.__root__)
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
@@ -470,7 +477,7 @@ class ElasticsearchSink(Sink[Entity]):
             task_names=task_names,
             task_descriptions=task_descriptions,
             suggest=suggest,
-            description=pipeline.description,
+            description=pipeline.description.__root__,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -547,7 +554,9 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [glossary_term.name], "weight": 10},
         ]
         timestamp = glossary_term.updatedAt.__root__
-        description = glossary_term.description if glossary_term.description else ""
+        description = (
+            glossary_term.description.__root__ if glossary_term.description else ""
+        )
         glossary_term_doc = GlossaryTermESDocument(
             glossary_term_id=str(glossary_term.id.__root__),
             deleted=glossary_term.deleted,
@@ -590,7 +599,7 @@ class ElasticsearchSink(Sink[Entity]):
             )
             column_names.append(col_name)
             if column.description:
-                column_descriptions.append(column.description)
+                column_descriptions.append(column.description.__root__)
             if len(column.tags) > 0:
                 for col_tag in column.tags:
                     tags.add(col_tag.tagFQN.__root__)

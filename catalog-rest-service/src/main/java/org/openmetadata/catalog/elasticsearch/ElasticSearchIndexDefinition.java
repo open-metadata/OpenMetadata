@@ -153,9 +153,14 @@ public class ElasticSearchIndexDefinition {
 
   private void deleteIndex(ElasticSearchIndexType elasticSearchIndexType) {
     try {
-      DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
-      AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
+      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+      gRequest.local(false);
+      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+      if (exists) {
+        DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
+        AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
+        LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
+      }
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
