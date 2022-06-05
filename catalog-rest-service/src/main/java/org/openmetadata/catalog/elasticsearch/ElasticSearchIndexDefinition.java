@@ -216,7 +216,7 @@ class ElasticSearchIndex {
   String displayName;
 
   String fqdn;
-  String service;
+  EntityReference service;
   Boolean deleted;
 
   @JsonProperty("service_type")
@@ -361,7 +361,6 @@ class TableESIndex extends ElasticSearchIndex {
             .fqdn(table.getFullyQualifiedName())
             .suggest(suggest)
             .entityType("table")
-            .serviceCategory("databaseService")
             .columnNames(columnNames)
             .columnDescriptions(columnDescriptions)
             .tableType(tableType)
@@ -377,7 +376,7 @@ class TableESIndex extends ElasticSearchIndex {
     }
 
     if (table.getService() != null) {
-      tableESIndexBuilder.service(table.getService().getName());
+      tableESIndexBuilder.service(table.getService());
       tableESIndexBuilder.serviceType(table.getServiceType().toString());
     }
 
@@ -469,7 +468,7 @@ class TopicESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (topic.getService() != null) {
-      topicESIndexBuilder.service(topic.getService().getName());
+      topicESIndexBuilder.service(topic.getService());
       topicESIndexBuilder.serviceType(topic.getServiceType().toString());
     }
     if (topic.getFollowers() != null) {
@@ -559,7 +558,7 @@ class DashboardESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (dashboard.getService() != null) {
-      dashboardESIndexBuilder.service(dashboard.getService().getName());
+      dashboardESIndexBuilder.service(dashboard.getService());
       dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
     }
     if (dashboard.getUsageSummary() != null) {
@@ -642,7 +641,7 @@ class PipelineESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (pipeline.getService() != null) {
-      pipelineESIndexBuilder.service(pipeline.getService().getName());
+      pipelineESIndexBuilder.service(pipeline.getService());
       pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
     }
     if (pipeline.getFollowers() != null) {
@@ -680,10 +679,10 @@ class UserESIndex {
   String entityType;
 
   @JsonProperty("teams")
-  List<String> teams;
+  List<EntityReference> teams;
 
   @JsonProperty("roles")
-  List<String> roles;
+  List<EntityReference> roles;
 
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
@@ -694,21 +693,19 @@ class UserESIndex {
   Boolean deleted;
 
   public static UserESIndexBuilder builder(User user) {
-    List<String> teams = new ArrayList<>();
-    List<String> roles = new ArrayList<>();
+    List<EntityReference> teams = new ArrayList<>();
+    List<EntityReference> roles = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
     Long updatedTimestamp = user.getUpdatedAt();
     String displayName = user.getDisplayName() != null ? user.getDisplayName() : "";
     if (user.getTeams() != null) {
-      for (EntityReference team : user.getTeams()) {
-        teams.add(team.getId().toString());
-      }
+      teams.addAll(user.getTeams());
     }
 
     for (EntityReference role : user.getRoles()) {
-      roles.add(role.getId().toString());
+      roles.addAll(roles);
     }
 
     return internalBuilder()
@@ -743,10 +740,13 @@ class TeamESIndex {
   String entityType;
 
   @JsonProperty("users")
-  List<String> users;
+  List<EntityReference> users;
 
   @JsonProperty("owns")
   List<String> owns;
+
+  @JsonProperty("default_roles")
+  List<EntityReference> defaultRoles;
 
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
@@ -757,7 +757,8 @@ class TeamESIndex {
   Boolean deleted;
 
   public static TeamESIndexBuilder builder(Team team) {
-    List<String> users = new ArrayList<>();
+    List<EntityReference> users = new ArrayList<>();
+    List<EntityReference> defaultRoles = new ArrayList<>();
     List<String> owns = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
@@ -765,14 +766,15 @@ class TeamESIndex {
     Long updatedTimestamp = team.getUpdatedAt();
     String displayName = team.getDisplayName() != null ? team.getDisplayName() : "";
     if (team.getUsers() != null) {
-      for (EntityReference user : team.getUsers()) {
-        users.add(user.getId().toString());
-      }
+      users.addAll(team.getUsers());
     }
     if (team.getOwns() != null) {
       for (EntityReference own : team.getOwns()) {
         owns.add(own.getId().toString());
       }
+    }
+    if (team.getDefaultRoles() != null) {
+      defaultRoles.addAll(team.getDefaultRoles());
     }
 
     return internalBuilder()
@@ -785,7 +787,8 @@ class TeamESIndex {
         .entityType("team")
         .suggest(suggest)
         .owns(owns)
-        .users(users);
+        .users(users)
+        .defaultRoles(defaultRoles);
   }
 }
 

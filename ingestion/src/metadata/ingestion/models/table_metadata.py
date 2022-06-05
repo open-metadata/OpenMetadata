@@ -39,9 +39,8 @@ class TableESDocument(BaseModel):
     deleted: bool
     database: str
     database_schema: str
-    service: str
+    service: EntityReference
     service_type: str
-    service_category: str
     entity_type: str = "table"
     name: str
     suggest: List[dict]
@@ -70,9 +69,8 @@ class TopicESDocument(BaseModel):
 
     topic_id: str
     deleted: bool
-    service: str
+    service: EntityReference
     service_type: str
-    service_category: str
     entity_type: str = "topic"
     name: str
     suggest: List[dict]
@@ -92,9 +90,8 @@ class DashboardESDocument(BaseModel):
 
     dashboard_id: str
     deleted: bool
-    service: str
+    service: EntityReference
     service_type: str
-    service_category: str
     entity_type: str = "dashboard"
     name: str
     suggest: List[dict]
@@ -122,9 +119,8 @@ class PipelineESDocument(BaseModel):
 
     pipeline_id: str
     deleted: bool
-    service: str
+    service: EntityReference
     service_type: str
-    service_category: str
     entity_type: str = "pipeline"
     name: str
     suggest: List[dict]
@@ -152,8 +148,8 @@ class UserESDocument(BaseModel):
     email: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    teams: List[str]
-    roles: List[str]
+    teams: List[EntityReference]
+    roles: List[EntityReference]
     doc_as_upsert: bool = True
 
 
@@ -167,7 +163,8 @@ class TeamESDocument(BaseModel):
     display_name: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    users: List[str]
+    users: List[EntityReference]
+    default_roles: List[EntityReference]
     owns: List[str]
     doc_as_upsert: bool = True
 

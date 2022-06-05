@@ -317,9 +317,8 @@ class ElasticsearchSink(Sink[Entity]):
             table_id=str(table.id.__root__),
             deleted=table.deleted,
             database=str(database_entity.name.__root__),
-            service=service_entity.name.__root__,
-            service_type=service_entity.serviceType.name,
-            service_category="databaseService",
+            service=database_entity.service,
+            service_type=str(table.serviceType.name),
             name=table.name.__root__,
             suggest=suggest,
             database_schema=str(database_schema_entity.name.__root__),
@@ -368,9 +367,8 @@ class ElasticsearchSink(Sink[Entity]):
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             deleted=topic.deleted,
-            service=service_entity.name.__root__,
-            service_type=service_entity.serviceType.name,
-            service_category="messagingService",
+            service=topic.service,
+            service_type=str(topic.serviceType.name),
             name=topic.name.__root__,
             suggest=suggest,
             description=topic.description.__root__,
@@ -415,9 +413,8 @@ class ElasticsearchSink(Sink[Entity]):
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             deleted=dashboard.deleted,
-            service=service_entity.name.__root__,
-            service_type=service_entity.serviceType.name,
-            service_category="dashboardService",
+            service=dashboard.service,
+            service_type=str(dashboard.serviceType.name),
             name=dashboard.displayName,
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
@@ -471,9 +468,8 @@ class ElasticsearchSink(Sink[Entity]):
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
             deleted=pipeline.deleted,
-            service=service_entity.name.__root__,
-            service_type=service_entity.serviceType.name,
-            service_category="pipelineService",
+            service=pipeline.service,
+            service_type=str(pipeline.serviceType.name),
             name=pipeline.displayName,
             task_names=task_names,
             task_descriptions=task_descriptions,
@@ -528,13 +524,17 @@ class ElasticsearchSink(Sink[Entity]):
         timestamp = team.updatedAt.__root__
         users = []
         owns = []
+        default_roles = []
         if team.users:
-            for user in team.users.__root__:
-                users.append(user.name)
+            for user in team.users:
+                users.append(user)
 
         if team.owns:
             for own in team.owns.__root__:
                 owns.append(str(own.id.__root__))
+        if team.defaultRoles:
+            for role in team.defaultRoles:
+                default_roles.append(role)
 
         team_doc = TeamESDocument(
             team_id=str(team.id.__root__),
@@ -545,6 +545,7 @@ class ElasticsearchSink(Sink[Entity]):
             last_updated_timestamp=timestamp,
             users=list(users),
             owns=list(owns),
+            default_roles=list(default_roles),
         )
 
         return team_doc

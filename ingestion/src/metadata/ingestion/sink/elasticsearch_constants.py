@@ -88,12 +88,43 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service": {
-              "type": "keyword"
+             "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "service_type": {
-              "type": "keyword"
-            },
-            "service_category": {
               "type": "keyword"
             },
             "entity_type": {
@@ -203,12 +234,43 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service": {
-              "type": "keyword"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "service_type": {
-              "type": "keyword"
-            },
-            "service_category": {
               "type": "keyword"
             },
             "entity_type": {
@@ -300,12 +362,43 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service": {
-              "type": "keyword"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "service_type": {
-              "type": "keyword"
-            },
-            "service_category": {
               "type": "keyword"
             },
             "entity_type": {
@@ -415,12 +508,43 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "service": {
-              "type": "keyword"
+              "properties": {
+                "id": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                    }
+                  }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                      "type": "keyword",
+                        "ignore_above": 256
+                    }
+                 }
+               },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+               "type": "boolean"
+              },
+              "href": {
+               "type": "text"
+              }
+             }
             },
             "service_type": {
-              "type": "keyword"
-            },
-            "service_category": {
               "type": "keyword"
             },
             "entity_type": {
@@ -437,76 +561,182 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
 
 USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
-     {
-    "mappings":{
-          "properties": {
-            "name": {
-              "type":"text"
-            },
-            "display_name": {
-              "type": "text"
-            },
-            "email": {
-              "type": "text"
-            },
-            "last_updated_timestamp": {
-              "type": "date",
-              "format": "epoch_second"
-            },
-            "entity_type": {
-              "type": "keyword"
-            },
-            "teams": {
-              "type": "keyword"
-            },
-            "roles": {
-              "type": "keyword"
-            },
-            "deleted": {
-              "type": "boolean"
-            },
-            "suggest": {
-              "type": "completion"
-            }
-          }
-        }
-    }
+      {
+ 	"mappings": {
+ 		"properties": {
+ 			"name": {
+ 				"type": "text"
+ 			},
+ 			"display_name": {
+ 				"type": "text"
+ 			},
+ 			"email": {
+ 				"type": "text"
+ 			},
+ 			"last_updated_timestamp": {
+ 				"type": "date",
+ 				"format": "epoch_second"
+ 			},
+ 			"entity_type": {
+ 				"type": "keyword"
+ 			},
+ 			"teams": {
+ 				"type": "keyword"
+ 			},
+
+ 			"deleted": {
+ 				"type": "boolean"
+ 			},
+ 			"suggest": {
+ 				"type": "completion"
+ 			},
+ 			"roles": {
+ 				"properties": {
+ 					"id": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 36
+ 							}
+ 						}
+ 					},
+ 					"type": {
+ 						"type": "text"
+ 					},
+ 					"name": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 256
+ 							}
+ 						}
+ 					},
+ 					"fullyQualifiedName": {
+ 						"type": "text"
+ 					},
+ 					"description": {
+ 						"type": "text"
+ 					},
+ 					"deleted": {
+ 						"type": "boolean"
+ 					},
+ 					"href": {
+ 						"type": "text"
+ 					}
+ 				}
+ 			}
+ 		}
+ 	}
+ }
     """
 )
 
 TEAM_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     """
      {
-    "mappings":{
-          "properties": {
-            "name": {
-              "type":"text"
-            },
-            "display_name": {
-              "type": "text"
-            },
-            "last_updated_timestamp": {
-              "type": "date",
-              "format": "epoch_second"
-            },
-            "entity_type": {
-              "type": "keyword"
-            },
-            "deleted": {
-              "type": "boolean"
-            },
-            "users": {
-              "type": "keyword"
-            },
-            "owns": {
-              "type": "keyword"
-            },
-            "suggest": {
-              "type": "completion"
-            }
-          }
-        }
-    }
+ 	"mappings": {
+ 		"properties": {
+ 			"name": {
+ 				"type": "text"
+ 			},
+ 			"display_name": {
+ 				"type": "text"
+ 			},
+ 			"last_updated_timestamp": {
+ 				"type": "date",
+ 				"format": "epoch_second"
+ 			},
+ 			"entity_type": {
+ 				"type": "keyword"
+ 			},
+ 			"deleted": {
+ 				"type": "boolean"
+ 			},
+ 			"users": {
+ 				"properties": {
+ 					"id": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 36
+ 							}
+ 						}
+ 					},
+ 					"type": {
+ 						"type": "text"
+ 					},
+ 					"name": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 256
+ 							}
+ 						}
+ 					},
+ 					"fullyQualifiedName": {
+ 						"type": "text"
+ 					},
+ 					"description": {
+ 						"type": "text"
+ 					},
+ 					"deleted": {
+ 						"type": "boolean"
+ 					},
+ 					"href": {
+ 						"type": "text"
+ 					}
+ 				}
+ 			},
+ 			"owns": {
+ 				"type": "keyword"
+ 			},
+ 			"default_roles": {
+ 				"properties": {
+ 					"id": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 36
+ 							}
+ 						}
+ 					},
+ 					"type": {
+ 						"type": "text"
+ 					},
+ 					"name": {
+ 						"type": "keyword",
+ 						"fields": {
+ 							"keyword": {
+ 								"type": "keyword",
+ 								"ignore_above": 256
+ 							}
+ 						}
+ 					},
+ 					"fullyQualifiedName": {
+ 						"type": "text"
+ 					},
+ 					"description": {
+ 						"type": "text"
+ 					},
+ 					"deleted": {
+ 						"type": "boolean"
+ 					},
+ 					"href": {
+ 						"type": "text"
+ 					}
+ 				}
+ 			},
+ 			"suggest": {
+ 				"type": "completion"
+ 			}
+ 		}
+ 	}
+ }
     """
 )
 
