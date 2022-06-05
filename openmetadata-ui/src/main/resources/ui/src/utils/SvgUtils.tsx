@@ -42,6 +42,7 @@ import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
+import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
@@ -180,6 +181,7 @@ export const Icons = {
   VELLIPSIS: 'icon-v-ellipsis',
   COPY: 'copy',
   DELETE: 'icon-delete',
+  DELETE_GRADIANT: 'delete-gradient',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
   INFO: 'icon-info',
@@ -393,6 +395,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE:
       IconComponent = IconDelete;
+
+      break;
+    case Icons.DELETE_GRADIANT:
+      IconComponent = IconDeleteGradiant;
 
       break;
     case Icons.COPY:

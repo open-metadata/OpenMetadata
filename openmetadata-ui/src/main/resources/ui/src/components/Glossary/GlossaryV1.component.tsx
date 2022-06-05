@@ -18,6 +18,7 @@ import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
 import React, { useEffect, useRef, useState } from 'react';
+import { Tooltip } from 'react-tippy';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
@@ -25,8 +26,10 @@ import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
-import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
+import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { generateTreeData } from '../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -35,11 +38,10 @@ import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.compone
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import TreeView from '../common/TreeView/TreeView.component';
 import PageLayout from '../containers/PageLayout';
-import DropDownList from '../dropdown/DropDownList';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -131,29 +133,6 @@ const GlossaryV1 = ({
     setBreadcrumb(newData);
   };
 
-  const handleSelectedAction = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    switch (value) {
-      case 'add_term': {
-        handleAddGlossaryTermClick();
-
-        break;
-      }
-
-      case 'delete': {
-        setIsDelete(true);
-
-        break;
-      }
-
-      default:
-        break;
-    }
-    setShowActions(false);
-  };
-
   const handleDelete = () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
@@ -161,6 +140,7 @@ const GlossaryV1 = ({
     } else {
       onGlossaryTermDelete(id);
     }
+    afterDeleteAction?.();
   };
 
   const handleTreeClick = (
@@ -184,6 +164,32 @@ const GlossaryV1 = ({
   useEffect(() => {
     handleBreadcrum(selectedKey);
   }, [selectedKey]);
+
+  const manageButtonContent = () => {
+    return (
+      <div
+        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        onClick={() => setIsDelete(true)}>
+        <div>
+          <SVGIcons
+            alt="Delete"
+            className="tw-w-12"
+            icon={Icons.DELETE_GRADIANT}
+          />
+        </div>
+        <div className="tw-text-left">
+          <p className="tw-font-medium">
+            Delete Glossary “{selectedData?.displayName || selectedData?.name}”
+          </p>
+          <p className="tw-text-grey-muted tw-text-xs">
+            Deleting this Glossary{' '}
+            {(selectedData as GlossaryTerm)?.glossary && 'Term'} will
+            permanently remove its metadata from OpenMetadata.
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const fetchLeftPanel = () => {
     return (
@@ -252,10 +258,10 @@ const GlossaryV1 = ({
           data-testid="category-name">
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </div>
-        <div className="tw-relative tw-mr-2">
+        <div className="tw-relative tw-mr-2 tw--mt-2">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
+              className={classNames('tw-h-8 tw-rounded tw-mb-1 tw-mr-2', {
                 'tw-opacity-40': isHasAccess,
               })}
               data-testid="add-new-tag-button"
@@ -266,13 +272,31 @@ const GlossaryV1 = ({
               Add term
             </Button>
           </NonAdminAction>
-          {showActions && (
-            <DropDownList
-              horzPosRight
-              dropDownList={getActionsList()}
-              onSelect={handleSelectedAction}
-            />
-          )}
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className="tw-h-8 tw-rounded tw-mb-1 tw-flex"
+              data-testid="manage-button"
+              disabled={isHasAccess}
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={() => setShowActions(true)}>
+              <span className="tw-mr-2">Manage</span>
+              <Tooltip
+                arrow
+                arrowSize="big"
+                disabled={!isAuthDisabled && !isAdminUser}
+                html={manageButtonContent()}
+                open={showActions}
+                position="bottom-end"
+                theme="light"
+                onRequestClose={() => setShowActions(false)}>
+                <span>
+                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                </span>
+              </Tooltip>
+            </Button>
+          </NonAdminAction>
         </div>
       </div>
       {isChildLoading ? (
@@ -302,12 +326,10 @@ const GlossaryV1 = ({
         ))
       )}
       {selectedData && isDelete && (
-        <ConfirmationModal
-          bodyText={`You want to delete ${selectedData.name} permanently? This action cannot be reverted.`}
-          cancelText="Cancel"
-          confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-          confirmText="Delete"
-          header="Are you sure?"
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(selectedData.name, '')}
+          entityName={selectedData.name}
+          entityType="Glossary"
           loadingState={deleteStatus}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}

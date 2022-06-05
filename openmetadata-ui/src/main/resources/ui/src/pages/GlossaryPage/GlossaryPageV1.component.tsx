@@ -578,16 +578,15 @@ const GlossaryPageV1 = () => {
     setDeleteStatus('waiting');
     deleteGlossary(id)
       .then(() => {
-        setDeleteStatus('initial');
-        fetchGlossaryList();
+        setDeleteStatus('success');
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
           jsonData['api-error-messages']['delete-glossary-error']
         );
-        setDeleteStatus('initial');
-      });
+      })
+      .finally(() => setDeleteStatus('initial'));
   };
 
   /**
@@ -598,16 +597,15 @@ const GlossaryPageV1 = () => {
     setDeleteStatus('waiting');
     deleteGlossaryTerm(id)
       .then(() => {
-        setDeleteStatus('initial');
-        fetchGlossaryList();
+        setDeleteStatus('success');
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
           jsonData['api-error-messages']['delete-glossary-term-error']
         );
-        setDeleteStatus('initial');
-      });
+      })
+      .finally(() => setDeleteStatus('initial'));
   };
 
   /**
