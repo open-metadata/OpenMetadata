@@ -581,7 +581,41 @@ USER_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
  				"type": "keyword"
  			},
  			"teams": {
- 				"type": "keyword"
+ 				"properties": {
+		"id": {
+			"type": "keyword",
+			"fields": {
+				"keyword": {
+					"type": "keyword",
+					"ignore_above": 36
+				}
+			}
+		},
+		"type": {
+			"type": "text"
+		},
+		"name": {
+			"type": "keyword",
+			"fields": {
+				"keyword": {
+					"type": "keyword",
+					"ignore_above": 256
+				}
+			}
+		},
+		"fullyQualifiedName": {
+			"type": "text"
+		},
+		"description": {
+			"type": "text"
+		},
+		"deleted": {
+			"type": "boolean"
+		},
+		"href": {
+			"type": "text"
+		}
+	}
  			},
 
  			"deleted": {

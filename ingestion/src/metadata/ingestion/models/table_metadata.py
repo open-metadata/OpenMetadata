@@ -24,12 +24,20 @@ class DeleteTable(BaseModel):
     table: Table
 
 
-class ChangeDescription(BaseModel):
-    updatedBy: str
-    updatedAt: int
-    fieldsAdded: Optional[str]
-    fieldsDeleted: Optional[str]
-    fieldsUpdated: Optional[str]
+class ESEntityReference(BaseModel):
+    """JsonSchema genereated pydantic contains many unnecessary fields its not one-to-one representation of JsonSchema
+    Example all the "__root__" fields. This will not index into ES elegnatly hence we are creating special class
+    for EntityReference
+    """
+
+    id: str
+    name: str
+    displayName: str
+    description: str = ""
+    type: str
+    fullyQualifiedName: str
+    deleted: bool
+    href: str
 
 
 class TableESDocument(BaseModel):
@@ -39,7 +47,7 @@ class TableESDocument(BaseModel):
     deleted: bool
     database: str
     database_schema: str
-    service: EntityReference
+    service: ESEntityReference
     service_type: str
     entity_type: str = "table"
     name: str
@@ -60,7 +68,6 @@ class TableESDocument(BaseModel):
     tier: Optional[str] = None
     owner: EntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -69,7 +76,7 @@ class TopicESDocument(BaseModel):
 
     topic_id: str
     deleted: bool
-    service: EntityReference
+    service: ESEntityReference
     service_type: str
     entity_type: str = "topic"
     name: str
@@ -81,7 +88,6 @@ class TopicESDocument(BaseModel):
     tier: Optional[str] = None
     owner: EntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -102,7 +108,7 @@ class DashboardESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: EntityReference = None
+    owner: ESEntityReference = None
     followers: List[str]
     monthly_stats: int
     monthly_percentile_rank: int
@@ -110,7 +116,6 @@ class DashboardESDocument(BaseModel):
     weekly_percentile_rank: int
     daily_stats: int
     daily_percentile_rank: int
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -119,7 +124,7 @@ class PipelineESDocument(BaseModel):
 
     pipeline_id: str
     deleted: bool
-    service: EntityReference
+    service: ESEntityReference
     service_type: str
     entity_type: str = "pipeline"
     name: str
@@ -131,9 +136,8 @@ class PipelineESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: EntityReference = None
+    owner: ESEntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -148,8 +152,8 @@ class UserESDocument(BaseModel):
     email: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    teams: List[EntityReference]
-    roles: List[EntityReference]
+    teams: List[ESEntityReference]
+    roles: List[ESEntityReference]
     doc_as_upsert: bool = True
 
 
@@ -163,8 +167,8 @@ class TeamESDocument(BaseModel):
     display_name: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    users: List[EntityReference]
-    default_roles: List[EntityReference]
+    users: List[ESEntityReference]
+    default_roles: List[ESEntityReference]
     owns: List[str]
     doc_as_upsert: bool = True
 

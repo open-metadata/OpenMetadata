@@ -11,6 +11,7 @@
 
 import json
 import ssl
+import sys
 import traceback
 from datetime import datetime
 from typing import List, Optional
@@ -41,6 +42,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.table_metadata import (
     DashboardESDocument,
+    ESEntityReference,
     GlossaryTermESDocument,
     PipelineESDocument,
     TableESDocument,
@@ -201,9 +203,10 @@ class ElasticsearchSink(Sink[Entity]):
                 + "The index doesn't exist for a newly created ES. It's OK on first run."
             )
             # create new index with mapping
-            self.elasticsearch_client.indices.delete(
-                index=index_name, request_timeout=self.config.timeout
-            )
+            if self.elasticsearch_client.indices.exists(index=index_name):
+                self.elasticsearch_client.indices.delete(
+                    index=index_name, request_timeout=self.config.timeout
+                )
             self.elasticsearch_client.indices.create(
                 index=index_name, body=es_mapping, request_timeout=self.config.timeout
             )
@@ -273,7 +276,8 @@ class ElasticsearchSink(Sink[Entity]):
             self.status.records_written(record.name.__root__)
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            logger.debug(traceback.format_exc())
+            print(traceback.format_exc())
+            print(sys.exc_info()[2])
 
     def _create_table_es_doc(self, table: Table):
         table_fqn = table.fullyQualifiedName.__root__
@@ -303,8 +307,19 @@ class ElasticsearchSink(Sink[Entity]):
         database_schema_entity = self.metadata.get_by_id(
             entity=DatabaseSchema, entity_id=str(table.databaseSchema.id.__root__)
         )
-        service_entity = self.metadata.get_by_id(
-            entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
+        service_entity = ESEntityReference(
+            id=str(database_entity.service.id.__root__),
+            name=database_entity.service.name,
+            displayName=database_entity.service.displayName
+            if database_entity.service.displayName
+            else "",
+            description=database_entity.service.description.__root__
+            if database_entity.service.description
+            else "",
+            type=database_entity.service.type,
+            fullyQualifiedName=database_entity.service.fullyQualifiedName,
+            deleted=database_entity.service.deleted,
+            href=database_entity.service.href.__root__,
         )
         table_followers = []
         if table.followers:
@@ -317,12 +332,12 @@ class ElasticsearchSink(Sink[Entity]):
             table_id=str(table.id.__root__),
             deleted=table.deleted,
             database=str(database_entity.name.__root__),
-            service=database_entity.service,
+            service=service_entity,
             service_type=str(table.serviceType.name),
             name=table.name.__root__,
             suggest=suggest,
             database_schema=str(database_schema_entity.name.__root__),
-            description=str(table.description.__root__),
+            description=table.description.__root__ if table.description else "",
             table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
@@ -350,9 +365,6 @@ class ElasticsearchSink(Sink[Entity]):
         ]
         tags = set()
         timestamp = topic.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=MessagingService, entity_id=str(topic.service.id.__root__)
-        )
         topic_followers = []
         if topic.followers:
             for follower in topic.followers.__root__:
@@ -363,15 +375,26 @@ class ElasticsearchSink(Sink[Entity]):
                 tier = topic_tag.tagFQN.__root__
             else:
                 tags.add(topic_tag.tagFQN.__root__)
-
+        service_entity = ESEntityReference(
+            id=str(topic.service.id.__root__),
+            name=topic.service.name,
+            displayName=topic.service.displayName if topic.service.displayName else "",
+            description=topic.service.description.__root__
+            if topic.service.description
+            else "",
+            type=topic.service.type,
+            fullyQualifiedName=topic.service.fullyQualifiedName,
+            deleted=topic.service.deleted,
+            href=topic.service.href.__root__,
+        )
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             deleted=topic.deleted,
-            service=topic.service,
+            service=service_entity,
             service_type=str(topic.serviceType.name),
             name=topic.name.__root__,
             suggest=suggest,
-            description=topic.description.__root__,
+            description=topic.description.__root__ if topic.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -386,9 +409,6 @@ class ElasticsearchSink(Sink[Entity]):
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
         timestamp = dashboard.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
-        )
         dashboard_followers = []
         if dashboard.followers:
             for follower in dashboard.followers.__root__:
@@ -410,16 +430,30 @@ class ElasticsearchSink(Sink[Entity]):
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN.__root__)
 
+        service_entity = ESEntityReference(
+            id=str(dashboard.service.id.__root__),
+            name=dashboard.service.name,
+            displayName=dashboard.service.displayName
+            if dashboard.service.displayName
+            else "",
+            description=dashboard.service.description.__root__
+            if dashboard.service.description
+            else "",
+            type=dashboard.service.type,
+            fullyQualifiedName=dashboard.service.fullyQualifiedName,
+            deleted=dashboard.service.deleted,
+            href=dashboard.service.href.__root__,
+        )
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             deleted=dashboard.deleted,
-            service=dashboard.service,
+            service=service_entity,
             service_type=str(dashboard.serviceType.name),
             name=dashboard.displayName,
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
             suggest=suggest,
-            description=dashboard.description.__root__,
+            description=dashboard.description.__root__ if dashboard.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -441,9 +475,21 @@ class ElasticsearchSink(Sink[Entity]):
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
         timestamp = pipeline.updatedAt.__root__
-        service_entity = self.metadata.get_by_id(
-            entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
+        service_entity = ESEntityReference(
+            id=str(pipeline.service.id.__root__),
+            name=pipeline.service.name,
+            displayName=pipeline.service.displayName
+            if pipeline.service.displayName
+            else "",
+            description=pipeline.service.description.__root__
+            if pipeline.service.description
+            else "",
+            type=pipeline.service.type,
+            fullyQualifiedName=pipeline.service.fullyQualifiedName,
+            deleted=pipeline.service.deleted,
+            href=pipeline.service.href.__root__,
         )
+
         pipeline_followers = []
         if pipeline.followers:
             for follower in pipeline.followers.__root__:
@@ -468,13 +514,13 @@ class ElasticsearchSink(Sink[Entity]):
         pipeline_doc = PipelineESDocument(
             pipeline_id=str(pipeline.id.__root__),
             deleted=pipeline.deleted,
-            service=pipeline.service,
+            service=service_entity,
             service_type=str(pipeline.serviceType.name),
             name=pipeline.displayName,
             task_names=task_names,
             task_descriptions=task_descriptions,
             suggest=suggest,
-            description=pipeline.description.__root__,
+            description=pipeline.description.__root__ if pipeline.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -496,7 +542,17 @@ class ElasticsearchSink(Sink[Entity]):
         roles = []
         if user.teams:
             for team in user.teams.__root__:
-                teams.append(str(team.id.__root__))
+                teams.append(
+                    ESEntityReference(
+                        id=str(team.id.__root__),
+                        name=team.name,
+                        displayName=team.displayName if team.displayName else "",
+                        type=team.type,
+                        fullyQualifiedName=team.fullyQualifiedName,
+                        deleted=team.deleted,
+                        href=team.href.__root__,
+                    )
+                )
 
         if user.roles:
             for role in user.roles.__root__:
@@ -526,15 +582,40 @@ class ElasticsearchSink(Sink[Entity]):
         owns = []
         default_roles = []
         if team.users:
-            for user in team.users:
-                users.append(user)
+            for user in team.users.__root__:
+                users.append(
+                    ESEntityReference(
+                        id=str(user.id.__root__),
+                        name=user.name,
+                        displayName=user.displayName if user.displayName else "",
+                        description=user.description.__root__
+                        if user.description
+                        else "",
+                        type=user.type,
+                        fullyQualifiedName=user.fullyQualifiedName,
+                        deleted=user.deleted,
+                        href=user.href.__root__,
+                    )
+                )
 
         if team.owns:
             for own in team.owns.__root__:
                 owns.append(str(own.id.__root__))
+
         if team.defaultRoles:
             for role in team.defaultRoles:
-                default_roles.append(role)
+                default_roles.append(
+                    ESEntityReference(
+                        id=str(role.id.__root__),
+                        name=role.name,
+                        displayName=role.displayName if role.displayName else "",
+                        description=role.description.__root if role.description else "",
+                        type=role.type,
+                        fullyQualifiedName=role.fullyQualifiedName,
+                        deleted=role.deleted,
+                        href=role.href.__root__,
+                    )
+                )
 
         team_doc = TeamESDocument(
             team_id=str(team.id.__root__),
