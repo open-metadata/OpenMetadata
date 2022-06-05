@@ -5,28 +5,6 @@ description: >-
 
 # OpenMetadata & Prefect
 
-Using [Prefect](https://prefect.io/) and [OpenMetadata](https://open-metadata.org/) together will help you build and maintain a **data platform you can trust**. 
-
-Prefect allows you to orchestrate your data workflows and provides visibility into the health of your **workflow execution** and **workflow lineage**. With OpenMetadata integration, you can enrich your orchestration system with metadata about data lineage, data catalog, data quality and governance, giving you a single pane of glass about the health of your system. 
-
-## Why should you use Prefect for metadata ingestion?
-
-The challenge with the metadata ingestion is to ensure that this process can be **automated** and can run **reliably**, either on a regular interval, or ad-hoc. This is where [Prefect](http://prefect.io/) can help.
-
-[Prefect 2.0](https://www.prefect.io/blog/introducing-prefect-2-0/) is a general-purpose workflow orchestration platform allowing you to build, run, schedule, and operationalize your data pipelines at scale. It supports both [batch and streaming workflows](https://discourse.prefect.io/t/how-to-use-prefect-2-0-for-streaming-and-event-driven-use-cases/1000) and provides an excellent developer experience allowing you to run your flows locally and seamlessly move to production and to Cloud when you’re ready. In Prefect, Python is the API - you no longer need DAGs and can write *just* Python - your code can finally breathe. 
-
-Among [many other features](https://www.prefect.io/opensource/v2/), Prefect 2.0 natively supports:
-
-- dynamic runtime-discoverable and modular workflows,
-- passing data between tasks,
-- running your workflows on [various execution platforms](https://orion-docs.prefect.io/concepts/flow-runners/) (on-prem, cloud, Docker, Kubernetes) while maintaining privacy via a [hybrid execution model](https://www.prefect.io/why-prefect/hybrid-model/),
-- easily switching between development and production environments thanks to [Settings and Profiles](https://orion-docs.prefect.io/concepts/settings/),
-- scaling out for parallel and concurrent execution with [async, Dask, and Ray](https://orion-docs.prefect.io/concepts/task-runners/),
-- various integrations, cleanly separated into individual repositories and Python packages, through [Prefect Collections](https://orion-docs.prefect.io/collections/overview/) - such as `prefect-openmetadata`!
-
-
----
-
 ## Requirements (OSX and Linux)
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing OpenMetadata.
@@ -137,7 +115,7 @@ Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-open
 
 ## Installation process
 
-This documentation page will walk you through the process of configuring OpenMetadata and Prefect 2.0. It is intended as a minimal viable setup to get you started using both platforms together. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
+This documentation page will walk you through the process of configuring OpenMetadata and [Prefect 2.0](https://www.prefect.io/blog/introducing-prefect-2-0/). It is intended as a minimal viable setup to get you started using both platforms together. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
 
 
 ### 1. Clone the ``prefect-openmetadata`` repository
