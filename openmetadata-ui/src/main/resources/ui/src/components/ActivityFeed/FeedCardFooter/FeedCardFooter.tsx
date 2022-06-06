@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { getReplyText } from '../../../utils/FeedUtils';
-import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { FeedFooterProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 const FeedCardFooter: FC<FeedFooterProp> = ({
@@ -24,7 +22,6 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
   className,
   threadId,
   onThreadSelect,
-  lastReplyTimeStamp,
   isFooterVisible,
 }) => {
   const repliesCount = isUndefined(replies) ? 0 : replies;
@@ -35,7 +32,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       !isUndefined(replies) &&
       isFooterVisible ? (
         <div className="tw-flex tw-group">
-          {repliedUsers?.map((u, i) => (
+          {/* {repliedUsers?.map((u, i) => (
             <ProfilePicture
               className="tw-mt-0.5 tw-mx-0.5"
               data-testid="replied-user"
@@ -44,21 +41,21 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
               name={u}
               width="22"
             />
-          ))}
+          ))} */}
           <p
-            className="tw-ml-1 link-text tw-text-xs tw-mt-1.5 tw-underline"
+            className="tw-ml-1 tw-text-info tw-text-xs tw-mt-1.5 tw-underline"
             data-testid="reply-count"
             onClick={() => onThreadSelect?.(threadId as string)}>
-            {getReplyText(repliesCount)}
+            {`View ${getReplyText(repliesCount)}`}
           </p>
-          {lastReplyTimeStamp && repliesCount > 0 ? (
+          {/* {lastReplyTimeStamp && repliesCount > 0 ? (
             <span
               className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1.5"
               data-testid="last-reply">
               Last reply{' '}
               {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
             </span>
-          ) : null}
+          ) : null} */}
         </div>
       ) : null}
     </div>
