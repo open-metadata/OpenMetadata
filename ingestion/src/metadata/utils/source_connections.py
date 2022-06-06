@@ -100,6 +100,9 @@ def get_connection_url_common(connection):
     if hasattr(connection, "database"):
         url += f"/{connection.database}" if connection.database else ""
 
+    elif hasattr(connection, "databaseSchema"):
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
+
     options = (
         connection.connectionOptions.dict()
         if connection.connectionOptions
@@ -185,8 +188,6 @@ def _(connection: TrinoConnection):
 @get_connection_url.register
 def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    if connection.database:
-        url += f"/{connection.database}"
     return url
 
 
@@ -200,8 +201,8 @@ def _(connection: PrestoConnection):
         url += "@"
     url += f"{connection.hostPort}"
     url += f"/{connection.catalog}"
-    if connection.database:
-        url += f"?schema={quote_plus(connection.database)}"
+    if connection.databaseSchema:
+        url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
 
 
@@ -280,7 +281,7 @@ def _(connection: HiveConnection):
                 url += "@"
 
     url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
+    url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -288,8 +289,9 @@ def _(connection: HiveConnection):
         else connection.connectionOptions
     )
     if options:
-        if not connection.database:
+        if not connection.databaseSchema:
             url += "/"
+        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
@@ -301,7 +303,9 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    project_id = connection.projectId
+    from google import auth
+
+    _, project_id = auth.default()
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:

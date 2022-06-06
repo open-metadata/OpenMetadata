@@ -13,7 +13,7 @@
           "fields": {
             "keyword": {
               "type": "keyword",
-              "ignore_above": 36
+              "ignore_above": 128
             }
           }
         },

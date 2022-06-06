@@ -225,7 +225,7 @@ class SnowflakeSource(CommonDbSourceService):
                 if self.source_config.enableDataProfiler:
                     profile = self.run_profiler(table=table_entity, schema=schema)
                     table_entity.tableProfile = [profile] if profile else None
-                database = self.get_database_entity(self.service_connection.database)
+                database = self.get_database_entity()
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database,

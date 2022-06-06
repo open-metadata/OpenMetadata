@@ -64,7 +64,7 @@ class TrinoSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_database_entity(self, _) -> Database:
+    def get_database_entity(self) -> Database:
         return Database(
             name=self.trino_connection.catalog,
             service=EntityReference(
@@ -75,6 +75,6 @@ class TrinoSource(CommonDbSourceService):
     def get_schemas(self, inspector: Inspector) -> str:
         return (
             inspector.get_schema_names()
-            if not self.service_connection.database
-            else [self.service_connection.database]
+            if not self.service_connection.databaseSchema
+            else [self.service_connection.databaseSchema]
         )

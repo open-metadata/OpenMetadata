@@ -13,7 +13,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 36
+                "ignore_above": 128
               }
             }
           },
@@ -72,12 +72,43 @@
         "type": "keyword"
       },
       "service": {
-        "type": "keyword"
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "service_type": {
-        "type": "keyword"
-      },
-      "service_category": {
         "type": "keyword"
       },
       "entity_type": {

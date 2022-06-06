@@ -234,7 +234,6 @@ def test_databricks():
             "config": {
                 "token": "<databricks token>",
                 "hostPort": "localhost:443",
-                "database": "default",
                 "connectionArguments": {
                     "http_path": "<http path of databricks cluster>"
                 },
@@ -257,7 +256,6 @@ def test_db2():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:50000",
-                "database": "custom_database_name",
             }
         },
         "sourceConfig": {"config": {"enableDataProfiler": False}},
@@ -575,7 +573,6 @@ def test_presto():
                 "catalog": "tpcds",
                 "username": "admin",
                 "password": "password",
-                "database": "database",
             }
         },
         "sourceConfig": {"config": {"generateSampleData": False}},
@@ -685,7 +682,6 @@ def test_singlestore():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:3306",
-                "database": "custom_database_name",
             }
         },
         "sourceConfig": {"config": {"enableDataProfiler": False}},
@@ -797,7 +793,6 @@ def test_trino():
                 "hostPort": "localhost:8080",
                 "username": "user",
                 "catalog": "tpcds",
-                "database": "tiny",
             }
         },
         "sourceConfig": {"config": {}},
