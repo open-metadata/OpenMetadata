@@ -110,7 +110,7 @@ export const PropertyValue: FC<Props> = ({
         getPropertyInput()
       ) : (
         <Fragment>
-          <div>
+          <div className="tw-flex">
             {value ? (
               getPropertyValue()
             ) : (
