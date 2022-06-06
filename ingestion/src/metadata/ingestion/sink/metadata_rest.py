@@ -460,7 +460,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
-            logger.info(add_lineage)
             created_lineage = self.metadata.add_lineage(add_lineage)
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")

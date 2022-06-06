@@ -125,13 +125,6 @@ class LookerSource(DashboardSourceService):
         logger.info("Lineage not implemented for Looker")
         return None
 
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        """
-        Get lineage between dashboard and data sources
-        """
-        logger.info("Fetch Charts Not implemented for Looker")
-        return None
-
     def fetch_dashboard_charts(self, dashboard_details) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard
