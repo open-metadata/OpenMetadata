@@ -28,7 +28,10 @@ interface Props {
 }
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
-  <span className="tw-cursor-pointer tw-ml-2" onClick={onShowInput}>
+  <span
+    className="tw-cursor-pointer tw-ml-2"
+    data-testid="edit-icon"
+    onClick={onShowInput}>
     <SVGIcons alt="edit" icon={Icons.EDIT} width="12px" />
   </span>
 );
@@ -100,7 +103,7 @@ export const PropertyValue: FC<Props> = ({
       case 'string':
       case 'integer':
       default:
-        return value;
+        return <span data-testid="value">{value}</span>;
     }
   };
 
@@ -114,7 +117,9 @@ export const PropertyValue: FC<Props> = ({
             {value ? (
               getPropertyValue()
             ) : (
-              <span className="tw-text-grey-muted">No data</span>
+              <span className="tw-text-grey-muted" data-testid="no-data">
+                No data
+              </span>
             )}
             <EditIcon onShowInput={onShowInput} />
           </div>
