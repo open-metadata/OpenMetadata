@@ -6,6 +6,21 @@
       "display_name": {
         "type": "text"
       },
+      "fqdn": {
+        "type": "keyword"
+      },
+      "algorithm": {
+        "type": "keyword"
+      },
+      "ml_features": {
+        "type": "keyword"
+      },
+      "ml_hyper_parameters": {
+        "type": "keyword"
+      },
+      "deleted": {
+        "type": "boolean"
+      },
       "owner": {
         "properties": {
           "id": {
@@ -43,12 +58,6 @@
           }
         }
       },
-      "fqdn": {
-        "type": "keyword"
-      },
-      "deleted": {
-        "type": "boolean"
-      },
       "followers": {
         "type": "keyword"
       },
@@ -62,62 +71,10 @@
       "tier": {
         "type": "keyword"
       },
-      "column_names": {
-        "type":"text"
-      },
-      "column_descriptions": {
-        "type": "text"
-      },
       "tags": {
         "type": "keyword"
       },
-      "service": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "service_type": {
-        "type": "keyword"
-      },
       "entity_type": {
-        "type": "keyword"
-      },
-      "database": {
-        "type": "keyword"
-      },
-      "database_schema": {
         "type": "keyword"
       },
       "suggest": {

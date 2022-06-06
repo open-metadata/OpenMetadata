@@ -15,7 +15,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getTypeListByCategory } from '../../axiosAPIs/metadataTypeAPI';
-import CustomEntityPage from './CustomEntityPage';
+import CustomPropertiesPage from './CustomPropertiesPage';
 
 const mockData = {
   id: '32f81349-d7d7-4a6a-8fc7-d767f233b674',
@@ -62,7 +62,7 @@ const mockGetTypeListByCategory = getTypeListByCategory as jest.Mock;
 
 describe('Test CustomEntity Page Component', () => {
   it('Should render Custom Entity Detail Component', async () => {
-    const { findByTestId } = render(<CustomEntityPage />, {
+    const { findByTestId } = render(<CustomPropertiesPage />, {
       wrapper: MemoryRouter,
     });
 
@@ -74,7 +74,7 @@ describe('Test CustomEntity Page Component', () => {
   it('Should render error Component if API fails', async () => {
     mockGetTypeListByCategory.mockImplementationOnce(() => Promise.reject());
 
-    const { findByTestId } = render(<CustomEntityPage />, {
+    const { findByTestId } = render(<CustomPropertiesPage />, {
       wrapper: MemoryRouter,
     });
 

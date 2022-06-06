@@ -683,14 +683,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void storeCustomField(T entity, String fieldName, JsonNode value) throws JsonProcessingException {
-    String fieldFQN = TypeRegistry.getCustomFieldFQN(entityType, fieldName);
+    String fieldFQN = TypeRegistry.getCustomPropertyFQN(entityType, fieldName);
     daoCollection
         .entityExtensionDAO()
         .insert(entity.getId().toString(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
   }
 
   public ObjectNode getExtension(T entity) throws JsonProcessingException {
-    String fieldFQNPrefix = TypeRegistry.getCustomFieldFQNPrefix(entityType);
+    String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
     List<ExtensionRecord> records =
         daoCollection.entityExtensionDAO().getExtensions(entity.getId().toString(), fieldFQNPrefix);
     if (records.isEmpty()) {
@@ -699,7 +699,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode objectNode = mapper.createObjectNode();
     for (ExtensionRecord record : records) {
-      String fieldName = TypeRegistry.getFieldName(record.getExtensionName());
+      String fieldName = TypeRegistry.getPropertyName(record.getExtensionName());
       objectNode.set(fieldName, mapper.readTree(record.getExtensionJson()));
     }
     return objectNode;
@@ -986,12 +986,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return allowedFields;
   }
 
-  protected String getCustomFieldFQNPrefix(String entityType) {
-    return FullyQualifiedName.build(entityType, "customFields");
+  protected String getCustomPropertyFQNPrefix(String entityType) {
+    return FullyQualifiedName.build(entityType, "customProperties");
   }
 
-  protected String getCustomFieldFQN(String entityType, String fieldName) {
-    return FullyQualifiedName.build(entityType, "customFields", fieldName);
+  protected String getCustomPropertyFQN(String entityType, String propertyName) {
+    return FullyQualifiedName.build(entityType, "customProperties", propertyName);
   }
 
   enum Operation {

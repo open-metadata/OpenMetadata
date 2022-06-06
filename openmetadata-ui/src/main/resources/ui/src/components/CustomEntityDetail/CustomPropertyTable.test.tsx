@@ -18,7 +18,7 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { CustomFieldTable } from './CustomFieldTable';
+import { CustomPropertyTable } from './CustomPropertyTable';
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
@@ -30,11 +30,11 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 });
 
 const mockUpdateEntityType = jest.fn();
-const mockFields = [
+const mockProperties = [
   {
     name: 'tableCreatedBy',
     description: 'To track of who created the table.',
-    fieldType: {
+    propertyType: {
       id: '1815eba0-a7e7-4880-8af5-8eee8710d279',
       type: 'type',
       name: 'string',
@@ -47,7 +47,7 @@ const mockFields = [
   {
     name: 'tableUpdatedBy',
     description: 'To track who updated the table.',
-    fieldType: {
+    propertyType: {
       id: '1815eba0-a7e7-4880-8af5-8eee8710d279',
       type: 'type',
       name: 'string',
@@ -60,14 +60,14 @@ const mockFields = [
 ];
 
 const mockProp = {
-  customFields: mockFields,
+  customProperties: mockProperties,
   updateEntityType: mockUpdateEntityType,
 };
 
 describe('Test CustomField Table Component', () => {
   it('Should render table component', async () => {
     const { findByTestId, findAllByTestId } = render(
-      <CustomFieldTable {...mockProp} />
+      <CustomPropertyTable {...mockProp} />
     );
 
     const table = await findByTestId('entity-custom-fields-table');
@@ -84,11 +84,11 @@ describe('Test CustomField Table Component', () => {
 
     const dataRows = await findAllByTestId('data-row');
 
-    expect(dataRows).toHaveLength(mockFields.length);
+    expect(dataRows).toHaveLength(mockProperties.length);
   });
 
   it('Test delete field flow', async () => {
-    const { container } = render(<CustomFieldTable {...mockProp} />);
+    const { container } = render(<CustomPropertyTable {...mockProp} />);
 
     const table = await findByTestId(container, 'entity-custom-fields-table');
 
@@ -104,7 +104,7 @@ describe('Test CustomField Table Component', () => {
 
     const dataRows = await findAllByTestId(container, 'data-row');
 
-    expect(dataRows).toHaveLength(mockFields.length);
+    expect(dataRows).toHaveLength(mockProperties.length);
 
     const dataRow = dataRows[0];
 
@@ -132,7 +132,7 @@ describe('Test CustomField Table Component', () => {
 
   it('Should render no data row if there is no custom fields', async () => {
     const { findByTestId, queryAllByTestId } = render(
-      <CustomFieldTable {...mockProp} customFields={[]} />
+      <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
     const table = await findByTestId('entity-custom-fields-table');

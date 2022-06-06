@@ -14,49 +14,49 @@
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
-import { CustomField, Type } from '../../generated/entity/type';
+import { CustomProperty, Type } from '../../generated/entity/type';
 import { getEntityName, isEven } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 
-interface CustomFieldTableProp {
-  customFields: CustomField[];
-  updateEntityType: (customFields: Type['customFields']) => void;
+interface CustomPropertyTableProp {
+  customProperties: CustomProperty[];
+  updateEntityType: (customFields: Type['customProperties']) => void;
 }
 
 type Operation = 'delete' | 'update' | 'no-operation';
 
-export const CustomFieldTable: FC<CustomFieldTableProp> = ({
-  customFields,
+export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
+  customProperties,
   updateEntityType,
 }) => {
-  const [selectedField, setSelectedField] = useState<CustomField>(
-    {} as CustomField
+  const [selectedField, setSelectedField] = useState<CustomProperty>(
+    {} as CustomProperty
   );
 
   const [operation, setOperation] = useState<Operation>('no-operation');
 
   const resetSelectedField = () => {
-    setSelectedField({} as CustomField);
+    setSelectedField({} as CustomProperty);
     setOperation('no-operation' as Operation);
   };
 
   const handleFieldDelete = () => {
-    const updatedFields = customFields.filter(
-      (field) => field.name !== selectedField.name
+    const updatedFields = customProperties.filter(
+      (property) => property.name !== selectedField.name
     );
     updateEntityType(updatedFields);
     resetSelectedField();
   };
 
   const handleFieldUpdate = (updatedDescription: string) => {
-    const updatedFields = customFields.map((field) => {
-      if (field.name === selectedField.name) {
-        return { ...field, description: updatedDescription };
+    const updatedFields = customProperties.map((property) => {
+      if (property.name === selectedField.name) {
+        return { ...property, description: updatedDescription };
       } else {
-        return field;
+        return property;
       }
     });
     updateEntityType(updatedFields);
@@ -87,26 +87,26 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
             </tr>
           </thead>
           <tbody data-testid="table-body">
-            {customFields.length ? (
-              customFields.map((field, index) => (
+            {customProperties.length ? (
+              customProperties.map((property, index) => (
                 <tr
                   className={classNames(
                     `tableBody-row ${!isEven(index + 1) && 'odd-row'}`,
                     'tw-border-l-0 tw-border-r-0',
                     {
-                      'tw-border-b-0': index === customFields.length - 1,
+                      'tw-border-b-0': index === customProperties.length - 1,
                     }
                   )}
                   data-testid="data-row"
                   key={uniqueId()}>
-                  <td className="tableBody-cell">{field.name}</td>
+                  <td className="tableBody-cell">{property.name}</td>
                   <td className="tableBody-cell">
-                    {getEntityName(field.fieldType)}
+                    {getEntityName(property.propertyType)}
                   </td>
                   <td className="tableBody-cell">
-                    {field.description ? (
+                    {property.description ? (
                       <RichTextEditorPreviewer
-                        markdown={field.description || ''}
+                        markdown={property.description || ''}
                       />
                     ) : (
                       <span
@@ -122,7 +122,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                         className="tw-cursor-pointer"
                         data-testid="edit-button"
                         onClick={() => {
-                          setSelectedField(field);
+                          setSelectedField(property);
                           setOperation('update');
                         }}>
                         <SVGIcons
@@ -136,7 +136,7 @@ export const CustomFieldTable: FC<CustomFieldTableProp> = ({
                         className="tw-cursor-pointer tw-ml-4"
                         data-testid="delete-button"
                         onClick={() => {
-                          setSelectedField(field);
+                          setSelectedField(property);
                           setOperation('delete');
                         }}>
                         <SVGIcons

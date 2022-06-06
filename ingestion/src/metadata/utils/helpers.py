@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -21,16 +21,12 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceRequest,
-)
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -46,7 +42,7 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -185,8 +181,9 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp() * 1_000)
 
 
-def _get_formmated_table_name(table_name):
-    return table_name.replace("[", "").replace("]", "")
+def get_formatted_entity_name(name: str) -> Optional[str]:
+    if name:
+        return name.replace("[", "").replace("]", "")
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
@@ -197,3 +194,13 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
+
+
+def replace_special_with(raw: str, replacement: str) -> str:
+    """
+    Replace special characters in a string by a hyphen
+    :param raw: raw string to clean
+    :param replacement: string used to replace
+    :return: clean string
+    """
+    return re.sub(r"[^a-zA-Z0-9]", replacement, raw)

@@ -60,7 +60,7 @@ jest.mock('../containers/PageContainer', () => {
 });
 
 jest.mock('../../constants/constants', () => ({
-  getAddCustomFieldPath: jest.fn().mockReturnValue('/custom-entity/table'),
+  getAddCustomPropertyPath: jest.fn().mockReturnValue('/custom-entity/table'),
 }));
 
 jest.mock('../common/TabsPane/TabsPane', () =>
@@ -91,11 +91,11 @@ jest.mock('../schema-editor/SchemaEditor', () =>
     .mockReturnValue(<div data-testid="schema-editor">Schema Editor</div>)
 );
 
-jest.mock('./CustomFieldTable', () => ({
-  CustomFieldTable: jest
+jest.mock('./CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
     .fn()
     .mockReturnValue(
-      <div data-testid="CustomFieldTable">CustomFieldTable</div>
+      <div data-testid="CustomPropertyTable">CustomPropertyTable</div>
     ),
 }));
 
@@ -116,16 +116,14 @@ describe('Test Custom Entity Detail Component', () => {
 
     const leftPanel = await findByTestId('LeftPanel');
     const tabContainer = await findByTestId('tabs');
-    const schema = await findByTestId('schema-editor');
 
-    const schemTab = await findByTestId('Schema');
-    const customFieldTab = await findByTestId('Custom Fields');
+    const schemaTab = await findByTestId('Schema');
+    const customPropertiesTab = await findByTestId('Custom Properties');
 
     expect(leftPanel).toBeInTheDocument();
     expect(tabContainer).toBeInTheDocument();
-    expect(schema).toBeInTheDocument();
-    expect(schemTab).toBeInTheDocument();
-    expect(customFieldTab).toBeInTheDocument();
+    expect(schemaTab).toBeInTheDocument();
+    expect(customPropertiesTab).toBeInTheDocument();
   });
 
   it('Should render custom fields table if active tab is Custom Fields', async () => {
@@ -142,13 +140,13 @@ describe('Test Custom Entity Detail Component', () => {
     expect(leftPanel).toBeInTheDocument();
     expect(tabContainer).toBeInTheDocument();
 
-    const customFieldTab = await findByTestId('Custom Fields');
+    const customPropertiesTab = await findByTestId('Custom Properties');
 
-    expect(customFieldTab).toBeInTheDocument();
+    expect(customPropertiesTab).toBeInTheDocument();
 
-    fireEvent.click(customFieldTab);
+    fireEvent.click(customPropertiesTab);
 
-    expect(await findByTestId('CustomFieldTable')).toBeInTheDocument();
+    expect(await findByTestId('CustomPropertyTable')).toBeInTheDocument();
   });
 
   it('Should call history.push method on click of Add field button', async () => {
@@ -163,13 +161,13 @@ describe('Test Custom Entity Detail Component', () => {
 
     expect(tabContainer).toBeInTheDocument();
 
-    const customFieldTab = await findByTestId('Custom Fields');
+    const customPropertiesTab = await findByTestId('Custom Properties');
 
-    expect(customFieldTab).toBeInTheDocument();
+    expect(customPropertiesTab).toBeInTheDocument();
 
-    fireEvent.click(customFieldTab);
+    fireEvent.click(customPropertiesTab);
 
-    expect(await findByTestId('CustomFieldTable')).toBeInTheDocument();
+    expect(await findByTestId('CustomPropertyTable')).toBeInTheDocument();
 
     const addFieldButton = await findByTestId('add-field-button');
 

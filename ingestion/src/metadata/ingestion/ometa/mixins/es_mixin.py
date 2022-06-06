@@ -36,7 +36,7 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    search_from_service_url = "/search/query?q=service:{service} AND {filters}&from={from_}&size={size}&index={index}"
+    search_from_service_url = "/search/query?q=service.name:{service} AND {filters}&from={from_}&size={size}&index={index}"
 
     def _search_es_entity(
         self, entity_type: Type[T], query_string: str

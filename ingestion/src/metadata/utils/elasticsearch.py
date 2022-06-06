@@ -51,7 +51,9 @@ def get_query_from_dict(data: Dict[str, Optional[str]]) -> str:
     )
 
 
-def get_entity_from_es_result(entity_list: Optional[List[T]]) -> Optional[T]:
+def get_entity_from_es_result(
+    entity_list: Optional[List[T]], fetch_multiple_entities: bool = False
+) -> Optional[T]:
     """
     Return a single element from an entity list obtained
     from an ES query
@@ -59,6 +61,8 @@ def get_entity_from_es_result(entity_list: Optional[List[T]]) -> Optional[T]:
     :return: single entity
     """
     if entity_list and len(entity_list):
+        if fetch_multiple_entities:
+            return entity_list
         return entity_list[0]
 
     logger.warning("ES Query was empty")

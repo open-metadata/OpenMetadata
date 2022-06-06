@@ -104,7 +104,7 @@ class LookerSource(DashboardSourceService):
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
-    def get_dashboard_entity(self, dashboard_details: object) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details) -> Dashboard:
         """
         Method to Get Dashboard Entity
         """
@@ -114,25 +114,25 @@ class LookerSource(DashboardSourceService):
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
             charts=self.chart_names,
-            url=f"{self.service_connection.hostPort}/dashboards/{dashboard_details.id}",
+            url=f"/dashboards/{dashboard_details.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
-    def get_lineage(self, dashboard_details: object) -> AddLineageRequest:
+    def get_lineage(self, dashboard_details) -> Optional[AddLineageRequest]:
         """
         Get lineage between dashboard and data sources
         """
         logger.info("Lineage not implemented for Looker")
+        return None
 
     def process_charts(self) -> Optional[Iterable[Chart]]:
         """
         Get lineage between dashboard and data sources
         """
         logger.info("Fetch Charts Not implemented for Looker")
+        return None
 
-    def fetch_dashboard_charts(
-        self, dashboard_details: object
-    ) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(self, dashboard_details) -> Optional[Iterable[Chart]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -151,7 +151,7 @@ class LookerSource(DashboardSourceService):
                     displayName=dashboard_elements.title or "",
                     description="",
                     chart_type=dashboard_elements.type,
-                    url=f"{self.service_connection.hostPort}/dashboard_elements/{dashboard_elements.id}",
+                    url=f"/dashboard_elements/{dashboard_elements.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
