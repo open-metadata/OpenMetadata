@@ -931,8 +931,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    const dataElements = getLayoutedElements(setElementsHandle());
-    setElements(dataElements);
+    setElements(getLayoutedElements(setElementsHandle()));
     resetViewEditState();
   }, [lineageData, isNodeLoading, isEditMode]);
 
