@@ -211,7 +211,9 @@ const GlossaryV1 = ({
                 <NonAdminAction
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <button className="tw--mt-1 tw-w-full tw-text-center tw-py-1 tw-text-primary tw-border tw-rounded-md">
+                  <button
+                    className="tw--mt-1 tw-w-full tw-text-center tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                    onClick={handleAddGlossaryClick}>
                     + Add Glossary
                   </button>
                 </NonAdminAction>

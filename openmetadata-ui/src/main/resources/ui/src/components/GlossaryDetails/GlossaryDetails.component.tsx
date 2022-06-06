@@ -412,7 +412,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-flex tw-flex-wrap tw-group tw-mb-4" data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group tw-mb-5" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossary?.tags && glossary.tags.length > 0 && (
