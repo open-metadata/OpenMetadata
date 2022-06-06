@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import React, { ChangeEvent, FC, Fragment, useState } from 'react';
+import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Button } from '../../buttons/Button/Button';
+import { PropertyInput } from './PropertyInput';
 
 interface Props {
   propertyName: string;
@@ -26,78 +25,11 @@ interface Props {
   onExtensionUpdate: (updatedExtension: Table['extension']) => void;
 }
 
-interface PropertInputProps extends Pick<Props, 'propertyName'> {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  value: any;
-  type: string;
-  onCancel: () => void;
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  onSave: (value: any) => void;
-}
-
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
   <span className="tw-cursor-pointer tw-ml-1" onClick={onShowInput}>
     <SVGIcons alt="edit" icon={Icons.EDIT} width="12px" />
   </span>
 );
-
-const PropertyInput: FC<PropertInputProps> = ({
-  value,
-  onCancel,
-  type,
-  propertyName,
-  onSave,
-}) => {
-  const inputType = type === 'string' ? 'text' : 'number';
-
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const [inputValue, setInputValue] = useState<any>(value || '');
-
-  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-
-    setInputValue(value);
-  };
-
-  const handleSave = () => {
-    onSave(inputValue);
-  };
-
-  return (
-    <div className="tw-flex tw-items-center tw-gap-1">
-      <input
-        className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
-        data-testid="value"
-        id="value"
-        name={propertyName}
-        placeholder="value"
-        type={inputType}
-        value={inputValue}
-        onChange={onChange}
-      />
-      <div className="tw-flex tw-justify-end" data-testid="buttons">
-        <Button
-          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-          data-testid="cancel-value"
-          size="custom"
-          theme="primary"
-          variant="contained"
-          onMouseDown={onCancel}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
-        </Button>
-        <Button
-          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-          data-testid="save-value"
-          size="custom"
-          theme="primary"
-          variant="contained"
-          onClick={handleSave}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
-        </Button>
-      </div>
-    </div>
-  );
-};
 
 export const PropertyValue: FC<Props> = ({
   propertyName,
