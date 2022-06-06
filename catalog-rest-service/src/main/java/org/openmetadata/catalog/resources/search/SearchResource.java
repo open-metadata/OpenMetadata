@@ -347,8 +347,9 @@ public class SearchResource {
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
         .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceName").field("service").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("ServiceCategory").field("service.type.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE));

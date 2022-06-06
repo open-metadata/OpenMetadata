@@ -24,12 +24,20 @@ class DeleteTable(BaseModel):
     table: Table
 
 
-class ChangeDescription(BaseModel):
-    updatedBy: str
-    updatedAt: int
-    fieldsAdded: Optional[str]
-    fieldsDeleted: Optional[str]
-    fieldsUpdated: Optional[str]
+class ESEntityReference(BaseModel):
+    """JsonSchema genereated pydantic contains many unnecessary fields its not one-to-one representation of JsonSchema
+    Example all the "__root__" fields. This will not index into ES elegnatly hence we are creating special class
+    for EntityReference
+    """
+
+    id: str
+    name: str
+    displayName: str
+    description: str = ""
+    type: str
+    fullyQualifiedName: str
+    deleted: bool
+    href: str
 
 
 class TableESDocument(BaseModel):
@@ -39,9 +47,8 @@ class TableESDocument(BaseModel):
     deleted: bool
     database: str
     database_schema: str
-    service: str
+    service: ESEntityReference
     service_type: str
-    service_category: str
     entity_type: str = "table"
     name: str
     suggest: List[dict]
@@ -61,7 +68,6 @@ class TableESDocument(BaseModel):
     tier: Optional[str] = None
     owner: EntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -70,9 +76,8 @@ class TopicESDocument(BaseModel):
 
     topic_id: str
     deleted: bool
-    service: str
+    service: ESEntityReference
     service_type: str
-    service_category: str
     entity_type: str = "topic"
     name: str
     suggest: List[dict]
@@ -83,7 +88,6 @@ class TopicESDocument(BaseModel):
     tier: Optional[str] = None
     owner: EntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -92,9 +96,8 @@ class DashboardESDocument(BaseModel):
 
     dashboard_id: str
     deleted: bool
-    service: str
+    service: EntityReference
     service_type: str
-    service_category: str
     entity_type: str = "dashboard"
     name: str
     suggest: List[dict]
@@ -105,7 +108,7 @@ class DashboardESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: EntityReference = None
+    owner: ESEntityReference = None
     followers: List[str]
     monthly_stats: int
     monthly_percentile_rank: int
@@ -113,7 +116,6 @@ class DashboardESDocument(BaseModel):
     weekly_percentile_rank: int
     daily_stats: int
     daily_percentile_rank: int
-    change_descriptions: Optional[List[ChangeDescription]] = None
     doc_as_upsert: bool = True
 
 
@@ -122,9 +124,8 @@ class PipelineESDocument(BaseModel):
 
     pipeline_id: str
     deleted: bool
-    service: str
+    service: ESEntityReference
     service_type: str
-    service_category: str
     entity_type: str = "pipeline"
     name: str
     suggest: List[dict]
@@ -135,9 +136,29 @@ class PipelineESDocument(BaseModel):
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
-    owner: EntityReference = None
+    owner: ESEntityReference = None
     followers: List[str]
-    change_descriptions: Optional[List[ChangeDescription]] = None
+    doc_as_upsert: bool = True
+
+
+class MlModelESDocument(BaseModel):
+    """Elastic Search Mapping doc for MlModels"""
+
+    ml_model_id: str
+    deleted: bool
+    entity_type: str = "mlmodel"
+    name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    algorithm: str
+    ml_features: List[str]
+    ml_hyper_parameters: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    owner: ESEntityReference = None
+    followers: List[str]
     doc_as_upsert: bool = True
 
 
@@ -152,8 +173,8 @@ class UserESDocument(BaseModel):
     email: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    teams: List[str]
-    roles: List[str]
+    teams: List[ESEntityReference]
+    roles: List[ESEntityReference]
     doc_as_upsert: bool = True
 
 
@@ -167,7 +188,8 @@ class TeamESDocument(BaseModel):
     display_name: str
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
-    users: List[str]
+    users: List[ESEntityReference]
+    default_roles: List[ESEntityReference]
     owns: List[str]
     doc_as_upsert: bool = True
 

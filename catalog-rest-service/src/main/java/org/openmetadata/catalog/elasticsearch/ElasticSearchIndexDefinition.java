@@ -31,6 +31,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -39,6 +40,8 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -69,7 +72,8 @@ public class ElasticSearchIndexDefinition {
     PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
     USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
     TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json");
+    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
+    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -190,6 +194,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
       return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
+      return ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
@@ -216,7 +222,7 @@ class ElasticSearchIndex {
   String displayName;
 
   String fqdn;
-  String service;
+  EntityReference service;
   Boolean deleted;
 
   @JsonProperty("service_type")
@@ -361,7 +367,6 @@ class TableESIndex extends ElasticSearchIndex {
             .fqdn(table.getFullyQualifiedName())
             .suggest(suggest)
             .entityType("table")
-            .serviceCategory("databaseService")
             .columnNames(columnNames)
             .columnDescriptions(columnDescriptions)
             .tableType(tableType)
@@ -377,7 +382,7 @@ class TableESIndex extends ElasticSearchIndex {
     }
 
     if (table.getService() != null) {
-      tableESIndexBuilder.service(table.getService().getName());
+      tableESIndexBuilder.service(table.getService());
       tableESIndexBuilder.serviceType(table.getServiceType().toString());
     }
 
@@ -469,7 +474,7 @@ class TopicESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (topic.getService() != null) {
-      topicESIndexBuilder.service(topic.getService().getName());
+      topicESIndexBuilder.service(topic.getService());
       topicESIndexBuilder.serviceType(topic.getServiceType().toString());
     }
     if (topic.getFollowers() != null) {
@@ -559,7 +564,7 @@ class DashboardESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (dashboard.getService() != null) {
-      dashboardESIndexBuilder.service(dashboard.getService().getName());
+      dashboardESIndexBuilder.service(dashboard.getService());
       dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
     }
     if (dashboard.getUsageSummary() != null) {
@@ -642,7 +647,7 @@ class PipelineESIndex extends ElasticSearchIndex {
             .tier(parseTags.tierTag);
 
     if (pipeline.getService() != null) {
-      pipelineESIndexBuilder.service(pipeline.getService().getName());
+      pipelineESIndexBuilder.service(pipeline.getService());
       pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
     }
     if (pipeline.getFollowers() != null) {
@@ -680,10 +685,10 @@ class UserESIndex {
   String entityType;
 
   @JsonProperty("teams")
-  List<String> teams;
+  List<EntityReference> teams;
 
   @JsonProperty("roles")
-  List<String> roles;
+  List<EntityReference> roles;
 
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
@@ -694,21 +699,19 @@ class UserESIndex {
   Boolean deleted;
 
   public static UserESIndexBuilder builder(User user) {
-    List<String> teams = new ArrayList<>();
-    List<String> roles = new ArrayList<>();
+    List<EntityReference> teams = new ArrayList<>();
+    List<EntityReference> roles = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(user.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(user.getDisplayName()).weight(10).build());
     Long updatedTimestamp = user.getUpdatedAt();
     String displayName = user.getDisplayName() != null ? user.getDisplayName() : "";
     if (user.getTeams() != null) {
-      for (EntityReference team : user.getTeams()) {
-        teams.add(team.getId().toString());
-      }
+      teams.addAll(user.getTeams());
     }
 
-    for (EntityReference role : user.getRoles()) {
-      roles.add(role.getId().toString());
+    if (user.getRoles() != null) {
+      roles.addAll(user.getRoles());
     }
 
     return internalBuilder()
@@ -743,10 +746,13 @@ class TeamESIndex {
   String entityType;
 
   @JsonProperty("users")
-  List<String> users;
+  List<EntityReference> users;
 
   @JsonProperty("owns")
   List<String> owns;
+
+  @JsonProperty("default_roles")
+  List<EntityReference> defaultRoles;
 
   @JsonProperty("last_updated_timestamp")
   @Builder.Default
@@ -757,7 +763,8 @@ class TeamESIndex {
   Boolean deleted;
 
   public static TeamESIndexBuilder builder(Team team) {
-    List<String> users = new ArrayList<>();
+    List<EntityReference> users = new ArrayList<>();
+    List<EntityReference> defaultRoles = new ArrayList<>();
     List<String> owns = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(team.getName()).weight(5).build());
@@ -765,14 +772,15 @@ class TeamESIndex {
     Long updatedTimestamp = team.getUpdatedAt();
     String displayName = team.getDisplayName() != null ? team.getDisplayName() : "";
     if (team.getUsers() != null) {
-      for (EntityReference user : team.getUsers()) {
-        users.add(user.getId().toString());
-      }
+      users.addAll(team.getUsers());
     }
     if (team.getOwns() != null) {
       for (EntityReference own : team.getOwns()) {
         owns.add(own.getId().toString());
       }
+    }
+    if (team.getDefaultRoles() != null) {
+      defaultRoles.addAll(team.getDefaultRoles());
     }
 
     return internalBuilder()
@@ -785,7 +793,8 @@ class TeamESIndex {
         .entityType("team")
         .suggest(suggest)
         .owns(owns)
-        .users(users);
+        .users(users)
+        .defaultRoles(defaultRoles);
   }
 }
 
@@ -839,6 +848,75 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
         .entityType("glossaryTerm")
         .suggest(suggest)
         .deleted(glossaryTerm.getDeleted())
+        .tags(parseTags.tags);
+  }
+}
+
+@EqualsAndHashCode(callSuper = true)
+@Getter
+@SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class MlModelESIndex extends ElasticSearchIndex {
+  @JsonProperty("ml_model_id")
+  String mlModelId;
+
+  @JsonProperty("display_name")
+  String displayName;
+
+  @JsonProperty("entity_type")
+  String entityType;
+
+  @JsonProperty("alogrithm")
+  String algorithm;
+
+  @JsonProperty("ml_features")
+  List<String> mlFeatures;
+
+  @JsonProperty("ml_hyper_parameters")
+  List<String> mlHyperParameters;
+
+  public static MlModelESIndexBuilder builder(MlModel mlModel, EventType eventType) {
+    List<String> tags = new ArrayList<>();
+    List<String> mlHyperParameters = new ArrayList<>();
+    List<String> mlFeatures = new ArrayList<>();
+    List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getDisplayName()).weight(10).build());
+
+    if (mlModel.getTags() != null) {
+      mlModel.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+
+    if (mlModel.getMlHyperParameters() != null) {
+      for (MlHyperParameter mlHyperParameter : mlModel.getMlHyperParameters()) {
+        mlHyperParameters.add(mlHyperParameter.getName());
+      }
+    }
+
+    if (mlModel.getMlFeatures() != null) {
+      for (MlFeature mlFeature : mlModel.getMlFeatures()) {
+        mlFeatures.add(mlFeature.getName());
+      }
+    }
+
+    Long updatedTimestamp = mlModel.getUpdatedAt();
+    ParseTags parseTags = new ParseTags(tags);
+    String description = mlModel.getDescription() != null ? mlModel.getDescription() : "";
+    String displayName = mlModel.getDisplayName() != null ? mlModel.getDisplayName() : "";
+    return internalBuilder()
+        .mlModelId(mlModel.getId().toString())
+        .name(mlModel.getName())
+        .displayName(displayName)
+        .description(description)
+        .fqdn(mlModel.getFullyQualifiedName())
+        .algorithm(mlModel.getAlgorithm())
+        .mlFeatures(mlFeatures)
+        .mlHyperParameters(mlHyperParameters)
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .entityType("glossaryTerm")
+        .suggest(suggest)
+        .deleted(mlModel.getDeleted())
         .tags(parseTags.tags);
   }
 }
