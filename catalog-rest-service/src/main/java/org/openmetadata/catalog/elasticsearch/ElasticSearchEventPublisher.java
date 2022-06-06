@@ -556,12 +556,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'teams') "
-            + "{ ctx._source.teams.addAll(params.teams) } "
-            + "else if (k == 'roles') "
-            + " { ctx._source.roles.addAll(params.roles) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
@@ -569,12 +564,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'users') "
-            + "{ ctx._source.users.addAll(params.users) } "
-            + "else if (k == 'owns') "
-            + " { ctx._source.owns.addAll(params.owns) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
