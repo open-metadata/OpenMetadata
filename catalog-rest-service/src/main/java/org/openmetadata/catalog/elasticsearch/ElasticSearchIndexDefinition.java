@@ -235,6 +235,10 @@ class ElasticSearchIndex {
   String entityType;
 
   List<ElasticSearchSuggest> suggest;
+
+  @JsonProperty("service_suggest")
+  List<ElasticSearchSuggest> serviceSuggest;
+
   String description;
   String tier;
   List<String> tags;
@@ -250,7 +254,7 @@ class ElasticSearchIndex {
 @Builder
 class ElasticSearchSuggest {
   String input;
-  Integer weight;
+  Integer weight = 5;
 }
 
 @Getter
@@ -326,6 +330,15 @@ class TableESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
+  @JsonProperty("column_suggest")
+  List<ElasticSearchSuggest> columnSuggest;
+
+  @JsonProperty("schema_suggest")
+  List<ElasticSearchSuggest> schemaSuggest;
+
+  @JsonProperty("database_suggest")
+  List<ElasticSearchSuggest> databaseSuggest;
+
   public static TableESIndexBuilder builder(Table table, EventType eventType) {
     String tableId = table.getId().toString();
     String tableName = table.getName();
@@ -335,9 +348,15 @@ class TableESIndex extends ElasticSearchIndex {
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> databaseSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> schemaSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
-
+    databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).build());
+    schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).build());
+    serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).build());
     if (table.getTags() != null) {
       table.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
@@ -352,6 +371,7 @@ class TableESIndex extends ElasticSearchIndex {
         }
         columnDescriptions.add(col.getDescription());
         columnNames.add(col.getName());
+        columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
     ParseTags parseTags = new ParseTags(tags);
@@ -366,6 +386,10 @@ class TableESIndex extends ElasticSearchIndex {
             .lastUpdatedTimestamp(updatedTimestamp)
             .fqdn(table.getFullyQualifiedName())
             .suggest(suggest)
+            .columnSuggest(columnSuggest)
+            .schemaSuggest(schemaSuggest)
+            .databaseSuggest(databaseSuggest)
+            .serviceSuggest(serviceSuggest)
             .entityType("table")
             .columnNames(columnNames)
             .columnDescriptions(columnDescriptions)
