@@ -350,7 +350,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   public static void validateMysqlConnection(
       MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection) {
-    assertEquals(expectedMysqlConnection.getDatabase(), actualMysqlConnection.getDatabase());
+    assertEquals(expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
     assertEquals(expectedMysqlConnection.getPassword(), actualMysqlConnection.getPassword());
@@ -363,7 +363,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
     assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
-    assertEquals(expectedBigQueryConnection.getDatabase(), actualBigQueryConnection.getDatabase());
     assertEquals(
         expectedBigQueryConnection.getConnectionArguments(), actualBigQueryConnection.getConnectionArguments());
     assertEquals(expectedBigQueryConnection.getConnectionOptions(), actualBigQueryConnection.getConnectionOptions());
