@@ -21,6 +21,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../axiosAPIs/metadataTypeAPI';
+import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { Category, Type } from '../../../generated/entity/type';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -149,6 +150,11 @@ const AddCustomProperty = () => {
     }
   };
 
+  const getPropertyTypes = () =>
+    propertyTypes.filter((property) =>
+      SUPPORTED_FIELD_TYPES.includes(property.name)
+    );
+
   useEffect(() => {
     fetchTypeDetail(entityTypeFQN);
   }, [entityTypeFQN]);
@@ -198,7 +204,7 @@ const AddCustomProperty = () => {
               value={formData.type || ''}
               onChange={onChangeHandler}>
               <option value="">Select type</option>
-              {propertyTypes.map((propertyType) => (
+              {getPropertyTypes().map((propertyType) => (
                 <option key={uniqueId()} value={propertyType.id}>
                   {propertyType.displayName}
                 </option>
