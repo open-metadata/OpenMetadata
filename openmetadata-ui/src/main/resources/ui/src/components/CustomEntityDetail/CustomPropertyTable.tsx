@@ -23,7 +23,7 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 
 interface CustomPropertyTableProp {
   customProperties: CustomProperty[];
-  updateEntityType: (customFields: Type['customProperties']) => void;
+  updateEntityType: (customProperties: Type['customProperties']) => void;
 }
 
 type Operation = 'delete' | 'update' | 'no-operation';
@@ -32,39 +32,39 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   customProperties,
   updateEntityType,
 }) => {
-  const [selectedField, setSelectedField] = useState<CustomProperty>(
+  const [selectedProperty, setSelectedProperty] = useState<CustomProperty>(
     {} as CustomProperty
   );
 
   const [operation, setOperation] = useState<Operation>('no-operation');
 
-  const resetSelectedField = () => {
-    setSelectedField({} as CustomProperty);
+  const resetSelectedProperty = () => {
+    setSelectedProperty({} as CustomProperty);
     setOperation('no-operation' as Operation);
   };
 
-  const handleFieldDelete = () => {
-    const updatedFields = customProperties.filter(
-      (property) => property.name !== selectedField.name
+  const handlePropertyDelete = () => {
+    const updatedProperties = customProperties.filter(
+      (property) => property.name !== selectedProperty.name
     );
-    updateEntityType(updatedFields);
-    resetSelectedField();
+    updateEntityType(updatedProperties);
+    resetSelectedProperty();
   };
 
-  const handleFieldUpdate = (updatedDescription: string) => {
-    const updatedFields = customProperties.map((property) => {
-      if (property.name === selectedField.name) {
+  const handlePropertyUpdate = (updatedDescription: string) => {
+    const updatedProperties = customProperties.map((property) => {
+      if (property.name === selectedProperty.name) {
         return { ...property, description: updatedDescription };
       } else {
         return property;
       }
     });
-    updateEntityType(updatedFields);
-    resetSelectedField();
+    updateEntityType(updatedProperties);
+    resetSelectedProperty();
   };
 
-  const deleteCheck = !isEmpty(selectedField) && operation === 'delete';
-  const updateCheck = !isEmpty(selectedField) && operation === 'update';
+  const deleteCheck = !isEmpty(selectedProperty) && operation === 'delete';
+  const updateCheck = !isEmpty(selectedProperty) && operation === 'update';
 
   return (
     <Fragment>
@@ -122,7 +122,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         className="tw-cursor-pointer"
                         data-testid="edit-button"
                         onClick={() => {
-                          setSelectedField(property);
+                          setSelectedProperty(property);
                           setOperation('update');
                         }}>
                         <SVGIcons
@@ -136,7 +136,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                         className="tw-cursor-pointer tw-ml-4"
                         data-testid="delete-button"
                         onClick={() => {
-                          setSelectedField(property);
+                          setSelectedProperty(property);
                           setOperation('delete');
                         }}>
                         <SVGIcons
@@ -166,21 +166,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
       </div>
       {deleteCheck && (
         <ConfirmationModal
-          bodyText={`Are you sure you want to delete the field ${selectedField.name}`}
+          bodyText={`Are you sure you want to delete the field ${selectedProperty.name}`}
           cancelText="Cancel"
           confirmText="Confirm"
-          header={`Delete field ${selectedField.name}`}
-          onCancel={resetSelectedField}
-          onConfirm={handleFieldDelete}
+          header={`Delete field ${selectedProperty.name}`}
+          onCancel={resetSelectedProperty}
+          onConfirm={handlePropertyDelete}
         />
       )}
       {updateCheck && (
         <ModalWithMarkdownEditor
-          header={`Edit Field: "${selectedField.name}"`}
-          placeholder="Enter Field Description"
-          value={selectedField.description || ''}
-          onCancel={resetSelectedField}
-          onSave={handleFieldUpdate}
+          header={`Edit Property: "${selectedProperty.name}"`}
+          placeholder="Enter Property Description"
+          value={selectedProperty.description || ''}
+          onCancel={resetSelectedProperty}
+          onSave={handlePropertyUpdate}
         />
       )}
     </Fragment>
