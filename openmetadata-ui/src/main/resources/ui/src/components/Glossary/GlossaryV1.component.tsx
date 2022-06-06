@@ -196,24 +196,11 @@ const GlossaryV1 = ({
       <div className="tw-bg-white tw-shadow tw-rounded-md tw-h-full">
         <div className="tw-flex tw-justify-between tw-items-center tw-pt-2 tw-px-3">
           <h6 className="tw-heading tw-text-base">Glossary</h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': isHasAccess,
-              })}
-              data-testid="add-category"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={handleAddGlossaryClick}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </NonAdminAction>
         </div>
         <div>
           {treeData.length ? (
             <Fragment>
-              <div className="tw-px-3">
+              <div className="tw-px-3 tw-mb-2">
                 <Searchbar
                   showLoadingStatus
                   placeholder="Search term..."
@@ -221,6 +208,13 @@ const GlossaryV1 = ({
                   typingInterval={500}
                   onSearch={handleSearchText}
                 />
+                <NonAdminAction
+                  position="bottom"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <button className="tw--mt-1 tw-w-full tw-text-center tw-py-1 tw-text-primary tw-border tw-rounded-md">
+                    + Add Glossary
+                  </button>
+                </NonAdminAction>
               </div>
               {isSearchResultEmpty ? (
                 <p className="tw-text-grey-muted tw-text-center">
