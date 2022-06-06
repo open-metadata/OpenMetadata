@@ -575,8 +575,6 @@ class ElasticsearchSink(Sink[Entity]):
         for ml_model_hyper_parameter in ml_model.mlHyperParameters:
             ml_model_hyper_parameters.append(ml_model_hyper_parameter.name)
 
-        print(ml_features)
-
         ml_model_doc = MlModelESDocument(
             ml_model_id=str(ml_model.id.__root__),
             deleted=ml_model.deleted,

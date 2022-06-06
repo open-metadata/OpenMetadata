@@ -710,8 +710,8 @@ class UserESIndex {
       teams.addAll(user.getTeams());
     }
 
-    for (EntityReference role : user.getRoles()) {
-      roles.addAll(roles);
+    if (user.getRoles() != null) {
+      roles.addAll(user.getRoles());
     }
 
     return internalBuilder()
