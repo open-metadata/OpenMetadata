@@ -21,6 +21,7 @@ export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
+export const PAGE_SIZE_BASE = 12;
 export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
@@ -61,15 +62,17 @@ export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
 export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
+export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
+export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
 export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
 export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
-const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-const PLAEHOLDER_ROUTE_VERSION = ':version';
-const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
-const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
-const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-const PLACEHOLDER_USER_NAME = ':username';
-const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_USER_NAME = ':username';
+export const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
+const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -167,6 +170,8 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
+  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
+  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -212,6 +217,11 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
   BOTS: `/bots`,
   BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
+  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
+  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CUSTOM_PROPERTIES: `/custom-properties`,
+  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -363,6 +373,29 @@ export const getBotsPath = (botsName: string) => {
   return path;
 };
 
+export const getMlModelPath = (mlModelFqn: string, tab = '') => {
+  let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
+export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_PROPERTY;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
+export const getCustomEntityPath = (entityTypeFQN: string) => {
+  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
+
+  return path;
+};
+
 export const TIMEOUT = {
   USER_LIST: 60000, // 60 seconds for user retrieval
   TOAST_DELAY: 5000, // 5 seconds timeout for toaster autohide delay
@@ -376,6 +409,12 @@ export const navLinkDevelop = [
 
 export const navLinkSettings = [
   { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
+  {
+    name: 'Custom Properties',
+    to: '/custom-properties',
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },

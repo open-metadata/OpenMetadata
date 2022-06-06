@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ServiceDataObj } from '../../interface/service.interface';
+
 export const mockIngestionWorkFlow = {
   data: {
     data: [
@@ -62,7 +64,6 @@ export const mockIngestionWorkFlow = {
           apiVersion: 'v1',
         },
         airflowConfig: {
-          forceDeploy: true,
           pausePipeline: false,
           concurrency: 1,
           startDate: '2022-04-14',
@@ -134,4 +135,4 @@ export const mockService = {
   },
   href: 'http://localhost:8585/api/v1/services/databaseServices/c68e904a-4262-4b58-84c1-8a986b4aa47d',
   deleted: false,
-};
+} as ServiceDataObj;

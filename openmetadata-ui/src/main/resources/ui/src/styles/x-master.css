@@ -980,3 +980,7 @@ code {
   border-bottom: 1px solid #dce3ec;
   padding: 0 18px;
 }
+
+.custom-entity-schema > .CodeMirror {
+  height: 70vh;
+}

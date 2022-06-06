@@ -62,7 +62,7 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -340,7 +340,7 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        usage = TableUsageRequest(date="2021-10-20", count=10)
+        usage = UsageRequest(date="2021-10-20", count=10)
 
         self.metadata.publish_table_usage(res, usage)
 

@@ -155,12 +155,9 @@ def create_or_update_pipeline(  # pylint: disable=too-many-locals
     :param metadata: OpenMetadata API client
     :return: PipelineEntity
     """
-    pipeline_service_url = conf.get("webserver", "base_url")
-    dag_url = f"{pipeline_service_url}/tree?dag_id={dag.dag_id}"
-    task_url = (
-        f"{pipeline_service_url}/taskinstance/list/"
-        + f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
-    )
+    dag_url = f"/tree?dag_id={dag.dag_id}"
+    task_url = f"/taskinstance/list/?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={operator.task_id}"
+
     dag_start_date = dag.start_date.isoformat() if dag.start_date else None
     task_start_date = (
         task_instance.start_date.isoformat() if task_instance.start_date else None

@@ -43,7 +43,7 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.3",
+    "sqllineage==1.3.5",
     "antlr4-python3-runtime==4.9.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
@@ -61,7 +61,7 @@ base_plugins = {
     "query-parser",
     "metadata-usage",
     "file-stage",
-    "sql-metadata~=2.0.0",
+    "sql-metadata~=2.5.0",
 }
 plugins: Dict[str, Set[str]] = {
     "airflow": {
@@ -111,7 +111,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "powerbi": {"python-power-bi==0.1.2"},
+    "powerbi": {"msal==1.17.0"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"trino[sqlalchemy]"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},

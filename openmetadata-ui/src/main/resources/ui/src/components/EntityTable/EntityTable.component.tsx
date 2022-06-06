@@ -59,7 +59,6 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 
 interface Props {
   owner: Table['owner'];
@@ -283,15 +282,22 @@ const EntityTable = ({
     }
   };
 
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
+  const handleTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    columnName = ''
+  ) => {
     const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
       (tag) => {
         return { fqn: tag.tagFQN, source: tag.source };
       }
     );
-    if (newSelectedTags && editColumnTag) {
+    if (newSelectedTags && (editColumnTag || columnName)) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(tableCols, editColumnTag.column.name, newSelectedTags);
+      updateColumnTags(
+        tableCols,
+        editColumnTag?.column.name || columnName,
+        newSelectedTags
+      );
       onUpdate?.(tableCols);
     }
     setEditColumnTag(undefined);
@@ -577,6 +583,7 @@ const EntityTable = ({
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
+                                  showAddTagButton
                                   editable={editColumnTag?.index === row.id}
                                   isLoading={
                                     isTagLoading &&
@@ -590,40 +597,24 @@ const EntityTable = ({
                                     handleTagSelection();
                                   }}
                                   onSelectionChange={(tags) => {
-                                    handleTagSelection(tags);
-                                  }}>
-                                  {cell.value.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags
-                                        startWith="+ "
-                                        tag="Add tag"
-                                        type="outlined"
-                                      />
-                                    </span>
-                                  )}
-                                </TagsContainer>
+                                    handleTagSelection(tags, row.original.name);
+                                  }}
+                                />
                               </NonAdminAction>
-                              {getFieldThreadElement(
-                                getColumnName(cell),
-                                'tags',
-                                entityFieldThreads as EntityFieldThreads[],
-                                onThreadLinkSelect,
-                                EntityType.TABLE,
-                                entityFqn,
-                                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                  cell
-                                )}${ENTITY_LINK_SEPARATOR}tags`,
-                                Boolean(cell.value.length)
-                              )}
+                              <div className="tw-mt-1">
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  'tags',
+                                  entityFieldThreads as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}tags`,
+                                  Boolean(cell.value.length)
+                                )}
+                              </div>
                             </div>
                           )}
                         </>

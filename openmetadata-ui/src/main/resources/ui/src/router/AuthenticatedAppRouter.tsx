@@ -15,38 +15,133 @@ import { isEmpty } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
+import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
-import AddGlossaryPage from '../pages/AddGlossary/AddGlossaryPage.component';
-import AddGlossaryTermPage from '../pages/AddGlossaryTermPage/AddGlossaryTermPage.component';
-import AddIngestionPage from '../pages/AddIngestionPage/AddIngestionPage.component';
-import AddServicePage from '../pages/AddServicePage/AddServicePage.component';
-import AddWebhookPage from '../pages/AddWebhookPage/AddWebhookPage.component';
-import BotsListPage from '../pages/BotsListpage/BotsListpage.component';
-import BotsPage from '../pages/BotsPage/BotsPage.component';
-import CreateUserPage from '../pages/CreateUserPage/CreateUserPage.component';
-import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import DatabaseDetails from '../pages/database-details/index';
-import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
-import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
-import EditIngestionPage from '../pages/EditIngestionPage/EditIngestionPage.component';
-import EditWebhookPage from '../pages/EditWebhookPage/EditWebhookPage.component';
-import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
-import ExplorePage from '../pages/explore/ExplorePage.component';
-import GlossaryPageV1 from '../pages/GlossaryPage/GlossaryPageV1.component';
-import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
-import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
-import RolesPage from '../pages/RolesPage/RolesPage.component';
-import ServicePage from '../pages/service';
-import ServicesPage from '../pages/services';
-import SignupPage from '../pages/signup';
-import SwaggerPage from '../pages/swagger';
-import TagsPage from '../pages/tags';
-import TeamsAndUsersPage from '../pages/TeamsAndUsersPage/TeamsAndUsersPage.component';
-import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
-import TourPageComponent from '../pages/tour-page/TourPage.component';
-import UserPage from '../pages/UserPage/UserPage.component';
-import WebhooksPage from '../pages/WebhooksPage/WebhooksPage.component';
-import AdminProtectedRoute from './AdminProtectedRoute';
+import withSuspenseFallback from './withSuspenseFallback';
+
+const MyDataPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MyDataPage/MyDataPage.component'))
+);
+
+const PipelineDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/PipelineDetails/PipelineDetailsPage.component')
+  )
+);
+
+const RolesPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/RolesPage/RolesPage.component'))
+);
+const ServicePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/service'))
+);
+const ServicesPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/services'))
+);
+const SignupPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/signup'))
+);
+const SwaggerPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/swagger'))
+);
+const TagsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/tags'))
+);
+const TeamsAndUsersPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/TeamsAndUsersPage/TeamsAndUsersPage.component')
+  )
+);
+const TopicDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TopicDetails/TopicDetailsPage.component'))
+);
+const TourPageComponent = withSuspenseFallback(
+  React.lazy(() => import('../pages/tour-page/TourPage.component'))
+);
+const UserPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/UserPage/UserPage.component'))
+);
+const WebhooksPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/WebhooksPage/WebhooksPage.component'))
+);
+const AdminProtectedRoute = withSuspenseFallback(
+  React.lazy(() => import('./AdminProtectedRoute'))
+);
+
+const AddGlossaryPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AddGlossary/AddGlossaryPage.component'))
+);
+const AddGlossaryTermPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AddGlossaryTermPage/AddGlossaryTermPage.component')
+  )
+);
+const AddIngestionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/AddIngestionPage/AddIngestionPage.component')
+  )
+);
+const AddServicePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AddServicePage/AddServicePage.component'))
+);
+const AddWebhookPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/AddWebhookPage/AddWebhookPage.component'))
+);
+const BotsListPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotsListpage/BotsListpage.component'))
+);
+const BotsPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/BotsPage/BotsPage.component'))
+);
+const CreateUserPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/CreateUserPage/CreateUserPage.component'))
+);
+const DashboardDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/DashboardDetailsPage/DashboardDetailsPage.component')
+  )
+);
+const DatabaseDetails = withSuspenseFallback(
+  React.lazy(() => import('../pages/database-details/index'))
+);
+const DatabaseSchemaPageComponent = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
+  )
+);
+const DatasetDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/DatasetDetailsPage/DatasetDetailsPage.component')
+  )
+);
+const EditIngestionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/EditIngestionPage/EditIngestionPage.component')
+  )
+);
+const EditWebhookPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/EditWebhookPage/EditWebhookPage.component'))
+);
+const EntityVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../pages/EntityVersionPage/EntityVersionPage.component')
+  )
+);
+const ExplorePage = withSuspenseFallback(
+  React.lazy(() => import('../pages/explore/ExplorePage.component'))
+);
+const GlossaryPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../pages/GlossaryPage/GlossaryPageV1.component'))
+);
+
+const MlModelPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/MlModelPage/MlModelPage.component'))
+);
+
+const CustomPropertiesPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/CustomPropertiesPage/CustomPropertiesPage'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -59,6 +154,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS_USERS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={TeamsAndUsersPage}
+        path={ROUTES.TEAMS_AND_USERS_ADMINS}
       />
       <Route
         exact
@@ -140,6 +245,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
+      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
+      <Route
+        exact
+        component={MlModelPage}
+        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={AddGlossaryPage}
@@ -171,6 +282,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={BotsPage}
         path={ROUTES.BOTS_PROFILE}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPropertiesPage}
+        path={ROUTES.CUSTOM_PROPERTIES}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPropertiesPage}
+        path={ROUTES.CUSTOM_ENTITY_DETAIL}
+      />
+      <AdminProtectedRoute
+        exact
+        component={AddCustomProperty}
+        path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
 
       <Redirect to={ROUTES.NOT_FOUND} />

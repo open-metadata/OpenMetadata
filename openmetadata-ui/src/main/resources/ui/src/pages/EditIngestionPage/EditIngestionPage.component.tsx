@@ -171,7 +171,7 @@ const EditIngestionPage = () => {
       owner,
       pipelineType,
       service,
-      source,
+      sourceConfig,
     } = data;
     const updateData = {
       airflowConfig,
@@ -182,7 +182,7 @@ const EditIngestionPage = () => {
       owner,
       pipelineType,
       service,
-      sourceConfig: source.sourceConfig,
+      sourceConfig,
     };
 
     return new Promise<void>((resolve, reject) => {

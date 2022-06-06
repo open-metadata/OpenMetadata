@@ -217,22 +217,16 @@ class SupersetSource(DashboardSourceService):
         Method to Get Dashboard Entity
         """
         self.fetch_dashboard_charts(dashboard_details)
-        dashboard_id = dashboard_details["id"]
-        name = dashboard_details["dashboard_title"]
-        dashboard_url = (
-            f"{self.service_connection.hostPort[:-1]}{dashboard_details['url']}"
-        )
         last_modified = (
             dateparser.parse(dashboard_details.get("changed_on_utc", "now")).timestamp()
             * 1000
         )
-        owners = get_owners(dashboard_details["owners"])
         yield Dashboard(
-            name=dashboard_id,
-            displayName=name,
+            name=dashboard_details["id"],
+            displayName=dashboard_details["dashboard_title"],
             description="",
-            url=dashboard_url,
-            owners=owners,
+            url=dashboard_details["url"],
+            owners=get_owners(dashboard_details["owners"]),
             charts=self.charts,
             service=EntityReference(id=self.service.id, type="dashboardService"),
             lastModified=last_modified,
@@ -243,6 +237,7 @@ class SupersetSource(DashboardSourceService):
         Get lineage between dashboard and data sources
         """
         logger.info("Lineage not implemented for superset")
+        return None
 
     def fetch_dashboard_charts(self, dashboard_details: dict) -> None:
         """
@@ -316,15 +311,9 @@ class SupersetSource(DashboardSourceService):
     # pylint: disable=too-many-locals
     def _build_chart(self, chart_json: dict) -> Chart:
         chart_id = chart_json["id"]
-        name = chart_json["slice_name"]
         last_modified = (
             dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
         )
-        chart_type = chart_json["viz_type"]
-        chart_url = f"{self.service_connection.hostPort}{chart_json['url']}"
-        datasource_id = chart_json["datasource_id"]
-        datasource_fqn = self._get_datasource_from_id(datasource_id)
-        owners = get_owners(chart_json["owners"])
         params = json.loads(chart_json["params"])
         metrics = [
             get_metric_name(metric)
@@ -345,12 +334,12 @@ class SupersetSource(DashboardSourceService):
 
         chart = Chart(
             name=chart_id,
-            displayName=name,
+            displayName=chart_json["slice_name"],
             description="",
-            chart_type=chart_type,
-            url=chart_url,
-            owners=owners,
-            datasource_fqn=datasource_fqn,
+            chart_type=chart_json["viz_type"],
+            url=chart_json["url"],
+            owners=get_owners(chart_json["owners"]),
+            datasource_fqn=self._get_datasource_from_id(chart_json["datasource_id"]),
             lastModified=last_modified,
             service=EntityReference(id=self.service.id, type="dashboardService"),
             custom_props=custom_properties,

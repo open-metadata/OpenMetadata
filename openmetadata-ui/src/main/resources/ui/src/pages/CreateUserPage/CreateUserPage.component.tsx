@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosError } from 'axios';
 import { observer } from 'mobx-react';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import CreateUserComponent from '../../components/CreateUser/CreateUser.component';
@@ -26,7 +25,6 @@ import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -37,21 +35,7 @@ const CreateUserPage = () => {
   const history = useHistory();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [teams, setTeams] = useState<Array<UserTeams>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
-
-  const fetchTeams = () => {
-    getTeams('defaultRoles')
-      .then((res: AxiosResponse) => {
-        setTeams(res.data.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-teams-error']
-        );
-      });
-  };
 
   const goToUserListPage = () => {
     history.push(getTeamAndUserDetailsPath(UserType.USERS));
@@ -106,17 +90,12 @@ const CreateUserPage = () => {
     setRoles(AppState.userRoles);
   }, [AppState.userRoles]);
 
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
   return (
     <PageContainerV1>
       <CreateUserComponent
         allowAccess={isAdminUser || isAuthDisabled}
         roles={roles}
         saveState={status}
-        teams={teams}
         onCancel={handleCancel}
         onSave={handleAddUserSave}
       />

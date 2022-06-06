@@ -316,6 +316,7 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
+            showErrorToast(error);
             resetUserDetails(true);
           } else if (status === ClientErrors.FORBIDDEN) {
             showErrorToast(jsonData['api-error-messages']['forbidden-error']);

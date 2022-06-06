@@ -23,9 +23,8 @@
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },
     "chartUrl": {
-      "description": "Chart URL, pointing to its own Service URL",
-      "type": "string",
-      "format": "uri"
+      "description": "Chart URL suffix from its service.",
+      "type": "string"
     },
     "tables": {
       "description": "Link to tables used in this chart.",

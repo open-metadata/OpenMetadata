@@ -16,13 +16,13 @@ from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.models.table_queries import (
-    QueryParserData,
+from metadata.generated.schema.type.queryParserData import QueryParserData
+from metadata.generated.schema.type.tableUsageCount import (
     TableColumn,
     TableColumnJoin,
     TableUsageCount,
 )
+from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.stage.file import FileStageConfig
 from metadata.utils.logger import ingestion_logger
 
@@ -58,7 +58,7 @@ def get_table_column_join(table, table_aliases, joins, database):
                 )
         except ValueError as err:
             logger.error("Error in parsing sql query joins {}".format(err))
-    return TableColumnJoin(table_column=table_column, joined_with=joined_with)
+    return TableColumnJoin(tableColumn=table_column, joinedWith=joined_with)
 
 
 class TableUsageStage(Stage[QueryParserData]):
@@ -104,7 +104,7 @@ class TableUsageStage(Stage[QueryParserData]):
                         table_usage_count.joins.append(
                             get_table_column_join(
                                 table,
-                                record.tables_aliases,
+                                record.tableAliases,
                                 record.columns["join"],
                                 record.database,
                             )
@@ -114,7 +114,7 @@ class TableUsageStage(Stage[QueryParserData]):
                     if record.columns.get("join") is not None:
                         tbl_column_join = get_table_column_join(
                             table,
-                            record.tables_aliases,
+                            record.tableAliases,
                             record.columns["join"],
                             record.database,
                         )
@@ -126,8 +126,9 @@ class TableUsageStage(Stage[QueryParserData]):
                         database=record.database,
                         date=record.date,
                         joins=joins,
-                        service_name=record.service_name,
-                        sql_queries=[],
+                        serviceName=record.serviceName,
+                        sqlQueries=[],
+                        databaseSchema=record.databaseSchema,
                     )
 
             except Exception as exc:
@@ -140,7 +141,7 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
-            value.sql_queries = self.table_queries.get(key, [])
+            value.sqlQueries = self.table_queries.get(key, [])
             data = value.json()
             self.file.write(json.dumps(data))
             self.file.write("\n")

@@ -31,7 +31,7 @@ public class AuthenticationConfiguration {
   @Getter @Setter private String authority;
   @Getter @Setter private String clientId;
   @Getter @Setter private String callbackUrl;
-  @Getter @Setter private List<String> jwtPrincipalClaims = List.of("email", "preferred_username", "sub");
+  @Getter @Setter private List<String> jwtPrincipalClaims;
 
   @Override
   public String toString() {

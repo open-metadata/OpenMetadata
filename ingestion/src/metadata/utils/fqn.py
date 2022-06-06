@@ -14,9 +14,12 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
-from typing import List, Optional, Type, TypeVar
+from typing import List, Optional, Type, TypeVar, Union
 
-from antlr4 import *
+from antlr4.CommonTokenStream import CommonTokenStream
+from antlr4.error.ErrorStrategy import BailErrorStrategy
+from antlr4.InputStream import InputStream
+from antlr4.tree.Tree import ParseTreeWalker
 from pydantic import BaseModel
 
 from metadata.antlr.split_listener import SplitListener
@@ -121,6 +124,7 @@ def _(
     schema_name: Optional[str],
     table_name: str,
     retries: int = 3,
+    fetch_multiple_entities: bool = False,
 ) -> Optional[str]:
     """
     Building logic for tables
@@ -148,10 +152,16 @@ def _(
             },
             retries=retries,
         )
-        entity: Optional[Table] = get_entity_from_es_result(entity_list=es_result)
-        return str(entity.fullyQualifiedName.__root__) if entity else None
-
-    return _build(service_name, database_name, schema_name, table_name)
+        entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+            entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+        )
+        if not entity:
+            return None
+        if fetch_multiple_entities:
+            return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return str(entity.fullyQualifiedName.__root__)
+    fqn = _build(service_name, database_name, schema_name, table_name)
+    return [fqn] if fetch_multiple_entities else fqn
 
 
 @fqn_build_registry.add(DatabaseSchema)

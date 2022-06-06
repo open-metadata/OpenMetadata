@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -63,7 +64,6 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
@@ -323,15 +323,22 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editChartTags) {
-      const prevTags = editChartTags.chart.tags?.filter((tag) =>
+  const handleChartTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    chart?: {
+      chart: ChartType;
+      index: number;
+    }
+  ) => {
+    const chartTag = isUndefined(editChartTags) ? chart : editChartTags;
+    if (selectedTags && chartTag) {
+      const prevTags = chartTag.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
       );
       const newTags = selectedTags
         .filter(
           (selectedTag) =>
-            !editChartTags.chart.tags?.some(
+            !chartTag.chart.tags?.some(
               (tag) => tag.tagFQN === selectedTag.tagFQN
             )
         )
@@ -343,19 +350,13 @@ const DashboardDetails = ({
         }));
 
       const updatedChart = {
-        ...editChartTags.chart,
+        ...chartTag.chart,
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
-      const jsonPatch = compare(charts[editChartTags.index], updatedChart);
-      chartTagUpdateHandler(
-        editChartTags.index,
-        editChartTags.chart.id,
-        jsonPatch
-      );
-      setEditChartTags(undefined);
-    } else {
-      setEditChartTags(undefined);
+      const jsonPatch = compare(charts[chartTag.index], updatedChart);
+      chartTagUpdateHandler(chartTag.index, chartTag.chart.id, jsonPatch);
     }
+    setEditChartTags(undefined);
   };
 
   const fetchTagsAndGlossaryTerms = () => {
@@ -614,6 +615,7 @@ const DashboardDetails = ({
                                   position="left"
                                   trigger="click">
                                   <TagsContainer
+                                    showAddTagButton
                                     editable={editChartTags?.index === index}
                                     isLoading={
                                       isTagLoading &&
@@ -627,29 +629,12 @@ const DashboardDetails = ({
                                       handleChartTagSelection();
                                     }}
                                     onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags);
-                                    }}>
-                                    {chart.tags?.length ? (
-                                      <button
-                                        className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        data-testid="edit-tags">
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    ) : (
-                                      <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                        <Tags
-                                          startWith="+ "
-                                          tag="Add tag"
-                                          type="outlined"
-                                        />
-                                      </span>
-                                    )}
-                                  </TagsContainer>
+                                      handleChartTagSelection(tags, {
+                                        chart,
+                                        index,
+                                      });
+                                    }}
+                                  />
                                 </NonAdminAction>
                               )}
                             </td>

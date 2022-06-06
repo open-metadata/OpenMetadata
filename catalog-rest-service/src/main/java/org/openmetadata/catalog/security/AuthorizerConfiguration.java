@@ -24,6 +24,7 @@ public class AuthorizerConfiguration {
   @NotEmpty @Getter @Setter private Set<String> adminPrincipals;
   @NotEmpty @Getter @Setter private Set<String> botPrincipals;
   @NotEmpty @Getter @Setter private String principalDomain;
+  @NotEmpty @Getter @Setter private Boolean enforcePrincipalDomain;
 
   @Override
   public String toString() {

@@ -12,14 +12,14 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { Table } from 'Models';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
 import { ColumnTestType } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
 import { getURLWithQueryFields } from '../utils/APIUtils';
-import APIClient, { AxiosClientWithError } from './index';
+import APIClient from './index';
 
 export const getTableDetails: Function = (
   id: string,
@@ -62,12 +62,17 @@ export const getTableDetailsByFQN: Function = (
 
 export const getAllTables = (
   arrQueryFields?: string,
-  limit?: number
+  limit?: number,
+  database?: string
 ): Promise<AxiosResponse> => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
     searchParams.set('limit', `${limit}`);
+  }
+
+  if (!isUndefined(database)) {
+    searchParams.set('database', database);
   }
 
   const url = getURLWithQueryFields(
@@ -76,7 +81,7 @@ export const getAllTables = (
     searchParams.toString()
   );
 
-  return AxiosClientWithError.get(url);
+  return APIClient.get(url);
 };
 
 export const getDatabaseTables: Function = (
