@@ -3,6 +3,7 @@ import { DataNode, EventDataNode, Key } from 'rc-tree/lib/interface';
 export interface TreeViewProps {
   treeData: DataNode[];
   defaultExpandAll?: boolean;
+  className?: string;
   showIcon?: boolean;
   selectedKeys?: string[];
   expandedKeys?: string[];

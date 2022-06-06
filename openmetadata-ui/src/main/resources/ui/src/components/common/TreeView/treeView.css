@@ -5,6 +5,16 @@
   opacity: 1;
 }
 
+.rc-tree-treenode-selected {
+  background-color: #f4f0fd;
+  border-left: 2px solid #7147e8;
+}
+
+.rc-tree .rc-tree-treenode {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
 .rc-tree-switcher {
   background-image: none !important;
 }

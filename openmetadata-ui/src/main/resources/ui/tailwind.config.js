@@ -155,6 +155,7 @@ module.exports = {
       height: {
         100: '25rem',
         '70vh': '70vh',
+        '80vh': '80vh',
       },
       width: {
         120: '30rem',

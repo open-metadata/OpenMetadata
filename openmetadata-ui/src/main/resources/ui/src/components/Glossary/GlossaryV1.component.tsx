@@ -193,8 +193,8 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-bg-white tw-shadow tw-rounded-md tw-h-full">
-        <div className="tw-flex tw-justify-between tw-items-center tw-pt-2 tw-px-3">
+      <div className="tw-bg-white tw-shadow tw-rounded-md tw-min-h-full tw-h-80vh tw-py-2">
+        <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
           <h6 className="tw-heading tw-text-base">Glossary</h6>
         </div>
         <div>
@@ -228,6 +228,7 @@ const GlossaryV1 = ({
                 </p>
               ) : (
                 <TreeView
+                  className="tw-px-2"
                   expandedKeys={expandedKey}
                   handleClick={handleTreeClick}
                   handleExpand={(key) => handleExpandedKey(key as string[])}
