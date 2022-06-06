@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
@@ -52,6 +52,8 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import DropDownList from '../dropdown/DropDownList';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
+import Tags from '../tags/tags';
 
 type props = {
   isHasAccess: boolean;
@@ -410,6 +412,69 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
+      <div className="tw-flex tw-flex-wrap tw-group tw-mb-4" data-testid="tags">
+        {!isTagEditable && (
+          <>
+            {glossary?.tags && glossary.tags.length > 0 && (
+              <>
+                <SVGIcons
+                  alt="icon-tag"
+                  className="tw-mx-1"
+                  icon="icon-tag-grey"
+                  width="16"
+                />
+                <TagsViewer tags={glossary.tags} />
+              </>
+            )}
+          </>
+        )}
+        <NonAdminAction
+          isOwner={Boolean(glossary.owner)}
+          permission={Operation.UpdateTags}
+          position="bottom"
+          title={TITLE_FOR_NON_OWNER_ACTION}
+          trigger="click">
+          <div className="tw-inline-block" onClick={handleTagContainerClick}>
+            <TagsContainer
+              buttonContainerClass="tw--mt-0"
+              containerClass="tw-flex tw-items-center tw-gap-2"
+              dropDownHorzPosRight={false}
+              editable={isTagEditable}
+              isLoading={isTagLoading}
+              selectedTags={getSelectedTags()}
+              showTags={false}
+              size="small"
+              tagList={getTagOptionsFromFQN(tagList)}
+              type="label"
+              onCancel={() => {
+                handleTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleTagSelection(tags);
+              }}>
+              {glossary?.tags && glossary?.tags.length ? (
+                <button className=" tw-ml-1 focus:tw-outline-none">
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="12px"
+                  />
+                </button>
+              ) : (
+                <span>
+                  <Tags
+                    className="tw-text-primary"
+                    startWith="+ "
+                    tag="Add tag"
+                    type="label"
+                  />
+                </span>
+              )}
+            </TagsContainer>
+          </div>
+        </NonAdminAction>
+      </div>
       <div className="tw-flex tw-gap-4">
         <div className="tw-w-9/12">
           <div data-testid="description-container">
@@ -423,41 +488,6 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               onDescriptionUpdate={onDescriptionUpdate}
             />
           </div>
-
-          <Card heading="Related Terms">
-            <Fragment>
-              <p className="tw-text-grey-muted tw-mb-2">Tags</p>
-              <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
-                <NonAdminAction
-                  isOwner={Boolean(glossary.owner)}
-                  permission={Operation.UpdateTags}
-                  position="bottom"
-                  title={TITLE_FOR_NON_OWNER_ACTION}
-                  trigger="click">
-                  <div
-                    className="tw-inline-block"
-                    onClick={handleTagContainerClick}>
-                    <TagsContainer
-                      showAddTagButton
-                      buttonContainerClass="tw--mt-0"
-                      containerClass="tw-flex tw-items-center tw-gap-2"
-                      dropDownHorzPosRight={false}
-                      editable={isTagEditable}
-                      isLoading={isTagLoading}
-                      selectedTags={getSelectedTags()}
-                      size="small"
-                      tagList={getTagOptionsFromFQN(tagList)}
-                      type="label"
-                      onCancel={() => {
-                        handleTagSelection();
-                      }}
-                      onSelectionChange={handleTagSelection}
-                    />
-                  </div>
-                </NonAdminAction>
-              </div>
-            </Fragment>
-          </Card>
         </div>
         <div className="tw-w-3/12">
           <Card action={ownerAction()} heading="Owner">

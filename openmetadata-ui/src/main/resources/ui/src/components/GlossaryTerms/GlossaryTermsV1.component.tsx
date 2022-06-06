@@ -31,11 +31,11 @@ import {
   GlossaryTerm,
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
@@ -53,6 +53,7 @@ import GlossaryReferenceModal from '../Modals/GlossaryReferenceModal/GlossaryRef
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
+import TagsViewer from '../tags-viewer/tags-viewer';
 import Tags from '../tags/tags';
 import AssetsTabs from './tabs/AssetsTabs.component';
 import RelationshipTab from './tabs/RelationshipTab.component';
@@ -471,39 +472,6 @@ const GlossaryTermsV1 = ({
           </div>
           <Card heading="Related Terms">
             <Fragment>
-              <div>
-                <p className="tw-text-grey-muted tw-mb-2">Tags</p>
-                <div
-                  className="tw-flex tw-flex-wrap tw-group"
-                  data-testid="tags">
-                  <NonAdminAction
-                    permission={Operation.UpdateTags}
-                    position="bottom"
-                    title={TITLE_FOR_NON_OWNER_ACTION}
-                    trigger="click">
-                    <div
-                      className="tw-inline-block"
-                      onClick={handleTagContainerClick}>
-                      <TagsContainer
-                        showAddTagButton
-                        buttonContainerClass="tw--mt-0"
-                        containerClass="tw-flex tw-items-center tw-gap-2"
-                        dropDownHorzPosRight={false}
-                        editable={isTagEditable}
-                        isLoading={isTagLoading}
-                        selectedTags={getSelectedTags()}
-                        size="small"
-                        tagList={getTagOptionsFromFQN(tagList)}
-                        type="label"
-                        onCancel={() => {
-                          handleTagSelection();
-                        }}
-                        onSelectionChange={handleTagSelection}
-                      />
-                    </div>
-                  </NonAdminAction>
-                </div>
-              </div>
               <div className="tw-mt-5">
                 <p className="tw-text-grey-muted tw-mb-2">Synonyms</p>
                 <div>
@@ -642,6 +610,68 @@ const GlossaryTermsV1 = ({
         <div className="tw-font-medium">Status</div>
         <div>{glossaryTerm.status}</div>
       </div> */}
+
+      <div className="tw-flex tw-flex-wrap tw-group tw-mt-2" data-testid="tags">
+        {!isTagEditable && (
+          <>
+            {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
+              <>
+                <SVGIcons
+                  alt="icon-tag"
+                  className="tw-mx-1"
+                  icon="icon-tag-grey"
+                  width="16"
+                />
+                <TagsViewer tags={glossaryTerm.tags} />
+              </>
+            )}
+          </>
+        )}
+        <NonAdminAction
+          position="bottom"
+          title={TITLE_FOR_NON_ADMIN_ACTION}
+          trigger="click">
+          <div className="tw-inline-block" onClick={handleTagContainerClick}>
+            <TagsContainer
+              buttonContainerClass="tw--mt-0"
+              containerClass="tw-flex tw-items-center tw-gap-2"
+              dropDownHorzPosRight={false}
+              editable={isTagEditable}
+              isLoading={isTagLoading}
+              selectedTags={getSelectedTags()}
+              showTags={false}
+              size="small"
+              tagList={getTagOptionsFromFQN(tagList)}
+              type="label"
+              onCancel={() => {
+                handleTagSelection();
+              }}
+              onSelectionChange={(tags) => {
+                handleTagSelection(tags);
+              }}>
+              {glossaryTerm?.tags && glossaryTerm?.tags.length ? (
+                <button className="tw-ml-1 focus:tw-outline-none">
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="12px"
+                  />
+                </button>
+              ) : (
+                <span>
+                  <Tags
+                    className="tw-text-primary"
+                    startWith="+ "
+                    tag="Add tag"
+                    type="label"
+                  />
+                </span>
+              )}
+            </TagsContainer>
+          </div>
+        </NonAdminAction>
+      </div>
 
       <div className="tw-flex tw-flex-col tw-flex-grow">
         <TabsPane
