@@ -123,7 +123,7 @@
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>1.0.69</version>
+            <version>${json-schema-validator.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven.surefire</groupId>
