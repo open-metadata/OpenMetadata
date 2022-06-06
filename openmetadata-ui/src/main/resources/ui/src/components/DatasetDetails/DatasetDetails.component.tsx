@@ -67,7 +67,7 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
-import { CustomPropertyTables } from './CustomPropertyTable/CustomPropertyTables';
+import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -756,7 +756,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 </div>
               )}
               {activeTab === 9 && (
-                <CustomPropertyTables
+                <CustomPropertyTable
                   handleExtentionUpdate={handleExtentionUpdate}
                   tableDetails={tableDetails}
                 />

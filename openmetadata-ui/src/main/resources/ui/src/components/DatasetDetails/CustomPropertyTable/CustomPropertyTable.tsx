@@ -27,7 +27,7 @@ interface Props {
   handleExtentionUpdate: (updatedTable: Table) => void;
 }
 
-export const CustomPropertyTables: FC<Props> = ({
+export const CustomPropertyTable: FC<Props> = ({
   tableDetails,
   handleExtentionUpdate,
 }) => {
