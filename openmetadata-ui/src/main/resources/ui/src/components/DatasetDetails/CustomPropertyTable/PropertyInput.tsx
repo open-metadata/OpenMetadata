@@ -51,7 +51,7 @@ export const PropertyInput: FC<PropertInputProps> = ({
     <div className="tw-flex tw-items-center tw-gap-1">
       <input
         className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
-        data-testid="value"
+        data-testid="value-input"
         id="value"
         name={propertyName}
         placeholder="value"
