@@ -50,12 +50,15 @@ export const PropertyValue: FC<Props> = ({
   };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const onInputSave = (value: any) => {
-    const updatedExtension = { ...(extension || {}), [propertyName]: value };
+  const onInputSave = (updatedValue: any) => {
+    const updatedExtension = {
+      ...(extension || {}),
+      [propertyName]: updatedValue,
+    };
     onExtensionUpdate(updatedExtension);
   };
 
-  const valueElement = (
+  return (
     <div className={classNames({ 'tw-text-grey-body': Boolean(value) })}>
       {showInput ? (
         <PropertyInput
@@ -75,6 +78,4 @@ export const PropertyValue: FC<Props> = ({
       )}
     </div>
   );
-
-  return valueElement;
 };

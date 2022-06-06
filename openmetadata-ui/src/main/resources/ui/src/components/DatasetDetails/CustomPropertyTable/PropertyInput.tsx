@@ -38,9 +38,9 @@ export const PropertyInput: FC<PropertInputProps> = ({
   const [inputValue, setInputValue] = useState<any>(value || '');
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const { value: updatedValue } = e.target;
 
-    setInputValue(value);
+    setInputValue(updatedValue);
   };
 
   const handleSave = () => {
