@@ -99,7 +99,7 @@ export const CustomPropertyTable: FC<Props> = ({
               data-testid="data-row"
               key={uniqueId()}>
               <td className="tableBody-cell tw-text-center" colSpan={2}>
-                <span className="tw-text-grey-body">
+                <span className="tw-text-grey-muted">
                   No custom properties available
                 </span>
               </td>

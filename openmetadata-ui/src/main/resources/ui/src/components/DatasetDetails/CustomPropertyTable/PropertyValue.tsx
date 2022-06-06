@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
+import { toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { PropertyInput } from './PropertyInput';
 
 interface Props {
@@ -26,7 +28,7 @@ interface Props {
 }
 
 const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
-  <span className="tw-cursor-pointer tw-ml-1" onClick={onShowInput}>
+  <span className="tw-cursor-pointer tw-ml-2" onClick={onShowInput}>
     <SVGIcons alt="edit" icon={Icons.EDIT} width="12px" />
   </span>
 );
@@ -53,27 +55,69 @@ export const PropertyValue: FC<Props> = ({
   const onInputSave = (updatedValue: any) => {
     const updatedExtension = {
       ...(extension || {}),
-      [propertyName]: updatedValue,
+      [propertyName]:
+        propertyType.name === 'integer'
+          ? toNumber(updatedValue || 0)
+          : updatedValue,
     };
     onExtensionUpdate(updatedExtension);
   };
 
+  const getPropertyInput = () => {
+    switch (propertyType.name) {
+      case 'string':
+      case 'integer':
+        return (
+          <PropertyInput
+            propertyName={propertyName}
+            type={propertyType.name as string}
+            value={value}
+            onCancel={onHideInput}
+            onSave={onInputSave}
+          />
+        );
+      case 'markdown':
+        return (
+          <ModalWithMarkdownEditor
+            header={`Edit Property: "${propertyName}"`}
+            placeholder="Enter Property Value"
+            value={value || ''}
+            onCancel={onHideInput}
+            onSave={onInputSave}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const getPropertyValue = () => {
+    switch (propertyType.name) {
+      case 'markdown':
+        return <RichTextEditorPreviewer markdown={value || ''} />;
+
+      case 'string':
+      case 'integer':
+      default:
+        return value;
+    }
+  };
+
   return (
-    <div className={classNames({ 'tw-text-grey-body': Boolean(value) })}>
+    <div>
       {showInput ? (
-        <PropertyInput
-          propertyName={propertyName}
-          type={propertyType.name as string}
-          value={value}
-          onCancel={onHideInput}
-          onSave={onInputSave}
-        />
+        getPropertyInput()
       ) : (
         <Fragment>
-          <span>
-            {value || <span className="tw-text-grey-body">No data</span>}
-          </span>
-          <EditIcon onShowInput={onShowInput} />
+          <div>
+            {value ? (
+              getPropertyValue()
+            ) : (
+              <span className="tw-text-grey-muted">No data</span>
+            )}
+            <EditIcon onShowInput={onShowInput} />
+          </div>
         </Fragment>
       )}
     </div>
