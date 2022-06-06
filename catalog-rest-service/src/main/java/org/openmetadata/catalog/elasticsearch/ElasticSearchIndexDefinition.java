@@ -31,6 +31,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -39,6 +40,8 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -69,7 +72,8 @@ public class ElasticSearchIndexDefinition {
     PIPELINE_SEARCH_INDEX("pipeline_search_index", "/elasticsearch/pipeline_index_mapping.json"),
     USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
     TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
-    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json");
+    GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
+    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -190,6 +194,8 @@ public class ElasticSearchIndexDefinition {
       return ElasticSearchIndexType.TEAM_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY)) {
       return ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
+      return ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
     }
     throw new RuntimeException("Failed to find index doc for type " + type);
   }
@@ -842,6 +848,75 @@ class GlossaryTermESIndex extends ElasticSearchIndex {
         .entityType("glossaryTerm")
         .suggest(suggest)
         .deleted(glossaryTerm.getDeleted())
+        .tags(parseTags.tags);
+  }
+}
+
+@EqualsAndHashCode(callSuper = true)
+@Getter
+@SuperBuilder(builderMethodName = "internalBuilder")
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+class MlModelESIndex extends ElasticSearchIndex {
+  @JsonProperty("ml_model_id")
+  String mlModelId;
+
+  @JsonProperty("display_name")
+  String displayName;
+
+  @JsonProperty("entity_type")
+  String entityType;
+
+  @JsonProperty("alogrithm")
+  String algorithm;
+
+  @JsonProperty("ml_features")
+  List<String> mlFeatures;
+
+  @JsonProperty("ml_hyper_parameters")
+  List<String> mlHyperParameters;
+
+  public static MlModelESIndexBuilder builder(MlModel mlModel, EventType eventType) {
+    List<String> tags = new ArrayList<>();
+    List<String> mlHyperParameters = new ArrayList<>();
+    List<String> mlFeatures = new ArrayList<>();
+    List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(5).build());
+    suggest.add(ElasticSearchSuggest.builder().input(mlModel.getDisplayName()).weight(10).build());
+
+    if (mlModel.getTags() != null) {
+      mlModel.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+
+    if (mlModel.getMlHyperParameters() != null) {
+      for (MlHyperParameter mlHyperParameter : mlModel.getMlHyperParameters()) {
+        mlHyperParameters.add(mlHyperParameter.getName());
+      }
+    }
+
+    if (mlModel.getMlFeatures() != null) {
+      for (MlFeature mlFeature : mlModel.getMlFeatures()) {
+        mlFeatures.add(mlFeature.getName());
+      }
+    }
+
+    Long updatedTimestamp = mlModel.getUpdatedAt();
+    ParseTags parseTags = new ParseTags(tags);
+    String description = mlModel.getDescription() != null ? mlModel.getDescription() : "";
+    String displayName = mlModel.getDisplayName() != null ? mlModel.getDisplayName() : "";
+    return internalBuilder()
+        .mlModelId(mlModel.getId().toString())
+        .name(mlModel.getName())
+        .displayName(displayName)
+        .description(description)
+        .fqdn(mlModel.getFullyQualifiedName())
+        .algorithm(mlModel.getAlgorithm())
+        .mlFeatures(mlFeatures)
+        .mlHyperParameters(mlHyperParameters)
+        .lastUpdatedTimestamp(updatedTimestamp)
+        .entityType("glossaryTerm")
+        .suggest(suggest)
+        .deleted(mlModel.getDeleted())
         .tags(parseTags.tags);
   }
 }

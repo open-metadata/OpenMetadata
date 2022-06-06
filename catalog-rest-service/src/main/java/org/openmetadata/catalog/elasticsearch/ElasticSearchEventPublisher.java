@@ -45,6 +45,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -126,6 +127,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.PIPELINE_SERVICE:
             updatePipelineService(event);
+            break;
+          case Entity.MLMODEL:
+            updateMlModel(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -441,6 +445,43 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       case ENTITY_DELETED:
         DeleteRequest deleteRequest =
             new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
+  private void updateMlModel(ChangeEvent event) throws IOException {
+    MlModelESIndex mlModelESIndex = null;
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
+      MlModel mlModel = (MlModel) event.getEntity();
+      mlModelESIndex = MlModelESIndex.builder(mlModel, event.getEventType()).build();
+    }
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        String json = JsonUtils.pojoToJson(mlModelESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          scriptedUpsert(mlModelESIndex, updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
     }

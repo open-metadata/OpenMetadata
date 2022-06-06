@@ -141,6 +141,27 @@ class PipelineESDocument(BaseModel):
     doc_as_upsert: bool = True
 
 
+class MlModelESDocument(BaseModel):
+    """Elastic Search Mapping doc for MlModels"""
+
+    ml_model_id: str
+    deleted: bool
+    entity_type: str = "mlmodel"
+    name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    algorithm: str
+    ml_features: List[str]
+    ml_hyper_parameters: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    owner: ESEntityReference = None
+    followers: List[str]
+    doc_as_upsert: bool = True
+
+
 class UserESDocument(BaseModel):
     """Elastic Search Mapping doc for Users"""
 

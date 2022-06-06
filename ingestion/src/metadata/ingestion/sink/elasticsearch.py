@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -44,6 +45,7 @@ from metadata.ingestion.models.table_metadata import (
     DashboardESDocument,
     ESEntityReference,
     GlossaryTermESDocument,
+    MlModelESDocument,
     PipelineESDocument,
     TableESDocument,
     TeamESDocument,
@@ -54,6 +56,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
     GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
+    MLMODEL_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
@@ -80,6 +83,7 @@ class ElasticSearchConfig(ConfigModel):
     index_pipelines: Optional[bool] = True
     index_users: Optional[bool] = True
     index_teams: Optional[bool] = True
+    index_mlmodels: Optional[bool] = True
     index_glossary_terms: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
@@ -88,6 +92,7 @@ class ElasticSearchConfig(ConfigModel):
     user_index_name: str = "user_search_index"
     team_index_name: str = "team_search_index"
     glossary_term_index_name: str = "glossary_search_index"
+    mlmodel_index_name: str = "mlmodel_search_index"
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
@@ -172,6 +177,12 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.glossary_term_index_name,
                 GLOSSARY_TERM_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
+        if self.config.index_mlmodels:
+            self._check_or_create_index(
+                self.config.mlmodel_index_name,
+                MLMODEL_ELASTICSEARCH_INDEX_MAPPING,
             )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
@@ -270,6 +281,15 @@ class ElasticsearchSink(Sink[Entity]):
                     index=self.config.glossary_term_index_name,
                     id=str(glossary_term_doc.glossary_term_id),
                     body=glossary_term_doc.json(),
+                    request_timeout=self.config.timeout,
+                )
+
+            if isinstance(record, MlModel):
+                ml_model_doc = self._create_ml_model_es_doc(record)
+                self.elasticsearch_client.index(
+                    index=self.config.mlmodel_index_name,
+                    id=str(ml_model_doc.ml_model_id),
+                    body=ml_model_doc.json(),
                     request_timeout=self.config.timeout,
                 )
 
@@ -530,6 +550,51 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return pipeline_doc
+
+    def _create_ml_model_es_doc(self, ml_model: MlModel):
+        ml_model_fqn = ml_model.fullyQualifiedName.__root__
+        suggest = [{"input": [ml_model.displayName], "weight": 10}]
+        tags = set()
+        timestamp = ml_model.updatedAt.__root__
+        ml_model_followers = []
+        ml_model_hyper_parameters = []
+        ml_features = []
+        if ml_model.followers:
+            for follower in ml_model.followers.__root__:
+                ml_model_followers.append(str(follower.id.__root__))
+        tier = None
+        for ml_model_tag in ml_model.tags:
+            if "Tier" in ml_model_tag.tagFQN.__root__:
+                tier = ml_model_tag.tagFQN.__root__
+            else:
+                tags.add(ml_model_tag.tagFQN.__root__)
+
+        for ml_model_feature in ml_model.mlFeatures:
+            ml_features.append(ml_model_feature.name.__root__)
+
+        for ml_model_hyper_parameter in ml_model.mlHyperParameters:
+            ml_model_hyper_parameters.append(ml_model_hyper_parameter.name)
+
+        print(ml_features)
+
+        ml_model_doc = MlModelESDocument(
+            ml_model_id=str(ml_model.id.__root__),
+            deleted=ml_model.deleted,
+            name=ml_model.displayName,
+            algorithm=ml_model.algorithm,
+            ml_features=ml_features,
+            ml_hyper_parameters=ml_model_hyper_parameters,
+            suggest=suggest,
+            description=ml_model.description.__root__ if ml_model.description else "",
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=ml_model_fqn,
+            owner=ml_model.owner,
+            followers=ml_model_followers,
+        )
+
+        return ml_model_doc
 
     def _create_user_es_doc(self, user: User):
         display_name = user.displayName if user.displayName else user.name.__root__
