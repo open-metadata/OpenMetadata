@@ -338,7 +338,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      <DatasetDetails {...DatasetDetailsProps} activeTab={10} />,
       {
         wrapper: MemoryRouter,
       }
