@@ -70,7 +70,7 @@ describe('Test CustomField Table Component', () => {
       <CustomPropertyTable {...mockProp} />
     );
 
-    const table = await findByTestId('entity-custom-fields-table');
+    const table = await findByTestId('entity-custom-properties-table');
 
     expect(table).toBeInTheDocument();
 
@@ -87,10 +87,13 @@ describe('Test CustomField Table Component', () => {
     expect(dataRows).toHaveLength(mockProperties.length);
   });
 
-  it('Test delete field flow', async () => {
+  it('Test delete property flow', async () => {
     const { container } = render(<CustomPropertyTable {...mockProp} />);
 
-    const table = await findByTestId(container, 'entity-custom-fields-table');
+    const table = await findByTestId(
+      container,
+      'entity-custom-properties-table'
+    );
 
     expect(table).toBeInTheDocument();
 
@@ -130,12 +133,12 @@ describe('Test CustomField Table Component', () => {
     expect(mockUpdateEntityType).toHaveBeenCalled();
   });
 
-  it('Should render no data row if there is no custom fields', async () => {
+  it('Should render no data row if there is no custom properties', async () => {
     const { findByTestId, queryAllByTestId } = render(
       <CustomPropertyTable {...mockProp} customProperties={[]} />
     );
 
-    const table = await findByTestId('entity-custom-fields-table');
+    const table = await findByTestId('entity-custom-properties-table');
 
     expect(table).toBeInTheDocument();
 

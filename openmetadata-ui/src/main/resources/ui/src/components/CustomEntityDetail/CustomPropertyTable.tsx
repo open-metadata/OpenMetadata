@@ -69,19 +69,21 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <div className="tw-bg-white tw-border tw-border-main tw-rounded  tw-shadow">
-        <table className="tw-w-full" data-testid="entity-custom-fields-table">
+        <table
+          className="tw-w-full"
+          data-testid="entity-custom-properties-table">
           <thead data-testid="table-header">
             <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
-              <th className="tableHead-cell" data-testid="field-name">
+              <th className="tableHead-cell" data-testid="property-name">
                 Name
               </th>
-              <th className="tableHead-cell" data-testid="field-type">
+              <th className="tableHead-cell" data-testid="property-type">
                 Type
               </th>
-              <th className="tableHead-cell" data-testid="field-description">
+              <th className="tableHead-cell" data-testid="property-description">
                 Description
               </th>
-              <th className="tableHead-cell" data-testid="field-actions">
+              <th className="tableHead-cell" data-testid="property-actions">
                 Actions
               </th>
             </tr>
@@ -166,10 +168,10 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
       </div>
       {deleteCheck && (
         <ConfirmationModal
-          bodyText={`Are you sure you want to delete the field ${selectedProperty.name}`}
+          bodyText={`Are you sure you want to delete the property ${selectedProperty.name}`}
           cancelText="Cancel"
           confirmText="Confirm"
-          header={`Delete field ${selectedProperty.name}`}
+          header={`Delete property ${selectedProperty.name}`}
           onCancel={resetSelectedProperty}
           onConfirm={handlePropertyDelete}
         />
