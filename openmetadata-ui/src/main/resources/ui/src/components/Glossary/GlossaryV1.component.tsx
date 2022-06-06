@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { Tooltip } from 'react-tippy';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -33,7 +33,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import SearchInput from '../common/SearchInput/SearchInput.component';
+import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import TreeView from '../common/TreeView/TreeView.component';
@@ -193,8 +193,8 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-1">
+      <div className="tw-bg-white tw-shadow tw-rounded-md tw-h-full">
+        <div className="tw-flex tw-justify-between tw-items-center tw-pt-2 tw-px-3">
           <h6 className="tw-heading tw-text-base">Glossary</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
@@ -212,14 +212,16 @@ const GlossaryV1 = ({
         </div>
         <div>
           {treeData.length ? (
-            <>
-              <SearchInput
-                showLoadingStatus
-                placeholder="Search term..."
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchText}
-              />
+            <Fragment>
+              <div className="tw-px-3">
+                <Searchbar
+                  showLoadingStatus
+                  placeholder="Search term..."
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchText}
+                />
+              </div>
               {isSearchResultEmpty ? (
                 <p className="tw-text-grey-muted tw-text-center">
                   {searchText ? (
@@ -239,12 +241,12 @@ const GlossaryV1 = ({
                   treeData={treeData}
                 />
               )}
-            </>
+            </Fragment>
           ) : (
             <Loader />
           )}
         </div>
-      </>
+      </div>
     );
   };
 

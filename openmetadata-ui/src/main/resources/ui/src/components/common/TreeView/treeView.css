@@ -17,6 +17,10 @@
   margin-right: 5px !important;
 }
 
+.rc-tree-node-content-wrapper {
+  width: 100%;
+}
+
 .rc-tree-node-content-wrapper:hover {
   color: rgb(113, 71, 232);
 }

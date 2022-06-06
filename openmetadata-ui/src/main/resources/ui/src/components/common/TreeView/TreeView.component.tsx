@@ -103,10 +103,13 @@ const TreeView = forwardRef(
     return (
       <div>
         <RcTree
-          className={classNames({
-            //  This class will show switcher element
-            'show-switcher': !showIcon,
-          })}
+          className={classNames(
+            {
+              //  This class will show switcher element
+              'show-switcher': !showIcon,
+            },
+            'tw-px-2'
+          )}
           defaultExpandAll={defaultExpandAll}
           expandedKeys={expandedKeys}
           icon={getIcon}
