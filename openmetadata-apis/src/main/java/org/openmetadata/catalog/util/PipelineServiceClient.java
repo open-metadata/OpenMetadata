@@ -10,8 +10,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
+import org.openmetadata.core.entity.services.ingestionPipelines.IngestionPipeline;
 
 /**
  * Client to make API calls to add, deleted, and deploy pipelines on a PipelineService, such as Airflow. Core

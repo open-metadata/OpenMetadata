@@ -15,12 +15,12 @@ package org.openmetadata.catalog.airflow;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
-import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
-import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
-import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.core.security.client.Auth0SSOClientConfig;
+import org.openmetadata.core.security.client.AzureSSOClientConfig;
+import org.openmetadata.core.security.client.CustomOIDCSSOClientConfig;
+import org.openmetadata.core.security.client.GoogleSSOClientConfig;
+import org.openmetadata.core.security.client.OktaSSOClientConfig;
+import org.openmetadata.core.security.client.OpenMetadataJWTClientConfig;
 
 public class AuthConfiguration {
 

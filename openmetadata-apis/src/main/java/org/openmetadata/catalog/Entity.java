@@ -33,9 +33,9 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityDAO;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.core.type.EntityReference;
+import org.openmetadata.core.type.Include;
 
 @Slf4j
 public final class Entity {

@@ -58,22 +58,22 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
-import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
-import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.OpenMetadataClientSecurityUtil;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.core.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.core.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.core.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.core.type.EntityHistory;
+import org.openmetadata.core.type.Include;
 
 @Slf4j
 @Path("/v1/services/ingestionPipelines/")

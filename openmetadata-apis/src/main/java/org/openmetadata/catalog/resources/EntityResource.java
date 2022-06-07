@@ -18,14 +18,14 @@ import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.core.type.EntityReference;
+import org.openmetadata.core.type.Include;
 
 @Slf4j
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {

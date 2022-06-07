@@ -45,8 +45,8 @@ import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.catalog.entity.Type;
-import org.openmetadata.catalog.entity.type.Category;
+import org.openmetadata.core.entity.Type;
+import org.openmetadata.core.entity.type.Category;
 
 @Slf4j
 public final class JsonUtils {

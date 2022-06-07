@@ -27,12 +27,12 @@ import org.json.JSONObject;
 import org.openmetadata.catalog.airflow.models.AirflowAuthRequest;
 import org.openmetadata.catalog.airflow.models.AirflowAuthResponse;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PipelineServiceClient;
+import org.openmetadata.core.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.core.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.core.util.JsonUtils;
 
 @Slf4j
 public class AirflowRESTClient extends PipelineServiceClient {
