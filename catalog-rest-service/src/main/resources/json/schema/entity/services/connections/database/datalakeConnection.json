@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatalakeConnection",
+  "description": "Datalake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DatalakeConnection",
+  "definitions": {
+    "datalakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Datalake"],
+      "default": "Datalake"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/datalakeType",
+      "default": "Datalake"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "base_path": {
+      "title": "Base Path",
+      "description": "Base Path of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["awsConfig"]
+}

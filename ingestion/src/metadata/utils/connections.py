@@ -1,13 +1,13 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
+""" Copyright 2021 Collate
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ http://www.apache.org/licenses/LICENSE-2.0
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License."""
 
 """
 Build and document all supported Engines
@@ -53,6 +53,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -81,6 +84,7 @@ from metadata.utils.connection_clients import (
     MetabaseClient,
     PowerBiClient,
     RedashClient,
+    S3Client,
     SalesforceClient,
     SupersetClient,
     TableauClient,
@@ -238,6 +242,23 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
         configure_spark_with_delta_pip(builder).getOrCreate()
     )
     return deltalake_connection
+
+
+# @get_connection.register
+# def _(connection: DatalakeConnection, verbose: bool = False) -> DataLakeClient:
+#     import pyspark
+#     from pyspark import SparkConf
+#     from pyspark.sql import SparkSession
+#     spark = (
+#         SparkSession
+#         .builder
+#         .config('fs.s3a.access.key', connection.awsConfig.awsAccessKeyId)
+#         .config('fs.s3a.secret.key', connection.awsConfig.awsSecretAccessKey)
+#         .appName(connection.appName)
+#         .getOrCreate()
+#     )
+#     datalake_connection = DatalakeConnection(spark)
+#     return datalake_connection
 
 
 @get_connection.register
@@ -565,3 +586,29 @@ def _(connection: LookerClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+        
+        
+@test_connection.register
+def _(connection: S3Client) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_buckets()
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    
+
+
+@get_connection.register
+def _(connection: DatalakeConnection, verbose: bool = False) -> S3Client:
+    from metadata.utils.aws_client import AWSClient
+
+    s3_connection = AWSClient(connection.awsConfig).get_s3_client()
+    return s3_connection

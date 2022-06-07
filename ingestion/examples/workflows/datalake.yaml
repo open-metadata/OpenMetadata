@@ -1,0 +1,25 @@
+source:
+  type: datalake
+  serviceName: local_datalake1
+  serviceConnection:
+    config:
+      type: Datalake
+      awsConfig:
+        awsAccessKeyId: aws access key id
+        awsSecretAccessKey: aws secret access key
+        awsRegion: aws region
+      base_path: bucket_name
+  sourceConfig:
+    config:
+      enableDataProfiler: false
+      tableFilterPattern:
+        includes:
+        - ''
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+  
