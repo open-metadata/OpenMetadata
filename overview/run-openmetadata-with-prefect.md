@@ -198,75 +198,17 @@ Apart from Prefect, `prefect-openmetadata` comes prepackaged with the `openmetad
 
 If you followed the first step of this tutorial, then you cloned the `prefect-openmetadata` repository. This repository contains a directory **example-data** which you can use to ingest sample data into your `OpenMetadata` backend using Prefect. 
 
-Here is a JSON configuration you can use in your flow to ingest that sample data:
+[This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) contains an example configuration you can use in your flow to ingest that sample data.
 
-```json
-{
-  "source": {
-    "type": "sample-data",
-    "serviceName": "sample_data",
-    "serviceConnection": {
-      "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "example-data"
-      }
-    },
-    "sourceConfig": {}
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
-```
 
 ### 6. Run ingestion workflow locally
 
-Now you can paste the JSON-config from above as a string into your flow and run it:
+Now you can paste the config from above as a string into your flow definition and run it. [This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) explains in detail how that works.  
 
-```python
-from prefect_openmetadata.flows import ingest_metadata
+In short, we only have to:
 
-config = """
-{
-  "source": {
-    "type": "sample-data",
-    "serviceName": "sample_data",
-    "serviceConnection": {
-      "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "example-data"
-      }
-    },
-    "sourceConfig": {}
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
-"""
-
-if __name__ == "__main__":
-    ingest_metadata(config)
-```
-
-Wow, this was easy! We only had to:
-
-1. Import the `ingest_metadata` flow, 
-2. Pass the JSON config as a string.
+1. Import the flow function, 
+2. Pass the config as a string.
 
 You can run the workflow as any Python function. No DAGs and no boilerplate.
 
@@ -290,39 +232,8 @@ If you navigate to the URL [http://localhost:4200](http://localhost:4200/), you
 
 Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows on a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
 
-Here's how you can add a `DeploymentSpec` to your flow to ensure that your metadata gets refreshed every 15 minutes:
+[This documentation page](https://prefecthq.github.io/prefect-openmetadata/schedule_ingestion_flow/) demonstrates how you can configure a `DeploymentSpec` to deploy your flow and ensure that your metadata gets refreshed on schedule. 
 
-```python
-# ingestion_flow.py
-from datetime import timedelta
-from prefect.deployments import DeploymentSpec
-from prefect.flow_runners import SubprocessFlowRunner
-from prefect.orion.schemas.schedules import IntervalSchedule
-from prefect_openmetadata.flows import ingest_metadata
-
-json_config = """See an example in tests/test_flows.py"""
-
-DeploymentSpec(
-    name="openmetadata-dev",
-    flow=ingest_metadata,
-    parameters=dict(config=json_config),
-    flow_runner=SubprocessFlowRunner(),
-    schedule=IntervalSchedule(interval=timedelta(minutes=15)),
-)
-```
-
-Here is an explanation of the `DeploymentSpec` arguments:
-
-- `name` - specifies the name of the deployment - you could use it to differentiate between a deployment for development and production environment
-- `flow` - points to the flow object, i.e. the flow function name
-- `flow_runner` - specifies how the flow run should be deployed; this allows you to deploy the flow run as a docker container, a Kubernetes job, or as a local subprocess - for example, you can deploy it as a subprocess running in a Conda virtual environment named "openmetadata" using the syntax: `SubprocessFlowRunner(condaenv="openmetadata")`
-- `schedule` - allows you to choose and customize your desired schedule class; in this example, we are using a simple `IntervalSchedule` triggering a new flow run every 15 minutes. With the asynchronous scheduling service in Prefect 2.0, you could even schedule your flow to run every 10 seconds if you need your metadata to be always up-to-date.
-
-To deploy this scheduled workflow to Prefect, run the following command from your CLI:
-
-```python
-prefect deployment create ingestion_flow.py
-```
 
 ## 8. Deploy the execution layer to run your flows
 
