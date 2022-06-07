@@ -159,7 +159,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameWithDot = true;
-  protected final boolean supportsCustomAttributes;
+  protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -248,7 +248,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
-    this.supportsCustomAttributes = allowedFields.contains(FIELD_EXTENSION);
+    this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
   }
 
   @BeforeAll
@@ -1130,38 +1130,55 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void put_entityExtension(TestInfo test) throws IOException {
-    if (!supportsCustomAttributes) {
+  void put_addEntityCustomAttributes(TestInfo test) throws IOException {
+    if (!supportsCustomExtension) {
       return;
     }
 
-    // Add valid custom fields to the entity
+    // PUT valid custom field intA to the entity type
     TypeResourceTest typeResourceTest = new TypeResourceTest();
     INT_TYPE = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
     STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     Type entity = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    entity = typeResourceTest.addAndCheckCustomProperty(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
+    final UUID id = entity.getId();
+
+    // PATCH valid custom field stringB
     CustomProperty fieldB =
         new CustomProperty()
             .withName("stringB")
             .withDescription("stringB")
             .withPropertyType(STRING_TYPE.getEntityReference());
-    typeResourceTest.addCustomProperty(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
-    typeResourceTest.addCustomProperty(entity.getId(), fieldB, OK, ADMIN_AUTH_HEADERS);
+    String json = JsonUtils.pojoToJson(entity);
 
-    // Add invalid custom fields to the entity - custom field has invalid type
-    Type INVALID_TYPE =
+    ChangeDescription change = getChangeDescription(entity.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("customProperties").withNewValue(Arrays.asList(fieldB)));
+    entity.getCustomProperties().add(fieldB);
+    entity = typeResourceTest.patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // PUT invalid custom fields to the entity - custom field has invalid type
+    Type invalidType =
         new Type().withId(UUID.randomUUID()).withName("invalid").withCategory(Category.Field).withSchema("{}");
     CustomProperty fieldInvalid =
         new CustomProperty()
             .withName("invalid")
             .withDescription("invalid")
-            .withPropertyType(INVALID_TYPE.getEntityReference());
+            .withPropertyType(invalidType.getEntityReference());
     assertResponse(
-        () -> typeResourceTest.addCustomProperty(entity.getId(), fieldInvalid, OK, ADMIN_AUTH_HEADERS),
+        () -> typeResourceTest.addCustomProperty(id, fieldInvalid, OK, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, INVALID_TYPE.getId()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
+
+    // PATCH invalid custom fields to the entity - custom field has invalid type
+    String json1 = JsonUtils.pojoToJson(entity);
+    entity.getCustomProperties().add(fieldInvalid);
+    Type finalEntity = entity;
+    assertResponse(
+        () -> typeResourceTest.patchEntity(id, json1, finalEntity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
 
     // Now create an entity with custom field
     ObjectMapper mapper = new ObjectMapper();
