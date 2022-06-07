@@ -92,7 +92,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
               <div>
                 <div className="tw-flex">
                   <div className="tw-mr-2">
-                    <ProfilePicture id="" name={createdBy} width="30" />
+                    <ProfilePicture id="" name={createdBy} width="24" />
                   </div>
                   <div className="tw-self-center">
                     <Button
@@ -237,8 +237,15 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
             <Fragment>
               <span data-testid="entityType">{entityType} </span>
               <Link data-testid="entitylink" to={prepareFeedLink()}>
-                <button className="link-text" disabled={AppState.isTourOpen}>
-                  {entityDisplayName()}
+                <button className="tw-text-info" disabled={AppState.isTourOpen}>
+                  <PopOver
+                    disabled={AppState.isTourOpen}
+                    position="top"
+                    size="small"
+                    title={entityFQN}
+                    trigger="mouseenter">
+                    <span>{entityDisplayName()}</span>
+                  </PopOver>
                 </button>
               </Link>
             </Fragment>
@@ -251,7 +258,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   return (
-    <div className={classNames('tw-flex tw-mb-1.5', className)}>
+    <div className={classNames('tw-flex tw-mb-4', className)}>
       <PopOver
         hideDelay={500}
         html={getUserData()}
@@ -262,7 +269,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           className="tw-cursor-pointer"
           data-testid="authorAvatar"
           onClick={onClickHandler}>
-          <ProfilePicture id="" name={createdBy} width="30" />
+          <ProfilePicture id="" name={createdBy} width="24" />
         </span>
       </PopOver>
       <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
@@ -282,7 +289,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         <span
           className="tw-text-grey-muted tw-pl-2 tw-text-xs tw--mb-0.5"
           data-testid="timestamp">
-          {getDayTimeByTimeStamp(timeStamp)}
+          {' - ' + getDayTimeByTimeStamp(timeStamp)}
         </span>
       </h6>
     </div>

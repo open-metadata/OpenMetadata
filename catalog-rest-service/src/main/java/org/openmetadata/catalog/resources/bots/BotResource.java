@@ -292,7 +292,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       operationId = "deleteBot",
       summary = "Delete a bot",
       tags = "bots",
-      description = "Delete a bot by `id`. Bot is not immediately deleted and is only marked as deleted.",
+      description = "Delete a bot by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")

@@ -122,9 +122,6 @@ class MetabaseSource(DashboardSourceService):
         resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
         return resp_dashboard.json()
 
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        return []
-
     def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
         """
         Method to Get Dashboard Entity

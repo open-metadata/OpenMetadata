@@ -12,6 +12,8 @@
  */
 
 /* Generic */
+
+@import '~antd/dist/antd.css';
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -818,13 +820,13 @@ body .profiler-graph .recharts-active-dot circle {
   position: relative;
 }
 .page-layout-container.l3-col {
-  grid-template-columns: 256px auto 256px;
+  grid-template-columns: 300px auto 300px;
 }
 .page-layout-container.l2-ltr-col {
-  grid-template-columns: 300px auto auto;
+  grid-template-columns: 350px auto auto;
 }
 .page-layout-container.l2-rtl-col {
-  grid-template-columns: auto auto 300px;
+  grid-template-columns: auto auto 350px;
 }
 
 .page-layout-container-left-center-right {
@@ -964,6 +966,19 @@ code {
   max-height: 54px;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.ant-card-body {
+  padding: 18px;
+}
+
+.ant-card-head-title {
+  padding: 8px 0px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #dce3ec;
+  padding: 0 18px;
 }
 
 .custom-entity-schema > .CodeMirror {

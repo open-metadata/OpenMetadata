@@ -56,13 +56,14 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         timeStamp={feed.postTs}
       />
       <FeedCardBody
-        className="tw-mx-7 tw-ml-9 tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
+        className="tw-ml-8 tw-bg-white tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
         isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
         message={feed.message}
         postId={feed.id}
         threadId={threadId as string}
         onConfirmation={onConfirmation}
       />
+      <div className="tw-filter-seperator" />
       <FeedCardFooter
         className="tw-ml-9 tw-mt-3"
         isFooterVisible={isFooterVisible}
