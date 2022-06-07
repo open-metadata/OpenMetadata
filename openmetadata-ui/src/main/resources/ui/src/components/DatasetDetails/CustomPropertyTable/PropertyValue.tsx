@@ -107,6 +107,15 @@ export const PropertyValue: FC<Props> = ({
     }
   };
 
+  const getValueElement = () =>
+    value ? (
+      getPropertyValue()
+    ) : (
+      <span className="tw-text-grey-muted" data-testid="no-data">
+        No data
+      </span>
+    );
+
   return (
     <div>
       {showInput ? (
@@ -114,13 +123,7 @@ export const PropertyValue: FC<Props> = ({
       ) : (
         <Fragment>
           <div className="tw-flex">
-            {value ? (
-              getPropertyValue()
-            ) : (
-              <span className="tw-text-grey-muted" data-testid="no-data">
-                No data
-              </span>
-            )}
+            {getValueElement()}
             <EditIcon onShowInput={onShowInput} />
           </div>
         </Fragment>
