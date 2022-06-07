@@ -35,7 +35,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.5.1</mockito.version>
+    <mockito.version>4.6.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.3</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -53,7 +53,7 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.28.0</jdbi3.version>
+    <jdbi3.version>3.30.0</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -61,7 +61,7 @@
     <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.5</postgres.connector.version>
+    <postgres.connector.version>42.3.6</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
@@ -96,6 +96,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.0</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.0.70</json-schema-validator.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -582,7 +583,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>10.2</version>
+              <version>10.3</version>
             </dependency>
           </dependencies>
         </plugin>
