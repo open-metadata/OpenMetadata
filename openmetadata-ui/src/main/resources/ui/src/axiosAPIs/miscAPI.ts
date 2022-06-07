@@ -75,7 +75,7 @@ export const getSuggestions: Function = (
   return APIClient.get(
     `/search/suggest?q=${queryString}&index=${
       searchIndex ??
-      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`
     }
     `
   );
