@@ -200,7 +200,7 @@ const GlossaryV1 = ({
         <div>
           {treeData.length ? (
             <Fragment>
-              <div className="tw-px-3 tw-mb-2">
+              <div className="tw-px-3 tw-mb-3">
                 <Searchbar
                   showLoadingStatus
                   placeholder="Search term..."
