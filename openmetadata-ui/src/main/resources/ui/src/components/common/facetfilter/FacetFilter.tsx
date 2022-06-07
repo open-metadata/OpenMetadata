@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { toLower } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
@@ -22,6 +23,7 @@ import {
 } from '../../../constants/constants';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
+
 const FacetFilter: FunctionComponent<FacetProp> = ({
   aggregations,
   filters,
@@ -173,90 +175,103 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
 
   return (
     <>
-      <div
-        className="sidebar-my-data-holder mt-2 mb-3"
-        data-testid="show-deleted-cntnr">
+      <Card
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+        }}>
         <div
-          className="filter-group tw-justify-between tw-mb-2"
-          data-testid="filter-container-deleted">
-          <div className="tw-flex">
-            <div className="filters-title tw-w-40 tw-truncate custom-checkbox-label">
-              Show Deleted
+          className="sidebar-my-data-holder mt-2 mb-3"
+          data-testid="show-deleted-cntnr">
+          <div
+            className="filter-group tw-justify-between tw-mb-2"
+            data-testid="filter-container-deleted">
+            <div className="tw-flex">
+              <div className="filters-title tw-w-40 tw-truncate custom-checkbox-label">
+                Show Deleted
+              </div>
+            </div>
+            <div
+              className={classNames(
+                'toggle-switch tw-mr-0',
+                showDeletedOnly ? 'open' : null
+              )}
+              data-testid="show-deleted"
+              onClick={() => {
+                onSelectDeleted?.(!showDeletedOnly);
+              }}>
+              <div className="switch" />
             </div>
           </div>
-          <div
-            className={classNames(
-              'toggle-switch tw-mr-0',
-              showDeletedOnly ? 'open' : null
-            )}
-            data-testid="show-deleted"
-            onClick={() => {
-              onSelectDeleted?.(!showDeletedOnly);
-            }}>
-            <div className="switch" />
-          </div>
         </div>
-      </div>
-      {getSeparator(aggregations.length, 0)}
-      {aggregations.map((aggregation: AggregationType, index: number) => {
-        return (
-          <Fragment key={index}>
-            {aggregation.buckets.length > 0 ? (
-              <div data-testid={aggregation.title}>
-                <div className="tw-flex tw-justify-between tw-flex-col">
-                  <h6
-                    className="tw-heading tw-mb-0"
-                    data-testid="filter-heading">
-                    {
-                      facetFilterPlaceholder.find(
-                        (filter) => filter.name === aggregation.title
-                      )?.value
-                    }
-                  </h6>
-                  <div className="tw-flex tw-mt-1.5">
-                    {onSelectAllFilter && (
-                      <span
-                        className="link-text tw-text-xs"
-                        onClick={() => {
-                          if (isSelectAllFilter(aggregation)) {
-                            onSelectAllFilter(
-                              toLower(aggregation.title) as keyof FilterObject,
-                              aggregation.buckets.map((b) => b.key)
-                            );
-                          }
-                        }}>
-                        Select All
-                      </span>
-                    )}
-                    {onClearFilter && (
-                      <>
-                        <span className="tw-text-xs tw-px-2">|</span>
+        {getSeparator(aggregations.length, 0)}
+        {aggregations.map((aggregation: AggregationType, index: number) => {
+          return (
+            <Fragment key={index}>
+              {aggregation.buckets.length > 0 ? (
+                <div data-testid={aggregation.title}>
+                  <div className="tw-flex tw-justify-between tw-flex-col">
+                    <h6
+                      className="tw-heading tw-mb-0"
+                      data-testid="filter-heading">
+                      {
+                        facetFilterPlaceholder.find(
+                          (filter) => filter.name === aggregation.title
+                        )?.value
+                      }
+                    </h6>
+                    <div className="tw-flex tw-mt-1.5">
+                      {onSelectAllFilter && (
                         <span
-                          className="link-text tw-text-xs tw-text-grey-muted"
+                          className="link-text tw-text-xs"
                           onClick={() => {
-                            if (isClearFilter(aggregation)) {
-                              onClearFilter(
-                                toLower(aggregation.title) as keyof FilterObject
+                            if (isSelectAllFilter(aggregation)) {
+                              onSelectAllFilter(
+                                toLower(
+                                  aggregation.title
+                                ) as keyof FilterObject,
+                                aggregation.buckets.map((b) => b.key)
                               );
                             }
                           }}>
-                          Deselect All
+                          Select All
                         </span>
-                      </>
-                    )}
+                      )}
+                      {onClearFilter && (
+                        <>
+                          <span className="tw-text-xs tw-px-2">|</span>
+                          <span
+                            className="link-text tw-text-xs tw-text-grey-muted"
+                            onClick={() => {
+                              if (isClearFilter(aggregation)) {
+                                onClearFilter(
+                                  toLower(
+                                    aggregation.title
+                                  ) as keyof FilterObject
+                                );
+                              }
+                            }}>
+                            Deselect All
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <div
+                    className="sidebar-my-data-holder mt-2 mb-3"
+                    data-testid={`filter-containers-${index}`}>
+                    {getFilterItems(aggregation)}
+                  </div>
+                  {getSeparator(aggregations.length, index)}
                 </div>
-                <div
-                  className="sidebar-my-data-holder mt-2 mb-3"
-                  data-testid={`filter-containers-${index}`}>
-                  {getFilterItems(aggregation)}
-                </div>
-                {getSeparator(aggregations.length, index)}
-              </div>
-            ) : null}
-          </Fragment>
-        );
-      })}
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </Card>
     </>
   );
 };

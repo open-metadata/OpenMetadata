@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
@@ -56,9 +56,9 @@ describe('Test MyDataHeader Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const dataSummary = getByTestId(container, 'data-summary-container');
+    const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary.childElementCount).toBe(7);
+    expect(dataSummary.length).toBe(7);
   });
 
   it('OnClick it should redirect to respective page', () => {
