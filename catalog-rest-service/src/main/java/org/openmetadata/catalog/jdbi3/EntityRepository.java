@@ -572,7 +572,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void cleanup(EntityInterface entityInterface) {
+  protected void cleanup(EntityInterface entityInterface) throws JsonProcessingException {
     String id = entityInterface.getId().toString();
 
     // Delete all the relationships to other entities
@@ -589,6 +589,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
+
+    // Delete the extension data storing custom properties
+    removeExtension(entityInterface);
 
     // Finally, delete the entity
     dao.delete(id);
@@ -671,22 +674,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public void storeExtension(T entity) throws JsonProcessingException {
+  public void storeExtension(EntityInterface entity) throws JsonProcessingException {
     JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
     Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
     while (customFields.hasNext()) {
       Entry<String, JsonNode> entry = customFields.next();
       String fieldName = entry.getKey();
       JsonNode value = entry.getValue();
-      storeCustomField(entity, fieldName, value);
+      storeCustomProperty(entity, fieldName, value);
     }
   }
 
-  private void storeCustomField(T entity, String fieldName, JsonNode value) throws JsonProcessingException {
+  public void removeExtension(EntityInterface entity) throws JsonProcessingException {
+    JsonNode jsonNode = JsonUtils.valueToTree(entity.getExtension());
+    Iterator<Entry<String, JsonNode>> customFields = jsonNode.fields();
+    while (customFields.hasNext()) {
+      Entry<String, JsonNode> entry = customFields.next();
+      removeCustomProperty(entity, entry.getKey());
+    }
+  }
+
+  private void storeCustomProperty(EntityInterface entity, String fieldName, JsonNode value)
+      throws JsonProcessingException {
     String fieldFQN = TypeRegistry.getCustomPropertyFQN(entityType, fieldName);
     daoCollection
         .entityExtensionDAO()
         .insert(entity.getId().toString(), fieldFQN, "customFieldSchema", JsonUtils.pojoToJson(value));
+  }
+
+  private void removeCustomProperty(EntityInterface entity, String fieldName) {
+    String fieldFQN = TypeRegistry.getCustomPropertyFQN(entityType, fieldName);
+    daoCollection.entityExtensionDAO().delete(entity.getId().toString(), fieldFQN);
   }
 
   public ObjectNode getExtension(T entity) throws JsonProcessingException {
@@ -1046,6 +1064,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDescription();
         updateDisplayName();
         updateOwner();
+        updateExtension();
         updateTags(updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         entitySpecificUpdate();
       }
@@ -1133,6 +1152,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
       updatedTags.sort(compareTagLabel);
       applyTags(updatedTags, fqn);
+    }
+
+    private void updateExtension() throws JsonProcessingException {
+      removeExtension(original);
+      storeExtension(updated);
+      // TODO change descriptions for custom attributes
     }
 
     public final boolean updateVersion(Double oldVersion) {
