@@ -124,11 +124,11 @@ const DropDown: React.FC<DropDownProp> = ({
               <>
                 {Icon && Icon}
                 {label && isLableVisible && (
-                  <p
+                  <span
                     className="hover:tw-underline"
                     style={{ color: `${isOpen ? activeLink : normalLink}` }}>
                     {label}
-                  </p>
+                  </span>
                 )}
 
                 {isDropDownIconVisible ? (

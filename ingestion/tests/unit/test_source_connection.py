@@ -98,41 +98,38 @@ class SouceConnectionTest(TestCase):
 
     def test_databricks_url_with_db(self):
         expected_result = (
-            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443/default"
+            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
         )
         databricks_conn_obj = DatabricksConnection(
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
-            database="default",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url(self):
-        expected_result = "hive://localhost:10000/default"
+        expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive, hostPort="localhost:10000", database="default"
+            scheme=HiveScheme.hive, hostPort="localhost:10000"
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_custom_auth(self):
-        expected_result = "hive://username:password@localhost:10000/default"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={"auth": "CUSTOM"},
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_kerberos_auth(self):
-        expected_result = "hive://localhost:10000/default"
+        expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={
                 "auth": "KERBEROS",
                 "kerberos_service_name": "hive",
@@ -142,13 +139,12 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_ldap_auth(self):
-        expected_result = "hive://username:password@localhost:10000/default"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={"auth": "LDAP"},
         )
         assert expected_result == get_connection_url(hive_conn_obj)
@@ -172,7 +168,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments=None,
             scheme=TrinoScheme.trino,
         )
@@ -185,7 +180,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=TrinoScheme.trino,
         )
@@ -198,7 +192,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments=None,
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
@@ -215,7 +208,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
@@ -290,17 +282,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(mysql_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
         mysql_conn_obj = MysqlConnection(
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(mysql_conn_obj)
 
@@ -332,17 +322,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(mariadb_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
         mariadb_conn_obj = MariaDBConnection(
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(mariadb_conn_obj)
 
@@ -386,17 +374,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(singleStore_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
         singleStore_conn_obj = SingleStoreConnection(
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(singleStore_conn_obj)
 
@@ -407,17 +393,15 @@ class SouceConnectionTest(TestCase):
             scheme=Db2Scheme.db2_ibm_db,
             username="openmetadata_user",
             hostPort="localhost:50000",
-            database=None,
         )
         assert expected_url == get_connection_url(db2_conn_obj)
 
         # connection arguments with db
-        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000/default"
+        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000"
         db2_conn_obj = Db2Connection(
             username="openmetadata_user",
             hostPort="localhost:50000",
             scheme=Db2Scheme.db2_ibm_db,
-            database="default",
         )
         assert expected_url == get_connection_url(db2_conn_obj)
 
@@ -452,7 +436,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
             connectionArguments=None,
             scheme=MySQLScheme.mysql_pymysql,
         )
@@ -464,7 +447,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MySQLScheme.mysql_pymysql,
         )
@@ -502,7 +484,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
             connectionArguments=None,
             scheme=MariaDBScheme.mysql_pymysql,
         )
@@ -514,7 +495,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MariaDBScheme.mysql_pymysql,
         )
@@ -577,7 +557,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments=None,
             scheme=SingleStoreScheme.mysql_pymysql,
         )
@@ -589,7 +568,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SingleStoreScheme.mysql_pymysql,
         )
@@ -602,7 +580,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments=None,
             scheme=Db2Scheme.db2_ibm_db,
         )
@@ -614,7 +591,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=Db2Scheme.db2_ibm_db,
         )

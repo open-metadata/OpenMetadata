@@ -56,12 +56,6 @@ class DashboardSourceService(Source, ABC):
         """
 
     @abstractmethod
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        """
-        Method to fetch Charts
-        """
-
-    @abstractmethod
     def fetch_dashboard_charts(self, dashboard: Any) -> Optional[Iterable[Chart]]:
         """
         Method to fetch charts linked to dashboard
@@ -91,7 +85,6 @@ class DashboardSourceService(Source, ABC):
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.process_dashboards()
-        yield from self.process_charts() or []
 
     def process_dashboards(
         self,

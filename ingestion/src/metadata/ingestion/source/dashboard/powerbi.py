@@ -162,12 +162,6 @@ class PowerbiSource(DashboardSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def process_charts(self) -> Iterable[Chart]:
-        """
-        Method to fetch Charts
-        """
-        logger.info("Fetch Charts Not implemented for PowerBi")
-
     def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
         """Get chart method
         Args:

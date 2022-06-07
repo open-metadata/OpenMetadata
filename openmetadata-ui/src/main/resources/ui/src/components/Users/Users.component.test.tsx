@@ -17,7 +17,7 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
 import Users from './Users.component';
@@ -135,13 +135,35 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
   ),
 }));
 
+jest.mock('../containers/PageLayout', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        leftPanel,
+        rightPanel,
+      }: {
+        children: ReactNode;
+        rightPanel: ReactNode;
+        leftPanel: ReactNode;
+      }) => (
+        <div data-testid="PageLayout">
+          <div>{leftPanel}</div>
+          <div>{rightPanel}</div>
+          {children}
+        </div>
+      )
+    )
+);
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../EntityList/EntityList', () => {
-  return jest.fn().mockReturnValue(<p>EntityList.component</p>);
-});
+jest.mock('../EntityList/EntityList', () => ({
+  EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
+}));
 
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();

@@ -11,6 +11,7 @@
 
 from ibm_db_sa.base import DB2Dialect
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -46,3 +47,10 @@ class Db2Source(CommonDbSourceService):
                 f"Expected Db2Connection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_schemas(self, inspector: Inspector) -> str:
+        return (
+            inspector.get_schema_names()
+            if not self.service_connection.databaseSchema
+            else [self.service_connection.databaseSchema]
+        )

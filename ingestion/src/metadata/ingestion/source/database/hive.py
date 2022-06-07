@@ -13,6 +13,7 @@ import re
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -125,7 +126,6 @@ HiveDialect.get_view_names = get_view_names
 
 class HiveSource(CommonDbSourceService):
     def prepare(self):
-        self.service_connection.database = "default"
         return super().prepare()
 
     @classmethod
@@ -137,3 +137,10 @@ class HiveSource(CommonDbSourceService):
                 f"Expected HiveConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_schemas(self, inspector: Inspector) -> str:
+        return (
+            inspector.get_schema_names()
+            if not self.service_connection.databaseSchema
+            else [self.service_connection.databaseSchema]
+        )
