@@ -59,7 +59,6 @@ type props = {
   isHasAccess: boolean;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => void;
-  afterDeleteAction?: () => void;
   handleUserRedirection?: (name: string) => void;
 };
 

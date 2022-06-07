@@ -307,7 +307,6 @@ const GlossaryV1 = ({
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
-            afterDeleteAction={afterDeleteAction}
             glossary={selectedData as Glossary}
             handleUserRedirection={handleUserRedirection}
             isHasAccess={isHasAccess}
@@ -315,7 +314,6 @@ const GlossaryV1 = ({
           />
         ) : (
           <GlossaryTermsV1
-            afterDeleteAction={afterDeleteAction}
             assetData={assetData}
             currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
