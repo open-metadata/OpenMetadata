@@ -1,19 +1,20 @@
 ---
 description: >-
-  This page provides instructions on how to install OpenMetadata and Prefect on your local machine.
+  This page provides instructions on how to install OpenMetadata and Prefect on
+  your local machine.
 ---
 
 # OpenMetadata & Prefect
 
 ## Requirements (OSX and Linux)
 
-Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing OpenMetadata.
+Please ensure your host system meets the requirements listed below. Then continue to the procedure for installing OpenMetadata.
 
 <details>
 
 <summary>OSX and Linux</summary>
 
-#### Python (version 3.8.0 or greater)
+**Python (version 3.8.0 or greater)**
 
 To check what version of Python you have, please use the following command.
 
@@ -21,9 +22,9 @@ To check what version of Python you have, please use the following command.
 python3 --version
 ```
 
-#### Docker (version 20.10.0 or greater)
+**Docker (version 20.10.0 or greater)**
 
-[Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
+[Docker](https://docs.docker.com/get-started/overview/) is an open source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
 
 To check what version of Docker you have, please use the following command.
 
@@ -33,11 +34,11 @@ docker --version
 
 If you need to install Docker, please visit [Get Docker](https://docs.docker.com/get-docker/).
 
-Note: You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
+**Note:** You must **allocate at least 6GB of memory to Docker** in order to run OpenMetadata. To change the memory allocation for Docker, please visit:
 
 Preferences -> Resources -> Advanced
 
-#### `compose` command for Docker (version v2.1.1 or greater)
+**`compose` command for Docker (version v2.1.1 or greater)**
 
 The Docker `compose` package enables you to define and run multi-container Docker applications. The `compose` command integrates compose functions into the Docker platform, making them available from the Docker command-line interface (CLI). The Python packages you will install in the procedure below use `compose` to deploy OpenMetadata.
 
@@ -57,9 +58,9 @@ Upon running this command you should see output similar to the following.
 Docker Compose version v2.1.1
 ```
 
-Note: In previous releases of Docker compose functions were delivered with the `docker-compose` tool. OpenMetadata uses Compose V2. Please see the paragraphs above for instructions on installing Compose V2.
+**Note:** In previous releases of Docker compose functions were delivered with the `docker-compose` tool. OpenMetadata uses Compose V2. Please see the paragraphs above for instructions on installing Compose V2.
 
-#### Install Docker Compose Version 2.0.0 on Linux
+**Install Docker Compose Version 2.0.0 on Linux**
 
 Follow the [instructions here](https://docs.docker.com/compose/cli-command/#install-on-linux) to install docker compose version 2.0.0
 
@@ -92,13 +93,13 @@ Docker Compose version v2.2.3
 
 <summary>Windows</summary>
 
-#### WSL2, Ubuntu 20.04, and Docker for Windows
+**WSL2, Ubuntu 20.04, and Docker for Windows**
 
 1. Install [WSL2](https://ubuntu.com/wsl)
 2. Install [Ubuntu 20.04](https://www.microsoft.com/en-us/p/ubuntu-2004-lts/9n6svws3rx71)
 3. Install [Docker for Windows](https://www.docker.com/products/docker-desktop)
 
-#### In the Ubuntu terminal
+**In the Ubuntu Terminal**
 
 ```
 cd ~
@@ -111,9 +112,9 @@ Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-open
 
 </details>
 
----
+***
 
-## Installation process
+## Installation Process
 
 This documentation page will walk you through the process of configuring OpenMetadata and [Prefect 2.0](https://www.prefect.io/blog/introducing-prefect-2-0/). It is intended as a minimal viable setup to get you started using both platforms together. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
 
@@ -135,9 +136,9 @@ docker compose up -d
 
 This will create a docker **network** and **containers** with the following services:
 
-- `openmetadata_mysql` - metadata store that serves as a persistence layer holding your metadata,
-- `openmetadata_elasticsearch` - indexing service to search the metadata catalog,
-- `openmetadata_server` - the OpenMetadata UI and API server allowing you to discover insights and interact with your metadata.
+* `openmetadata_mysql` - Metadata store that serves as a persistence layer holding your metadata.
+* `openmetadata_elasticsearch` - Indexing service to search the metadata catalog.
+* `openmetadata_server` - The OpenMetadata UI and API server allowing you to discover insights and interact with your metadata.
 
 Wait a couple of minutes until the setup is finished.
 
@@ -152,7 +153,7 @@ openmetadata_server          "./openmetadata-star…"   openmetadata-server   ru
 
 ### 3. Confirm you can access the OpenMetadata UI
 
-Visit the following URL to confirm you can access the UI and start exploring OpenMetadata:
+Visit the following URL to confirm that you can access the UI and start exploring OpenMetadata:
 
 ```
 http://localhost:8585
@@ -289,7 +290,7 @@ If you navigate to the URL [http://localhost:4200](http://localhost:4200/), you
 
 Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows on a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
 
-Here is how you can add a `DeploymentSpec` to your flow to ensure that your metadata gets refreshed every 15 minutes:
+Here's how you can add a `DeploymentSpec` to your flow to ensure that your metadata gets refreshed every 15 minutes:
 
 ```python
 # ingestion_flow.py
@@ -325,7 +326,7 @@ prefect deployment create ingestion_flow.py
 
 ## 8. Deploy the execution layer to run your flows
 
-So far, we’ve looked at how you can **create** and **schedule** your workflow, but where does this code actually run? This is a place where the concepts of [storage](https://orion-docs.prefect.io/concepts/storage/), [work queues, and agents](https://orion-docs.prefect.io/concepts/work-queues/) become important. But don’t worry - all you need to know to get started is running one CLI command for each of those concepts.
+So far, we’ve looked at how you can **create** and **schedule** your workflow; but where does this code actually run? This is a place where the concepts of [storage](https://orion-docs.prefect.io/concepts/storage/), [work queues, and agents](https://orion-docs.prefect.io/concepts/work-queues/) become important. But don’t worry - all you need to know to get started is running one CLI command for each of those concepts.
 
 **1) Storage**
 
@@ -361,8 +362,8 @@ You can observe the state of your metadata ingestion workflows from the [Prefect
 
 If you want to move beyond this local installation, you can deploy Prefect 2.0 to run your OpenMetadata ingestion workflows by:
 
-- self-hosting the orchestration layer - see the [list of resources on Prefect Discourse](https://discourse.prefect.io/t/how-to-self-host-prefect-2-0-orchestration-layer-list-of-resources-to-get-started/952),
-- or signing up for [Prefect Cloud 2.0](https://beta.prefect.io/) - [the following page](https://discourse.prefect.io/t/how-to-get-started-with-prefect-cloud-2-0/539) will walk you through the process.
+* Self-hosting the orchestration layer - see the [list of resources on Prefect Discourse](https://discourse.prefect.io/t/how-to-self-host-prefect-2-0-orchestration-layer-list-of-resources-to-get-started/952), or
+* Signing up for [Prefect Cloud 2.0](https://beta.prefect.io/) - [the following page](https://discourse.prefect.io/t/how-to-get-started-with-prefect-cloud-2-0/539) will walk you through the process.
 
 For various deployment options of OpenMetadata, check the “Deploy” section of [this documentation](https://docs.open-metadata.org/).
 
@@ -385,10 +386,7 @@ ERROR: No matching distribution found for openmetadata-ingestion[docker]
 
 If you see the above when attempting to install `prefect-openmetadata`, this can be due to using an older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.
 
-
----
-
-### Next Steps
+## Next Steps
 
 1. Visit the [Features](../docs/overview/features.md) overview page and explore the OpenMetadata UI.
 2. Visit the [Connectors](../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.

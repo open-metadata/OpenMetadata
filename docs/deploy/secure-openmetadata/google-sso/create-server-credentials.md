@@ -31,7 +31,7 @@ description: >-
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
 * Choose User Type **Internal**.
 
-![](<../../../.gitbook/assets/image (52) (2) (1) (1).png>)
+![](../../../../.gitbook/assets/image.png)
 
 * Once the user type is selected, provide the **App Information** and other details.
 * Click **Save and Continue**.

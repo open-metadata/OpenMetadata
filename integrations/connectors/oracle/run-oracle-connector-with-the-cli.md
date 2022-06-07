@@ -263,7 +263,7 @@ The same as the [metadata](run-oracle-connector-with-the-cli.md#workflow-configu
 
 ### 2. Run with the CLI
 
-Again, we will start by saving the JSON file.
+Again, we will start by saving the YAML file.
 
 Then, we can run the workflow as:
 

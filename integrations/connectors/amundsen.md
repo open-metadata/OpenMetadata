@@ -52,7 +52,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select the service type which are available on the amundsen and create a service one by one. In this example we will need to create services for hive, dynamo db & deltalake. Possible service names are `athena, bigquery, db2, druid, delta, salesforce, oracle, glue, snowflake, hive` .
 
-![](../../.gitbook/assets/image.png)
+![](<../../.gitbook/assets/image (1).png>)
 
 ![Service Created](<../../.gitbook/assets/image (45).png>)
 
