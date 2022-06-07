@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -52,11 +53,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
     threadId: string
   ) => {
     return postLength > 1 ? (
-      <div className="tw-mb-6">
-        <div className="tw-ml-9 tw-flex tw-mb-6">
+      <div className="tw-mb-2">
+        <div className="tw-ml-9 tw-flex">
           <FeedCardFooter
             isFooterVisible
-            className="tw--mt-4"
             lastReplyTimeStamp={lastPost?.postTs}
             repliedUsers={repliedUsers}
             replies={replies}
@@ -91,53 +91,63 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const lastPost = feed.posts[postLength - 1];
 
           return (
-            <div data-testid="message-container" key={index}>
-              <ActivityFeedCard
-                className="tw-mb-6"
-                data-testid="main-message"
-                entityLink={feed.about}
-                feed={mainFeed}
-                isEntityFeed={isEntityFeed}
-              />
-              {postLength > 0 ? (
-                <Fragment>
-                  {getThreadFooter(
-                    postLength,
-                    lastPost,
-                    repliedUsers,
-                    replies,
-                    feed.id
-                  )}
-                  <ActivityFeedCard
-                    className="tw-mb-6 tw-ml-9"
-                    data-testid="latest-message"
-                    feed={lastPost}
-                    isEntityFeed={isEntityFeed}
-                    threadId={feed.id}
-                    onConfirmation={onConfirmation}
-                  />
+            <Card
+              key={`${index} - card`}
+              style={{
+                border: '1px rgb(221, 227, 234) solid',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+                marginRight: '4px',
+                marginLeft: '4px',
+              }}>
+              <div data-testid="message-container" key={index}>
+                <ActivityFeedCard
+                  data-testid="main-message"
+                  entityLink={feed.about}
+                  feed={mainFeed}
+                  isEntityFeed={isEntityFeed}
+                />
+                {postLength > 0 ? (
+                  <Fragment>
+                    {getThreadFooter(
+                      postLength,
+                      lastPost,
+                      repliedUsers,
+                      replies,
+                      feed.id
+                    )}
+                    <ActivityFeedCard
+                      className="tw-mb-6 tw-ml-9"
+                      data-testid="latest-message"
+                      feed={lastPost}
+                      isEntityFeed={isEntityFeed}
+                      threadId={feed.id}
+                      onConfirmation={onConfirmation}
+                    />
+                    <p
+                      className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
+                      data-testid="quick-reply"
+                      onClick={() => {
+                        toggleReplyEditor(feed.id);
+                      }}>
+                      Reply
+                    </p>
+                    {getFeedEditor(feed.id)}
+                  </Fragment>
+                ) : (
                   <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
-                    data-testid="quick-reply"
+                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
+                    data-testid="replyInSidePanel"
                     onClick={() => {
-                      toggleReplyEditor(feed.id);
+                      onThreadSelect(feed.id);
+                      onViewMore();
                     }}>
                     Reply
                   </p>
-                  {getFeedEditor(feed.id)}
-                </Fragment>
-              ) : (
-                <p
-                  className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                  data-testid="replyInSidePanel"
-                  onClick={() => {
-                    onThreadSelect(feed.id);
-                    onViewMore();
-                  }}>
-                  Reply
-                </p>
-              )}
-            </div>
+                )}
+              </div>
+            </Card>
           );
         })}
     </Fragment>

@@ -6,6 +6,7 @@ source:
       type: MariaDB
       username: openmetadata_user
       password: openmetadata_password
+      databaseSchema: default
       hostPort: localhost:3306
   sourceConfig:
     config:

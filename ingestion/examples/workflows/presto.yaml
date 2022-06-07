@@ -8,7 +8,7 @@ source:
       catalog: tpcds
       username: admin
       password: password
-      database: database
+      databaseSchema: tpcds
   sourceConfig:
     config:
       generateSampleData: false
