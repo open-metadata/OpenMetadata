@@ -65,7 +65,8 @@ const Tags: FunctionComponent<TagProps> = ({
           className={classNames(
             textBaseStyle,
             textLayoutStyles,
-            textEditStyles
+            textEditStyles,
+            'tw-flex tw-items-center'
           )}
           title={tag}>
           {startIcon}

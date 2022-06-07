@@ -335,7 +335,7 @@ const GlossaryTermsV1 = ({
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
         <button
-          className="tw-text-primary"
+          className="tw-text-primary tw-flex tw-items-center"
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>

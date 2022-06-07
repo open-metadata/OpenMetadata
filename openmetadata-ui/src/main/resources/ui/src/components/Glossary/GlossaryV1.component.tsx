@@ -213,7 +213,7 @@ const GlossaryV1 = ({
                     position="bottom"
                     title={TITLE_FOR_NON_ADMIN_ACTION}>
                     <button
-                      className="tw--mt-1 tw-w-full tw-flex-center tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
                       onClick={handleAddGlossaryClick}>
                       <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
                       <span>Add Glossary</span>
