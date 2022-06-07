@@ -193,55 +193,58 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-bg-white tw-shadow tw-rounded-md tw-min-h-full tw-h-80vh tw-py-2">
-        <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
-          <h6 className="tw-heading tw-text-base">Glossary</h6>
-        </div>
-        <div>
-          {treeData.length ? (
-            <Fragment>
-              <div className="tw-px-3 tw-mb-3">
-                <Searchbar
-                  showLoadingStatus
-                  placeholder="Search term..."
-                  searchValue={searchText}
-                  typingInterval={500}
-                  onSearch={handleSearchText}
-                />
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <button
-                    className="tw--mt-1 tw-w-full tw-text-center tw-py-1 tw-text-primary tw-border tw-rounded-md"
-                    onClick={handleAddGlossaryClick}>
-                    + Add Glossary
-                  </button>
-                </NonAdminAction>
-              </div>
-              {isSearchResultEmpty ? (
-                <p className="tw-text-grey-muted tw-text-center">
-                  {searchText ? (
-                    <span>{`No Glossary found for "${searchText}"`}</span>
-                  ) : (
-                    <span>No Glossary found</span>
-                  )}
-                </p>
-              ) : (
-                <TreeView
-                  className="tw-px-2"
-                  expandedKeys={expandedKey}
-                  handleClick={handleTreeClick}
-                  handleExpand={(key) => handleExpandedKey(key as string[])}
-                  loadingKey={loadingKey}
-                  ref={treeRef}
-                  selectedKeys={[selectedKey]}
-                  treeData={treeData}
-                />
-              )}
-            </Fragment>
-          ) : (
-            <Loader />
-          )}
+      <div className="tw-px-2">
+        <div className="tw-bg-white tw-shadow-box tw-border tw-border-border-gray tw-rounded-md tw-min-h-full tw-h-80vh tw-py-2">
+          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
+            <h6 className="tw-heading tw-text-base">Glossary</h6>
+          </div>
+          <div>
+            {treeData.length ? (
+              <Fragment>
+                <div className="tw-px-3 tw-mb-3">
+                  <Searchbar
+                    showLoadingStatus
+                    placeholder="Search term..."
+                    searchValue={searchText}
+                    typingInterval={500}
+                    onSearch={handleSearchText}
+                  />
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <button
+                      className="tw--mt-1 tw-w-full tw-flex-center tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      onClick={handleAddGlossaryClick}>
+                      <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                      <span>Add Glossary</span>
+                    </button>
+                  </NonAdminAction>
+                </div>
+                {isSearchResultEmpty ? (
+                  <p className="tw-text-grey-muted tw-text-center">
+                    {searchText ? (
+                      <span>{`No Glossary found for "${searchText}"`}</span>
+                    ) : (
+                      <span>No Glossary found</span>
+                    )}
+                  </p>
+                ) : (
+                  <TreeView
+                    className="tw-px-2"
+                    expandedKeys={expandedKey}
+                    handleClick={handleTreeClick}
+                    handleExpand={(key) => handleExpandedKey(key as string[])}
+                    loadingKey={loadingKey}
+                    ref={treeRef}
+                    selectedKeys={[selectedKey]}
+                    treeData={treeData}
+                  />
+                )}
+              </Fragment>
+            ) : (
+              <Loader />
+            )}
+          </div>
         </div>
       </div>
     );
@@ -253,7 +256,7 @@ const GlossaryV1 = ({
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
         <div
-          className="tw-heading tw-text-link tw-text-base tw--mt-2"
+          className="tw-heading tw-text-link tw-text-base"
           data-testid="category-name">
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </div>

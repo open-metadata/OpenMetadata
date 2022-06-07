@@ -297,7 +297,12 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          + Add
+          <SVGIcons
+            alt="plus"
+            className="tw-w-3.5 tw-mr-2"
+            icon={Icons.ICON_PLUS_PRIMERY}
+          />
+          <span>Add</span>
         </button>
       </NonAdminAction>
     );
@@ -362,7 +367,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                 className={classNames(
                   'tw-flex tw-justify-between tw-items-center tw-px-5',
                   {
-                    'tw-border-b tw-pb-2':
+                    'tw-border-b tw-pb-2 tw-border-border-lite':
                       i !== (glossary.reviewers || []).length - 1,
                   }
                 )}
@@ -412,7 +417,9 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-flex tw-flex-wrap tw-group tw-mb-5" data-testid="tags">
+      <div
+        className="tw-flex tw-flex-wrap tw-group tw--mt-6 tw-mb-5"
+        data-testid="tags">
         {!isTagEditable && (
           <>
             {glossary?.tags && glossary.tags.length > 0 && (

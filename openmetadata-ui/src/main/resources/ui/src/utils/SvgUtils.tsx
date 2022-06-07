@@ -113,6 +113,7 @@ import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
+import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
@@ -244,6 +245,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
+  ICON_PLUS_PRIMERY: 'icon-plus-primary',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -631,6 +633,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ICON_PLUS:
       IconComponent = IconPlus;
+
+      break;
+    case Icons.ICON_PLUS_PRIMERY:
+      IconComponent = IconPlusPrimery;
 
       break;
     case Icons.ICON_MINUS:

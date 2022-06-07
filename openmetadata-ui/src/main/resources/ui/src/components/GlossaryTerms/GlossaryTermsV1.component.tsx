@@ -343,7 +343,12 @@ const GlossaryTermsV1 = ({
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          + Add
+          <SVGIcons
+            alt="plus"
+            className="tw-w-3.5 tw-mr-2"
+            icon={Icons.ICON_PLUS_PRIMERY}
+          />
+          Add
         </button>
       </NonAdminAction>
     );
@@ -398,7 +403,7 @@ const GlossaryTermsV1 = ({
                 className={classNames(
                   'tw-flex tw-justify-between tw-items-center tw-px-5',
                   {
-                    'tw-border-b tw-pb-2':
+                    'tw-border-b tw-pb-2 tw-border-border-lite':
                       i !== (glossaryTerm.reviewers || []).length - 1,
                   }
                 )}
@@ -502,7 +507,7 @@ const GlossaryTermsV1 = ({
                 <div className="tw-flex">
                   {relatedTerms.map((d, i) => (
                     <Fragment key={i}>
-                      {i > 0 && <span className="tw-mx-2">|</span>}
+                      {i > 0 && <span className="tw-mr-1">,</span>}
                       <span
                         className="link-text-info tw-flex"
                         data-testid={`related-term-${d?.name}`}
@@ -598,7 +603,7 @@ const GlossaryTermsV1 = ({
                 <div className="tw-flex">
                   {references.map((d, i) => (
                     <Fragment key={i}>
-                      {i > 0 && <span className="tw-mx-2">|</span>}
+                      {i > 0 && <span className="tw-mr-1">,</span>}
                       <a
                         className="link-text-info tw-flex"
                         data-testid="owner-link"
@@ -635,7 +640,7 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      <p className="tw-text-lg tw-font-medium tw--mt-3">
+      <p className="tw-text-lg tw-font-medium tw--mt-6">
         {getEntityName(glossaryTerm as unknown as EntityReference)}
       </p>
       {/* TODO: Add this stat when supporting status updation  */}
@@ -644,7 +649,7 @@ const GlossaryTermsV1 = ({
         <div>{glossaryTerm.status}</div>
       </div> */}
 
-      <div className="tw-flex tw-flex-wrap tw-group tw-mt-3" data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (

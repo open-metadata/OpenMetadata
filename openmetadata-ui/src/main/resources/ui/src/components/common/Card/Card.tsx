@@ -25,7 +25,7 @@ const Card = ({ children, heading, action, className }: CardProps) => {
   return (
     <div
       className={classNames(
-        'tw-bg-white tw-border tw-rounded-md tw-shadow tw-w-full',
+        'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-shadow-box tw-w-full',
         className
       )}>
       <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">

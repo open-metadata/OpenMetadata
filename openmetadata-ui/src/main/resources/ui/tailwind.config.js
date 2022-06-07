@@ -54,6 +54,8 @@ const lightBG = '#F4F0FD';
 // Borders and Separators
 const mainBorder = '#DCE3EC';
 const mainSeparator = '#DCE3EC';
+const grayBorder = '#DDE3EA';
+const liteGrayBorder = '#f1f4f7';
 
 // Text color - Gray variants
 const textBody = '#37352f';
@@ -89,6 +91,7 @@ module.exports = {
       boxShadow: {
         modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
         form: '2px 4px 10px rgba(0, 0, 0, 0.04)',
+        box: '1px 1px 3px 0px rgba(0, 0, 0, 0.12)',
       },
       colors: {
         'grey-body': textBody,
@@ -139,6 +142,8 @@ module.exports = {
         'retryLimitReached-lite': warningBG,
         // Webhook statuses end
         separator: mainSeparator,
+        'border-lite': liteGrayBorder,
+        'border-gray': grayBorder,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
