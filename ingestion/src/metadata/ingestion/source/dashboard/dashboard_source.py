@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Union
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -14,7 +16,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection
@@ -44,7 +45,7 @@ class DashboardSourceService(Source, ABC):
         """
 
     @abstractmethod
-    def get_dashboard_entity(self, dashboard_details: Any) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: Any) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
@@ -56,7 +57,9 @@ class DashboardSourceService(Source, ABC):
         """
 
     @abstractmethod
-    def fetch_dashboard_charts(self, dashboard: Any) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(
+        self, dashboard: Any
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Method to fetch charts linked to dashboard
         """
@@ -88,7 +91,7 @@ class DashboardSourceService(Source, ABC):
 
     def process_dashboards(
         self,
-    ) -> Iterable[Union[Dashboard, Chart, AddLineageRequest]]:
+    ) -> Iterable[Union[CreateDashboardRequest, CreateChartRequest, AddLineageRequest]]:
         """Get dashboard method"""
         for dashboard in self.get_dashboards_list():
             try:
@@ -102,6 +105,7 @@ class DashboardSourceService(Source, ABC):
                         "Dashboard Pattern not Allowed",
                     )
                     continue
+                yield from self.fetch_dashboard_charts(dashboard_details) or []
                 yield from self.get_dashboard_entity(dashboard_details)
                 if self.source_config.dbServiceName:
                     yield from self.get_lineage(dashboard_details)
