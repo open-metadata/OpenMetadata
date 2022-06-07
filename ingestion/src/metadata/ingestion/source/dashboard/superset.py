@@ -14,7 +14,7 @@ Superset source module
 
 import json
 import traceback
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 import dateutil.parser as dateparser
 
@@ -346,17 +346,3 @@ class SupersetSource(DashboardSourceService):
         )
         yield from self._check_lineage(chart_id, chart_json.get("datasource_name_text"))
         yield chart
-
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        current_page = 0
-        page_size = 25
-        total_charts = self.client.fetch_total_charts()
-        while current_page * page_size <= total_charts:
-            charts = self.client.fetch_charts(current_page, page_size)
-            current_page += 1
-            for chart_json in charts["result"]:
-                try:
-                    yield from self._build_chart(chart_json)
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(err)
