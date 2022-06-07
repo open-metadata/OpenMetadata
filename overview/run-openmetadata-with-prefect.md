@@ -321,7 +321,7 @@ After running your flow, you should see **new users**, **datasets**, **dashboard
 
 ### 7. Schedule your metadata ingestion flows with Prefect
 
-Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows at a regular cadence. That’s where you can leverage Prefect [schedules](https://www.notion.so/OM-Docs-01b7a7fbf2ec44f7ab9fa08085b51d14) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
+Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows at a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
 
 Here's how you can add a `DeploymentSpec` to your flow to ensure that your metadata gets refreshed every 15 minutes:
 
