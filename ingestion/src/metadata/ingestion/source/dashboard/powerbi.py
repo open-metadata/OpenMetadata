@@ -184,9 +184,7 @@ class PowerbiSource(DashboardSourceService):
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
-                    self.status.filter(
-                        chart["title"], "Filtered out using Chart filter pattern"
-                    )
+                    self.status.filter(chart["title"], "Chart Pattern not Allowed")
                     continue
                 yield CreateChartRequest(
                     name=chart["id"],

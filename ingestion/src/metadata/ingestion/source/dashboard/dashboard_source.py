@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -17,12 +18,26 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+@dataclass
+class DashboardSourceStatus(SourceStatus):
+    """
+    Reports the source status after ingestion
+    """
+
+    def scanned(self, record: str) -> None:
+        self.success.append(record)
+        logger.info(f"Scanned: {record}")
+
+    def filter(self, record: str, err: str) -> None:
+        self.filtered.append(record)
+        logger.warning(f"Filtered {record}: {err}")
 
 
 class DashboardSourceService(Source, ABC):
@@ -83,7 +98,7 @@ class DashboardSourceService(Source, ABC):
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )
-        self.status = SQLSourceStatus()
+        self.status = DashboardSourceStatus()
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def next_record(self) -> Iterable[Entity]:

@@ -137,7 +137,7 @@ class LookerSource(DashboardSourceService):
                     chart_filter_pattern=self.source_config.chartFilterPattern,
                     chart_name=dashboard_elements.id,
                 ):
-                    self.status.failure(dashboard_elements.id, "Chart filtered out")
+                    self.status.filter(dashboard_elements.id, "Chart filtered out")
                     continue
                 om_dashboard_elements = Chart(
                     name=dashboard_elements.id,
