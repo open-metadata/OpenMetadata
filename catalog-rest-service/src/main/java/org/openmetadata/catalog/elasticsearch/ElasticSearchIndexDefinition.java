@@ -254,7 +254,7 @@ class ElasticSearchIndex {
 @Builder
 class ElasticSearchSuggest {
   String input;
-  Integer weight = 5;
+  Integer weight;
 }
 
 @Getter
@@ -354,9 +354,9 @@ class TableESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
-    databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).build());
-    schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).build());
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).build());
+    databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
+    serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
     if (table.getTags() != null) {
       table.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
@@ -472,6 +472,8 @@ class TopicESIndex extends ElasticSearchIndex {
   public static TopicESIndexBuilder builder(Topic topic, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
+    serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
 
@@ -492,6 +494,7 @@ class TopicESIndex extends ElasticSearchIndex {
             .fqdn(topic.getFullyQualifiedName())
             .lastUpdatedTimestamp(updatedTimestamp)
             .suggest(suggest)
+            .serviceSuggest(serviceSuggest)
             .serviceCategory("messagingService")
             .entityType("topic")
             .tags(parseTags.tags)
@@ -548,11 +551,17 @@ class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
+  @JsonProperty("chart_suggest")
+  List<ElasticSearchSuggest> chartSuggest;
+
   public static DashboardESIndexBuilder builder(Dashboard dashboard, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> chartSuggest = new ArrayList<>();
+    serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     Long updatedTimestamp = dashboard.getUpdatedAt();
@@ -564,6 +573,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       for (EntityReference chart : dashboard.getCharts()) {
         chartNames.add(chart.getDisplayName());
         chartDescriptions.add(chart.getDescription());
+        chartSuggest.add(ElasticSearchSuggest.builder().input(chart.getName()).weight(5).build());
       }
     }
 
@@ -583,6 +593,8 @@ class DashboardESIndex extends ElasticSearchIndex {
             .chartDescriptions(chartDescriptions)
             .entityType("dashboard")
             .suggest(suggest)
+            .chartSuggest(chartSuggest)
+            .serviceSuggest(serviceSuggest)
             .serviceCategory("dashboardService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
@@ -629,11 +641,17 @@ class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("task_descriptions")
   List<String> taskDescriptions;
 
+  @JsonProperty("task_suggest")
+  List<ElasticSearchSuggest> taskSuggest;
+
   public static PipelineESIndexBuilder builder(Pipeline pipeline, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> taskSuggest = new ArrayList<>();
+    serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
 
@@ -645,6 +663,7 @@ class PipelineESIndex extends ElasticSearchIndex {
       for (Task task : pipeline.getTasks()) {
         taskNames.add(task.getDisplayName());
         taskDescriptions.add(task.getDescription());
+        taskSuggest.add(ElasticSearchSuggest.builder().input(task.getDisplayName()).weight(5).build());
       }
     }
 
@@ -666,6 +685,8 @@ class PipelineESIndex extends ElasticSearchIndex {
             .taskDescriptions(taskDescriptions)
             .entityType("pipeline")
             .suggest(suggest)
+            .taskSuggest(taskSuggest)
+            .serviceSuggest(serviceSuggest)
             .serviceCategory("pipelineService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);

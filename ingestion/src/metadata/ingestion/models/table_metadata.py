@@ -52,6 +52,10 @@ class TableESDocument(BaseModel):
     entity_type: str = "table"
     name: str
     suggest: List[dict]
+    column_suggest: List[dict]
+    database_suggest: List[dict]
+    schema_suggest: List[dict]
+    service_suggest: List[dict]
     description: Optional[str] = None
     table_type: Optional[str] = None
     last_updated_timestamp: Optional[int]
@@ -81,6 +85,7 @@ class TopicESDocument(BaseModel):
     entity_type: str = "topic"
     name: str
     suggest: List[dict]
+    service_suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     tags: List[str]
@@ -101,6 +106,8 @@ class DashboardESDocument(BaseModel):
     entity_type: str = "dashboard"
     name: str
     suggest: List[dict]
+    chart_suggest: List[dict]
+    service_suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     chart_names: List[str]
@@ -129,6 +136,8 @@ class PipelineESDocument(BaseModel):
     entity_type: str = "pipeline"
     name: str
     suggest: List[dict]
+    task_suggest: List[dict]
+    service_suggest: List[dict]
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     task_names: List[str]
@@ -149,6 +158,7 @@ class MlModelESDocument(BaseModel):
     entity_type: str = "mlmodel"
     name: str
     suggest: List[dict]
+    service_suggest: List[dict] = None
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
     algorithm: str

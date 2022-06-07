@@ -139,6 +139,18 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             "suggest": {
               "type": "completion"
             },
+            "column_suggest": {
+              "type": "completion"
+            },
+            "schema_suggest": {
+              "type": "completion"
+            },
+            "database_suggest": {
+              "type": "completion"
+            },
+            "service_suggest": {
+              "type": "completion"
+            },
             "monthly_stats":{
               "type": "long"
             },
@@ -278,6 +290,9 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
+            },
+            "service_suggest": {
+              "type": "completion"
             }
          }
       }
@@ -405,6 +420,12 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "suggest": {
+              "type": "completion"
+            },
+            "chart_suggest": {
+              "type": "completion"
+            },
+           "service_suggest": {
               "type": "completion"
             },
              "monthly_stats":{
@@ -552,7 +573,13 @@ PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
-            }
+            },
+            "task_suggest": {
+              "type": "completion"
+            },
+           "service_suggest": {
+             "type": "completion"
+           }
          }
       }
     }
@@ -944,6 +971,9 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
   			"suggest": {
   				"type": "completion"
   			},
+  			"service_suggest": {
+               "type": "completion"
+            },
   			"monthly_stats": {
   				"type": "long"
   			},
