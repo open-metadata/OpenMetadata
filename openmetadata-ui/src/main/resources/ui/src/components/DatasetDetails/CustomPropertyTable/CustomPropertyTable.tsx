@@ -55,13 +55,15 @@ export const CustomPropertyTable: FC<Props> = ({
 
   return (
     <div className="tw-bg-white tw-border tw-border-main tw-rounded">
-      <table className="tw-w-full" data-testid="custom-fields-table">
+      <table className="tw-w-full" data-testid="custom-properties-table">
         <thead data-testid="table-header">
           <tr className="tableHead-row tw-border-t-0 tw-border-l-0 tw-border-r-0">
-            <th className="tableHead-cell tw-w-2/4" data-testid="field-name">
+            <th className="tableHead-cell tw-w-2/4" data-testid="property-name">
               Name
             </th>
-            <th className="tableHead-cell tw-w-2/4" data-testid="field-value">
+            <th
+              className="tableHead-cell tw-w-2/4"
+              data-testid="property-value">
               Value
             </th>
           </tr>
@@ -96,7 +98,7 @@ export const CustomPropertyTable: FC<Props> = ({
               className={classNames(
                 'tableBody-row tw-border-l-0 tw-border-r-0 tw-border-b-0'
               )}
-              data-testid="data-row"
+              data-testid="no-data-row"
               key={uniqueId()}>
               <td className="tableBody-cell tw-text-center" colSpan={2}>
                 <span className="tw-text-grey-muted">
