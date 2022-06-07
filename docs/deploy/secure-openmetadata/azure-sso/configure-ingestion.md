@@ -6,7 +6,7 @@ description: This is a guide to configure Ingestion Connectors with security.
 
 ## Add Metadata Authentication for Connectors
 
-All Connectors have the **workflowConfig** section. Pass the JSON file generated in [Create Service Account](../auth0-sso/create-service-account.md) as clientSecret.
+All Connectors have the **workflowConfig** section. Pass the JSON file generated in [Create Service Application](create-service-application.md) as clientSecret.
 
 {% code title="Connector Config for MySQL Connector:" %}
 ```javascript
