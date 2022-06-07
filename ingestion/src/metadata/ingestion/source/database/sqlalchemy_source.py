@@ -33,6 +33,7 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils import fqn
@@ -42,7 +43,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SqlAlchemySource(Source, ABC):
+class SqlAlchemySource(DatabaseServiceSource):
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
