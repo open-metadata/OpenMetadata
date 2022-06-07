@@ -269,7 +269,7 @@ export const tabsInfo = [
     selectedIcon: Icons.PIPELINE,
   },
   {
-    label: 'MlModels',
+    label: 'ML Models',
     index: SearchIndex.MLMODEL,
     sortingFields: topicSortingFields,
     sortField: '',
