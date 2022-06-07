@@ -8,7 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+"""
+Module for defining openmetadata commands
+"""
 import logging
 import os
 import pathlib
@@ -89,8 +91,8 @@ def profile(config: str) -> None:
     try:
         logger.debug(f"Using config: {workflow_config}")
         workflow = ProfilerWorkflow.create(workflow_config)
-    except ValidationError as e:
-        click.echo(e, err=True)
+    except ValidationError as err:
+        click.echo(err, err=True)
         sys.exit(1)
 
     workflow.execute()

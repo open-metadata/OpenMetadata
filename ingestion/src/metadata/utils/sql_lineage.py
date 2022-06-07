@@ -172,7 +172,7 @@ def _create_lineage_by_table_name(
                     created_lineage = metadata.add_lineage(lineage)
                     logger.info(f"Successfully added Lineage {created_lineage}")
 
-    except Exception as err:
+    except Exception:
         logger.debug(traceback.format_exc())
         logger.error(traceback.format_exc())
 

@@ -54,7 +54,7 @@ def split(s: str) -> List[str]:
     lexer = FqnLexer(InputStream(s))
     stream = CommonTokenStream(lexer)
     parser = FqnParser(stream)
-    parser._errHandler = BailErrorStrategy()
+    parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
     tree = parser.fqn()
     walker = ParseTreeWalker()
     splitter = SplitListener()

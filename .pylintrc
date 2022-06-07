@@ -6,14 +6,17 @@
 # R0901: too-many-ancestors - We are already inheriting from SQA classes with a bunch of ancestors
 # W0703: broad-except - We are dealing with many different source systems, but we want to make sure workflows run until the end
 # W0511: fixme - These are internal notes and guides
-disable=W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511
+# R0913: Too many arguments
+# R1705: Unnecessary "else" after "return"
+# C0415: Import outside toplevel
+disable=W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511,R0913,R1705,C0415
 
 docstring-min-length=20
 max-args=7
 max-attributes=12
 
 # usual typevar naming
-good-names=T,C,fn
+good-names=T,C,fn,s,fp,tx,
 
 [MASTER]
 fail-under=6.0

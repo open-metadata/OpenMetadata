@@ -87,6 +87,9 @@ from metadata.generated.schema.security.credentials.gcsCredentials import GCSVal
 
 
 def get_connection_url_common(connection):
+    """
+    This function returns the connection URL
+    """
     url = f"{connection.scheme.value}://"
 
     if connection.username:
@@ -120,7 +123,7 @@ def get_connection_url_common(connection):
 
 @singledispatch
 def get_connection_url(connection):
-    raise NotImplemented(
+    raise NotImplementedError(
         f"Connection URL build not implemented for type {type(connection)}: {connection}"
     )
 
