@@ -406,24 +406,22 @@ describe('TeamsAndUsers page', () => {
       .should('be.visible')
       .type(NEW_USER.description);
 
-    cy.get(
-      ':nth-child(5) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[aria-label="Select teams"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="Cloud_Infra"]').should('be.visible').click();
+    cy.get('[data-testid="Cloud_Infra"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="close-dropdown"]').click();
 
-    cy.get(
-      ':nth-child(6) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="roles-dropdown"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="Data Consumer"]').should('be.visible').click();
+    cy.get('[data-testid="Data Consumer"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="close-dropdown"]').click();
 
-    cy.get('[data-testid="save-user"]').should('be.visible').click();
+    cy.get('[data-testid="save-user"]').scrollIntoView().should('be.visible').click();
 
     cy.get('[data-testid="searchbar"]')
       .scrollIntoView()

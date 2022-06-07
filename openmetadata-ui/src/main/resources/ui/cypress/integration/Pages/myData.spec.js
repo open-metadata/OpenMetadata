@@ -91,6 +91,7 @@ describe('MyData page should work', () => {
     // click on the 1st result and go to entity details page and follow the entity
     cy.wait(500);
     cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
+    cy.wait(100);
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
