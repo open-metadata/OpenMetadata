@@ -24,6 +24,7 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
+  getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -203,6 +204,10 @@ export const getEntityLink = (
 
     case EntityType.TYPE:
       return getCustomEntityPath(fullyQualifiedName);
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return getMlModelPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

@@ -35,6 +35,7 @@ export enum AssetsType {
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
+  MLMODEL = 'mlmodel',
 }
 
 export enum ChangeType {
