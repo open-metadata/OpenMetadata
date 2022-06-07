@@ -31,7 +31,7 @@ You need to create database services before ingesting the metadata from Amundsen
 
 In the below example we have 5 tables from 3 data sources i.e hive, dynamo & delta so in OpenMetadata we have to create database services with the same name as the source.
 
-![Amundsen dashboard](<../../.gitbook/assets/image (3).png>)
+![Amundsen dashboard](<../../.gitbook/assets/image (3) (2).png>)
 
 To create database service follow these steps
 
@@ -52,15 +52,15 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select the service type which are available on the amundsen and create a service one by one. In this example we will need to create services for hive, dynamo db & deltalake. Possible service names are `athena, bigquery, db2, druid, delta, salesforce, oracle, glue, snowflake, hive` .
 
-![](<../../.gitbook/assets/image (1).png>)
+![](<../../.gitbook/assets/image (1) (2).png>)
 
-![Service Created](<../../.gitbook/assets/image (45).png>)
+![Service Created](<../../.gitbook/assets/image (45) (2).png>)
 
 Note: Adding ingestion in this step is optional, because we will fetch the metadata from amundsen.
 
 After creating all the database services, my service page looks like below and we are ready to start with the amundsen ingestion via cli.
 
-![](<../../.gitbook/assets/image (79).png>)
+![](<../../.gitbook/assets/image (79) (3).png>)
 
 ## Metadata Ingestion
 

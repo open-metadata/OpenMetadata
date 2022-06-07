@@ -31,7 +31,7 @@ description: >-
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
 * Choose User Type **Internal**.
 
-![](../../../../.gitbook/assets/image.png)
+![](<../../../../.gitbook/assets/image (2).png>)
 
 * Once the user type is selected, provide the **App Information** and other details.
 * Click **Save and Continue**.
@@ -41,7 +41,7 @@ description: >-
 * On the **Scopes Screen**, Click on **ADD OR REMOVE SCOPES** and select the scopes.
 * Once done click on **Update**.
 
-![](<../../../.gitbook/assets/image (44) (2) (1) (1).png>)
+![](<../../../.gitbook/assets/image (44) (2) (1).png>)
 
 * Click **Save and Continue**.
 

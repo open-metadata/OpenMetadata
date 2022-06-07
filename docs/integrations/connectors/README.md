@@ -23,7 +23,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [MySQL](../../../integrations/connectors/mysql/)
 * [Oracle](../../../integrations/connectors/oracle/)
 * [Postgres](../../../integrations/connectors/postgres/)
-* [Presto](../../../integrations/connectors/mysql-2-1/)
+* [Presto](../../../integrations/connectors/presto/)
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/)
 * [Salesforce](../../../integrations/connectors/salesforce/)
@@ -38,7 +38,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Looker](../../../integrations/connectors/looker/)
 * [Metabase](../../../integrations/connectors/metabase/)
 * Power BI
-* [Redash](../../../integrations/connectors/mysql-1-2/)
+* [Redash](../../../integrations/connectors/redash/)
 * [Superset](../../../integrations/connectors/superset/)
 * [Tableau](tableau.md)
 

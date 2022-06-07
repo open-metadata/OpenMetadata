@@ -99,13 +99,13 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (47).png>)
+![Service has been saved](<../../../docs/.gitbook/assets/image (13).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (68) (1) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (68) (1) (1) (1).png>)
 
 <details>
 

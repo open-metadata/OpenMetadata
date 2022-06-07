@@ -216,7 +216,7 @@ After configuring the workflow, you can click on Deploy to create the pipeline.
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../docs/.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
+![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.36.48 PM.png>)
 
 ### 9. Workflow Deployment Error
 

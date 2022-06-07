@@ -127,7 +127,7 @@ After hitting Save you will see that your Glue connector has been added successf
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../../.gitbook/assets/image (116).png>)
 
 <details>
 

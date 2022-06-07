@@ -82,7 +82,7 @@ tableFilterPattern:
 
 #### Sink Configuration
 
-To send the metadata to OpenMetadata, it needs to be specified as `"type": "metadata-rest"`.
+To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
 #### Workflow Configuration
 

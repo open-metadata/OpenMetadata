@@ -68,7 +68,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MSSQL service as desired.
 
-![](<../../../docs/.gitbook/assets/image (55) (1) (1) (1) (1).png>)
+![](<../../../docs/.gitbook/assets/image (55) (1) (1).png>)
 
 <details>
 
@@ -128,7 +128,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (39) (2) (1).png>)
 
 <details>
 
@@ -174,7 +174,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (14) (1) (1) (1) (2).png>)
+![](<../../../docs/.gitbook/assets/image (14) (1) (2).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 

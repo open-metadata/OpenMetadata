@@ -71,7 +71,7 @@ In this step, we will configure the connection settings required for this connec
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../docs/.gitbook/assets/image (20) (1) (1) (1) (1) (1).png>)
+![Test Connection and save the Service](<../../../docs/.gitbook/assets/image (20) (1) (1) (1) (1).png>)
 
 <details>
 
@@ -117,7 +117,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (116).png>)
 
 <details>
 

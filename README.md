@@ -16,8 +16,8 @@ OpenMetadata provides connectors that enable you to perform metadata ingestion f
 | Amundsen                                                   | [Kafka](docs/integrations/connectors/kafka.md)     | [Postgres](integrations/connectors/postgres/)            | [SingleStore](integrations/connectors/singlestore/)        |
 | Apache Atlas                                               | LDAP                                               | Power BI                                                 | [Snowflake](docs/integrations/connectors/snowflake/)       |
 | Apache Druid                                               | [Looker](integrations/connectors/looker/)          | Prefect                                                  | [Snowflake Usage](docs/integrations/connectors/snowflake/) |
-| [Athena](docs/integrations/connectors/athena/)             | [MariaDB](docs/integrations/connectors/mariadb.md) | [Presto](integrations/connectors/mysql-2-1/)             | [Superset](integrations/connectors/superset/)              |
-| [Azure SQL](integrations/connectors/azure-sql/)            | [Metabase](integrations/connectors/metabase/)      | [Redash](integrations/connectors/mysql-1-2/)             | [Tableau](docs/integrations/connectors/tableau.md)         |
+| [Athena](docs/integrations/connectors/athena/)             | [MariaDB](docs/integrations/connectors/mariadb.md) | [Presto](integrations/connectors/presto/)                | [Superset](integrations/connectors/superset/)              |
+| [Azure SQL](integrations/connectors/azure-sql/)            | [Metabase](integrations/connectors/metabase/)      | [Redash](integrations/connectors/redash/)                | [Tableau](docs/integrations/connectors/tableau.md)         |
 | [BigQuery](docs/integrations/connectors/bigquery/)         | [MLflow](docs/integrations/connectors/mlflow/)     | [Redshift](docs/integrations/connectors/redshift/)       | [Trino](docs/integrations/connectors/trino/)               |
 | [BigQuery Usage](docs/integrations/connectors/bigquery/)   | [MSSQL](integrations/connectors/mssql/)            | [Redshift Usage](docs/integrations/connectors/redshift/) | [Vertica](integrations/connectors/vertica/)                |
 | [ClickHouse](integrations/connectors/clickhouse/)          | [MSSQL Usage](integrations/connectors/mssql/)      |                                                          |                                                            |
@@ -39,7 +39,7 @@ The key components of OpenMetadata include the following:
 * **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
 * **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. See the [Schema Concepts](docs/openmetadata-apis/schemas/overview.md) section to learn more about metadata schemas.
 
-![](<.gitbook/assets/openmetadata-overview (1).png>)
+![](<.gitbook/assets/openmetadata-overview (1) (1).png>)
 
 ## License
 
