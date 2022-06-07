@@ -159,7 +159,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected boolean supportsFieldsQueryParam = true;
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameWithDot = true;
-  protected final boolean supportsCustomAttributes;
+  protected final boolean supportsCustomExtension;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -248,7 +248,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
-    this.supportsCustomAttributes = allowedFields.contains(FIELD_EXTENSION);
+    this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
   }
 
   @BeforeAll
@@ -1130,60 +1130,107 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void put_entityExtension(TestInfo test) throws IOException {
-    if (!supportsCustomAttributes) {
+  void put_addEntityCustomAttributes(TestInfo test) throws IOException {
+    if (!supportsCustomExtension) {
       return;
     }
 
-    // Add valid custom fields to the entity
+    // PUT valid custom field intA to the entity type
     TypeResourceTest typeResourceTest = new TypeResourceTest();
     INT_TYPE = typeResourceTest.getEntityByName("integer", "", ADMIN_AUTH_HEADERS);
-    STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
-    Type entity = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
+    Type entityType = typeResourceTest.getEntityByName(this.entityType, "customProperties", ADMIN_AUTH_HEADERS);
     CustomProperty fieldA =
         new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    entityType = typeResourceTest.addAndCheckCustomProperty(entityType.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
+    final UUID id = entityType.getId();
+
+    // PATCH valid custom field stringB
+    STRING_TYPE = typeResourceTest.getEntityByName("string", "", ADMIN_AUTH_HEADERS);
     CustomProperty fieldB =
         new CustomProperty()
             .withName("stringB")
             .withDescription("stringB")
             .withPropertyType(STRING_TYPE.getEntityReference());
-    typeResourceTest.addCustomProperty(entity.getId(), fieldA, OK, ADMIN_AUTH_HEADERS);
-    typeResourceTest.addCustomProperty(entity.getId(), fieldB, OK, ADMIN_AUTH_HEADERS);
 
-    // Add invalid custom fields to the entity - custom field has invalid type
-    Type INVALID_TYPE =
+    String json = JsonUtils.pojoToJson(entityType);
+    ChangeDescription change = getChangeDescription(entityType.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("customProperties").withNewValue(Arrays.asList(fieldB)));
+    entityType.getCustomProperties().add(fieldB);
+    entityType = typeResourceTest.patchEntityAndCheck(entityType, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // PUT invalid custom fields to the entity - custom field has invalid type
+    Type invalidType =
         new Type().withId(UUID.randomUUID()).withName("invalid").withCategory(Category.Field).withSchema("{}");
     CustomProperty fieldInvalid =
         new CustomProperty()
             .withName("invalid")
             .withDescription("invalid")
-            .withPropertyType(INVALID_TYPE.getEntityReference());
+            .withPropertyType(invalidType.getEntityReference());
     assertResponse(
-        () -> typeResourceTest.addCustomProperty(entity.getId(), fieldInvalid, OK, ADMIN_AUTH_HEADERS),
+        () -> typeResourceTest.addCustomProperty(id, fieldInvalid, OK, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        CatalogExceptionMessage.entityNotFound(Entity.TYPE, INVALID_TYPE.getId()));
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
 
-    // Now create an entity with custom field
+    // PATCH invalid custom fields to the entity - custom field has invalid type
+    String json1 = JsonUtils.pojoToJson(entityType);
+    entityType.getCustomProperties().add(fieldInvalid);
+    Type finalEntity = entityType;
+    assertResponse(
+        () -> typeResourceTest.patchEntity(id, json1, finalEntity, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.TYPE, invalidType.getId()));
+
+    // Now POST an entity with extension that includes custom field intA
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode jsonNode = mapper.createObjectNode();
     jsonNode.set("intA", mapper.convertValue(1, JsonNode.class));
-    jsonNode.set("stringB", mapper.convertValue("string", JsonNode.class));
     K create = createRequest(test).withExtension(jsonNode);
-    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Now set the entity custom field with an unknown field name
-    jsonNode.set("stringC", mapper.convertValue("string", JsonNode.class)); // Unknown field
-    assertResponse(
-        () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.unknownCustomField("stringC"));
+    // PUT and update the entity with extension field intA to a new value
+    // TODO to do change description for stored customProperties
+    jsonNode.set("intA", mapper.convertValue(2, JsonNode.class));
+    create = createRequest(test).withExtension(jsonNode);
+    entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
 
-    // Now set the entity custom field to an invalid value
+    // PATCH and update the entity with extension field stringB
+    // TODO to do change description for stored customProperties
+    json = JsonUtils.pojoToJson(entity);
+    jsonNode.set("stringB", mapper.convertValue("stringB", JsonNode.class));
+    entity.setExtension(jsonNode);
+    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+
+    // PUT and remove field intA from the the entity extension
+    // TODO to do change description for stored customProperties
+    jsonNode.remove("intA");
+    create = createRequest(test).withExtension(jsonNode);
+    entity = updateEntity(create, Status.OK, ADMIN_AUTH_HEADERS);
+    assertEquals(JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+
+    // PATCH and remove field stringB from the the entity extension
+    // TODO to do change description for stored customProperties
+    json = JsonUtils.pojoToJson(entity);
+    jsonNode.remove("stringB");
+    entity.setExtension(jsonNode);
+    entity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(JsonUtils.valueToTree(jsonNode), JsonUtils.valueToTree(entity.getExtension()));
+
+    // Now set the entity custom property to an invalid value
     jsonNode.set("intA", mapper.convertValue("stringInsteadOfNumber", JsonNode.class)); // String in integer field
     assertResponseContains(
         () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         CatalogExceptionMessage.jsonValidationError("intA", ""));
+
+    // Now set the entity custom property with an unknown field name
+    jsonNode.remove("intA");
+    jsonNode.set("stringC", mapper.convertValue("string", JsonNode.class)); // Unknown field
+    assertResponse(
+        () -> createEntity(createRequest(test, 1).withExtension(jsonNode), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.unknownCustomField("stringC"));
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
