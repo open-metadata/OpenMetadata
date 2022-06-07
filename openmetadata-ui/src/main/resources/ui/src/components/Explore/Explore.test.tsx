@@ -129,6 +129,6 @@ describe('Test Explore component', () => {
     expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(4);
+    expect(tabs.length).toBe(5);
   });
 });
