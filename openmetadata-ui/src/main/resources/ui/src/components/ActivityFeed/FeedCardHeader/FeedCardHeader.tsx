@@ -238,7 +238,14 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
               <span data-testid="entityType">{entityType} </span>
               <Link data-testid="entitylink" to={prepareFeedLink()}>
                 <button className="tw-text-info" disabled={AppState.isTourOpen}>
-                  {entityDisplayName()}
+                  <PopOver
+                    disabled={AppState.isTourOpen}
+                    position="top"
+                    size="small"
+                    title={entityFQN}
+                    trigger="mouseenter">
+                    <span>{entityDisplayName()}</span>
+                  </PopOver>
                 </button>
               </Link>
             </Fragment>
