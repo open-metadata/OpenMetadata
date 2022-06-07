@@ -107,16 +107,16 @@ const TreeView = forwardRef(
           className={classNames(
             {
               //  This class will show switcher element
-              'show-switcher': !showIcon,
+              'show-switcher': showIcon,
             },
             className
           )}
           defaultExpandAll={defaultExpandAll}
           expandedKeys={expandedKeys}
-          icon={getIcon}
           ref={treeRef}
           selectedKeys={selectedKeys}
           showIcon={showIcon}
+          switcherIcon={getIcon}
           treeData={treeData}
           onClick={onClick}
           onExpand={handleExpand}

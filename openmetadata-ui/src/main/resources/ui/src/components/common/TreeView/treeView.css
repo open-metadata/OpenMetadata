@@ -13,10 +13,15 @@
 .rc-tree .rc-tree-treenode {
   padding-top: 4px;
   padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
 }
 
 .rc-tree-switcher {
   background-image: none !important;
+  order: 3;
+  margin-right: 12px !important;
 }
 
 .rc-tree:not(.show-switcher) .rc-tree-switcher {
@@ -29,6 +34,9 @@
 
 .rc-tree-node-content-wrapper {
   width: 100%;
+  margin-left: 8px !important;
+  display: flex !important;
+  align-items: center;
 }
 
 .rc-tree-node-content-wrapper:hover {
