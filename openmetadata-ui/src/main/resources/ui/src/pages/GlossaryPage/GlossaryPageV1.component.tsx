@@ -557,9 +557,7 @@ const GlossaryPageV1 = () => {
         if (res.data) {
           setSelectedData(res.data);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-glossary-term-error']
-          );
+          throw jsonData['api-error-messages']['update-glossary-term-error'];
         }
       })
       .catch((err: AxiosError) => {
