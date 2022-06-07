@@ -203,12 +203,12 @@ describe('MyData page should work', () => {
     const totalCount =
       tables.length + pipelines.length + dashboards.length + topics.length;
 
-    cy.get('[data-testid="my-data-container"]')
+    cy.get('[data-testid="my-data-container"] > .ant-card > .ant-card-body')
       .children()
-      .should('have.length', 9);
-    cy.get('[data-testid="following-data-container"]')
+      .should('have.length', 8);
+    cy.get('[data-testid="following-data-container"] > .ant-card > .ant-card-body')
       .children()
-      .should('have.length', 9);
+      .should('have.length', 8);
 
     cy.get('[data-testid="my-data-total-count"]')
       .invoke('text')

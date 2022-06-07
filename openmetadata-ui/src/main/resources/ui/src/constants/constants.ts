@@ -170,8 +170,6 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
-  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
-  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
