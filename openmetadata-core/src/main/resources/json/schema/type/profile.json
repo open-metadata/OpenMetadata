@@ -4,12 +4,12 @@
   "title": "Profile",
   "description": "This schema defines the type for a profile of a user, team, or organization.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Profile",
+  "javaType": "org.openmetadata.core.type.Profile",
   "definitions": {
     "imageList": {
       "description": "Links to a list of images of varying resolutions/sizes.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.ImageList",
+      "javaType": "org.openmetadata.core.type.ImageList",
       "properties": {
         "image": {
           "type": "string",

@@ -4,7 +4,7 @@
   "title": "CustomMetric",
   "description": "Custom Metric definition that we will associate with a column.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.CustomMetric",
+  "javaType": "org.openmetadata.core.tests.CustomMetric",
   "properties": {
     "id": {
       "description": "Unique identifier of this Custom Metric instance.",
@@ -16,7 +16,7 @@
     },
     "description": {
       "description": "Description of the Metric.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "columnName": {
       "description": "Name of the column in a table.",

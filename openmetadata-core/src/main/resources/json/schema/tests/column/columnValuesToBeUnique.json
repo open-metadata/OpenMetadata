@@ -4,7 +4,7 @@
   "title": "columnValuesToBeUnique",
   "description": "This schema defines the test ColumnValuesToBeUnique. Test the values in a column to be unique. ",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeUnique",
+  "javaType": "org.openmetadata.core.tests.column.ColumnValuesToBeUnique",
   "properties": {
     "columnValuesToBeUnique": {
       "type": "boolean",

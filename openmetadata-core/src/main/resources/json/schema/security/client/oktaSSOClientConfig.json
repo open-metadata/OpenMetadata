@@ -4,7 +4,7 @@
   "title": "OktaSSOClientConfig",
   "description": "Okta SSO client security configs.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.OktaSSOClientConfig",
+  "javaType": "org.openmetadata.core.security.client.OktaSSOClientConfig",
   "properties": {
     "clientId": {
       "description": "Okta Client ID.",

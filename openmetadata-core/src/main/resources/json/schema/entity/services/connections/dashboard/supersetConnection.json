@@ -4,7 +4,7 @@
   "title": "SupersetConnection",
   "description": "Superset Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.SupersetConnection",
+  "javaType": "org.openmetadata.core.services.connections.dashboard.SupersetConnection",
   "definitions": {
     "supersetType": {
       "description": "Superset service type",
@@ -43,11 +43,6 @@
       "description": "Authentication provider for the Superset service.",
       "type": "string",
       "default": "db"
-    },
-    "dbServiceName": {
-      "title": "Database Service Name",
-      "description": "Database Service Name to create lineage",
-      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",

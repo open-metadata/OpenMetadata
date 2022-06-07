@@ -4,9 +4,8 @@
   "title": "Pipeline Service",
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.services.PipelineService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
-
+  "javaType": "org.openmetadata.core.entity.services.PipelineService",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
@@ -26,6 +25,24 @@
           "name": "Generic"
         }
       ]
+    },
+    "pipelineConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.core.type.PipelineConnection",
+      "description": "Pipeline Connection.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/pipeline/airflowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/glueConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -65,14 +82,12 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "pipelineUrl": {
-      "description": "Pipeline Service Management/UI URL.",
-      "type": "string",
-      "format": "uri"
+    "pipelines": {
+      "description": "References to pipelines deployed for this pipeline service to extract metadata",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
-    "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs.",
-      "$ref": "../../type/schedule.json"
+    "connection": {
+      "$ref": "#/definitions/pipelineConnection"
     },
     "owner": {
       "description": "Owner of this pipeline service.",
@@ -92,6 +107,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "pipelineUrl"],
+  "required": ["id", "name", "serviceType", "connection"],
   "additionalProperties": false
 }

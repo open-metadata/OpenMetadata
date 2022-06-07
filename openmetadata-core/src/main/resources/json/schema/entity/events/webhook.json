@@ -4,8 +4,8 @@
   "title": "Webhook",
   "description": "This schema defines webhook for receiving events from OpenMetadata.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Webhook",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.type.Webhook",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique ID associated with a webhook subscription.",
@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of the application.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
@@ -84,7 +84,7 @@
     "failureDetails": {
       "description": "Failure details are set only when `status` is not `success`.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.FailureDetails",
+      "javaType": "org.openmetadata.core.type.FailureDetails",
       "properties": {
         "lastSuccessfulAt": {
           "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",

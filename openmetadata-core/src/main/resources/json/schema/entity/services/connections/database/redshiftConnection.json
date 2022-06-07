@@ -4,7 +4,7 @@
   "title": "RedshiftConnection",
   "description": "Redshift  Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.RedshiftConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.RedshiftConnection",
   "definitions": {
     "redshiftType": {
       "description": "Service type.",

@@ -4,7 +4,7 @@
   "title": "DynamoDBConnection",
   "description": "DynamoDB Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DynamoDBConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.DynamoDBConnection",
   "definitions": {
     "dynamoDBType": {
       "description": "Service type.",

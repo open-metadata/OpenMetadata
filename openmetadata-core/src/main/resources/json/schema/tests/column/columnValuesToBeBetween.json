@@ -4,7 +4,7 @@
   "title": "columnValuesToBeBetween",
   "description": "This schema defines the test ColumnValuesToBeBetween. Test the values in a column to be between minimum and maximum value. ",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeBetween",
+  "javaType": "org.openmetadata.core.tests.column.ColumnValuesToBeBetween",
   "properties": {
     "minValue": {
       "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",

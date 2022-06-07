@@ -4,8 +4,8 @@
   "title": "CreateWebhook",
   "description": "This schema defines webhook for receiving events from OpenMetadata",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.events.CreateWebhook",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.events.CreateWebhook",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the application",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",

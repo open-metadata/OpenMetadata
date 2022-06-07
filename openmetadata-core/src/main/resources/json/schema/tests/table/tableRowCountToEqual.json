@@ -4,7 +4,7 @@
   "title": "TableRowCountToEqual",
   "description": "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.table.TableRowCountToEqual",
+  "javaType": "org.openmetadata.core.tests.table.TableRowCountToEqual",
   "properties": {
     "value": {
       "description": "Expected number of rows {value}",

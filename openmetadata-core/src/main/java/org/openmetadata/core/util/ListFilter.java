@@ -2,8 +2,8 @@ package org.openmetadata.core.util;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.openmetadata.catalog.type.Include;
-import org.openmetadata.core.entity.Entity;
+import org.openmetadata.core.Entity;
+import org.openmetadata.core.type.Include;
 
 public class ListFilter {
   private final Include include;

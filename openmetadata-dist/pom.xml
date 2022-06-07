@@ -31,12 +31,17 @@
   <dependencies>
     <dependency>
       <groupId>org.openmetadata</groupId>
-      <artifactId>catalog-rest-service</artifactId>
+      <artifactId>openmetadata-apis</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>org.openmetadata</groupId>
       <artifactId>common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openmetadata</groupId>
+      <artifactId>openmetadata-core</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

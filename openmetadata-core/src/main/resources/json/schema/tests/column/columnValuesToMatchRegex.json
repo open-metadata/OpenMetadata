@@ -4,7 +4,7 @@
   "title": "columnValuesToMatchRegex",
   "description": "This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToMatchRegex",
+  "javaType": "org.openmetadata.core.tests.column.ColumnValuesToMatchRegex",
   "properties": {
     "regex": {
       "description": "The regular expression the column entries should match.",

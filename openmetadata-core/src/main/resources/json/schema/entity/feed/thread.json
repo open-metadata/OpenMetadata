@@ -7,7 +7,7 @@
 
   "definitions": {
     "post": {
-      "javaType": "org.openmetadata.catalog.type.Post",
+      "javaType": "org.openmetadata.core.type.Post",
       "type": "object",
       "description": "Post within a feed.",
       "properties": {

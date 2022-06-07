@@ -4,7 +4,7 @@
   "title": "Paging",
   "description": "Type used for cursor based pagination information in GET list responses.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Paging",
+  "javaType": "org.openmetadata.core.type.Paging",
   "properties": {
     "before": {
       "description": "Before cursor used for getting the previous page (see API pagination for details).",

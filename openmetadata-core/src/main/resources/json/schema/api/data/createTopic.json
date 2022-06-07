@@ -4,8 +4,8 @@
   "title": "CreateTopicRequest",
   "description": "Create a topic entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateTopic",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.data.CreateTopic",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the topic instance. What it has and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "service": {
       "description": "Link to the messaging service where this topic is hosted in",

@@ -1,17 +1,17 @@
 {
-  "$id": "https://open-metadata.org/schema/api/catalogVersion.json",
+  "$id": "https://open-metadata.org/schema/api/coreVersion.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CatalogVersion",
-  "description": "Catalog application software version",
+  "title": "coreVersion",
+  "description": "core application software version",
   "type": "object",
 
   "properties": {
     "version": {
-      "description": "Software version of the catalog",
+      "description": "Software version of the core",
       "type": "string"
     },
     "revision": {
-      "description": "Software revision of the catalog",
+      "description": "Software revision of the core",
       "type": "string"
     },
     "timestamp": {

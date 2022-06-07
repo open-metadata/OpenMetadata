@@ -4,8 +4,8 @@
   "title": "CreateTagRequest",
   "description": "Create tag API request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.tags.CreateTag",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.tags.CreateTag",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Unique name of the tag category",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "associatedTags": {
       "description": "Fully qualified names of tags associated with this tag",

@@ -4,7 +4,7 @@
   "title": "Include",
   "description": "GET entity by id, GET entity by name, and LIST entities can include deleted or non-deleted entities using the parameter include.",
   "type": "string",
-  "javaType": "org.openmetadata.catalog.type.Include",
+  "javaType": "org.openmetadata.core.type.Include",
   "enum": ["all", "deleted", "non-deleted"],
   "javaEnums": [
     {

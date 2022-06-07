@@ -4,8 +4,8 @@
   "title": "Team",
   "description": "This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.teams.Team",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.teams.Team",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -24,7 +24,7 @@
     },
     "description": {
       "description": "Description of the team.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

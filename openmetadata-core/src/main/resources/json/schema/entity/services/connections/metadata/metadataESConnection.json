@@ -4,7 +4,7 @@
   "title": "MetadataESConnection",
   "description": "Metadata to ElasticSearch Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.metadata.MetadataESConnection",
+  "javaType": "org.openmetadata.core.services.connections.metadata.MetadataESConnection",
   "definitions": {
     "metadataESType": {
       "description": "Metadata to Elastic Search type",
@@ -36,6 +36,11 @@
     },
     "includePipelines": {
       "description": "Include Pipelines for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
+    "includeMlModels": {
+      "description": "Include MlModels for Indexing",
       "type": "boolean",
       "default": "true"
     },

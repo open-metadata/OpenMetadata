@@ -4,8 +4,8 @@
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.GlossaryTerm",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.data.GlossaryTerm",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "name": {
       "description": "Name that identifies a glossary term.",
@@ -47,7 +47,7 @@
     },
     "description": {
       "description": "Description of the glossary term.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",

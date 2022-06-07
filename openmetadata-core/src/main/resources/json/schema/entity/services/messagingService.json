@@ -4,8 +4,8 @@
   "title": "Messaging Service",
   "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.services.MessagingService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.services.MessagingService",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "messagingServiceType": {
       "description": "Type of messaging service - Kafka or Pulsar.",
@@ -30,7 +30,7 @@
     },
     "messagingConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MessagingConnection",
+      "javaType": "org.openmetadata.core.type.MessagingConnection",
       "description": "Dashboard Connection.",
       "properties": {
         "config": {
@@ -66,7 +66,7 @@
     },
     "description": {
       "description": "Description of a messaging service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "displayName": {
       "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",

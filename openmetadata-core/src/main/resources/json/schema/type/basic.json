@@ -49,7 +49,7 @@
       "$comment" : "@om-field-type",
       "type": "object",
       "description": "Time interval in unixTimeMillis.",
-      "javaType": "org.openmetadata.catalog.type.TimeInterval",
+      "javaType": "org.openmetadata.core.type.TimeInterval",
       "properties": {
         "start": {
           "description": "Start time in unixTimeMillis.",
@@ -99,6 +99,10 @@
     "sqlQuery": {
       "$comment" : "@om-field-type",
       "description": "SQL query statement. Example - 'select * from orders'.",
+      "type": "string"
+    },
+    "sqlFunction": {
+      "description": "SQL function. Example - 'AVG()`, `COUNT()`, etc..",
       "type": "string"
     },
     "markdown": {

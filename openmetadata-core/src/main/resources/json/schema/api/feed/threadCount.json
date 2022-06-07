@@ -4,12 +4,12 @@
   "title": "Count of threads related to an entity",
   "description": "This schema defines the type for reporting the count of threads related to an entity.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.feed.ThreadCount",
+  "javaType": "org.openmetadata.core.api.feed.ThreadCount",
   "definitions": {
     "entityLinkThreadCount": {
       "description": "Type used to return thread count per entity link.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.api.feed.EntityLinkThreadCount",
+      "javaType": "org.openmetadata.core.api.feed.EntityLinkThreadCount",
       "properties": {
         "count": {
           "description": "Count of threads for the given entity link.",

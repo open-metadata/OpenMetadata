@@ -4,7 +4,7 @@
   "title": "columnValuesToBeNotInSet",
   "description": "This schema defines the test ColumnValuesToBeNotInSet. Test the column values to not be in the set. ",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeNotInSet",
+  "javaType": "org.openmetadata.core.tests.column.ColumnValuesToBeNotInSet",
   "properties": {
     "forbiddenValues": {
       "description": "An Array of values.",

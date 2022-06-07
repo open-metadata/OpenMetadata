@@ -4,7 +4,7 @@
   "title": "SSOAuthMechanism",
   "description": "User/Bot SSOAuthN.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.teams.authn.SSOAuthMechanism",
+  "javaType": "org.openmetadata.core.teams.authn.SSOAuthMechanism",
   "properties": {
     "ssoServiceType": {
       "description": "Type of database service such as Amundsen, Atlas...",

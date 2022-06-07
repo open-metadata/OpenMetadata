@@ -6,7 +6,7 @@
   "definitions": {
     "testCaseResult": {
       "description": "Schema to capture test case result.",
-      "javaType": "org.openmetadata.catalog.tests.type.TestCaseResult",
+      "javaType": "org.openmetadata.core.tests.type.TestCaseResult",
       "type": "object",
       "properties": {
         "executionTime": {
@@ -15,7 +15,7 @@
         },
         "testCaseStatus": {
           "description": "Status of Test Case run.",
-          "javaType": "org.openmetadata.catalog.tests.type.TestCaseStatus",
+          "javaType": "org.openmetadata.core.tests.type.TestCaseStatus",
           "type": "string",
           "enum": ["Success", "Failed", "Aborted"],
           "javaEnums": [
@@ -43,7 +43,7 @@
     },
     "testCaseExecutionFrequency": {
       "description": "How often the test case should run.",
-      "javaType": "org.openmetadata.catalog.tests.type.TestCaseExecutionFrequency",
+      "javaType": "org.openmetadata.core.tests.type.TestCaseExecutionFrequency",
       "type": "string",
       "enum": ["Hourly", "Daily", "Weekly"],
       "javaEnums": [

@@ -4,8 +4,8 @@
   "title": "Dashboard Service",
   "description": "This schema defines the Dashboard Service entity, such as Looker and Superset.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.services.DashboardService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.services.DashboardService",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "dashboardServiceType": {
       "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau.",
@@ -41,7 +41,7 @@
     },
     "dashboardConnection": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.DashboardConnection",
+      "javaType": "org.openmetadata.core.type.DashboardConnection",
       "description": "Dashboard Connection.",
       "properties": {
         "config": {
@@ -93,7 +93,7 @@
     },
     "description": {
       "description": "Description of a dashboard service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
       "$ref": "#/definitions/dashboardConnection"

@@ -4,7 +4,7 @@
   "title": "SnowflakeConnection",
   "description": "Snowflake Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.SnowflakeConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.SnowflakeConnection",
   "definitions": {
     "snowflakeType": {
       "description": "Service type.",
@@ -96,5 +96,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account"]
+  "required": ["username", "account", "password", "warehouse"]
 }

@@ -30,11 +30,11 @@
     },
     "dbtLocalConfig": {
       "title": "DBT Local Config Source",
-      "description": "DBT Catalog and Manifest file path config.",
+      "description": "DBT core and Manifest file path config.",
       "type": "object",
       "properties": {
-        "dbtCatalogFilePath": {
-          "description": "DBT catalog file path to extract dbt models with their column schemas.",
+        "dbtcoreFilePath": {
+          "description": "DBT core file path to extract dbt models with their column schemas.",
           "type": "string"
         },
         "dbtManifestFilePath": {
@@ -43,15 +43,15 @@
         }
       },
       "additionalProperties": false,
-      "required": ["dbtCatalogFilePath", "dbtManifestFilePath"]
+      "required": ["dbtcoreFilePath", "dbtManifestFilePath"]
     },
     "dbtHttpConfig": {
       "title": "DBT HTTP Config Source",
-      "description": "DBT Catalog and Manifest HTTP path configuration.",
+      "description": "DBT core and Manifest HTTP path configuration.",
       "type": "object",
       "properties": {
-        "dbtCatalogHttpPath": {
-          "description": "DBT catalog http file path to extract dbt models with their column schemas.",
+        "dbtcoreHttpPath": {
+          "description": "DBT core http file path to extract dbt models with their column schemas.",
           "type": "string"
         },
         "dbtManifestHttpPath": {
@@ -60,11 +60,11 @@
         }
       },
       "additionalProperties": false,
-      "required": ["dbtCatalogHttpPath", "dbtManifestHttpPath"]
+      "required": ["dbtcoreHttpPath", "dbtManifestHttpPath"]
     },
     "dbtS3Config": {
       "title": "DBT S3 Config Source",
-      "description": "DBT Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
+      "description": "DBT core and Manifest files in S3 bucket. We will search for core.json and manifest.json.",
       "properties": {
         "dbtSecurityConfig": {
           "title": "DBT S3 Security Config",
@@ -78,7 +78,7 @@
     },
     "dbtGCSConfig": {
       "title": "DBT GCS Config Source",
-      "description": "DBT Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
+      "description": "DBT core and Manifest files in GCS storage. We will search for core.json and manifest.json.",
       "properties": {
         "dbtSecurityConfig": {
           "title": "DBT GCS Security Config",
@@ -112,6 +112,11 @@
       "type": "boolean",
       "default": true
     },
+    "includeTags": {
+      "description": "Optional configuration to turn off fetching metadata for tags.",
+      "type": "boolean",
+      "default": true
+    },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data during metadata extraction.",
       "type": "boolean",
@@ -141,7 +146,7 @@
     },
     "dbtConfigSource": {
       "title": "DBT Configuration Source",
-      "description": "Available sources to fetch DBT catalog and manifest files.",
+      "description": "Available sources to fetch DBT core and manifest files.",
       "oneOf": [
         {
           "$ref": "#/definitions/dbtLocalConfig"

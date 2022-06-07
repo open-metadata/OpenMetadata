@@ -4,7 +4,7 @@
   "title": "CustomOIDCSSOClientConfig",
   "description": "Custom OIDC SSO client security configs.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig",
+  "javaType": "org.openmetadata.core.security.client.CustomOIDCSSOClientConfig",
   "properties": {
     "clientId": {
       "description": "Custom OIDC Client ID.",

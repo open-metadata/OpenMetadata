@@ -10,7 +10,7 @@
       "title": "CollectionInfo",
       "description": "Collection Info.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.CollectionInfo",
+      "javaType": "org.openmetadata.core.type.CollectionInfo",
       "properties": {
         "name": {
           "description": "Unique name that identifies a collection.",

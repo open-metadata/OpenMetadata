@@ -4,8 +4,8 @@
   "title": "Report",
   "description": "This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and visual form.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.Report",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.data.Report",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this report.",
@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of this report instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

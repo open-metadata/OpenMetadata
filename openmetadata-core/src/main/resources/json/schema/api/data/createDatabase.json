@@ -4,8 +4,8 @@
   "title": "CreateDatabaseRequest",
   "description": "Create Database entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateDatabase",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.data.CreateDatabase",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the database instance. What it has and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this database",
@@ -29,7 +29,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "default": {
-      "description": "Some databases don't support a database/catalog in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
+      "description": "Some databases don't support a database/core in the hierarchy and use default database. For example, `MySql`. For such databases, set this flag to true to indicate that this is a default database.",
       "type": "boolean",
       "default": false
     }

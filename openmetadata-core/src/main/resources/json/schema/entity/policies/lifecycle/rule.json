@@ -4,7 +4,7 @@
   "title": "LifecycleRule",
   "description": "Describes an entity Lifecycle Rule used within a Policy.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.policies.lifecycle.Rule",
+  "javaType": "org.openmetadata.core.entity.policies.lifecycle.Rule",
   "properties": {
     "name": {
       "description": "Name that identifies this Rule.",

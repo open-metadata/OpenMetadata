@@ -4,7 +4,7 @@
   "title": "AthenaConnection",
   "description": "AWS Athena Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.AthenaConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.AthenaConnection",
   "definitions": {
     "athenaType": {
       "description": "Service type.",
@@ -41,11 +41,6 @@
       "description": "Host and port of the Athena service.",
       "type": "string"
     },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
-      "type": "string"
-    },
     "s3StagingDir": {
       "title": "S3 Staging Directory",
       "description": "S3 Staging Directory.",
@@ -73,5 +68,6 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["s3StagingDir", "awsConfig", "workgroup"]
 }

@@ -4,8 +4,8 @@
   "title": "CreatePolicyRequest",
   "description": "Create Policy Entity Request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.policies.CreatePolicy",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.policies.CreatePolicy",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "A short description of the Policy, comprehensible to regular users.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this Policy.",

@@ -4,8 +4,8 @@
   "title": "CreateStorageServiceRequest",
   "description": "Create Storage service entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.services.CreateStorageService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.services.CreateStorageService",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of Storage entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../type/storage.json#/definitions/storageServiceType"

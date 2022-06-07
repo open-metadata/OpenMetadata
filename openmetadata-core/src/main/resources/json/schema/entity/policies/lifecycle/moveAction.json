@@ -4,7 +4,7 @@
   "title": "LifecycleMoveAction",
   "description": "An action to move the entity to a different location. For eg: Move from Standard storage tier to Archive storage tier.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.policies.lifecycle.MoveAction",
+  "javaType": "org.openmetadata.core.entity.policies.lifecycle.MoveAction",
   "properties": {
     "daysAfterCreation": {
       "description": "Number of days after creation of the entity that the move should be triggered.",

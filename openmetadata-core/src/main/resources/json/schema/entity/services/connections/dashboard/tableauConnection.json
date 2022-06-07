@@ -4,7 +4,7 @@
   "title": "TableauConnection",
   "description": "Tableau Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.TableauConnection",
+  "javaType": "org.openmetadata.core.services.connections.dashboard.TableauConnection",
   "definitions": {
     "tableauType": {
       "description": "Tableau service type",
@@ -63,11 +63,6 @@
       "description": "Tableau Environment Name.",
       "type": "string",
       "default": "tableau_prod"
-    },
-    "dbServiceName": {
-      "title": "Database Service Name",
-      "description": "Database Service Name in order to add data lineage.",
-      "type": "string"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

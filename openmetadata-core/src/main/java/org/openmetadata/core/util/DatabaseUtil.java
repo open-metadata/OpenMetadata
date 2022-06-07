@@ -18,8 +18,8 @@ import static org.openmetadata.core.util.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.core.entity.data.Table;
+import org.openmetadata.core.type.*;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}

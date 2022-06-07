@@ -4,8 +4,8 @@
   "title": "CreateGlossaryTermRequest",
   "description": "Create Glossary term entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateGlossaryTerm",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.data.CreateGlossaryTerm",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "glossary": {
@@ -26,7 +26,7 @@
     },
     "description": {
       "description": "Description of the glossary term.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",

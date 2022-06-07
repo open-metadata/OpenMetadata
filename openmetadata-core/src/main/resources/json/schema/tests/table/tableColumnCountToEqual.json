@@ -4,7 +4,7 @@
   "title": "TableColumnCountToEqual",
   "description": "This schema defines the test TableColumnCountToEqual. Test the number of columns equal to a value.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.table.TableColumnCountToEqual",
+  "javaType": "org.openmetadata.core.tests.table.TableColumnCountToEqual",
   "properties": {
     "columnCount": {
       "description": "Expected number of columns to equal to a {value}",

@@ -4,12 +4,12 @@
   "title": "ColumnTest",
   "description": "ColumnTest is a test definition to capture data quality tests against tables and columns.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.ColumnTest",
+  "javaType": "org.openmetadata.core.tests.ColumnTest",
   "definitions": {
     "columnTestCase": {
       "description": "Column Test Case.",
       "type": "object",
-      "javaType": "org.openmetadata.catalog.tests.ColumnTestCase",
+      "javaType": "org.openmetadata.core.tests.ColumnTestCase",
       "properties": {
         "config": {
           "oneOf": [
@@ -62,7 +62,7 @@
     },
     "description": {
       "description": "Description of the testcase.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "columnName": {
       "description": "Name of the column in a table.",

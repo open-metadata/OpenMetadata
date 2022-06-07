@@ -4,8 +4,8 @@
   "title": "CreateRoleRequest",
   "description": "Request for creating a Role entity",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.teams.CreateRole",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.teams.CreateRole",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Optional description of the role",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "policies": {
       "description": "Policies that is attached to this role. At least one policy is required.",

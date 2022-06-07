@@ -4,7 +4,7 @@
   "title": "TagLabel",
   "description": "This schema defines the type for labeling an entity with a Tag.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.TagLabel",
+  "javaType": "org.openmetadata.core.type.TagLabel",
   "definitions": {
     "tagFQN": {
       "type": "string",
@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Unique name of the tag category.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "source": {
       "description": "Label is from Tags or Glossary.",

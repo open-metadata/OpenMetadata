@@ -13,7 +13,7 @@
 
 package org.openmetadata.core.util;
 
-import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.core.type.Include.ALL;
 import static org.openmetadata.core.util.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
@@ -27,17 +27,17 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
-import org.openmetadata.catalog.api.data.TermReference;
-import org.openmetadata.catalog.entity.data.GlossaryTerm;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.type.CustomField;
-import org.openmetadata.catalog.type.*;
-import org.openmetadata.core.entity.Entity;
-import org.openmetadata.core.entity.interfaces.EntityInterface;
+import org.openmetadata.core.Entity;
+import org.openmetadata.core.EntityInterface;
+import org.openmetadata.core.api.data.TermReference;
+import org.openmetadata.core.entity.data.GlossaryTerm;
+import org.openmetadata.core.entity.data.Table;
+import org.openmetadata.core.entity.type.CustomProperty;
 import org.openmetadata.core.exception.CatalogExceptionMessage;
 import org.openmetadata.core.exception.EntityNotFoundException;
 import org.openmetadata.core.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.core.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.core.type.*;
 import org.openmetadata.core.util.MessageParser.EntityLink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +60,7 @@ public final class EntityUtil {
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
-  public static final Comparator<CustomField> compareCustomField = Comparator.comparing(CustomField::getName);
+  public static final Comparator<CustomProperty> compareCustomField = Comparator.comparing(CustomProperty::getName);
 
   //
   // Matchers used for matching two items in a list
@@ -111,7 +111,7 @@ public final class EntityUtil {
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
-  public static final BiPredicate<CustomField, CustomField> customFieldMatch =
+  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}

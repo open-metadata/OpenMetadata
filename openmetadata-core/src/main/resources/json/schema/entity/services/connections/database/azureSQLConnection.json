@@ -4,7 +4,7 @@
   "title": "AzureSQLConnection",
   "description": "Azure SQL Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.AzureSQLConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.AzureSQLConnection",
   "definitions": {
     "azureSQLType": {
       "description": "Service type.",

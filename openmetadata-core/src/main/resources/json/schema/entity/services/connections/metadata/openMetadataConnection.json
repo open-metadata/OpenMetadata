@@ -4,7 +4,7 @@
   "title": "OpenMetadataConnection",
   "description": "OpenMetadata Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection",
+  "javaType": "org.openmetadata.core.services.connections.metadata.OpenMetadataServerConnection",
   "definitions": {
     "openmetadataType": {
       "description": "OpenMetadata service type",
@@ -83,6 +83,11 @@
     },
     "includePipelines": {
       "description": "Include Pipelines for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeMlModels": {
+      "description": "Include MlModels for Indexing",
       "type": "boolean",
       "default": true
     },

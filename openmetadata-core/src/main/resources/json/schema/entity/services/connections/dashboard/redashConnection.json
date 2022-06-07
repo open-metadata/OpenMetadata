@@ -4,7 +4,7 @@
   "title": "RedashConnection",
   "description": "Redash Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.RedashConnection",
+  "javaType": "org.openmetadata.core.services.connections.dashboard.RedashConnection",
   "definitions": {
     "redashType": {
       "description": "Redash service type",

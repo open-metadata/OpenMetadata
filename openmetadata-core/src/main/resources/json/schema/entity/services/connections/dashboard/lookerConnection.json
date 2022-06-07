@@ -4,7 +4,7 @@
   "title": "LookerConnection",
   "description": "Looker Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.LookerConnection",
+  "javaType": "org.openmetadata.core.services.connections.dashboard.LookerConnection",
   "definitions": {
     "lookerType": {
       "description": "Looker service type",

@@ -17,7 +17,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
-import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.core.type.EntityReference;
 
 public class FromEntityReferenceMapper implements RowMapper<EntityReference> {
   @Override

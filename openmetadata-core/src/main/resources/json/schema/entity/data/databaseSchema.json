@@ -4,8 +4,8 @@
   "title": "Database Schema",
   "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.DatabaseSchema",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.data.DatabaseSchema",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this schema instance.",
@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of the schema instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

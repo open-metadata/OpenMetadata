@@ -4,7 +4,7 @@
   "title": "PostgresConnection",
   "description": "Postgres Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.PostgresConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.PostgresConnection",
   "definitions": {
     "postgresType": {
       "description": "Service type.",

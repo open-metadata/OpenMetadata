@@ -4,7 +4,7 @@
   "title": "columnValueLengthsToBeBetween",
   "description": "This schema defines the test ColumnValueLengthsToBeBetween. Test the value lengths in a column to be between minimum and maximum value. ",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.tests.column.ColumnValueLengthsToBeBetween",
+  "javaType": "org.openmetadata.core.tests.column.ColumnValueLengthsToBeBetween",
   "properties": {
     "minLength": {
       "description": "The {minLength} for the column length. If minLength is not included, maxLength is treated as upperBound and there will be no minimum number of rows",

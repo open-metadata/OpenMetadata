@@ -4,8 +4,8 @@
   "title": "CreateTableRequest",
   "description": "Schema corresponding to a table that belongs to a database",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateTable",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.data.CreateTable",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of entity instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "tableType": {
       "$ref": "../../entity/data/table.json#/definitions/tableType"

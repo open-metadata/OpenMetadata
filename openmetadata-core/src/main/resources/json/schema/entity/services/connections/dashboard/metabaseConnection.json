@@ -4,7 +4,7 @@
   "title": "MetabaseConnection",
   "description": "Metabase Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.dashboard.MetabaseConnection",
+  "javaType": "org.openmetadata.core.services.connections.dashboard.MetabaseConnection",
   "definitions": {
     "metabaseType": {
       "description": "Metabase service type",
@@ -36,11 +36,6 @@
       "description": "Host and Port of the Metabase instance.",
       "type": "string",
       "format": "uri"
-    },
-    "dbServiceName": {
-      "title": "Database Service Name",
-      "description": "Database Service Name for creation of lineage",
-      "type": "string"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

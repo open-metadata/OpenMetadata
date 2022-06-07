@@ -4,7 +4,7 @@
   "title": "AzureSSOClientConfig",
   "description": "Azure SSO Client security config to connect to OpenMetadata.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.AzureSSOClientConfig",
+  "javaType": "org.openmetadata.core.security.client.AzureSSOClientConfig",
   "properties": {
     "clientSecret": {
       "description": "Azure SSO client secret key",

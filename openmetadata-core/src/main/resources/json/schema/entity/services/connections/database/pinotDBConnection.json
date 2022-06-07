@@ -4,7 +4,7 @@
   "title": "PinotDBConnection",
   "description": "PinotDB Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.PinotDBConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.PinotDBConnection",
   "definitions": {
     "pinotDBType": {
       "description": "Service type.",

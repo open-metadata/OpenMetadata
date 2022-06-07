@@ -4,7 +4,7 @@
   "title": "GoogleSSOClientConfig",
   "description": "Google SSO client security configs.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.GoogleSSOClientConfig",
+  "javaType": "org.openmetadata.core.security.client.GoogleSSOClientConfig",
   "properties": {
     "secretKey": {
       "description": "Google SSO client secret key path or contents.",

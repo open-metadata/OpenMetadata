@@ -4,7 +4,7 @@
   "title": "DatabricksConnection",
   "description": "Databricks Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.DatabricksConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.DatabricksConnection",
   "definitions": {
     "databricksType": {
       "description": "Service type.",
@@ -46,11 +46,6 @@
     "hostPort": {
       "title": "Host and Port",
       "description": "Host and port of the Databricks service.",
-      "type": "string"
-    },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Databricks.",
       "type": "string"
     },
     "token": {

@@ -4,7 +4,7 @@
   "title": "KafkaConnection",
   "description": "Kafka Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.messaging.KafkaConnection",
+  "javaType": "org.openmetadata.core.services.connections.messaging.KafkaConnection",
   "definitions": {
     "kafkaType": {
       "description": "Kafka service type",

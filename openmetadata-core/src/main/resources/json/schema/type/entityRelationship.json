@@ -4,11 +4,11 @@
   "title": "EntityRelationship",
   "description": "This schema defines the EntityRelationship type used for establishing relationship between two entities. EntityRelationship is used for capturing relationships from one entity to another. For example, a database contains tables.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.EntityRelationship",
+  "javaType": "org.openmetadata.core.type.EntityRelationship",
   "definitions": {
     "relationshipType": {
-      "javaType": "org.openmetadata.catalog.type.Relationship",
-      "description": "This enum captures all the relationships between Catalog entities. Note that the relationship from is a Strong entity and to is Weak entity when possible.",
+      "javaType": "org.openmetadata.core.type.Relationship",
+      "description": "This enum captures all the relationships between core entities. Note that the relationship from is a Strong entity and to is Weak entity when possible.",
       "$comment": "Rules for changing enums since the ordinal position is stored in the database: (1) Don't remove an enum, since the database might have stored the enum ordinal number. (2) When adding a new enum, add it as the last enum to preserve the ordinal positions of the existing enums.",
       "type": "string",
       "enum": [

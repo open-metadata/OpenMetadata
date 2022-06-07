@@ -17,7 +17,7 @@
 
     "jdbcInfo": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.JdbcInfo",
+      "javaType": "org.openmetadata.core.type.JdbcInfo",
       "description": "Type for capturing JDBC connector information.",
       "properties": {
         "driverClass": {

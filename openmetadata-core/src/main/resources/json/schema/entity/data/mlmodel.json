@@ -4,11 +4,11 @@
   "title": "MlModel",
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.MlModel",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.data.MlModel",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "featureType": {
-      "javaType": "org.openmetadata.catalog.type.MlFeatureDataType",
+      "javaType": "org.openmetadata.core.type.MlFeatureDataType",
       "description": "This enum defines the type of data stored in a ML Feature.",
       "type": "string",
       "enum": ["numerical", "categorical"],
@@ -22,7 +22,7 @@
       ]
     },
     "featureSourceDataType": {
-      "javaType": "org.openmetadata.catalog.type.FeatureSourceDataType",
+      "javaType": "org.openmetadata.core.type.FeatureSourceDataType",
       "description": "This enum defines the type of data of a ML Feature source.",
       "type": "string",
       "enum": [
@@ -38,7 +38,7 @@
     },
     "featureSource": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlFeatureSource",
+      "javaType": "org.openmetadata.core.type.MlFeatureSource",
       "description": "This schema defines the sources of a ML Feature.",
       "additionalProperties": false,
       "properties": {
@@ -51,7 +51,7 @@
         },
         "description": {
           "description": "Description of the feature source.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -72,7 +72,7 @@
     },
     "mlFeature": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlFeature",
+      "javaType": "org.openmetadata.core.type.MlFeature",
       "description": "This schema defines the type for an ML Feature used in an ML Model.",
       "additionalProperties": false,
       "properties": {
@@ -85,7 +85,7 @@
         },
         "description": {
           "description": "Description of the ML Feature.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -114,7 +114,7 @@
     },
     "mlHyperParameter": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlHyperParameter",
+      "javaType": "org.openmetadata.core.type.MlHyperParameter",
       "description": "This schema defines the type for an ML HyperParameter used in an ML Model.",
       "additionalProperties": false,
       "properties": {
@@ -128,13 +128,13 @@
         },
         "description": {
           "description": "Description of the Hyper Parameter.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         }
       }
     },
     "mlStore": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.MlStore",
+      "javaType": "org.openmetadata.core.type.MlStore",
       "description": "Location containing the ML Model. It can be a storage layer and/or a container repository.",
       "additionalProperties": false,
       "properties": {
@@ -168,7 +168,7 @@
     },
     "description": {
       "description": "Description of the ML Model, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model.",

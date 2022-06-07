@@ -4,7 +4,7 @@
   "title": "openMetadataJWTClientConfig",
   "description": "openMetadataJWTClientConfig security configs.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig",
+  "javaType": "org.openmetadata.core.security.client.OpenMetadataJWTClientConfig",
   "properties": {
     "jwtToken": {
       "description": "OpenMetadata generated JWT token.",

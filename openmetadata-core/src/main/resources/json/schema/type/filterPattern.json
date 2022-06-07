@@ -7,7 +7,7 @@
   "definitions": {
     "filterPattern": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.metadataIngestion.FilterPattern",
+      "javaType": "org.openmetadata.core.metadataIngestion.FilterPattern",
       "description": "Regex to only fetch dashboards or charts that matches the pattern.",
       "properties": {
         "includes": {

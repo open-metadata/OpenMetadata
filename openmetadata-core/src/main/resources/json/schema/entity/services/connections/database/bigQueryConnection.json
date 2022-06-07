@@ -4,7 +4,7 @@
   "title": "BigQueryConnection",
   "description": "Google BigQuery Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.BigQueryConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.BigQueryConnection",
   "definitions": {
     "bigqueryType": {
       "description": "Service type.",
@@ -38,32 +38,16 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
-    "projectId": {
-      "title": "Project ID",
-      "description": "BigQuery project ID. Only required if using credentials path instead of values.",
-      "type": "string"
-    },
     "credentials": {
       "title": "GCS Credentials",
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
-    },
-    "enablePolicyTagImport": {
-      "title": "Enable Policy Tag Import",
-      "description": "Enable importing policy tags of BigQuery into OpenMetadata",
-      "type": "boolean",
-      "default": true
     },
     "tagCategoryName": {
       "title": "Tag Category Name",
       "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
       "type": "string",
       "default": "BigqueryPolicyTags"
-    },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
-      "type": "string"
     },
     "partitionQueryDuration": {
       "title": "Partition Query Duration",

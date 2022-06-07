@@ -4,12 +4,12 @@
   "title": "Topic",
   "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.entity.data.Topic",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaType": "org.openmetadata.core.entity.data.Topic",
+  "javaInterfaces": ["org.openmetadata.core.EntityInterface"],
   "definitions": {
     "schemaType": {
       "description": "Schema type used for the message.",
-      "javaType": "org.openmetadata.catalog.type.topic.SchemaType",
+      "javaType": "org.openmetadata.core.type.topic.SchemaType",
       "enum": ["Avro", "Protobuf", "JSON", "Other"],
       "javaEnums": [
         {
@@ -27,18 +27,18 @@
       ]
     },
     "cleanupPolicy": {
-      "javaType": "org.openmetadata.catalog.type.topic.CleanupPolicy",
+      "javaType": "org.openmetadata.core.type.topic.CleanupPolicy",
       "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
       "enum": ["delete", "compact"]
     },
     "topicConfig": {
-      "javaType": "org.openmetadata.catalog.type.topic.TopicConfig",
+      "javaType": "org.openmetadata.core.type.topic.TopicConfig",
       "description": "Contains key/value pair of topic configuration.",
       "type": "object"
     },
     "topicSampleData": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.topic.TopicSampleData",
+      "javaType": "org.openmetadata.core.type.topic.TopicSampleData",
       "description": "This schema defines the type to capture sample data for a topic.",
       "properties": {
         "messages": {
@@ -71,7 +71,7 @@
     },
     "description": {
       "description": "Description of the topic instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

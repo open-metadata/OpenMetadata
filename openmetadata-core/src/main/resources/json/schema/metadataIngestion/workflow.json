@@ -7,7 +7,7 @@
   "definitions": {
     "sourceConfig": {
       "description": "Additional connection configuration.",
-      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
+      "javaType": "org.openmetadata.core.metadataIngestion.SourceConfig",
       "type": "object",
       "properties": {
         "config": {
@@ -26,6 +26,9 @@
             },
             {
               "$ref": "databaseServiceProfilerPipeline.json"
+            },
+            {
+              "$ref": "pipelineServiceMetadataPipeline.json"
             }
           ]
         }
@@ -124,14 +127,9 @@
     },
     "logLevels": {
       "description": "Supported logging levels",
-      "javaType": "org.openmetadata.catalog.metadataIngestion.LogLevels",
+      "javaType": "org.openmetadata.core.metadataIngestion.LogLevels",
       "type": "string",
-      "enum": [
-        "DEBUG",
-        "INFO",
-        "WARN",
-        "ERROR"
-      ],
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
       "default": "INFO"
     },
     "workflowConfig": {

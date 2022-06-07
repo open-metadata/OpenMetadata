@@ -4,8 +4,8 @@
   "title": "CreateLocationRequest",
   "description": "Create Location entity request",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.api.data.CreateLocation",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.CreateEntity"],
+  "javaType": "org.openmetadata.core.api.data.CreateLocation",
+  "javaInterfaces": ["org.openmetadata.core.CreateEntity"],
 
   "properties": {
     "name": {
@@ -22,7 +22,7 @@
     },
     "description": {
       "description": "Description of the location instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "locationType": {
       "$ref": "../../entity/data/location.json#/definitions/locationType"

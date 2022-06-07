@@ -4,7 +4,7 @@
   "title": "Schedule",
   "description": "This schema defines the type used for the schedule. The schedule has a start time and repeat frequency.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Schedule",
+  "javaType": "org.openmetadata.core.type.Schedule",
   "properties": {
     "startDate": {
       "description": "Start date and time of the schedule.",

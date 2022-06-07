@@ -4,7 +4,7 @@
   "title": "Auth0SSOClientConfig",
   "description": "Auth0 SSO client security configs.",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.security.client.Auth0SSOClientConfig",
+  "javaType": "org.openmetadata.core.security.client.Auth0SSOClientConfig",
   "properties": {
     "clientId": {
       "description": "Auth0 Client ID.",

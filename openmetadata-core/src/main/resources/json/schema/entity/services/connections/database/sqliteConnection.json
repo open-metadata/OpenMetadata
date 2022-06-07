@@ -4,7 +4,7 @@
   "title": "SQLiteConnection",
   "description": "SQLite Database Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.database.SQLiteConnection",
+  "javaType": "org.openmetadata.core.services.connections.database.SQLiteConnection",
   "definitions": {
     "SQLiteType": {
       "description": "Service type.",
