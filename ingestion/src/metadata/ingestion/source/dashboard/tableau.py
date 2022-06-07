@@ -205,11 +205,6 @@ class TableauSource(DashboardSourceService):
                 logger.debug(traceback.format_exc())
                 logger.error(err)
 
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        """
-        Method to fetch Charts
-        """
-
     def fetch_dashboard_charts(
         self, dashboard_details: dict
     ) -> Optional[Iterable[Chart]]:
