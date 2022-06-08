@@ -200,7 +200,9 @@ class SnowflakeSource(CommonDbSourceService):
                     continue
                 if entity_type == "VIEW" and not self.source_config.includeViews:
                     continue
-                table_columns = self.get_columns(schema, table_name, inspector)
+                table_columns = self.get_columns_and_constraints(
+                    schema, table_name, inspector
+                )
                 view_definition = inspector.get_view_definition(table_name, schema)
                 view_definition = (
                     "" if view_definition is None else str(view_definition)

@@ -147,6 +147,23 @@ class MetadataRestSink(Sink[Entity]):
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
             )
+            self.write_create_request(record)
+
+    def write_create_request(self, entity_request) -> None:
+        """
+        Send to OM the request creation received as is.
+        :param entity_request: Create Entity request
+        """
+        log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
+        try:
+            self.metadata.create_or_update(entity_request)
+
+        except APIError as err:
+            logger.error(f"Failed to ingest {log}")
+            logger.error(err)
+            self.status.failure(log)
+
+        logger.info(f"Successfully ingested {log}")
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:

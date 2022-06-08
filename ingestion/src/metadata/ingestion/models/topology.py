@@ -57,6 +57,10 @@ class TopologyContext(BaseModel):
     class Config:
         extra = Extra.allow
 
+    def __repr__(self):
+        ctx = {key: value.name.__root__ for key, value in self.__dict__.items()}
+        return f"TopologyContext({ctx})"
+
 
 def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:
     """

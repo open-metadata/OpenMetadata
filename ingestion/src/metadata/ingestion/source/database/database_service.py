@@ -11,19 +11,41 @@
 """
 Base class for ingesting database services
 """
-from abc import ABC
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Iterable, List, Set
 
+from sqlalchemy.engine import Inspector
+
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.ingestion.api.source import Source
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     ServiceTopology,
     TopologyNode,
     create_source_context,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -62,6 +84,28 @@ class DatabaseServiceTopology(ServiceTopology):
         consumer=["database_service", "database", "database_schema"],
     )
 
+    # TODO: Handle post_run for DeleteTable
+
+
+@dataclass
+class SQLSourceStatus(SourceStatus):
+    """
+    Reports the source status after ingestion
+    """
+
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
+
+    def scanned(self, record: str) -> None:
+        self.success.append(record)
+        logger.info(f"Table Scanned: {record}")
+
+    def filter(self, record: str, err: str) -> None:
+        self.filtered.append(record)
+        logger.warning(f"Filtered Table {record} due to {err}")
+
 
 class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -69,5 +113,48 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):
     It implements the topology and context.
     """
 
+    status: SQLSourceStatus
+    source_config: DatabaseServiceMetadataPipeline
+    config: WorkflowSource
+    metadata: OpenMetadata
+    database_source_state: Set
+    # Big union of types we want to fetch dynamically
+    service_connection: DatabaseConnection.__fields__["config"].type_
+
+    # When processing the database, the source will update the inspector if needed
+    inspector: Inspector
+
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
+
+    def yield_database_service(self):
+        yield self.metadata.get_create_service_from_source(
+            entity=DatabaseService, config=self.config
+        )
+
+    @abstractmethod
+    def yield_database(self) -> Iterable[CreateDatabaseRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink.
+
+        Also, update the self.inspector value to the current db.
+        """
+
+    @abstractmethod
+    def yield_database_schema(self) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink.
+
+        Also, update the self.inspector value to the current db.
+        """
+
+    @abstractmethod
+    def yield_table(self) -> Iterable[CreateTableRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink.
+
+        Also, update the self.inspector value to the current db.
+        """
