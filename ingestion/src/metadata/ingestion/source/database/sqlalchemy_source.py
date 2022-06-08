@@ -14,6 +14,7 @@ Generic source to build database connectors.
 from abc import ABC, abstractmethod
 from typing import Iterable, List, Optional, Tuple
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
@@ -109,17 +110,17 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
         Method to fetch tags associated with table
         """
 
-    def register_record(self, table_schema_and_db: OMetaDatabaseAndTable) -> None:
+    def register_record(self, table_request: CreateTableRequest) -> None:
         """
-        Mark the record as scanned and update the database_source_state
+        Mark the table record as scanned and update the database_source_state
         """
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
-            service_name=self.config.serviceName,
-            database_name=str(table_schema_and_db.database.name.__root__),
-            schema_name=str(table_schema_and_db.database_schema.name.__root__),
-            table_name=str(table_schema_and_db.table.name.__root__),
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_request.name.__root__,
         )
 
         self.database_source_state.add(table_fqn)

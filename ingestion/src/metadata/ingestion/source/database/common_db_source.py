@@ -188,7 +188,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
                 )
 
                 # TODO: GET DATA MODEL
-                yield CreateTableRequest(
+                table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,
                     description=self.get_table_description(
@@ -209,6 +209,10 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
                         type="databaseSchema",
                     ),
                 )
+
+                yield table_request
+
+                self.register_record(table_request=table_request)
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
