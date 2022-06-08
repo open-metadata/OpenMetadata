@@ -65,7 +65,6 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       />
       <div className="tw-filter-seperator" />
       <FeedCardFooter
-        className="tw-ml-9 tw-mt-3"
         isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
         repliedUsers={repliedUsers}
