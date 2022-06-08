@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Define Concat function
+Define Modulo function
 """
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
@@ -25,23 +25,32 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class ConcatFn(FunctionElement):
+class ModuloFn(FunctionElement):
     inherit_cache = CACHE
 
 
-@compiles(ConcatFn)
+def validate_and_compile(element, compiler, **kw):
+    """
+    Use like:
+    value, base = validate_and_compile(...)
+    """
+    if len(element.clauses) != 2:
+        raise ValueError("We need two elements to compute the modulo")
+
+    return [compiler.process(elem, **kw) for elem in element.clauses]
+
+
+@compiles(ModuloFn)
 def _(element, compiler, **kw):
-    return "CONCAT(%s)" % compiler.process(element.clauses, **kw)
+
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"{value} % {base}"
 
 
-@compiles(ConcatFn, Dialects.Redshift)
-@compiles(ConcatFn, Dialects.SQLite)
-@compiles(ConcatFn, Dialects.Vertica)
+@compiles(ModuloFn, Dialects.BigQuery)
+@compiles(ModuloFn, Dialects.Redshift)
+@compiles(ModuloFn, Dialects.Snowflake)
 def _(element, compiler, **kw):
 
-    if len(element.clauses) < 2:
-        raise ValueError("We need to concat at least two elements")
-
-    concat = "||".join([compiler.process(elem, **kw) for elem in element.clauses])
-
-    return concat
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"MOD({value}, {base})"

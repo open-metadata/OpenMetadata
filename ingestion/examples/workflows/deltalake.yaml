@@ -8,7 +8,7 @@ source:
       appName: MyApp
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

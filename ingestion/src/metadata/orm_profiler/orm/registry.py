@@ -69,6 +69,9 @@ NOT_COMPUTE = {
     sqlalchemy.JSON,
     sqa_types.SQAMap,
     sqa_types.SQAStruct,
+    sqa_types.SQASet,
+    sqa_types.SQAUnion,
+    sqa_types.SQASGeography,
 }
 
 

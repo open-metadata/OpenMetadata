@@ -108,12 +108,7 @@ class TestWorkflowParse(TestCase):
                         "hostPort": "random:1433",
                     }
                 },
-                "sourceConfig": {
-                    "config": {
-                        "enableDataProfiler": True,
-                        "sampleDataQuery": "select top 50 * from [{}].[{}]",
-                    }
-                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -146,12 +141,7 @@ class TestWorkflowParse(TestCase):
                         "random": "extra",
                     }
                 },
-                "sourceConfig": {
-                    "config": {
-                        "enableDataProfiler": True,
-                        "sampleDataQuery": "select top 50 * from [{}].[{}]",
-                    }
-                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -190,7 +180,7 @@ class TestWorkflowParse(TestCase):
                         "random": "extra",
                     }
                 },
-                "sourceConfig": {"config": {"enableDataProfiler": False}},
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {

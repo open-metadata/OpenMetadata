@@ -10,7 +10,7 @@ source:
       database: pagila
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}
