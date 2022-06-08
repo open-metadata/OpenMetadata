@@ -48,7 +48,7 @@ const RecentSearchedTerms: FunctionComponent = () => {
         recentlySearchedTerms.map((item, index) => {
           return (
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-my-2 tw-group"
+              className="tw-flex tw-items-center tw-justify-between tw-group"
               data-testid={`Recently-Search-${item.term}`}
               key={index}>
               <div className="tw-flex">

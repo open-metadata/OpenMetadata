@@ -4,5 +4,6 @@
   "viewportHeight": 660,
   "watchForFileChanges": false,
   "baseUrl": "http://localhost:8585",
-  "defaultCommandTimeout": 5000
+  "defaultCommandTimeout": 5000,
+  "videoUploadOnPasses": false
 }

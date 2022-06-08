@@ -79,7 +79,7 @@ export const testServiceCreationAndIngestion = (
     .scrollTo('top', {
       ensureScrollable: false,
     });
-  cy.contains('Connection Details').should('be.visible');
+  cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
 
