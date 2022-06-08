@@ -722,6 +722,7 @@ body .list-option.rdw-option-active {
 }
 .diff-removed {
   color: #008376;
+  color: grey;
   text-decoration: line-through;
   width: fit-content;
 }

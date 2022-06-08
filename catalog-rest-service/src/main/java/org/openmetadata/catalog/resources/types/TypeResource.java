@@ -56,7 +56,8 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
-import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.entity.type.Category;
+import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.TypeRepository;
@@ -66,6 +67,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -81,7 +83,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
-    listOrEmpty(type.getCustomFields()).forEach(field -> Entity.withHref(uriInfo, field.getFieldType()));
+    listOrEmpty(type.getCustomProperties()).forEach(property -> Entity.withHref(uriInfo, property.getPropertyType()));
     return type;
   }
 
@@ -92,7 +94,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
+    // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
     types.forEach(
@@ -100,6 +102,17 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
+            Fields fields = getFields("customProperties");
+            try {
+              Type storedType = dao.getByName(null, type.getName(), fields);
+              type.setId(storedType.getId());
+              // If entity type already exists, then carry forward custom properties
+              if (storedType.getCategory().equals(Category.Entity)) {
+                type.setCustomProperties(storedType.getCustomProperties());
+              }
+            } catch (Exception e) {
+              LOG.debug("Creating entity that does not exist ", e);
+            }
             this.dao.createOrUpdate(null, type);
           } catch (IOException e) {
             LOG.error("Error loading type {}", type.getName(), e);
@@ -118,7 +131,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     }
   }
 
-  public static final String FIELDS = "customFields";
+  public static final String PROPERTIES = "customProperties";
 
   @GET
   @Valid
@@ -141,7 +154,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Filter types by metadata type category.",
-              schema = @Schema(type = "string", example = "Field, Entity"))
+              schema = @Schema(type = "string", example = "Property, Entity"))
           @QueryParam("category")
           String categoryParam,
       @Parameter(description = "Limit the number types returned. (1 to 1000000, " + "default = 10)")
@@ -181,7 +194,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @PathParam("id") String id,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = PROPERTIES))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -214,7 +227,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
-              schema = @Schema(type = "string", example = FIELDS))
+              schema = @Schema(type = "string", example = PROPERTIES))
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
@@ -362,22 +375,24 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @PUT
   @Path("/{id}")
   @Operation(
-      operationId = "addField",
-      summary = "Add a field to an entity",
+      operationId = "addProperty",
+      summary = "Add a Property to an entity",
       tags = "metadata",
-      description = "Add a field to an entity type. Fields can only be added to entity type and not field type.",
+      description =
+          "Add a property to an entity type. Properties can only be added to entity type and not property type.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
       })
-  public Response addField(
+  public Response addProperty(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Type Id", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Valid CustomField field)
+      @Valid CustomProperty property)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
-    PutResponse<Type> response = dao.addCustomField(uriInfo, securityContext.getUserPrincipal().getName(), id, field);
+    PutResponse<Type> response =
+        dao.addCustomProperty(uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

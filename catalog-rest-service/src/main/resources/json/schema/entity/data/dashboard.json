@@ -40,9 +40,8 @@
       "type": "string"
     },
     "dashboardUrl": {
-      "description": "Dashboard URL.",
-      "type": "string",
-      "format": "uri"
+      "description": "Dashboard URL suffix from its service.",
+      "type": "string"
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",

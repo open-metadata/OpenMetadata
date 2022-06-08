@@ -17,7 +17,7 @@ volumes:
 services:
   mysql:
     container_name: openmetadata_mysql
-    image: openmetadata/db:0.10.1
+    image: openmetadata/db:0.10.2
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -44,7 +44,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: openmetadata/server:0.10.1
+    image: openmetadata/server:0.10.2
     environment:
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
@@ -53,12 +53,14 @@ services:
       AUTHORIZER_ADMIN_PRINCIPALS: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
       AUTHORIZER_INGESTION_PRINCIPALS: ${AUTHORIZER_INGESTION_PRINCIPAL:-[ingestion-bot]}
       AUTHORIZER_PRINCIPAL_DOMAIN: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+      AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
       AUTHENTICATION_PROVIDER: ${AUTHENTICATION_PROVIDER:-no-auth}
       CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
       AUTHENTICATION_PUBLIC_KEYS: ${AUTHENTICATION_PUBLIC_KEY:-[https://www.googleapis.com/oauth2/v3/certs]}
       AUTHENTICATION_AUTHORITY: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
       AUTHENTICATION_CLIENT_ID: ${AUTHENTICATION_CLIENT_ID:-""}
       AUTHENTICATION_CALLBACK_URL: ${AUTHENTICATION_CALLBACK_URL:-""}
+      AUTHENTICATION_JWT_PRINCIPAL_CLAIMS: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
       SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
@@ -105,7 +107,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: openmetadata/ingestion:0.10.1
+    image: openmetadata/ingestion:0.10.2
     depends_on:
       - mysql
     expose:

@@ -16,6 +16,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
@@ -55,15 +56,9 @@ class DashboardSourceService(Source, ABC):
         """
 
     @abstractmethod
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        """
-        Metod to fetch Charts
-        """
-
-    @abstractmethod
     def fetch_dashboard_charts(self, dashboard: Any) -> Optional[Iterable[Chart]]:
         """
-        Metod to fetch charts linked to dashboard
+        Method to fetch charts linked to dashboard
         """
 
     @abstractmethod
@@ -80,18 +75,16 @@ class DashboardSourceService(Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-
         self.connection = get_connection(self.service_connection)
         self.client = self.connection.client
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )
-        self.status = SourceStatus()
+        self.status = SQLSourceStatus()
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.process_dashboards()
-        yield from self.process_charts()
 
     def process_dashboards(
         self,

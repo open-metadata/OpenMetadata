@@ -19,6 +19,7 @@ import React, { Fragment } from 'react';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -200,6 +201,9 @@ export const getEntityLink = (
     case EntityType.WEBHOOK:
       return getEditWebhookPath(fullyQualifiedName);
 
+    case EntityType.TYPE:
+      return getCustomEntityPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -318,10 +322,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
                       icon="check-square"
                     />
                   </div>
-                  <p>{`${passingTests.length} tests`}</p>
+                  <>{`${passingTests.length} tests`}</>
                 </div>
               ) : (
-                <p>{`${tableTestLength} tests`}</p>
+                <>{`${tableTestLength} tests`}</>
               )}
             </Fragment>
           )}

@@ -5,7 +5,6 @@ source:
     config:
       token: <databricks token>
       hostPort: localhost:443
-      database: default
       connectionArguments:
         http_path: <http path of databricks cluster>
   sourceConfig:

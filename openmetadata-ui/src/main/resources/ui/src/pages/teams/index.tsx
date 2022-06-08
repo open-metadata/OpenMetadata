@@ -129,11 +129,15 @@ const TeamsPage = () => {
     setIsLoading(true);
     getTeams(['users', 'owns', 'defaultRoles', 'owner'])
       .then((res: AxiosResponse) => {
-        if (!team) {
-          setCurrentTeam(res.data.data[0]);
+        if (res.data) {
+          if (!team) {
+            setCurrentTeam(res.data.data[0]);
+          }
+          setTeams(res.data.data);
+          AppState.updateUserTeam(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
         }
-        setTeams(res.data.data);
-        AppState.updateUserTeam(res.data.data);
       })
       .catch((err: AxiosError) => {
         const errMsg = getErrorText(

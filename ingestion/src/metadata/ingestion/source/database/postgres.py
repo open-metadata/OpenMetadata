@@ -79,9 +79,7 @@ class PostgresSource(CommonDbSourceService):
                 except Exception as err:
                     logger.error(f"Failed to Connect: {row[0]} due to error {err}")
 
-    def get_database_entity(self, database: str) -> Database:
-        if database:
-            self.service_connection.database = database
+    def get_database_entity(self) -> Database:
         return Database(
             name=self.service_connection.database,
             service=EntityReference(id=self.service.id, type="database"),

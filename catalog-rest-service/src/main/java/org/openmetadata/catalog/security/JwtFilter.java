@@ -18,6 +18,7 @@ import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
@@ -28,7 +29,9 @@ import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
@@ -37,6 +40,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.User;
@@ -55,12 +59,15 @@ public class JwtFilter implements ContainerRequestFilter {
 
   private List<String> jwtPrincipalClaims;
   private JwkProvider jwkProvider;
+  private String principalDomain;
+  private boolean enforcePrincipalDomain;
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
   @SneakyThrows
-  public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
+  public JwtFilter(
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -68,19 +75,27 @@ public class JwtFilter implements ContainerRequestFilter {
       publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
     }
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
   }
 
   @VisibleForTesting
-  JwtFilter(JwkProvider jwkProvider, List<String> jwtPrincipalClaims) {
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
+    this.principalDomain = principalDomain;
+    this.enforcePrincipalDomain = enforcePrincipalDomain;
   }
 
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (uriInfo.getPath().contains("config")) {
+    if (uriInfo.getPath().contains("config") || uriInfo.getPath().contains("version")) {
       return;
     }
 
@@ -114,26 +129,38 @@ public class JwtFilter implements ContainerRequestFilter {
     }
 
     // Get username from JWT token
-    String userName =
+    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getClaims());
+    String jwtClaim =
         jwtPrincipalClaims.stream()
-            .filter(jwt.getClaims()::containsKey)
+            .filter(claims::containsKey)
             .findFirst()
-            .map(jwt::getClaim)
+            .map(claims::get)
             .map(claim -> claim.as(TextNode.class).asText())
-            .map(
-                authorizedClaim -> {
-                  if (authorizedClaim.contains("@")) {
-                    return authorizedClaim.split("@")[0];
-                  } else {
-                    return authorizedClaim;
-                  }
-                })
             .orElseThrow(
                 () ->
                     new AuthenticationException(
                         "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+    String userName;
+    String domain;
+    if (jwtClaim.contains("@")) {
+      userName = jwtClaim.split("@")[0];
+      domain = jwtClaim.split("@")[1];
+    } else {
+      userName = jwtClaim;
+      domain = StringUtils.EMPTY;
+    }
+
+    // validate principal domain
+    if (enforcePrincipalDomain) {
+      if (!domain.equals(principalDomain)) {
+        throw new AuthenticationException(
+            String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
+      }
+    }
+
     // validate bot token
-    if (jwt.getClaims().containsKey(BOT_CLAIM) && jwt.getClaims().get(BOT_CLAIM).asBoolean()) {
+    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
       validateBotToken(tokenFromHeader, userName);
     }
     // Setting Security Context

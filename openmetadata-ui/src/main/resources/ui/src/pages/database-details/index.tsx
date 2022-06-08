@@ -538,7 +538,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const fetchTablesCount = () => {
     // limit=0 will fetch empty data list with total count
-    getAllTables('', 0)
+    getAllTables('', 0, databaseFQN)
       .then((res: AxiosResponse) => {
         if (res.data) {
           setTableInstanceCount(res.data.paging.total);

@@ -7,7 +7,7 @@ source:
       username: openmetadata_user
       password: openmetadata_password
       hostPort: localhost:50000
-      database: custom_database_name
+      databaseSchema: default
   sourceConfig:
     config:
       type: DatabaseMetadata

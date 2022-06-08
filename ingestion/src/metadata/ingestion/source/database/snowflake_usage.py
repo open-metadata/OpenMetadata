@@ -12,11 +12,8 @@
 Snowflake usage module
 """
 
-import traceback
 from datetime import timedelta
-from typing import Any, Dict, Iterable, Iterator, Union
-
-from sqlalchemy import inspect
+from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -31,17 +28,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 
 # This import verifies that the dependencies are available.
-from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
 logger = ingestion_logger()
+SNOWFLAKE_ABORTED_CODE = "1969"
 
 
 class SnowflakeUsageSource(UsageSource):
@@ -60,12 +57,10 @@ class SnowflakeUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        end = end + timedelta(days=1)
-        self.analysis_date = start
+        self.end = self.end + timedelta(days=1)
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=start,
-            end_date=end,
+            start_date=self.start,
+            end_date=self.end,
             result_limit=self.config.sourceConfig.config.resultLimit,
         )
         self._extract_iter: Union[None, Iterator] = None
@@ -81,9 +76,9 @@ class SnowflakeUsageSource(UsageSource):
             )
         return cls(config, metadata_config)
 
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
+    def _get_raw_extract_iter(self) -> Iterable[TableQuery]:
         if self.config.serviceConnection.__root__.config.database:
-            yield from super(SnowflakeUsageSource, self)._get_raw_extract_iter()
+            yield from super()._get_raw_extract_iter()
         else:
             query = "SHOW DATABASES"
             results = self.engine.execute(query)
@@ -96,35 +91,28 @@ class SnowflakeUsageSource(UsageSource):
                 self.engine = get_connection(self.connection)
                 rows = self.engine.execute(self.sql_stmt)
                 for row in rows:
-                    yield row
+                    yield TableQuery(
+                        query=row["query_text"],
+                        userName=row["user_name"],
+                        startTime=str(row["start_time"]),
+                        endTime=str(row["end_time"]),
+                        analysisDate=self.analysis_date,
+                        aborted=self.get_aborted_status(row),
+                        database=self.get_database_name(row),
+                        serviceName=self.config.serviceName,
+                        databaseSchema=row["schema_name"],
+                    )
 
-    def next_record(self) -> Iterable[TableQuery]:
+    def get_database_name(self, data: dict) -> str:
         """
-        Using itertools.groupby and raw level iterator,
-        it groups to table and yields TableMetadata
-        :return:
+        Method to get database name
         """
-        for row in self._get_raw_extract_iter():
-            try:
-                table_query = TableQuery(
-                    query=row["query_type"],
-                    user_name=row["user_name"],
-                    starttime=str(row["start_time"]),
-                    endtime=str(row["end_time"]),
-                    analysis_date=self.analysis_date,
-                    aborted="1969" in str(row["end_time"]),
-                    database=row["database_name"],
-                    sql=row["query_text"],
-                    service_name=self.config.serviceName,
-                )
-                if not row["database_name"] and self.connection.database:
-                    TableQuery.database = self.connection.database
-                logger.debug(f"Parsed Query: {row['query_text']}")
-                if row["schema_name"] is not None:
-                    self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-                else:
-                    self.report.scanned(f"{row['database_name']}")
-                yield table_query
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.debug(repr(err))
+        if not data["database_name"] and self.connection.database:
+            return self.connection.database
+        return data["database_name"]
+
+    def get_aborted_status(self, data: dict) -> bool:
+        """
+        Method to get aborted status of query
+        """
+        return SNOWFLAKE_ABORTED_CODE in str(data["end_time"])

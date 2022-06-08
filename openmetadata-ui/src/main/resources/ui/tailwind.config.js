@@ -46,9 +46,10 @@ const statusQueued = '#777777';
 const bodyBG = '#F8F9FA';
 const bodyHoverBG = '#F5F6F8';
 const tagBG = '#EEEAF8';
-const badgeBG = '#E3E5E8';
+const badgeBG = '#D5D8DC';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
+const lightBG = '#F4F0FD';
 
 // Borders and Separators
 const mainBorder = '#DCE3EC';
@@ -74,7 +75,7 @@ module.exports = {
       md: '768px',
       lg: '992px',
       xl: '1200px',
-      xxl: '1440px',
+      xxl: '2160px',
     },
     extend: {
       borderColor: {
@@ -101,6 +102,7 @@ module.exports = {
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
         'primary-hover-lite': primaryHoverLite,
+        'primary-lite': lightBG,
         secondary: secondary,
         'secondary-lite': secondaryBG,
         'body-main': bodyBG,
@@ -160,12 +162,13 @@ module.exports = {
         'screen-md': '768px',
         'screen-lg': '992px',
         'screen-xl': '1200px',
-        'screen-xxl': '1440px',
+        'screen-xxl': '2160px',
         'full-hd': '1080px',
         600: '600px',
       },
       minWidth: {
         badgeCount: '30px',
+        64: '16rem',
       },
       maxWidth: {
         'full-hd': '1080px',

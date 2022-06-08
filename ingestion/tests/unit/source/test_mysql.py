@@ -44,7 +44,6 @@ CONFIG = """
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:3306",
-                "database": "openmetadata_db",
                 "connectionOptions": {},
                 "connectionArguments": {}
             }

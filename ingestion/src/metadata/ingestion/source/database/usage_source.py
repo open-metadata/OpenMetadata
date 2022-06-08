@@ -12,7 +12,8 @@
 Usage Souce Module
 """
 import csv
-from typing import Any, Dict, Iterable
+import traceback
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -20,13 +21,17 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 
 # This import verifies that the dependencies are available.
-from metadata.ingestion.models.table_queries import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class UsageSource(Source[TableQuery]):
@@ -35,39 +40,63 @@ class UsageSource(Source[TableQuery]):
         self.config = config
         self.metadata_config = metadata_config
         self.connection = config.serviceConnection.__root__.config
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        self.analysis_date = start
+        self.source_config = self.config.sourceConfig.config
+        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
+        self.analysis_date = self.start
         self.report = SQLSourceStatus()
         self.engine = get_connection(self.connection)
 
     def prepare(self):
         return super().prepare()
 
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
+    def get_database_name(self, data: dict) -> str:
+        """
+        Method to get database name
+        """
+        return data.get("database_name")
+
+    def get_aborted_status(self, data: dict) -> bool:
+        """
+        Method to get aborted status of query
+        """
+        return data.get("aborted", False)
+
+    def _get_raw_extract_iter(self) -> Optional[Iterable[TableQuery]]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data
+        """
         if self.config.sourceConfig.config.queryLogFilePath:
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
-                    row = {
-                        "query_type": query_dict.get("query"),
-                        "user_name": query_dict.get("user_name", ""),
-                        "start_time": query_dict.get("start_time", ""),
-                        "end_time": query_dict.get("end_time", ""),
-                        "aborted": query_dict.get("aborted", False),
-                        "database_name": query_dict.get(
-                            "database_name",
-                            self.connection.database
-                            if self.connection.database
-                            else "default",
-                        ),
-                        "query_text": query_dict.get("query"),
-                        "schema_name": query_dict.get("schema_name"),
-                    }
-                    yield row
+                    yield TableQuery(
+                        query=query_dict["query_text"],
+                        userName=query_dict.get("user_name", ""),
+                        startTime=query_dict.get("start_time", ""),
+                        endTime=query_dict.get("end_time", ""),
+                        analysisDate=self.analysis_date,
+                        aborted=self.get_aborted_status(query_dict),
+                        database=self.get_database_name(query_dict),
+                        serviceName=self.config.serviceName,
+                        databaseSchema=query_dict.get("schema_name"),
+                    )
         else:
             rows = self.engine.execute(self.sql_stmt)
             for row in rows:
-                yield row
+                row = dict(row)
+                print(row)
+                yield TableQuery(
+                    query=row["query_text"],
+                    userName=row["user_name"],
+                    startTime=str(row["start_time"]),
+                    endTime=str(row["end_time"]),
+                    analysisDate=self.analysis_date,
+                    aborted=self.get_aborted_status(row),
+                    database=self.get_database_name(row),
+                    serviceName=self.config.serviceName,
+                    databaseSchema=row["schema_name"],
+                )
 
     def next_record(self) -> Iterable[TableQuery]:
         """
@@ -75,24 +104,32 @@ class UsageSource(Source[TableQuery]):
         it groups to table and yields TableMetadata
         :return:
         """
+        for table_query in self._get_raw_extract_iter():
+            if table_query:
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_name=table_query.database,
+                ):
+                    continue
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    schema_name=table_query.databaseSchema,
+                ):
+                    continue
 
-        for row in self._get_raw_extract_iter():
-            table_query = TableQuery(
-                query=row["query_type"],
-                user_name=row["user_name"],
-                starttime=str(row["start_time"]),
-                endtime=str(row["end_time"]),
-                analysis_date=self.analysis_date,
-                aborted=row["aborted"],
-                database=row["database_name"],
-                sql=row["query_text"],
-                service_name=self.config.serviceName,
-            )
-            if not row["schema_name"]:
-                self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-            else:
-                self.report.scanned(f"{row['database_name']}")
-            yield table_query
+                try:
+                    yield table_query
+                    logger.debug(f"Parsed Query: {table_query.query}")
+                    if not table_query.databaseSchema:
+                        self.report.scanned(
+                            f"{table_query.database}.{table_query.databaseSchema}"
+                        )
+                    else:
+                        self.report.scanned(f"{table_query.database}")
+                    yield table_query
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(str(err))
 
     def get_report(self):
         """

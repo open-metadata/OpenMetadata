@@ -22,6 +22,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
@@ -37,11 +38,13 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.Category;
-import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -49,7 +52,7 @@ import org.openmetadata.catalog.util.TestUtils;
 public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
 
   public TypeResourceTest() {
-    super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.FIELDS);
+    super(Entity.TYPE, Type.class, TypeList.class, "metadata/types", TypeResource.PROPERTIES);
     supportsEmptyDescription = false;
     supportsFieldsQueryParam = false;
     supportsNameWithDot = false;
@@ -80,39 +83,39 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
   }
 
   @Test
-  public void put_customField_200() throws HttpResponseException {
-    Type tableEntity = getEntityByName("table", "customFields", ADMIN_AUTH_HEADERS);
-    assertTrue(listOrEmpty(tableEntity.getCustomFields()).isEmpty());
+  public void put_customProperty_200() throws HttpResponseException {
+    Type tableEntity = getEntityByName("table", "customProperties", ADMIN_AUTH_HEADERS);
+    assertTrue(listOrEmpty(tableEntity.getCustomProperties()).isEmpty());
 
-    // Add a custom field with name intA with type integer
-    CustomField fieldA =
-        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
-    tableEntity = addCustomField(tableEntity.getId(), fieldA, Status.OK, ADMIN_AUTH_HEADERS);
-    assertEquals(1, tableEntity.getCustomFields().size());
-    assertEquals(fieldA, tableEntity.getCustomFields().get(0));
+    // Add a custom property with name intA with type integer
+    CustomProperty fieldA =
+        new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
+    tableEntity = addCustomProperty(tableEntity.getId(), fieldA, Status.OK, ADMIN_AUTH_HEADERS);
+    assertEquals(1, tableEntity.getCustomProperties().size());
+    assertEquals(fieldA, tableEntity.getCustomProperties().get(0));
 
-    // Add a second field with name intB with type integer
+    // Add a second property with name intB with type integer
     EntityReference typeRef =
         new EntityReference()
             .withType(INT_TYPE.getEntityReference().getType())
             .withId(INT_TYPE.getEntityReference().getId());
-    CustomField fieldB = new CustomField().withName("intB").withDescription("intB").withFieldType(typeRef);
-    tableEntity = addCustomField(tableEntity.getId(), fieldB, Status.OK, ADMIN_AUTH_HEADERS);
-    fieldB.setFieldType(INT_TYPE.getEntityReference());
-    assertEquals(2, tableEntity.getCustomFields().size());
-    assertEquals(fieldA, tableEntity.getCustomFields().get(0));
-    assertEquals(fieldB, tableEntity.getCustomFields().get(1));
+    CustomProperty fieldB = new CustomProperty().withName("intB").withDescription("intB").withPropertyType(typeRef);
+    tableEntity = addCustomProperty(tableEntity.getId(), fieldB, Status.OK, ADMIN_AUTH_HEADERS);
+    fieldB.setPropertyType(INT_TYPE.getEntityReference());
+    assertEquals(2, tableEntity.getCustomProperties().size());
+    assertEquals(fieldA, tableEntity.getCustomProperties().get(0));
+    assertEquals(fieldB, tableEntity.getCustomProperties().get(1));
   }
 
   @Test
-  public void put_customFieldToFieldType_4xx() {
-    // Adding a custom field to a field type is not allowed (only entity type is allowed)
-    CustomField field =
-        new CustomField().withName("intA").withDescription("intA").withFieldType(INT_TYPE.getEntityReference());
+  public void put_customPropertyToPropertyType_4xx() {
+    // Adding a custom property to a property type is not allowed (only entity type is allowed)
+    CustomProperty field =
+        new CustomProperty().withName("intA").withDescription("intA").withPropertyType(INT_TYPE.getEntityReference());
     assertResponse(
-        () -> addCustomField(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
+        () -> addCustomProperty(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
         Status.BAD_REQUEST,
-        "Field types can't be extended");
+        "Only entity types can be extended and field types can't be extended");
   }
 
   @Override
@@ -125,10 +128,22 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     return type;
   }
 
-  public Type addCustomField(UUID entityTypeId, CustomField customField, Status status, Map<String, String> authHeaders)
+  public Type addAndCheckCustomProperty(
+      UUID entityTypeId, CustomProperty customProperty, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    Type updated = addCustomProperty(entityTypeId, customProperty, status, authHeaders);
+    assertTrue(updated.getCustomProperties().contains(customProperty));
+
+    Type get = getEntity(entityTypeId, "customProperties", authHeaders);
+    assertTrue(get.getCustomProperties().contains(customProperty));
+    return updated;
+  }
+
+  public Type addCustomProperty(
+      UUID entityTypeId, CustomProperty customProperty, Status status, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource(entityTypeId);
-    return TestUtils.put(target, customField, Type.class, status, authHeaders);
+    return TestUtils.put(target, customProperty, Type.class, status, authHeaders);
   }
 
   @Override
@@ -158,6 +173,15 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("customProperties")) {
+      List<CustomProperty> expectedProperties = (List<CustomProperty>) expected;
+      List<CustomProperty> actualProperties = JsonUtils.readObjects(actual.toString(), CustomProperty.class);
+      assertEquals(expectedProperties.size(), actualProperties.size());
+      expectedProperties.sort(EntityUtil.compareCustomProperty);
+      actualProperties.sort(EntityUtil.compareCustomProperty);
+      assertEquals(expectedProperties, actualProperties);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

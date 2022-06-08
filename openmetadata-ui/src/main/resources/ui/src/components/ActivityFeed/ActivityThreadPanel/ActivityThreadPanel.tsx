@@ -240,7 +240,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               </div>
             ) : null}
             <ActivityThreadList
-              className="tw-py-6 tw-pl-5"
+              className="tw-py-6 tw-px-5"
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}

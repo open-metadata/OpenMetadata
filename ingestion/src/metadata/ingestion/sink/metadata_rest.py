@@ -272,6 +272,8 @@ class MetadataRestSink(Sink[Entity]):
         try:
             topic_request = CreateTopicRequest(
                 name=topic.name,
+                displayName=topic.displayName,
+                description=topic.description,
                 service=topic.service,
                 partitions=topic.partitions,
                 replicationFactor=topic.replicationFactor,
@@ -458,7 +460,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
-            logger.info(add_lineage)
             created_lineage = self.metadata.add_lineage(add_lineage)
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")
@@ -608,6 +609,7 @@ class MetadataRestSink(Sink[Entity]):
                     f"{db_schema.name.__root__}.{to_table_name}",
                     db.service.name,
                     db_schema_and_table.database.name.__root__,
+                    db_schema_and_table.table.viewDefinition.__root__,
                 )
         except Exception as e:
             logger.error("Failed to create view lineage")

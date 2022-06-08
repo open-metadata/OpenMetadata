@@ -51,7 +51,7 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
-import EntityList from '../EntityList/EntityList';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
 
@@ -97,7 +97,11 @@ const Users = ({
   const fetchTeams = () => {
     getTeams(['users'])
       .then((res: AxiosResponse) => {
-        setTeams(res.data.data);
+        if (res.data) {
+          setTeams(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -629,11 +633,10 @@ const Users = ({
 
     return (
       <div className="tw-mt-4" data-testid="right-pannel">
-        <EntityList
+        <EntityListWithAntd
           entityList={ownData as unknown as FormatedTableData[]}
           headerText={
-            <div className="tw-flex tw-justify-between tw-items-center">
-              My Data
+            <>
               {ownData.length ? (
                 <Link
                   className="tw-ml-1"
@@ -648,16 +651,17 @@ const Users = ({
                   </span>
                 </Link>
               ) : null}
-            </div>
+            </>
           }
+          headerTextLabel="My Data"
           noDataPlaceholder={<>You have not owned anything yet.</>}
           testIDText="My data"
         />
         <div className="tw-filter-seperator tw-mt-3" />
-        <EntityList
+        <EntityListWithAntd
           entityList={userData?.follows as unknown as FormatedTableData[]}
           headerText={
-            <div className="tw-flex tw-justify-between">
+            <>
               Following
               {userData?.follows?.length ? (
                 <Link
@@ -673,8 +677,9 @@ const Users = ({
                   </span>
                 </Link>
               ) : null}
-            </div>
+            </>
           }
+          headerTextLabel="Following"
           noDataPlaceholder={<>You have not followed anything yet.</>}
           testIDText="Following data"
         />

@@ -435,8 +435,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     {
                       'tw-w-52': (displayVal as string).length > 32,
                     }
-                  )}
-                  title={displayVal as string}>
+                  )}>
                   {displayVal}
                 </span>
                 {data.openInNewTab && (

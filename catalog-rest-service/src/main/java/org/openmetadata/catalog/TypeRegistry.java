@@ -20,21 +20,23 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.Type;
-import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.entity.type.CustomProperty;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
-/** Type registry used for storing Types in OpenMetadata and customFields of entity types. */
+/** Type registry used for storing Types in OpenMetadata and customProperties of entity types. */
 @Slf4j
 public class TypeRegistry {
-  /** Type map used for storing both Field Types and Entity Types */
+  /** Type map used for storing both Property Types and Entity Types */
   protected static final Map<String, Type> TYPES = new ConcurrentHashMap<>();
 
-  /** Custom field map (fully qualified customFieldName) to (customField) */
-  protected static final Map<String, CustomField> CUSTOM_FIELDS = new ConcurrentHashMap<>();
+  /** Custom property map (fully qualified customPropertyName) to (customProperty) */
+  protected static final Map<String, CustomProperty> CUSTOM_PROPERTIES = new ConcurrentHashMap<>();
 
-  /** Custom field map (fully qualified customFieldName) to (jsonSchema) */
-  protected static final Map<String, JsonSchema> CUSTOM_FIELD_SCHEMAS = new ConcurrentHashMap<>();
+  /** Custom property map (fully qualified customPropertyName) to (jsonSchema) */
+  protected static final Map<String, JsonSchema> CUSTOM_PROPERTY_SCHEMAS = new ConcurrentHashMap<>();
 
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
@@ -48,54 +50,52 @@ public class TypeRegistry {
 
   public void addType(Type type) {
     TYPES.put(type.getName(), type);
-    LOG.info("Updated type {}\n", type.getName());
 
-    // Store custom fields added to a type
-    for (CustomField field : type.getCustomFields()) {
-      TypeRegistry.instance().addCustomField(type.getName(), field.getName(), field);
+    // Store custom properties added to a type
+    for (CustomProperty property : type.getCustomProperties()) {
+      TypeRegistry.instance().addCustomProperty(type.getName(), property.getName(), property);
     }
   }
 
   public void removeType(String typeName) {
     TYPES.remove(typeName);
-    LOG.info("Deleted type {}\n", typeName);
-    // TODO cleanup custom fields
+    LOG.info("Deleted type {}", typeName);
+    // TODO cleanup custom properties
   }
 
-  private void addCustomField(String entityType, String fieldName, CustomField customField) {
-    String customFieldFQN = getCustomFieldFQN(entityType, fieldName);
-    CUSTOM_FIELDS.put(customFieldFQN, customField);
-    LOG.info("Adding custom field {}\n", customFieldFQN);
+  private void addCustomProperty(String entityType, String propertyName, CustomProperty customProperty) {
+    String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
 
-    JsonSchema jsonSchema = JsonUtils.getJsonSchema(TYPES.get(customField.getFieldType().getName()).getSchema());
-    CUSTOM_FIELD_SCHEMAS.put(customFieldFQN, jsonSchema);
-    LOG.info("Adding json schema for {} {}\n", customField, jsonSchema);
+    JsonSchema jsonSchema = JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
+    CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
+    LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
   }
 
-  public JsonSchema getSchema(String entityType, String fieldName) {
-    String customFieldFQN = getCustomFieldFQN(entityType, fieldName);
-    return CUSTOM_FIELD_SCHEMAS.get(customFieldFQN);
+  public JsonSchema getSchema(String entityType, String propertyName) {
+    String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    return CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
   }
 
-  public void validateCustomFields(Type type) {
-    // Validate custom fields added to a type
-    for (CustomField field : listOrEmpty(type.getCustomFields())) {
-      if (TYPES.get(field.getFieldType().getName()) == null) {
-        throw new IllegalArgumentException(
-            String.format("Type %s not found for custom field %s", field.getFieldType().getName(), field.getName()));
+  public void validateCustomProperties(Type type) {
+    // Validate custom properties added to a type
+    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
+      if (TYPES.get(property.getPropertyType().getName()) == null) {
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getId()));
       }
     }
   }
 
-  public static String getCustomFieldFQNPrefix(String entityType) {
-    return FullyQualifiedName.build(entityType, "customFields");
+  public static String getCustomPropertyFQNPrefix(String entityType) {
+    return FullyQualifiedName.build(entityType, "customProperties");
   }
 
-  public static String getCustomFieldFQN(String entityType, String fieldName) {
-    return FullyQualifiedName.build(entityType, "customFields", fieldName);
+  public static String getCustomPropertyFQN(String entityType, String propertyName) {
+    return FullyQualifiedName.build(entityType, "customProperties", propertyName);
   }
 
-  public static String getFieldName(String fieldFQN) {
-    return FullyQualifiedName.split(fieldFQN)[2];
+  public static String getPropertyName(String propertyFQN) {
+    return FullyQualifiedName.split(propertyFQN)[2];
   }
 }

@@ -4,8 +4,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
-      projectId: project_id
       credentials:
         gcsConfig:
           type: service_account

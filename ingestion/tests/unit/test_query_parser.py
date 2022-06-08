@@ -28,12 +28,16 @@ config = """
         "sampleDataFolder": "ingestion/examples/sample_data"
       }
     },
-    "sourceConfig": {}
+    "sourceConfig": {
+      "config":{
+        "type": "DatabaseUsage"
+      }
+      
+    }
   },
   "processor": {
     "type": "query-parser",
     "config": {
-      "filter": ""
     }
   },
   "stage": {
@@ -64,31 +68,31 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.dim_address": 100,
-            "shopify.shop": 150,
-            "shopify.dim_customer": 125,
-            "dim_customer": 38,
-            "shopify.dim_location": 75,
-            "dim_location.shop_id": 25,
-            "shop": 28,
-            "shop_id": 25,
-            "shopify.dim_staff": 75,
-            "shopify.fact_line_item": 100,
-            "shopify.fact_order": 155,
-            "shopify.product": 5,
-            "shopify.fact_sale": 260,
-            "dim_address": 12,
-            "api": 2,
-            "dim_location": 4,
-            "product": 16,
-            "dim_staff": 5,
-            "fact_line_item": 17,
-            "fact_order": 15,
-            "fact_sale": 27,
-            "fact_session": 31,
-            "raw_customer": 10,
-            "raw_order": 13,
-            "raw_product_catalog": 6,
+            "shopify.dim_address": 200,
+            "shopify.shop": 300,
+            "shopify.dim_customer": 250,
+            "dim_customer": 76,
+            "shopify.dim_location": 150,
+            "dim_location.shop_id": 50,
+            "shop": 56,
+            "shop_id": 50,
+            "shopify.dim_staff": 150,
+            "shopify.fact_line_item": 200,
+            "shopify.fact_order": 310,
+            "shopify.product": 10,
+            "shopify.fact_sale": 520,
+            "dim_address": 24,
+            "api": 4,
+            "dim_location": 8,
+            "product": 32,
+            "dim_staff": 10,
+            "fact_line_item": 34,
+            "fact_order": 30,
+            "fact_sale": 54,
+            "fact_session": 62,
+            "raw_customer": 20,
+            "raw_order": 26,
+            "raw_product_catalog": 12,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()

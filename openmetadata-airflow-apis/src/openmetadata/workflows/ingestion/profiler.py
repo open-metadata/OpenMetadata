@@ -13,7 +13,11 @@ Profiler DAG function builder
 """
 
 from airflow import DAG
-from openmetadata.workflows.ingestion.common import build_dag, profiler_workflow
+from openmetadata.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    profiler_workflow,
+)
 
 try:
     from airflow.operators.python import PythonOperator
@@ -38,7 +42,7 @@ def build_profiler_workflow_config(
     Given an airflow_pipeline, prepare the workflow config JSON
     """
     workflow_config = OpenMetadataWorkflowConfig(
-        source=ingestion_pipeline.source,
+        source=build_source(ingestion_pipeline),
         sink=Sink(
             type="metadata-rest",
             config={},

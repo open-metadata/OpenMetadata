@@ -12,6 +12,7 @@ import os
 import traceback
 from typing import Optional, Tuple
 
+from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import _types
@@ -93,6 +94,7 @@ class BigquerySource(CommonDbSourceService):
             self.config.serviceConnection.__root__.config
         )
         self.temp_credentials = None
+        self.project_id = self.set_project_id()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -114,6 +116,10 @@ class BigquerySource(CommonDbSourceService):
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[0], segments[1]
+
+    def set_project_id(self):
+        _, project_id = auth.default()
+        return project_id
 
     def prepare(self):
         self.service_connection.database = self.service_connection.projectId
@@ -165,10 +171,7 @@ class BigquerySource(CommonDbSourceService):
             logger.error(err)
 
     def _get_database_name(self) -> str:
-        return (
-            self.service_connection.projectId
-            or self.connection_config.credentials.gcsConfig.projectId
-        )
+        return self.project_id or self.connection_config.credentials.gcsConfig.projectId
 
     def get_database_entity(self) -> Database:
         return Database(
@@ -185,7 +188,7 @@ class BigquerySource(CommonDbSourceService):
             view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.service_connection.projectId}.{schema}.{table_name}"
+                    f"{self.project_id}.{schema}.{table_name}"
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -198,6 +201,7 @@ class BigquerySource(CommonDbSourceService):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):
+        self._create_dbt_lineage()
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)

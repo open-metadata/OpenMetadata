@@ -44,13 +44,13 @@ class SqlAlchemySource(Source, ABC):
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
-        Method Yields Inspector objects for each aviable database
+        Method Yields Inspector objects for each available database
         """
 
     @abstractmethod
     def get_schemas(self, inspector: Inspector) -> str:
         """
-        Method Yields schemas aviable in database
+        Method Yields schemas available in database
         """
 
     @abstractmethod
@@ -78,7 +78,7 @@ class SqlAlchemySource(Source, ABC):
     @abstractmethod
     def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
         """
-        Method to fetch data modles
+        Method to fetch data models
         """
 
     @abstractmethod
@@ -99,7 +99,7 @@ class SqlAlchemySource(Source, ABC):
 
     @abstractmethod
     def get_view_definition(
-        table_type, table_name: str, schema: str, inspector: Inspector
+        self, table_type, table_name: str, schema: str, inspector: Inspector
     ) -> Optional[str]:
         """
         Method to fetch view definition
@@ -126,7 +126,7 @@ class SqlAlchemySource(Source, ABC):
 
     def get_database_entity(self) -> Database:
         """
-        Method to get database enetity from db name
+        Method to get database entity from db name
         """
         return Database(
             name=self._get_database_name(),
@@ -137,7 +137,7 @@ class SqlAlchemySource(Source, ABC):
 
     def get_schema_entity(self, schema: str, database: Database) -> DatabaseSchema:
         """
-        Method to get DatabaseSchema enetity from schema name and database entity
+        Method to get DatabaseSchema entity from schema name and database entity
         """
         return DatabaseSchema(
             name=schema,
@@ -149,7 +149,7 @@ class SqlAlchemySource(Source, ABC):
 
     def next_record(self) -> Iterable[Entity]:
         """
-        Method to fetch all tables, views & mark deleet tables
+        Method to fetch all tables, views & mark delete tables
         """
         for inspector in self.get_databases():
             for schema in self.get_schemas(inspector):

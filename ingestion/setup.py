@@ -43,25 +43,19 @@ base_requirements = {
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.3",
+    "sqllineage==1.3.5",
     "antlr4-python3-runtime==4.9.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
 }
 
-report_requirements = {
-    "asgiref==3.4.1",
-    "Django==3.2.7",
-    "pytz==2021.1",
-    "sqlparse==0.4.2",
-}
 
 base_plugins = {
     "query-parser",
     "metadata-usage",
     "file-stage",
-    "sql-metadata~=2.0.0",
+    "sql-metadata~=2.5.0",
 }
 plugins: Dict[str, Set[str]] = {
     "airflow": {
@@ -111,7 +105,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "powerbi": {"python-power-bi==0.1.2"},
+    "powerbi": {"msal==1.17.0"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"trino[sqlalchemy]"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
@@ -128,7 +122,7 @@ plugins: Dict[str, Set[str]] = {
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
-    "report-server": report_requirements,
+    "webhook-server": {},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},

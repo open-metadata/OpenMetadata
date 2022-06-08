@@ -240,7 +240,7 @@ const AddGlossary = ({
               <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
-          <div className="tw-my-4">
+          <div className="tw-my-4" data-testid="reviewers-container">
             {Boolean(reviewer.length) &&
               reviewer.map((d, index) => {
                 return (

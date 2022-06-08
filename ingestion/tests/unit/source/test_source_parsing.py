@@ -234,7 +234,6 @@ def test_databricks():
             "config": {
                 "token": "<databricks token>",
                 "hostPort": "localhost:443",
-                "database": "default",
                 "connectionArguments": {
                     "http_path": "<http path of databricks cluster>"
                 },
@@ -257,7 +256,6 @@ def test_db2():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:50000",
-                "database": "custom_database_name",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -541,17 +539,18 @@ def test_powerbi():
             "config": {
                 "clientId": "client_id",
                 "clientSecret": "client_secret",
-                "redirectURI": "http://localhost:8585/callback",
-                "hostPort": "https://analysis.windows.net/powerbi",
-                "scope": [
-                    "scope",
-                    "https://analysis.windows.net/powerbi/api/App.Read.All",
-                ],
-                "credentials": "path",
+                "tenantId": "tenant_id",
+                "scope": ["https://analysis.windows.net/powerbi/api/.default"],
                 "type": "PowerBI",
             }
         },
-        "sourceConfig": {"config": {}},
+        "sourceConfig": {
+            "config": {
+                "dashboardFilterPattern": {
+                    "includes": ["Supplier Quality Analysis Sample"]
+                }
+            }
+        },
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -569,7 +568,6 @@ def test_presto():
                 "catalog": "tpcds",
                 "username": "admin",
                 "password": "password",
-                "database": "database",
             }
         },
         "sourceConfig": {"config": {"generateSampleData": False}},
@@ -679,7 +677,6 @@ def test_singlestore():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:3306",
-                "database": "custom_database_name",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -791,7 +788,6 @@ def test_trino():
                 "hostPort": "localhost:8080",
                 "username": "user",
                 "catalog": "tpcds",
-                "database": "tiny",
             }
         },
         "sourceConfig": {"config": {}},

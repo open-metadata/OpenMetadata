@@ -10,7 +10,8 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-from typing import Optional
+
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
@@ -41,12 +42,9 @@ class OracleSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_database_entity(self, database: Optional[str]) -> Database:
-        if not database:
-            database = self.service_connection.oracleServiceName
-        return Database(
-            name=database,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
+    def get_schemas(self, inspector: Inspector) -> str:
+        return (
+            inspector.get_schema_names()
+            if not self.service_connection.databaseSchema
+            else [self.service_connection.databaseSchema]
         )
