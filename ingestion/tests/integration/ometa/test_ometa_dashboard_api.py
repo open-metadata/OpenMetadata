@@ -90,7 +90,7 @@ class OMetaDashboardTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DashboardService, fqdn="test-service-dashboard"
+                entity=DashboardService, fqn="test-service-dashboard"
             ).id.__root__
         )
 
@@ -138,7 +138,7 @@ class OMetaDashboardTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -151,7 +151,7 @@ class OMetaDashboardTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Dashboard, entity_id=res_name.id)
@@ -182,7 +182,7 @@ class OMetaDashboardTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -213,7 +213,7 @@ class OMetaDashboardTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -229,7 +229,7 @@ class OMetaDashboardTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Dashboard, entity_id=res_name.id.__root__, version=0.1
@@ -245,7 +245,7 @@ class OMetaDashboardTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Dashboard, fqdn=res.fullyQualifiedName
+            entity=Dashboard, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

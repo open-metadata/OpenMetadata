@@ -19,6 +19,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import databrick from '../assets/img/service-icon-databrick.png';
+import deltalake from '../assets/img/service-icon-delta-lake.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import databaseDefault from '../assets/img/service-icon-generic.png';
@@ -32,12 +33,14 @@ import metabase from '../assets/img/service-icon-metabase.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
+import powerbi from '../assets/img/service-icon-power-bi.png';
 import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
 import redash from '../assets/img/service-icon-redash.png';
 import redshift from '../assets/img/service-icon-redshift.png';
+import salesforce from '../assets/img/service-icon-salesforce.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
@@ -86,10 +89,13 @@ export const IBMDB2 = ibmdb2;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
+export const SALESFORCE = salesforce;
+export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
+export const POWERBI = powerbi;
 export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
 export const DASHBOARD_DEFAULT = dashboardDefault;
@@ -129,5 +135,6 @@ export const COMMON_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };

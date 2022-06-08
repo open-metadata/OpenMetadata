@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
@@ -54,8 +55,6 @@ import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.policies.PolicyResourceTest;
@@ -68,7 +67,6 @@ import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -197,7 +195,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     List<EntityReference> userRefs = new ArrayList<>();
     for (int i = 0; i < 7; i++) {
       User user = userResourceTest.createEntity(userResourceTest.createRequest(test, i), ADMIN_AUTH_HEADERS);
-      userRefs.add(new UserRepository.UserEntityInterface(user).getEntityReference());
+      userRefs.add(user.getEntityReference());
     }
 
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -226,7 +224,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         change);
   }
 
-  private User createTeamManager(TestInfo testInfo) throws HttpResponseException, JsonProcessingException {
+  private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
         new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.UpdateTeam);
@@ -239,7 +237,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             .withPolicyType(PolicyType.AccessControl)
             .withRules(List.of(rule));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
-    EntityInterface<Policy> policyEntityInterface = policyResourceTest.getEntityInterface(policy);
 
     // Create TeamManager role with the policy to update team
     RoleResourceTest roleResourceTest = new RoleResourceTest();
@@ -247,7 +244,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         roleResourceTest
             .createRequest(testInfo)
             .withName("TeamManager")
-            .withPolicies(List.of(policyEntityInterface.getEntityReference()));
+            .withPolicies(List.of(policy.getEntityReference()));
     Role teamManager = roleResourceTest.createEntity(createRole, ADMIN_AUTH_HEADERS);
 
     // Create a user with TeamManager role.
@@ -343,15 +340,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public EntityInterface<Team> validateGetWithDifferentFields(Team expectedTeam, boolean byName)
-      throws HttpResponseException {
+  public Team validateGetWithDifferentFields(Team expectedTeam, boolean byName) throws HttpResponseException {
     if (expectedTeam.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create = userResourceTest.createRequest("user", "", "", null).withTeams(List.of(expectedTeam.getId()));
       userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 
-    String updatedBy = TestUtils.getPrincipal(ADMIN_AUTH_HEADERS);
+    String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     String fields = "";
     Team getTeam =
         byName
@@ -369,17 +365,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     validateEntityReferences(getTeam.getOwns());
     validateEntityReferences(getTeam.getUsers(), true);
     validateEntityReferences(getTeam.getDefaultRoles());
-    return getEntityInterface(getTeam);
+    return getTeam;
   }
 
   @Override
-  public CreateTeam createRequest(String name, String description, String displayName, EntityReference owner) {
-    return new CreateTeam()
-        .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withProfile(PROFILE)
-        .withOwner(owner);
+  public CreateTeam createRequest(String name) {
+    return new CreateTeam().withName(name).withProfile(PROFILE);
   }
 
   @Override
@@ -393,12 +384,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void validateCreatedEntity(Team team, CreateTeam createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(team),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
     assertEquals(createRequest.getProfile(), team.getProfile());
     TestUtils.validateEntityReferences(team.getOwns());
 
@@ -418,11 +403,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public void validateUpdatedEntity(Team updatedEntity, CreateTeam request, Map<String, String> authHeaders) {
-    validateCreatedEntity(updatedEntity, request, authHeaders);
-  }
-
-  @Override
   protected void validateDeletedEntity(
       CreateTeam create, Team teamBeforeDeletion, Team teamAfterDeletion, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -437,12 +417,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
   @Override
   public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertEquals(expected.getProfile(), updated.getProfile());
     TestUtils.validateEntityReferences(updated.getOwns());
@@ -454,11 +428,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     List<EntityReference> expectedDefaultRoles = listOrEmpty(expected.getDefaultRoles());
     List<EntityReference> actualDefaultRoles = listOrEmpty(updated.getDefaultRoles());
     TestUtils.assertEntityReferenceList(expectedDefaultRoles, actualDefaultRoles);
-  }
-
-  @Override
-  public EntityInterface<Team> getEntityInterface(Team entity) {
-    return new TeamEntityInterface(entity);
   }
 
   @Override

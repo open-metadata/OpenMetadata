@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { FqnPart } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import {
   ChangeDescription,
   Column,
@@ -31,7 +32,6 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -69,21 +69,17 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
@@ -120,6 +116,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',
@@ -415,6 +413,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                       )}
                       columns={updatedColumns()}
                       joins={currentVersionData.joins as ColumnJoins[]}
+                      tableConstraints={[]}
                     />
                   </div>
                 </div>

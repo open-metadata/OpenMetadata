@@ -13,14 +13,17 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { EntityTags, TagOption } from 'Models';
+import { isUndefined } from 'lodash';
+import { EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
+import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -29,10 +32,10 @@ import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import {
   getCurrentUserId,
+  getEntityDeleteMessage,
   getEntityName,
   getEntityPlaceHolder,
   getHtmlForNonAdminAction,
-  getUserTeams,
   isEven,
   pluralize,
 } from '../../utils/CommonUtils';
@@ -61,7 +64,6 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
@@ -79,7 +81,6 @@ const DashboardDetails = ({
   dashboardUrl,
   dashboardTags,
   dashboardDetails,
-  users,
   descriptionUpdateHandler,
   settingsUpdateHandler,
   tagUpdateHandler,
@@ -108,7 +109,6 @@ const DashboardDetails = ({
   paging,
   fetchFeedHandler,
 }: DashboardDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -134,10 +134,14 @@ const DashboardDetails = ({
     setSelectedField('');
   };
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
   const setFollowersData = (followers: Array<EntityReference>) => {
@@ -196,7 +200,7 @@ const DashboardDetails = ({
     },
   ];
 
-  const extraInfo = [
+  const extraInfo: Array<ExtraInfo> = [
     {
       key: 'Owner',
       value:
@@ -209,6 +213,7 @@ const DashboardDetails = ({
       ),
       isLink: owner?.type === 'team',
       openInNewTab: false,
+      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
     },
     {
       key: 'Tier',
@@ -260,7 +265,9 @@ const DashboardDetails = ({
         : dashboardDetails.tags;
       const updatedDashboardDetails = {
         ...dashboardDetails,
-        owner: newOwner ? newOwner : dashboardDetails.owner,
+        owner: newOwner
+          ? { ...dashboardDetails.owner, ...newOwner }
+          : dashboardDetails.owner,
         tags: tierTag,
       };
 
@@ -316,15 +323,22 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editChartTags) {
-      const prevTags = editChartTags.chart.tags?.filter((tag) =>
+  const handleChartTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    chart?: {
+      chart: ChartType;
+      index: number;
+    }
+  ) => {
+    const chartTag = isUndefined(editChartTags) ? chart : editChartTags;
+    if (selectedTags && chartTag) {
+      const prevTags = chartTag.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
       );
       const newTags = selectedTags
         .filter(
           (selectedTag) =>
-            !editChartTags.chart.tags?.some(
+            !chartTag.chart.tags?.some(
               (tag) => tag.tagFQN === selectedTag.tagFQN
             )
         )
@@ -336,41 +350,49 @@ const DashboardDetails = ({
         }));
 
       const updatedChart = {
-        ...editChartTags.chart,
+        ...chartTag.chart,
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
-      const jsonPatch = compare(charts[editChartTags.index], updatedChart);
-      chartTagUpdateHandler(
-        editChartTags.index,
-        editChartTags.chart.id,
-        jsonPatch
-      );
-      setEditChartTags(undefined);
-    } else {
-      setEditChartTags(undefined);
+      const jsonPatch = compare(charts[chartTag.index], updatedChart);
+      chartTagUpdateHandler(chartTag.index, chartTag.chart.id, jsonPatch);
     }
+    setEditChartTags(undefined);
   };
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
-        if (values[0].data) {
-          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
-        if (values[1] && values[1].length > 0) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
-            (tag) => {
-              return { fqn: tag, source: 'Glossary' };
-            }
-          );
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
           tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
         }
         setTagList(tagsAndTerms);
-        setTagFetchFailed(false);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
       })
       .catch(() => {
         setTagList([]);
@@ -390,11 +412,14 @@ const DashboardDetails = ({
   };
 
   const getDeleteEntityMessage = () => {
-    return `Deleting this ${EntityType.DASHBOARD} will also delete ${pluralize(
-      charts.length,
-      'chart',
-      's'
-    )}`;
+    if (!charts.length) {
+      return;
+    }
+
+    return getEntityDeleteMessage(
+      EntityType.DASHBOARD,
+      pluralize(charts.length, 'Chart')
+    );
   };
 
   const getLoader = () => {
@@ -410,12 +435,6 @@ const DashboardDetails = ({
       fetchFeedHandler(pagingObj.after);
     }
   };
-
-  useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
 
   useEffect(() => {
     setFollowersData(followers);
@@ -461,235 +480,226 @@ const DashboardDetails = ({
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-            {activeTab === 1 && (
-              <>
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      description={description}
-                      entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
-                        entityFieldThreadCount
-                      )}
-                      entityFqn={dashboardFQN}
-                      entityName={entityName}
-                      entityType={EntityType.DASHBOARD}
-                      hasEditAccess={hasEditAccess()}
-                      isEdit={isEdit}
-                      isReadOnly={deleted}
-                      owner={owner}
-                      onCancel={onCancel}
-                      onDescriptionEdit={onDescriptionEdit}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                      onEntityFieldSelect={onEntityFieldSelect}
-                      onThreadLinkSelect={onThreadLinkSelect}
-                    />
+          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
+            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
+              {activeTab === 1 && (
+                <>
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
+                    <div className="tw-col-span-full tw--ml-5">
+                      <Description
+                        description={description}
+                        entityFieldThreads={getEntityFieldThreadCounts(
+                          'description',
+                          entityFieldThreadCount
+                        )}
+                        entityFqn={dashboardFQN}
+                        entityName={entityName}
+                        entityType={EntityType.DASHBOARD}
+                        hasEditAccess={hasEditAccess()}
+                        isEdit={isEdit}
+                        isReadOnly={deleted}
+                        owner={owner}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onEntityFieldSelect={onEntityFieldSelect}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="tw-table-responsive tw-my-6">
-                  <table className="tw-w-full" data-testid="charts-table">
-                    <thead>
-                      <tr className="tableHead-row">
-                        <th className="tableHead-cell">Chart Name</th>
-                        <th className="tableHead-cell">Chart Type</th>
-                        <th className="tableHead-cell">Description</th>
-                        <th className="tableHead-cell tw-w-60">Tags</th>
-                      </tr>
-                    </thead>
-                    <tbody className="tableBody">
-                      {charts.map((chart, index) => (
-                        <tr
-                          className={classNames(
-                            'tableBody-row',
-                            !isEven(index + 1) ? 'odd-row' : null
-                          )}
-                          key={index}>
-                          <td className="tableBody-cell">
-                            <Link
-                              target="_blank"
-                              to={{ pathname: chart.chartUrl }}>
-                              <span className="tw-flex">
-                                <span className="tw-mr-1">
-                                  {chart.displayName}
+                  <div className="tw-table-responsive tw-my-6">
+                    <table className="tw-w-full" data-testid="charts-table">
+                      <thead>
+                        <tr className="tableHead-row">
+                          <th className="tableHead-cell">Chart Name</th>
+                          <th className="tableHead-cell">Chart Type</th>
+                          <th className="tableHead-cell">Description</th>
+                          <th className="tableHead-cell tw-w-60">Tags</th>
+                        </tr>
+                      </thead>
+                      <tbody className="tableBody">
+                        {charts.map((chart, index) => (
+                          <tr
+                            className={classNames(
+                              'tableBody-row',
+                              !isEven(index + 1) ? 'odd-row' : null
+                            )}
+                            key={index}>
+                            <td className="tableBody-cell">
+                              <Link
+                                target="_blank"
+                                to={{ pathname: chart.chartUrl }}>
+                                <span className="tw-flex">
+                                  <span className="tw-mr-1">
+                                    {chart.displayName}
+                                  </span>
+                                  <SVGIcons
+                                    alt="external-link"
+                                    className="tw-align-middle"
+                                    icon="external-link"
+                                    width="12px"
+                                  />
                                 </span>
-                                <SVGIcons
-                                  alt="external-link"
-                                  className="tw-align-middle"
-                                  icon="external-link"
-                                  width="12px"
-                                />
-                              </span>
-                            </Link>
-                          </td>
-                          <td className="tableBody-cell">{chart.chartType}</td>
-                          <td className="tw-group tableBody-cell tw-relative">
-                            <div className="tw-inline-block">
-                              <div
-                                className="tw-cursor-pointer tw-flex"
-                                data-testid="description">
-                                <div>
-                                  {chart.description ? (
-                                    <RichTextEditorPreviewer
-                                      markdown={chart.description}
-                                    />
-                                  ) : (
-                                    <span className="tw-no-description">
-                                      No description
-                                    </span>
+                              </Link>
+                            </td>
+                            <td className="tableBody-cell">
+                              {chart.chartType}
+                            </td>
+                            <td className="tw-group tableBody-cell tw-relative">
+                              <div className="tw-inline-block">
+                                <div
+                                  className="tw-cursor-pointer tw-flex"
+                                  data-testid="description">
+                                  <div>
+                                    {chart.description ? (
+                                      <RichTextEditorPreviewer
+                                        markdown={chart.description}
+                                      />
+                                    ) : (
+                                      <span className="tw-no-description">
+                                        No description
+                                      </span>
+                                    )}
+                                  </div>
+                                  {!deleted && (
+                                    <NonAdminAction
+                                      html={getHtmlForNonAdminAction(
+                                        Boolean(owner)
+                                      )}
+                                      isOwner={hasEditAccess()}
+                                      permission={Operation.UpdateDescription}
+                                      position="top">
+                                      <button
+                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                        onClick={() =>
+                                          handleUpdateChart(chart, index)
+                                        }>
+                                        <SVGIcons
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="10px"
+                                        />
+                                      </button>
+                                    </NonAdminAction>
                                   )}
                                 </div>
-                                {!deleted && (
-                                  <NonAdminAction
-                                    html={getHtmlForNonAdminAction(
-                                      Boolean(owner)
-                                    )}
-                                    isOwner={hasEditAccess()}
-                                    permission={Operation.UpdateDescription}
-                                    position="top">
-                                    <button
-                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      onClick={() =>
-                                        handleUpdateChart(chart, index)
-                                      }>
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  </NonAdminAction>
-                                )}
                               </div>
-                            </div>
-                          </td>
-                          <td
-                            className="tw-group tw-relative tableBody-cell"
-                            onClick={() => {
-                              if (!editChartTags) {
-                                // Fetch tags and terms only once
-                                if (tagList.length === 0 || tagFetchFailed) {
-                                  fetchTagsAndGlossaryTerms();
-                                }
-                                handleEditChartTag(chart, index);
-                              }
-                            }}>
-                            {deleted ? (
-                              <div className="tw-flex tw-flex-wrap">
-                                <TagsViewer
-                                  sizeCap={-1}
-                                  tags={chart.tags || []}
-                                />
-                              </div>
-                            ) : (
-                              <NonAdminAction
-                                html={getHtmlForNonAdminAction(Boolean(owner))}
-                                isOwner={hasEditAccess()}
-                                permission={Operation.UpdateTags}
-                                position="left"
-                                trigger="click">
-                                <TagsContainer
-                                  editable={editChartTags?.index === index}
-                                  isLoading={
-                                    isTagLoading &&
-                                    editChartTags?.index === index
+                            </td>
+                            <td
+                              className="tw-group tw-relative tableBody-cell"
+                              data-testid="tags-wrapper"
+                              onClick={() => {
+                                if (!editChartTags) {
+                                  // Fetch tags and terms only once
+                                  if (tagList.length === 0 || tagFetchFailed) {
+                                    fetchTagsAndGlossaryTerms();
                                   }
-                                  selectedTags={chart.tags as EntityTags[]}
-                                  size="small"
-                                  tagList={tagList}
-                                  type="label"
-                                  onCancel={() => {
-                                    handleChartTagSelection();
-                                  }}
-                                  onSelectionChange={(tags) => {
-                                    handleChartTagSelection(tags);
-                                  }}>
-                                  {chart.tags?.length ? (
-                                    <button
-                                      className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      data-testid="edit-tags">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags
-                                        startWith="+ "
-                                        tag="Add tag"
-                                        type="outlined"
-                                      />
-                                    </span>
+                                  handleEditChartTag(chart, index);
+                                }
+                              }}>
+                              {deleted ? (
+                                <div className="tw-flex tw-flex-wrap">
+                                  <TagsViewer
+                                    sizeCap={-1}
+                                    tags={chart.tags || []}
+                                  />
+                                </div>
+                              ) : (
+                                <NonAdminAction
+                                  html={getHtmlForNonAdminAction(
+                                    Boolean(owner)
                                   )}
-                                </TagsContainer>
-                              </NonAdminAction>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                                  isOwner={hasEditAccess()}
+                                  permission={Operation.UpdateTags}
+                                  position="left"
+                                  trigger="click">
+                                  <TagsContainer
+                                    showAddTagButton
+                                    editable={editChartTags?.index === index}
+                                    isLoading={
+                                      isTagLoading &&
+                                      editChartTags?.index === index
+                                    }
+                                    selectedTags={chart.tags as EntityTags[]}
+                                    size="small"
+                                    tagList={tagList}
+                                    type="label"
+                                    onCancel={() => {
+                                      handleChartTagSelection();
+                                    }}
+                                    onSelectionChange={(tags) => {
+                                      handleChartTagSelection(tags, {
+                                        chart,
+                                        index,
+                                      });
+                                    }}
+                                  />
+                                </NonAdminAction>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              {activeTab === 2 && (
+                <div
+                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
+                  id="activityfeed">
+                  <div />
+                  <ActivityFeedList
+                    isEntityFeed
+                    withSidePanel
+                    className=""
+                    deletePostHandler={deletePostHandler}
+                    entityName={entityName}
+                    feedList={entityThread}
+                    postFeedHandler={postFeedHandler}
+                  />
+                  <div />
                 </div>
-              </>
-            )}
-            {activeTab === 2 && (
+              )}
+              {activeTab === 3 && (
+                <div className="tw-h-full tw-px-3">
+                  <Entitylineage
+                    addLineageHandler={addLineageHandler}
+                    deleted={deleted}
+                    entityLineage={entityLineage}
+                    entityLineageHandler={entityLineageHandler}
+                    isLoading={isLineageLoading}
+                    isNodeLoading={isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageLeafNodes}
+                    loadNodeHandler={loadNodeHandler}
+                    removeLineageHandler={removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 4 && !deleted && (
+                <div>
+                  <ManageTabComponent
+                    allowDelete
+                    currentTier={tier?.tagFQN}
+                    currentUser={owner}
+                    deletEntityMessage={getDeleteEntityMessage()}
+                    entityId={dashboardDetails.id}
+                    entityName={dashboardDetails.name}
+                    entityType={EntityType.DASHBOARD}
+                    hasEditAccess={hasEditAccess()}
+                    manageSectionType={EntityType.DASHBOARD}
+                    onSave={onSettingsUpdate}
+                  />
+                </div>
+              )}
               <div
-                className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                id="activityfeed">
-                <div />
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  className=""
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  postFeedHandler={postFeedHandler}
-                />
-                <div />
+                data-testid="observer-element"
+                id="observer-element"
+                ref={elementRef as RefObject<HTMLDivElement>}>
+                {getLoader()}
               </div>
-            )}
-            {activeTab === 3 && (
-              <div className="tw-h-full">
-                <Entitylineage
-                  addLineageHandler={addLineageHandler}
-                  deleted={deleted}
-                  entityLineage={entityLineage}
-                  entityLineageHandler={entityLineageHandler}
-                  isLoading={isLineageLoading}
-                  isNodeLoading={isNodeLoading}
-                  isOwner={hasEditAccess()}
-                  lineageLeafNodes={lineageLeafNodes}
-                  loadNodeHandler={loadNodeHandler}
-                  removeLineageHandler={removeLineageHandler}
-                />
-              </div>
-            )}
-            {activeTab === 4 && !deleted && (
-              <div>
-                <ManageTabComponent
-                  allowDelete
-                  currentTier={tier?.tagFQN}
-                  currentUser={owner?.id}
-                  deletEntityMessage={getDeleteEntityMessage()}
-                  entityId={dashboardDetails.id}
-                  entityName={dashboardDetails.name}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={hasEditAccess()}
-                  manageSectionType={EntityType.DASHBOARD}
-                  onSave={onSettingsUpdate}
-                />
-              </div>
-            )}
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
             </div>
           </div>
         </div>

@@ -12,17 +12,10 @@
  */
 
 import classNames from 'classnames';
-import {
-  camelCase,
-  isEmpty,
-  isNil,
-  isString,
-  isUndefined,
-  startCase,
-} from 'lodash';
+import { isEmpty, isNil, isString, isUndefined, startCase } from 'lodash';
 import { Bucket, ExtraInfo, LeafNodes, LineagePos } from 'Models';
 import React from 'react';
-import Avatar from '../components/common/avatar/Avatar';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -30,22 +23,20 @@ import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
-import { ColumnTestType } from '../enums/columnTest.enum';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { Table } from '../generated/entity/data/table';
+import { ColumnTestType, Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from './CommonUtils';
+import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import SVGIcons from './SvgUtils';
 import {
   getDataTypeString,
-  getOwnerFromId,
   getTierFromTableTags,
   getUsagePercentile,
 } from './TableUtils';
@@ -102,7 +93,6 @@ export const getEntityOverview = (
         [FqnPart.Service, FqnPart.Database],
         FQN_SEPARATOR_CHAR
       ).split(FQN_SEPARATOR_CHAR);
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
       const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
@@ -133,9 +123,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -192,7 +182,6 @@ export const getEntityOverview = (
     case EntityType.PIPELINE: {
       const { owner, tags, pipelineUrl, service, fullyQualifiedName } =
         entityDetail;
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -207,9 +196,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -236,7 +225,6 @@ export const getEntityOverview = (
         fullyQualifiedName,
         displayName,
       } = entityDetail;
-      const ownerValue = getOwnerFromId(owner?.id);
       const tier = getTierFromTableTags(tags || []);
 
       const overview = [
@@ -251,9 +239,9 @@ export const getEntityOverview = (
         },
         {
           name: 'Owner',
-          value: ownerValue?.displayName || ownerValue?.name || '--',
+          value: getEntityName(owner) || '--',
           url: getTeamAndUserDetailsPath(owner?.name || ''),
-          isLink: ownerValue ? ownerValue.type === 'team' : false,
+          isLink: owner ? owner.type === 'team' : false,
         },
         {
           name: 'Tier',
@@ -389,7 +377,12 @@ export const getInfoElements = (data: ExtraInfo) => {
           displayVal && displayVal !== '--' ? (
             isString(displayVal) ? (
               <div className="tw-inline-block tw-mr-2">
-                <Avatar name={displayVal} textClass="tw-text-xs" width="20" />
+                <ProfilePicture
+                  displayName={displayVal}
+                  id=""
+                  name={data.profileName || ''}
+                  width={data.avatarWidth || '20'}
+                />
               </div>
             ) : (
               <></>
@@ -442,8 +435,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     {
                       'tw-w-52': (displayVal as string).length > 32,
                     }
-                  )}
-                  title={displayVal as string}>
+                  )}>
                   {displayVal}
                 </span>
                 {data.openInNewTab && (
@@ -464,6 +456,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
                     { 'tw-w-52': (displayVal as string).length > 32 }
                   )}
+                  data-testid="owner-name"
                   title={displayVal as string}>
                   {displayVal}
                 </span>
@@ -478,14 +471,20 @@ export const getInfoElements = (data: ExtraInfo) => {
   );
 };
 
+export const ENTITY_LINK_SEPARATOR = '::';
+
 export const getEntityFeedLink: Function = (
   type: string,
   fqn: string,
   field?: string
 ): string | undefined => {
   if (isUndefined(type) || isUndefined(fqn)) return undefined;
+  // url decode the fqn
+  fqn = decodeURIComponent(fqn);
 
-  return `<#E/${type}/${fqn}${field ? `/${field}` : ''}>`;
+  return `<#E${ENTITY_LINK_SEPARATOR}${type}${ENTITY_LINK_SEPARATOR}${fqn}${
+    field ? `${ENTITY_LINK_SEPARATOR}${field}` : ''
+  }>`;
 };
 
 export const isSupportedTest = (dataType: string) => {
@@ -496,19 +495,19 @@ export const filteredColumnTestOption = (dataType: string) => {
   switch (getDataTypeString(dataType)) {
     case 'numeric':
       return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.columnValueLengthsToBeBetween
+        (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
       );
 
     case 'varchar':
       return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.columnValuesToBeBetween
+        (test) => test !== ColumnTestType.ColumnValuesToBeBetween
       );
 
     case 'timestamp':
     case 'date': {
       const excluded = [
-        ColumnTestType.columnValuesToBeNotInSet,
-        ColumnTestType.columnValueLengthsToBeBetween,
+        ColumnTestType.ColumnValuesToBeNotInSet,
+        ColumnTestType.ColumnValueLengthsToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(
@@ -517,9 +516,9 @@ export const filteredColumnTestOption = (dataType: string) => {
     }
     case 'boolean': {
       const excluded = [
-        ColumnTestType.columnValuesToBeNotInSet,
-        ColumnTestType.columnValueLengthsToBeBetween,
-        ColumnTestType.columnValuesToBeBetween,
+        ColumnTestType.ColumnValuesToBeNotInSet,
+        ColumnTestType.ColumnValueLengthsToBeBetween,
+        ColumnTestType.ColumnValuesToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(
@@ -540,5 +539,11 @@ export const isColumnTestSupported = (dataType: string) => {
 };
 
 export const getTitleCase = (text?: string) => {
-  return text ? startCase(camelCase(text)) : '';
+  return text ? startCase(text) : '';
+};
+
+export const filterEntityAssets = (data: EntityReference[]) => {
+  const includedEntity = Object.values(AssetsType);
+
+  return data.filter((d) => includedEntity.includes(d.type as AssetsType));
 };

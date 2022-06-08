@@ -15,7 +15,7 @@ import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.COLUMNS}, ${TabSpecificField.USAGE_SUMMARY}, 
 ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.JOINS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, 
-${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TESTS}`;
+${TabSpecificField.DATAMODEL},${TabSpecificField.TABLE_PROFILE},${TabSpecificField.TESTS},${TabSpecificField.TABLE_CONSTRAINTS},${TabSpecificField.EXTENSION}`;
 
 export const datasetTableTabs = [
   {
@@ -53,6 +53,10 @@ export const datasetTableTabs = [
   {
     name: 'DBT',
     path: 'dbt',
+  },
+  {
+    name: 'Custom Properties',
+    path: 'custom_properties',
   },
   {
     name: 'Manage',
@@ -96,8 +100,12 @@ export const getCurrentDatasetTab = (tab: string) => {
 
       break;
 
-    case 'manage':
+    case 'custom_properties':
       currentTab = 9;
+
+      break;
+    case 'manage':
+      currentTab = 10;
 
       break;
 

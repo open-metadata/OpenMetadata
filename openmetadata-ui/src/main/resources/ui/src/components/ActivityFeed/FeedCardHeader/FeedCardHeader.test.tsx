@@ -21,6 +21,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardHeader from './FeedCardHeader';
 
+const FQN = 'service.database.schema.table';
+const type = 'table';
+const expectedDisplayName = 'database.schema.table';
+
 jest.mock('../../../axiosAPIs/userAPI', () => ({
   getUserByName: jest.fn().mockReturnValue({}),
 }));
@@ -29,6 +33,9 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('feedcard'),
   getNonDeletedTeams: jest.fn().mockReturnValue([]),
   getEntityName: jest.fn().mockReturnValue('entityname'),
+  getPartialNameFromTableFQN: jest.fn().mockImplementation(() => {
+    return expectedDisplayName;
+  }),
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
@@ -39,13 +46,13 @@ jest.mock('../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p>Avatar</p>);
+jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 const mockFeedHeaderProps = {
   createdBy: 'xyz',
-  entityFQN: 'x.y.z',
+  entityFQN: 'x.y.v.z',
   entityField: 'z',
   entityType: 'y',
   isEntityFeed: true,
@@ -102,5 +109,29 @@ describe('Test Feedheader Component', () => {
     expect(entityTypeElement).toBeInTheDocument();
     expect(entityLinkElement).toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
+  });
+
+  it('Should show link text as `database.schema.table` if entity type is table', async () => {
+    const { container } = render(
+      <FeedCardHeader
+        {...mockFeedHeaderProps}
+        entityFQN={FQN}
+        entityType={type}
+        isEntityFeed={false}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const entityTypeElement = await findByTestId(container, 'entityType');
+    const entityLinkElement = await findByTestId(container, 'entitylink');
+
+    expect(entityTypeElement).toBeInTheDocument();
+    expect(entityLinkElement).toBeInTheDocument();
+
+    expect(entityTypeElement).toHaveTextContent(type);
+
+    expect(entityLinkElement).toHaveTextContent(expectedDisplayName);
   });
 });

@@ -30,12 +30,9 @@ const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
   repeatFrequency: '',
   handleRepeatFrequencyChange: jest.fn(),
-  startDate: '',
-  handleStartDateChange: jest.fn(),
-  endDate: '',
-  handleEndDateChange: jest.fn(),
   onBack: jest.fn(),
   onDeploy: jest.fn(),
+  submitButtonLabel: 'Add',
 };
 
 describe('Test ScheduleInterval component', () => {
@@ -48,16 +45,12 @@ describe('Test ScheduleInterval component', () => {
       container,
       'schedule-intervel-container'
     );
-    const startDate = await findByTestId(container, 'start-date');
-    const endDate = await findByTestId(container, 'end-date');
     const backButton = await findByTestId(container, 'back-button');
     const deployButton = await findByTestId(container, 'deploy-button');
     const cronEditor = await findByText(container, 'CronEditor.component');
 
     expect(scheduleIntervelContainer).toBeInTheDocument();
     expect(cronEditor).toBeInTheDocument();
-    expect(startDate).toBeInTheDocument();
-    expect(endDate).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(deployButton).toBeInTheDocument();
   });

@@ -13,6 +13,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.catalog.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
@@ -21,45 +23,47 @@ import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.LOCATION;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.util.EntityUtil.getColumnField;
+import static org.openmetadata.catalog.util.LambdaExceptionUtil.ignoringComparator;
+import static org.openmetadata.catalog.util.LambdaExceptionUtil.rethrowFunction;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Streams;
 import java.io.IOException;
-import java.net.URI;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseUtil;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
 import org.openmetadata.catalog.tests.type.TestCaseResult;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
@@ -75,7 +79,6 @@ import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -85,18 +88,23 @@ import org.openmetadata.common.utils.CommonUtil;
 
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
-  // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition";
-  // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,profileSample";
 
-  public TableRepository(CollectionDAO dao) {
+  // Table fields that can be patched in a PATCH request
+  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension";
+  // Table fields that can be updated in a PUT request
+  static final String TABLE_UPDATE_FIELDS =
+      "owner,tags,tableConstraints,tablePartition,dataModel,profileSample," + "extension";
+
+  public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
+  public static final String FIELD_RELATION_TABLE_TYPE = "table";
+
+  public TableRepository(CollectionDAO daoCollection) {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        dao.tableDAO(),
-        dao,
+        daoCollection.tableDAO(),
+        daoCollection,
         TABLE_PATCH_FIELDS,
         TABLE_UPDATE_FIELDS);
   }
@@ -121,6 +129,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     getCustomMetrics(fields.contains("customMetrics"), table);
+    table.setExtension(fields.contains("extension") ? getExtension(table) : null);
     return table;
   }
 
@@ -142,20 +151,15 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityInterface<Table> getEntityInterface(Table entity) {
-    return new TableEntityInterface(entity);
-  }
-
-  public static String getFQN(Table table) {
-    return (table != null && table.getDatabaseSchema() != null)
-        ? FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName())
-        : null;
+  public void setFullyQualifiedName(Table table) {
+    table.setFullyQualifiedName(
+        FullyQualifiedName.add(table.getDatabaseSchema().getFullyQualifiedName(), table.getName()));
   }
 
   @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -166,18 +170,27 @@ public class TableRepository extends EntityRepository<Table> {
       validateColumnFQNs(join.getJoinedWith());
     }
 
+    // Validate direct table joins
+    for (JoinedWith join : joins.getDirectTableJoins()) {
+      validateTableFQN(join.getFullyQualifiedName());
+    }
+
     // With all validation done, add new joins
     for (ColumnJoin join : joins.getColumnJoins()) {
       String columnFQN = FullyQualifiedName.add(table.getFullyQualifiedName(), join.getColumnName());
-      addJoin(joins.getStartDate(), columnFQN, join.getJoinedWith());
+      addJoinedWith(joins.getStartDate(), columnFQN, FIELD_RELATION_COLUMN_TYPE, join.getJoinedWith());
     }
+
+    addJoinedWith(
+        joins.getStartDate(), table.getFullyQualifiedName(), FIELD_RELATION_TABLE_TYPE, joins.getDirectTableJoins());
+
     return table.withJoins(getJoins(table));
   }
 
   @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -202,7 +215,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
 
     List<TableProfile> storedTableProfiles = getTableProfile(table);
     Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
@@ -227,7 +240,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addLocation(UUID tableId, UUID locationId) throws IOException {
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     EntityReference location = daoCollection.locationDAO().findEntityReferenceById(locationId);
     // A table has only one location.
     deleteFrom(tableId, TABLE, Relationship.HAS, LOCATION);
@@ -245,7 +258,7 @@ public class TableRepository extends EntityRepository<Table> {
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException(e);
     }
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     List<SQLQuery> storedQueries = getQueries(table);
     Map<String, SQLQuery> storedMapQueries = new HashMap<>();
     if (storedQueries != null) {
@@ -265,7 +278,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addTableTest(UUID tableId, TableTest tableTest) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
@@ -302,7 +315,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteTableTest(UUID tableId, String tableTestType) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     // if ID is not passed we treat it as a new test case being added
     List<TableTest> storedTableTests = getTableTests(table);
     // we will override any test case name passed by user/client with tableName + testType
@@ -329,7 +342,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addColumnTest(UUID tableId, ColumnTest columnTest) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     String columnName = columnTest.getColumnName();
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
@@ -375,7 +388,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteColumnTest(UUID tableId, String columnName, String columnTestType) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     validateColumn(table, columnName);
     // we will override any test case name passed by user/client with columnName + testType
     // our assumption is there is only one instance of a test type as of now.
@@ -411,7 +424,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table addCustomMetric(UUID tableId, CustomMetric customMetric) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     String columnName = customMetric.getColumnName();
     validateColumn(table, columnName);
 
@@ -449,7 +462,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Transaction
   public Table deleteCustomMetric(UUID tableId, String columnName, String metricName) throws IOException {
     // Validate the request content
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     validateColumn(table, columnName);
 
     // Override any custom metric definition with the same name
@@ -483,7 +496,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) throws IOException {
-    Table table = daoCollection.tableDAO().findEntityById(tableId);
+    Table table = dao.findEntityById(tableId);
     table.withDataModel(dataModel);
 
     // Carry forward the table description from the model to table entity, if empty
@@ -504,7 +517,7 @@ public class TableRepository extends EntityRepository<Table> {
         stored.setDescription(modelColumn.getDescription());
       }
     }
-    daoCollection.tableDAO().update(table.getId(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), JsonUtils.pojoToJson(table));
     setFields(table, Fields.EMPTY_FIELDS);
     return table;
   }
@@ -541,13 +554,12 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void prepare(Table table) throws IOException {
     DatabaseSchema schema = Entity.getEntity(table.getDatabaseSchema(), Fields.EMPTY_FIELDS, Include.ALL);
-    table.setDatabaseSchema(new DatabaseSchemaEntityInterface(schema).getEntityReference());
+    table.setDatabaseSchema(schema.getEntityReference());
     table.setDatabase(schema.getDatabase());
     table.setService(schema.getService());
     table.setServiceType(schema.getServiceType());
+    setFullyQualifiedName(table);
 
-    // Set data in table entity based on database relationship
-    table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
@@ -655,8 +667,16 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
+  private void validateTableFQN(String fqn) {
+    try {
+      dao.existsByName(fqn);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException("Invalid table name " + fqn, e);
+    }
+  }
+
   // Validate if a given column exists in the table
-  private void validateColumn(Table table, String columnName) {
+  public static void validateColumn(Table table, String columnName) {
     boolean validColumn = table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
@@ -664,7 +684,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   // Validate if a given column exists in the table
-  private void validateColumnFQN(Table table, String columnFQN) {
+  public static void validateColumnFQN(Table table, String columnFQN) {
     boolean validColumn = false;
     for (Column column : table.getColumns()) {
       if (column.getFullyQualifiedName().equals(columnFQN)) {
@@ -681,150 +701,178 @@ public class TableRepository extends EntityRepository<Table> {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = FullyQualifiedName.getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = daoCollection.tableDAO().findEntityByName(tableFQN);
+      Table joinedWithTable = dao.findEntityByName(tableFQN);
 
       // Validate column
       validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
     }
   }
 
-  private void addJoin(String date, String columnFQN, List<JoinedWith> joinedWithList) throws IOException {
+  /**
+   * Updates join data in the database for an entity and a relation type. Currently, used pairs of ({@code entityFQN},
+   * {@code entityRelationType}) are ({@link Table#getFullyQualifiedName()}, "table") and ({@link
+   * Column#getFullyQualifiedName()}, "table.columns.column").
+   *
+   * <p>If for an field relation (any relation between {@code entityFQN} and a FQN from {@code joinedWithList}), after
+   * combining the existing list of {@link DailyCount} with join data from {@code joinedWithList}, there are multiple
+   * {@link DailyCount} with the {@link DailyCount#getDate()}, these will <bold>NOT</bold> be merged - the value of
+   * {@link JoinedWith#getJoinCount()} will override the current value.
+   */
+  private void addJoinedWith(String date, String entityFQN, String entityRelationType, List<JoinedWith> joinedWithList)
+      throws IOException {
+    // Use the column that comes alphabetically first as the from field and the other as to field.
+    // This helps us keep the bidirectional relationship to a single row instead one row for
+    // capturing relationship in each direction.
+    //
+    // One row like this     - fromColumn <--- joinedWith --> toColumn
+    // Instead of additional - toColumn <--- joinedWith --> fromColumn
     for (JoinedWith joinedWith : joinedWithList) {
-      // Use the column that comes alphabetically first as the from field and the other as to field.
-      // This helps us keep the bidirectional relationship to a single row instead one row for
-      // capturing relationship in each direction.
-      //
-      // One row like this     - fromColumn <--- joinedWith --> toColumn
-      // Instead of additional - toColumn <--- joinedWith --> fromColumn
-      String fromColumnFQN;
-      String toColumnFQN;
-      if (columnFQN.compareTo(joinedWith.getFullyQualifiedName()) < 0) {
-        fromColumnFQN = columnFQN;
-        toColumnFQN = joinedWith.getFullyQualifiedName();
+      String fromEntityFQN;
+      String toEntityFQN;
+      if (entityFQN.compareTo(joinedWith.getFullyQualifiedName()) < 0) {
+        fromEntityFQN = entityFQN;
+        toEntityFQN = joinedWith.getFullyQualifiedName();
       } else {
-        fromColumnFQN = joinedWith.getFullyQualifiedName();
-        toColumnFQN = columnFQN;
+        fromEntityFQN = joinedWith.getFullyQualifiedName();
+        toEntityFQN = entityFQN;
       }
-      String json =
-          daoCollection
-              .fieldRelationshipDAO()
-              .find(
-                  fromColumnFQN,
-                  toColumnFQN,
-                  "table.columns.column",
-                  "table.columns.column",
-                  Relationship.JOINED_WITH.ordinal());
 
-      DailyCount dailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
-      List<DailyCount> dailyCountList;
-      if (json == null) { // Create first entry
-        dailyCountList = Collections.singletonList(dailyCount);
-      } else { // Update the existing entry
-        dailyCountList = JsonUtils.readObjects(json, DailyCount.class);
-        boolean foundDate = false;
-        for (DailyCount d :
-            dailyCountList) { // If the date already exists, update the count. Otherwise, add a new entry
-          if (d.getDate().equals(dailyCount.getDate())) {
-            // Entry for date already exists. Update the count
-            d.setCount(dailyCount.getCount());
-            foundDate = true;
-            break;
-          }
-        }
-        if (!foundDate) {
-          dailyCountList.add(dailyCount);
-        }
+      List<DailyCount> currentDailyCounts =
+          Optional.ofNullable(
+                  daoCollection
+                      .fieldRelationshipDAO()
+                      .find(
+                          fromEntityFQN,
+                          toEntityFQN,
+                          entityRelationType,
+                          entityRelationType,
+                          Relationship.JOINED_WITH.ordinal()))
+              .map(rethrowFunction(j -> JsonUtils.readObjects(j, DailyCount.class)))
+              .orElse(List.of());
 
-        // Sort the dailyCount list by date
-        dailyCountList.sort(
-            (d1, d2) -> {
-              try {
-                return RestUtil.compareDates(d1.getDate(), d2.getDate());
-              } catch (ParseException ignored) {
-                // This should never happen
-              }
-              return 0;
-            });
+      DailyCount receivedDailyCount = new DailyCount().withCount(joinedWith.getJoinCount()).withDate(date);
 
-        ListIterator<DailyCount> iterator = dailyCountList.listIterator();
-        while (iterator.hasNext()) {
-          String reportedOnDate = iterator.next().getDate();
-          if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, reportedOnDate, 0, 30)) {
-            iterator.remove();
-            LOG.info(
-                "Removed join entry for column {} with column {} on older date {}",
-                columnFQN,
-                joinedWith.getFullyQualifiedName(),
-                reportedOnDate);
-          }
-        }
-      }
-      json = JsonUtils.pojoToJson(dailyCountList);
+      List<DailyCount> newDailyCounts = aggregateAndFilterDailyCounts(currentDailyCounts, receivedDailyCount);
 
       daoCollection
           .fieldRelationshipDAO()
           .upsert(
-              fromColumnFQN,
-              toColumnFQN,
-              "table.columns.column",
-              "table.columns.column",
+              fromEntityFQN,
+              toEntityFQN,
+              entityRelationType,
+              entityRelationType,
               Relationship.JOINED_WITH.ordinal(),
               "dailyCount",
-              json);
+              JsonUtils.pojoToJson(newDailyCounts));
     }
   }
 
+  /**
+   * Pure function that creates a new list of {@link DailyCount} by either adding the {@code newDailyCount} to the list
+   * or, if there is already data for the date {@code newDailyCount.getDate()}, replace older count with the new one.
+   * Ensures the following properties: all elements in the list have unique dates, all dates are not older than 30 days
+   * from today, the list is ordered by date.
+   */
+  private List<DailyCount> aggregateAndFilterDailyCounts(
+      List<DailyCount> currentDailyCounts, DailyCount newDailyCount) {
+    var joinCountByDay =
+        Streams.concat(currentDailyCounts.stream(), Stream.of(newDailyCount)).collect(groupingBy(DailyCount::getDate));
+
+    return joinCountByDay.entrySet().stream()
+        .map(
+            e -> {
+              if (e.getKey().equals(newDailyCount.getDate())) return newDailyCount;
+              else
+                return new DailyCount()
+                    .withDate(e.getKey())
+                    .withCount(
+                        e.getValue().stream()
+                            .findFirst()
+                            .orElseThrow(
+                                () -> new IllegalStateException("Collector.groupingBy created an empty grouping"))
+                            .getCount());
+            })
+        .filter(inLast30Days())
+        .sorted(ignoringComparator((dc1, dc2) -> RestUtil.compareDates(dc1.getDate(), dc2.getDate())))
+        .collect(Collectors.toList());
+  }
+
   private TableJoins getJoins(Table table) throws IOException {
-    String today = RestUtil.DATE_FORMAT.format(new Date()); // today
+    String today = RestUtil.DATE_FORMAT.format(new Date());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
-    TableJoins tableJoins =
-        new TableJoins().withStartDate(todayMinus30Days).withDayCount(30).withColumnJoins(Collections.emptyList());
+    return new TableJoins()
+        .withStartDate(todayMinus30Days)
+        .withDayCount(30)
+        .withColumnJoins(getColumnJoins(table))
+        .withDirectTableJoins(getDirectTableJoins(table));
+  }
 
-    List<List<String>> list =
-        daoCollection
-            .fieldRelationshipDAO()
-            .listToByPrefix(
+  private List<JoinedWith> getDirectTableJoins(Table table) throws IOException {
+    // Pair<toTableFQN, List<DailyCount>>
+    List<Pair<String, List<DailyCount>>> entityRelations =
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectional(
                 table.getFullyQualifiedName(),
-                "table.columns.column",
-                "table.columns.column",
-                Relationship.JOINED_WITH.ordinal());
-    list.addAll(
-        daoCollection
-            .fieldRelationshipDAO()
-            .listFromByPrefix(
+                FIELD_RELATION_TABLE_TYPE,
+                FIELD_RELATION_TABLE_TYPE,
+                Relationship.JOINED_WITH.ordinal())
+            .stream()
+            .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .collect(toUnmodifiableList());
+
+    return entityRelations.stream()
+        .map(
+            er ->
+                new JoinedWith()
+                    .withFullyQualifiedName(er.getLeft())
+                    .withJoinCount(er.getRight().stream().filter(inLast30Days()).mapToInt(DailyCount::getCount).sum()))
+        .collect(Collectors.toList());
+  }
+
+  private List<ColumnJoin> getColumnJoins(Table table) throws IOException {
+    // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
+    List<Triple<String, String, List<DailyCount>>> entityRelations =
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectionalByPrefix(
                 table.getFullyQualifiedName(),
-                "table.columns.column",
-                "table.columns.column",
-                Relationship.JOINED_WITH.ordinal()));
+                FIELD_RELATION_COLUMN_TYPE,
+                FIELD_RELATION_COLUMN_TYPE,
+                Relationship.JOINED_WITH.ordinal())
+            .stream()
+            .map(
+                rethrowFunction(
+                    er ->
+                        Triple.of(
+                            FullyQualifiedName.getColumnName(er.getLeft()),
+                            er.getMiddle(),
+                            JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .collect(toUnmodifiableList());
 
-    if (list.isEmpty()) { // No join information found. Return empty list
-      return tableJoins;
-    }
+    return entityRelations.stream()
+        .collect(groupingBy(Triple::getLeft))
+        .entrySet()
+        .stream()
+        .map(
+            e ->
+                new ColumnJoin()
+                    .withColumnName(e.getKey())
+                    .withJoinedWith(
+                        e.getValue().stream()
+                            .map(
+                                er ->
+                                    new JoinedWith()
+                                        .withFullyQualifiedName(er.getMiddle())
+                                        .withJoinCount(
+                                            er.getRight().stream()
+                                                .filter(inLast30Days())
+                                                .mapToInt(DailyCount::getCount)
+                                                .sum()))
+                            .collect(toUnmodifiableList())))
+        .collect(toUnmodifiableList());
+  }
 
-    // Map of <ColumnName> to List of <Fully Qualified Column names> it is joined with
-    Map<String, List<JoinedWith>> map = new HashMap<>();
-
-    // list [ [fromFQN, toFQN, json], ...] contains innerList [fromFQN, toFQN, json]
-    for (List<String> innerList : list) {
-      String columnName = FullyQualifiedName.getColumnName(innerList.get(0));
-      List<JoinedWith> columnJoinList = map.computeIfAbsent(columnName, k -> new ArrayList<>());
-
-      // Parse JSON to get daily counts and aggregate it
-      List<DailyCount> dailyCountList = JsonUtils.readObjects(innerList.get(2), DailyCount.class);
-      int aggregatedCount = 0;
-      for (DailyCount d : dailyCountList) {
-        if (CommonUtil.dateInRange(RestUtil.DATE_FORMAT, d.getDate(), 0, 30)) {
-          aggregatedCount += d.getCount();
-        }
-      }
-      columnJoinList.add(new JoinedWith().withFullyQualifiedName(innerList.get(1)).withJoinCount(aggregatedCount));
-    }
-
-    List<ColumnJoin> columnJoins = new ArrayList<>();
-    for (Entry<String, List<JoinedWith>> entry : map.entrySet()) {
-      columnJoins.add(new ColumnJoin().withColumnName(entry.getKey()).withJoinedWith(entry.getValue()));
-    }
-    return tableJoins.withColumnJoins(columnJoins);
+  private Predicate<DailyCount> inLast30Days() {
+    return dc -> CommonUtil.dateInRange(RestUtil.DATE_FORMAT, dc.getDate(), 0, 30);
   }
 
   private TableData getSampleData(Table table) throws IOException {
@@ -887,144 +935,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  public static class TableEntityInterface extends EntityInterface<Table> {
-    public TableEntityInterface(Table entity) {
-      super(Entity.TABLE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null ? entity.getFullyQualifiedName() : TableRepository.getFQN(entity);
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return entity.getTags();
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public List<EntityReference> getFollowers() {
-      return entity.getFollowers();
-    }
-
-    @Override
-    public Table getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getDatabase();
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Table withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
-  }
-
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends EntityUpdater {
     public TableUpdater(Table original, Table updated, Operation operation) {
@@ -1033,13 +943,13 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      Table origTable = original.getEntity();
-      Table updatedTable = updated.getEntity();
+      Table origTable = original;
+      Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
       updateConstraints(origTable, updatedTable);
-      updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), EntityUtil.columnMatch);
+      updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
@@ -1128,17 +1038,17 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      String columnField = getColumnField(original.getEntity(), origColumn, FIELD_DESCRIPTION);
+      String columnField = getColumnField(original, origColumn, FIELD_DESCRIPTION);
       recordChange(columnField, origColumn.getDescription(), updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "constraint");
+      String columnField = getColumnField(original, origColumn, "constraint");
       recordChange(columnField, origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
     private void updateColumnDataLength(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "dataLength");
+      String columnField = getColumnField(original, origColumn, "dataLength");
       boolean updated = recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
       if (updated && updatedColumn.getDataLength() < origColumn.getDataLength()) {
         // The data length of a column was reduced. Treat it as backward-incompatible change
@@ -1147,7 +1057,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnPrecision(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "precision");
+      String columnField = getColumnField(original, origColumn, "precision");
       boolean updated = recordChange(columnField, origColumn.getPrecision(), updatedColumn.getPrecision());
       if (origColumn.getPrecision() != null) { // Previously precision was set
         if (updated && updatedColumn.getPrecision() < origColumn.getPrecision()) {
@@ -1158,7 +1068,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     private void updateColumnScale(Column origColumn, Column updatedColumn) throws JsonProcessingException {
-      String columnField = getColumnField(original.getEntity(), origColumn, "scale");
+      String columnField = getColumnField(original, origColumn, "scale");
       boolean updated = recordChange(columnField, origColumn.getScale(), updatedColumn.getScale());
       if (origColumn.getScale() != null) { // Previously scale was set
         if (updated && updatedColumn.getScale() < origColumn.getScale()) {

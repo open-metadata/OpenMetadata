@@ -10,34 +10,43 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+schema_directory='catalog-rest-service/src/main/resources/json/schema/'
+om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated/'
 addLicensing(){
     dir=$1
-    txt=`cat types-licensing.txt; cat "$dir"`
+    txt=`cat openmetadata-ui/src/main/resources/ui/types-licensing.txt; cat "$dir"`
     echo "$txt" > "$dir"
 }
-
-getTypes(){
-    dir=$1
-    for f in $dir/*
-    do
-    filename=$f
-    if [[ -d $f ]];
+generateType(){
+    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types
+    if [ -s $om_ui_directory$2 ]
     then
-        getTypes "$f" "$2" "$3"
+        addLicensing "$om_ui_directory$2"
     else
-        fileTS=${f//.json/.ts}
-        fileTS=${fileTS//$2/$3}
-        mkdir -p "$(dirname "$fileTS")" && ../../../../../node_modules/.bin/quicktype -s schema "$f" -o "$fileTS" --just-types
-        if [[ -s $fileTS ]]
-        then
-            addLicensing "$fileTS"
-        else
-            rm -f $fileTS
-        fi
+        rm -f "$om_ui_directory$2"
     fi
+}
+getTypes(){
+    if [ -d "$om_ui_directory" ]
+    then
+        rm -r $om_ui_directory
+    fi
+
+    for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
+    do
+        joblist=$(jobs | wc -l)
+        while (( ${joblist} >= 10 ))
+            do
+                sleep 1
+                joblist=$(jobs | wc -l)
+            done
+        mkdir -p "$(dirname "$om_ui_directory$file_with_dir")"
+        fileTS=$(echo "$file_with_dir" | sed "s/.json/.ts/g")
+        generateType "$file_with_dir" "$fileTS" &
     done
 }
 
-rm -r $2
-mkdir $2
-getTypes "$1" "$1" "$2"
+# Checkout root directory to generate typescript from schema
+cd ../../../../..
+getTypes
+wait

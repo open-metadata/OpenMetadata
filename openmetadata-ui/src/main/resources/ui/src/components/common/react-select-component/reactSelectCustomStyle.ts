@@ -16,6 +16,7 @@ export const reactSelectCustomStyle: StylesConfig = {
     ':focus': {
       border: `1px solid ${primeryColor}`,
     },
+    minHeight: '31px',
   }),
   multiValue: (styles) => {
     return {
@@ -47,7 +48,7 @@ export const reactSingleSelectCustomStyle: StylesConfig = {
     ...styles,
     backgroundColor: '#ffffff',
     boxShadow: 'none',
-    borderColor: isFocused ? primeryColor : `${borderColor}`,
+    borderColor: isFocused ? primeryColor : 'none',
     ':hover': {
       border: `1px solid ${primeryColor}`,
     },
@@ -55,6 +56,12 @@ export const reactSingleSelectCustomStyle: StylesConfig = {
       border: `1px solid ${primeryColor}`,
     },
     minWidth: '120px',
+    minHeight: '31px',
+  }),
+  input: (styles) => ({
+    ...styles,
+    marginTop: 0,
+    marginBottom: 0,
   }),
   option: (styles, { isSelected }) => ({
     ...styles,

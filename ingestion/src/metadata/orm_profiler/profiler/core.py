@@ -18,7 +18,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
 
@@ -26,9 +26,9 @@ from metadata.generated.schema.entity.data.table import ColumnProfile, TableProf
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    MetricType,
     QueryMetric,
     StaticMetric,
+    TMetric,
 )
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
@@ -48,7 +48,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(Generic[MetricType]):
+class Profiler(Generic[TMetric]):
     """
     Core Profiler.
 
@@ -58,9 +58,11 @@ class Profiler(Generic[MetricType]):
     - A tuple of metrics, from which we will construct queries.
     """
 
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
+
     def __init__(
         self,
-        *metrics: Type[MetricType],
+        *metrics: Type[TMetric],
         session: Session,
         table: DeclarativeMeta,
         profile_date: datetime = datetime.now(),
@@ -117,7 +119,7 @@ class Profiler(Generic[MetricType]):
         return self._table
 
     @property
-    def metrics(self) -> Tuple[Type[MetricType], ...]:
+    def metrics(self) -> Tuple[Type[TMetric], ...]:
         return self._metrics
 
     @property
@@ -158,7 +160,7 @@ class Profiler(Generic[MetricType]):
 
         return self._columns
 
-    def _filter_metrics(self, _type: Type[MetricType]) -> List[Type[MetricType]]:
+    def _filter_metrics(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """
         Filter metrics by type
         """
@@ -181,7 +183,7 @@ class Profiler(Generic[MetricType]):
         return self._filter_metrics(QueryMetric)
 
     @staticmethod
-    def get_col_metrics(metrics: List[Type[MetricType]]) -> List[Type[MetricType]]:
+    def get_col_metrics(metrics: List[Type[TMetric]]) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
         """
@@ -242,18 +244,25 @@ class Profiler(Generic[MetricType]):
         the most expensive.
         """
         # Table metrics do not have column informed
-        table_metrics = [
-            metric for metric in self.static_metrics if not metric.is_col_metric()
-        ]
+        try:
+            table_metrics = [
+                metric for metric in self.static_metrics if not metric.is_col_metric()
+            ]
 
-        if not table_metrics:
-            return
+            if not table_metrics:
+                return
 
-        row = self.runner.select_first_from_table(
-            *[metric().fn() for metric in table_metrics]
-        )
-        if row:
-            self._table_results.update(dict(row))
+            row = self.runner.select_first_from_table(
+                *[metric().fn() for metric in table_metrics]
+            )
+            if row:
+                self._table_results.update(dict(row))
+        except (TimeoutError, Exception) as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error while running table metric for: {self.table.__tablename__} - {err}"
+            )
+            self.session.rollback()
 
     def run_query_metrics(self, col: Column) -> None:
         """
@@ -288,7 +297,6 @@ class Profiler(Generic[MetricType]):
                     self._column_results[col.name].update(dict(row))
 
             except (TimeoutError, Exception) as err:  # pylint: disable=broad-except
-                print(err)
                 logger.debug(traceback.format_exc())
                 logger.error(
                     f"Error computing query metric {metric.name()} for {self.table.__tablename__}.{col.name} - {err}"

@@ -1,15 +1,16 @@
 import { AxiosError } from 'axios';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { addGlossaries } from '../../axiosAPIs/glossaryAPI';
 import AddGlossary from '../../components/AddGlossary/AddGlossary.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import { getGlossaryPath } from '../../constants/constants';
 import { CreateGlossary } from '../../generated/api/data/createGlossary';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -20,6 +21,9 @@ const AddGlossaryPage: FunctionComponent = () => {
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<LoadingState>('initial');
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   const goToGlossary = (name = '') => {
     history.push(getGlossaryPath(name));
@@ -79,6 +83,20 @@ const AddGlossaryPage: FunctionComponent = () => {
       });
   };
 
+  useEffect(() => {
+    setSlashedBreadcrumb([
+      {
+        name: 'Glossary',
+        url: getGlossaryPath(),
+      },
+      {
+        name: 'Add Glossary',
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, []);
+
   return (
     <PageContainerV1>
       <AddGlossary
@@ -87,6 +105,7 @@ const AddGlossaryPage: FunctionComponent = () => {
         header="Add Glossary"
         isTagLoading={isTagLoading}
         saveState={status}
+        slashedBreadcrumb={slashedBreadcrumb}
         tagList={tagList}
         onCancel={handleCancel}
         onSave={onSave}

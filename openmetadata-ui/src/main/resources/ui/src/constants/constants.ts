@@ -14,16 +14,28 @@
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 
+export const PRIMERY_COLOR = '#7147E8';
+export const LITE_GRAY_COLOR = '#DBE0EB';
+export const TEXT_BODY_COLOR = '#37352F';
+
+export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+
 export const FOLLOWERS_VIEW_CAP = 20;
+export const INITIAL_PAGIN_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
+export const PAGE_SIZE_BASE = 12;
 export const PAGE_SIZE_MEDIUM = 16;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
+export const INGESTION_PROGRESS_START_VAL = 20;
+export const INGESTION_PROGRESS_END_VAL = 80;
+export const DEPLOYED_PROGRESS_VAL = 100;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -51,20 +63,26 @@ export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
-const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
-const PLACEHOLDER_ROUTE_TAB = ':tab';
-const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
-const PLAEHOLDER_ROUTE_VERSION = ':version';
-const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
-const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
-const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
-const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
-const PLACEHOLDER_USER_NAME = ':username';
+export const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
+export const PLACEHOLDER_ROUTE_TAB = ':tab';
+export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
+export const PLAEHOLDER_ROUTE_VERSION = ':version';
+export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
+export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
+export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
+export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
+export const PLACEHOLDER_USER_NAME = ':username';
+export const PLACEHOLDER_BOTS_NAME = ':botsName';
+export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
+export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
 export const ONLY_NUMBER_REGEX = /^[0-9\b]+$/;
+
+export const CUSTOM_AIRFLOW_DOCS =
+  'https://docs.open-metadata.org/integrations/airflow/custom-airflow-installation';
 
 /* eslint-disable @typescript-eslint/camelcase */
 export const tiers = [
@@ -163,6 +181,7 @@ export const ROUTES = {
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
   SERVICES: '/services',
+  SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
   ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   USERS: '/users',
@@ -197,6 +216,13 @@ export const ROUTES = {
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
   GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}`,
   ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
+  BOTS: `/bots`,
+  BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
+  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
+  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CUSTOM_PROPERTIES: `/custom-properties`,
+  CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
+  ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -341,54 +367,32 @@ export const getUserPath = (username: string) => {
   return path;
 };
 
-export const getGlossaryPath = (fqn?: string) => {
-  let path = ROUTES.GLOSSARY;
-  if (fqn) {
-    path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
-  }
+export const getBotsPath = (botsName: string) => {
+  let path = ROUTES.BOTS_PROFILE;
+  path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
 
   return path;
 };
 
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
-};
-
-export const getGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
+export const getMlModelPath = (mlModelFqn: string, tab = '') => {
+  let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };
 
-export const getAddGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm
-    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
-    : ROUTES.ADD_GLOSSARY_TERMS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+export const getAddCustomPropertyPath = (entityTypeFQN: string) => {
+  let path = ROUTES.ADD_CUSTOM_PROPERTY;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
+  return path;
+};
+
+export const getCustomEntityPath = (entityTypeFQN: string) => {
+  let path = ROUTES.CUSTOM_ENTITY_DETAIL;
+  path = path.replace(PLACEHOLDER_ENTITY_TYPE_FQN, entityTypeFQN);
 
   return path;
 };
@@ -405,6 +409,13 @@ export const navLinkDevelop = [
 ];
 
 export const navLinkSettings = [
+  { name: 'Bots', to: '/bots', disabled: false, isAdminOnly: true },
+  {
+    name: 'Custom Properties',
+    to: '/custom-properties',
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
@@ -418,3 +429,6 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+export const TITLE_FOR_UPDATE_OWNER =
+  'You do not have permissions to update the owner.';

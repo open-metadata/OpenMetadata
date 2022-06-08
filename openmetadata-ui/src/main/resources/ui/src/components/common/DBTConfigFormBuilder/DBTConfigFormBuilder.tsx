@@ -13,6 +13,7 @@
 
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import {
+  DBTBucketDetails,
   DbtConfigSource,
   SCredentials,
 } from '../../../generated/metadataIngestion/databaseServiceMetadataPipeline';
@@ -28,22 +29,21 @@ import { DBTLocalConfig } from './DBTLocalConfig';
 import { DBTS3Config } from './DBTS3Config';
 
 const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
-  data = {},
+  data,
   okText,
   cancelText,
   gcsType,
-  source = '' as DBT_SOURCES,
+  source = DBT_SOURCES.local,
   handleGcsTypeChange,
   handleSourceChange,
   onCancel,
   onSubmit,
 }: DBTConfigFormProps) => {
   const [dbtConfig, setDbtConfig] = useState<DbtConfigSource>(data);
-  const [dbtSource, setDbtSource] = useState<DBT_SOURCES>(source);
 
   const updateDbtConfig = (
     key: keyof DbtConfigSource,
-    val?: string | SCredentials
+    val?: string | SCredentials | DBTBucketDetails
   ) => {
     setDbtConfig((pre) => {
       return { ...pre, [key]: val };
@@ -92,7 +92,11 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTS3Config
         cancelText={cancelText}
+        dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
+        handlePrefixConfigChange={(val) => {
+          updateDbtConfig('dbtPrefixConfig', val);
+        }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
         }}
@@ -107,11 +111,14 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     return (
       <DBTGCSConfig
         cancelText={cancelText}
+        dbtPrefixConfig={dbtConfig.dbtPrefixConfig}
         dbtSecurityConfig={dbtConfig.dbtSecurityConfig}
         gcsType={gcsType}
         handleGcsTypeChange={(type) => {
           handleGcsTypeChange && handleGcsTypeChange(type);
-          setDbtConfig(data);
+        }}
+        handlePrefixConfigChange={(val) => {
+          updateDbtConfig('dbtPrefixConfig', val);
         }}
         handleSecurityConfigChange={(val) => {
           updateDbtConfig('dbtSecurityConfig', val);
@@ -124,7 +131,7 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   const getFields = () => {
-    switch (dbtSource) {
+    switch (source) {
       case DBT_SOURCES.local: {
         return getLocalConfigFields();
       }
@@ -140,7 +147,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
       default: {
         return (
           <Fragment>
-            No source selected for DBT Configuration.
+            <span data-testid="dbt-source-none">
+              No source selected for DBT Configuration.
+            </span>
             {getSeparator('')}
             <Field className="tw-flex tw-justify-end">
               <Button
@@ -169,12 +178,8 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
   };
 
   useEffect(() => {
-    handleSourceChange && handleSourceChange(dbtSource);
-  }, [dbtSource]);
-
-  useEffect(() => {
     setDbtConfig(data);
-  }, [data, dbtSource, gcsType]);
+  }, [data, source, gcsType]);
 
   return (
     <Fragment>
@@ -186,14 +191,15 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
           Available sources to fetch DBT catalog and manifest files.
         </p>
         <select
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-form-inputs-padding"
           data-testid="dbt-source"
           id="dbt-source"
           name="dbt-source"
           placeholder="Select DBT Source"
-          value={dbtSource}
+          value={source}
           onChange={(e) => {
-            setDbtSource(e.target.value as DBT_SOURCES);
+            handleSourceChange &&
+              handleSourceChange(e.target.value as DBT_SOURCES);
           }}>
           {DBTSources.map((option, i) => (
             <option key={i} value={option.value}>

@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
@@ -26,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -67,12 +65,13 @@ import org.openmetadata.catalog.util.ResultList;
 public class PipelineServiceResource extends EntityResource<PipelineService, PipelineServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
 
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = "pipelines,owner";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
     Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
@@ -91,8 +90,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @GET
   @Operation(
+      operationId = "listPipelineService",
       summary = "List pipeline services",
-      tags = "services",
+      tags = "pipelineService",
       description =
           "Get a list of pipeline services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -137,8 +137,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getPipelineServiceByID",
       summary = "Get a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a pipeline service by `id`.",
       responses = {
         @ApiResponse(
@@ -170,8 +171,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getPipelineServiceByFQN",
       summary = "Get pipeline service by name",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a pipeline service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -203,8 +205,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllPipelineServiceVersion",
       summary = "List pipeline service versions",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a list of all the versions of a pipeline service identified by `id`",
       responses = {
         @ApiResponse(
@@ -223,8 +226,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificPipelineService",
       summary = "Get a version of the pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Get a version of the pipeline service by given `id`",
       responses = {
         @ApiResponse(
@@ -251,53 +255,52 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   @POST
   @Operation(
+      operationId = "createPipelineService",
       summary = "Create a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Create a new pipeline service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreatePipelineService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
-    PipelineService service = getService(create, securityContext);
+    PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdatePipelineService",
       summary = "Update pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description = "Create a new pipeline service or update an existing pipeline service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Pipeline service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreatePipelineService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = PipelineService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
-    PipelineService service = getService(update, securityContext);
+    PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deletePipelineService",
       summary = "Delete a pipeline service",
-      tags = "services",
+      tags = "pipelineService",
       description =
           "Delete a pipeline services. If pipelines (and tasks) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -321,16 +324,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private PipelineService getService(CreatePipelineService create, SecurityContext securityContext) {
-    return new PipelineService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private PipelineService getService(CreatePipelineService create, String user) {
+    return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
-        .withPipelineUrl(create.getPipelineUrl())
-        .withIngestionSchedule(create.getIngestionSchedule())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withConnection(create.getConnection());
   }
 }

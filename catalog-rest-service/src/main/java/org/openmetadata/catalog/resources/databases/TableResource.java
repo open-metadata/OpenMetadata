@@ -66,6 +66,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.tests.ColumnTest;
 import org.openmetadata.catalog.tests.CustomMetric;
 import org.openmetadata.catalog.tests.TableTest;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.DataModel;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
@@ -114,10 +115,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
-          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests";
+          + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests,"
+          + "extension";
 
   @GET
   @Operation(
+      operationId = "listTables",
       summary = "List tables",
       tags = "tables",
       description =
@@ -169,6 +172,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getTableByID",
       summary = "Get a table",
       tags = "tables",
       description = "Get a table by `id`",
@@ -201,6 +205,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getTableByFQN",
       summary = "Get a table by name",
       tags = "tables",
       description = "Get a table by fully qualified table name.",
@@ -234,6 +239,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTableVersion",
       summary = "List table versions",
       tags = "tables",
       description = "Get a list of all the versions of a table identified by `id`",
@@ -254,6 +260,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the table",
       tags = "tables",
       description = "Get a version of the table by given `id`",
@@ -281,6 +288,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @POST
   @Operation(
+      operationId = "createTable",
       summary = "Create a table",
       tags = "tables",
       description = "Create a new table under an existing `database`.",
@@ -288,17 +296,18 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTable.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
-    Table table = getTable(securityContext, create);
+    Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateTable",
       summary = "Create or update a table",
       tags = "tables",
       description = "Create a table, if it does not exist. If a table already exists, update the table.",
@@ -306,19 +315,20 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The table",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTable.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTable create)
       throws IOException {
-    Table table = getTable(securityContext, create);
+    Table table = getTable(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table, ADMIN | BOT | OWNER);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchTable",
       summary = "Update a table",
       tags = "tables",
       description = "Update an existing table using JsonPatch.",
@@ -344,9 +354,10 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTable",
       summary = "Delete a table",
       tags = "tables",
-      description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
+      description = "Delete a table by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
@@ -366,11 +377,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollowerToTable",
       summary = "Add a follower",
       tags = "tables",
       description = "Add a user identified by `userId` as followed of this table",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
       })
   public Response addFollower(
@@ -387,13 +402,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @PUT
   @Path("/{id}/joins")
   @Operation(
+      operationId = "addTableJoinInfo",
       summary = "Add table join information",
       description =
           "Add information about other tables that this table is joined with. Join information can only"
               + " be added for the last 30 days starting today.",
       tags = "tables",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
         @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" + " today")
       })
@@ -410,7 +429,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/sampleData")
-  @Operation(summary = "Add sample data", tags = "tables", description = "Add sample data to the table.")
+  @Operation(
+      operationId = "addSampleData",
+      summary = "Add sample data",
+      tags = "tables",
+      description = "Add sample data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addSampleData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -424,7 +453,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableProfile")
-  @Operation(summary = "Add table profile data", tags = "tables", description = "Add table profile data to the table.")
+  @Operation(
+      operationId = "addDataProfiler",
+      summary = "Add table profile data",
+      tags = "tables",
+      description = "Add table profile data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully updated the Table ",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addDataProfiler(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -439,11 +478,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @PUT
   @Path("/{id}/location")
   @Operation(
+      operationId = "addLocationToTable",
       summary = "Add a location",
       tags = "tables",
       description = "Add a location identified by `locationId` to this table",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class))),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
       })
   public Response addLocation(
@@ -458,7 +501,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableQuery")
-  @Operation(summary = "Add table query data", tags = "tables", description = "Add table query data to the table.")
+  @Operation(
+      operationId = "addTableQuery",
+      summary = "Add table query data",
+      tags = "tables",
+      description = "Add table query data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addQuery(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -473,9 +526,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @PUT
   @Path("/{id}/dataModel")
   @Operation(
+      operationId = "addDataModel",
       summary = "Add data modeling information to a table",
       tags = "tables",
-      description = "Add data modeling (such as DBT model) information on how the table was created to the table.")
+      description = "Add data modeling (such as DBT model) information on how the table was created to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addDataModel(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -489,7 +549,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/tableTest")
-  @Operation(summary = "Add table test cases", tags = "tables", description = "Add test cases to the table.")
+  @Operation(
+      operationId = "addTableTest",
+      summary = "Add table test cases",
+      tags = "tables",
+      description = "Add test cases to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addTableTest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -504,7 +574,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/tableTest/{tableTestType}")
-  @Operation(summary = "delete table test case", tags = "tables", description = "Delete test case from the table.")
+  @Operation(
+      operationId = "deleteTableTest",
+      summary = "delete table test case",
+      tags = "tables",
+      description = "Delete test case from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table deleteTableTest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -519,7 +599,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/columnTest")
-  @Operation(summary = "Add column test cases", tags = "tables", description = "Add column test cases to the table.")
+  @Operation(
+      operationId = "addColumnTest",
+      summary = "Add column test cases",
+      tags = "tables",
+      description = "Add column test cases to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addColumnTest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -534,7 +624,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @PUT
   @Path("/{id}/customMetric")
-  @Operation(summary = "Add column custom metrics", tags = "tables", description = "Add column custom metrics.")
+  @Operation(
+      operationId = "addCustomMetric",
+      summary = "Add column custom metrics",
+      tags = "tables",
+      description = "Add column custom metrics.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table addCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -550,9 +650,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @DELETE
   @Path("/{id}/columnTest/{columnName}/{columnTestType}")
   @Operation(
+      operationId = "deleteColumnTest",
       summary = "delete column test case",
       tags = "tables",
-      description = "Delete column test case from the table.")
+      description = "Delete column test case from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table deleteColumnTest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -570,9 +677,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @DELETE
   @Path("/{id}/customMetric/{columnName}/{customMetricName}")
   @Operation(
+      operationId = "deleteCustomMetric",
       summary = "delete custom metric from a column",
       tags = "tables",
-      description = "Delete a custom metric from a column.")
+      description = "Delete a custom metric from a column.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table deleteCustomMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -590,9 +704,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollower",
       summary = "Remove a follower",
       tags = "tables",
-      description = "Remove the user identified `userId` as a follower of the table.")
+      description = "Remove the user identified `userId` as a follower of the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -608,7 +729,17 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   @DELETE
   @Path("/{id}/location")
-  @Operation(summary = "Remove the location", tags = "tables", description = "Remove the location")
+  @Operation(
+      operationId = "deleteLocation",
+      summary = "Remove the location",
+      tags = "tables",
+      description = "Remove the location",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
+      })
   public Table deleteLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -629,22 +760,16 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  private Table getTable(SecurityContext securityContext, CreateTable create) {
+  private Table getTable(CreateTable create, String user) {
     return validateNewTable(
-        new Table()
-            .withId(UUID.randomUUID())
-            .withName(create.getName())
+        copy(new Table(), create, user)
             .withColumns(create.getColumns())
-            .withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints())
             .withTablePartition(create.getTablePartition())
             .withTableType(create.getTableType())
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
             .withProfileSample(create.getProfileSample())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(System.currentTimeMillis())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

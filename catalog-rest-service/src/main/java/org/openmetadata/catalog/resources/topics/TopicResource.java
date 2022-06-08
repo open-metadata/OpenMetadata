@@ -59,8 +59,11 @@ import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.topic.TopicSampleData;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/topics")
@@ -95,10 +98,11 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     }
   }
 
-  static final String FIELDS = "owner,followers,tags";
+  static final String FIELDS = "owner,followers,tags,sampleData";
 
   @GET
   @Operation(
+      operationId = "listTopics",
       summary = "List topics",
       tags = "topics",
       description =
@@ -150,6 +154,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTopicVersion",
       summary = "List topic versions",
       tags = "topics",
       description = "Get a list of all the versions of a topic identified by `id`",
@@ -202,6 +207,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getTopicByFQN",
       summary = "Get a topic by name",
       tags = "topics",
       description = "Get a topic by fully qualified name.",
@@ -234,6 +240,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificTopicVersion",
       summary = "Get a version of the topic",
       tags = "topics",
       description = "Get a version of the topic by given `id`",
@@ -261,6 +268,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @POST
   @Operation(
+      operationId = "createTopic",
       summary = "Create a topic",
       tags = "topics",
       description = "Create a topic under an existing `service`.",
@@ -268,18 +276,19 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The topic",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic, ADMIN | BOT);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchTopic",
       summary = "Update a topic",
       tags = "topics",
       description = "Update an existing topic using JsonPatch.",
@@ -304,6 +313,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateTopic",
       summary = "Update topic",
       tags = "topics",
       description = "Create a topic, it it does not exist or update an existing topic.",
@@ -311,23 +321,51 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated topic ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTopic.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTopic create)
       throws IOException {
-    Topic topic = getTopic(securityContext, create);
+    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic, ADMIN | BOT | OWNER);
+  }
+
+  @PUT
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "addSampleData",
+      summary = "Add sample data",
+      tags = "topics",
+      description = "Add sample data to the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The topic",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Topic.class))),
+      })
+  public Topic addSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Valid TopicSampleData sampleData)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    Topic topic = dao.addSampleData(UUID.fromString(id), sampleData);
+    return addHref(uriInfo, topic);
   }
 
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "topics",
       description = "Add a user identified by `userId` as followed of this topic",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
       })
   public Response addFollower(
@@ -346,7 +384,13 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @Operation(
       summary = "Remove a follower",
       tags = "topics",
-      description = "Remove the user identified `userId` as a follower of the topic.")
+      description = "Remove the user identified `userId` as a follower of the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class)))
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -363,6 +407,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTopic",
       summary = "Delete a topic",
       tags = "topics",
       description = "Delete a topic by `id`.",
@@ -382,11 +427,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Topic getTopic(SecurityContext securityContext, CreateTopic create) {
-    return new Topic()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private Topic getTopic(CreateTopic create, String user) {
+    return copy(new Topic(), create, user)
         .withService(create.getService())
         .withPartitions(create.getPartitions())
         .withSchemaText(create.getSchemaText())
@@ -398,9 +440,6 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
         .withRetentionTime(create.getRetentionTime())
         .withReplicationFactor(create.getReplicationFactor())
         .withTopicConfig(create.getTopicConfig())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

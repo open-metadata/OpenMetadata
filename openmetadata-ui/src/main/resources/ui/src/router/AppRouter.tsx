@@ -18,9 +18,17 @@ import Appbar from '../components/app-bar/Appbar';
 import Loader from '../components/Loader/Loader';
 import { ROUTES } from '../constants/constants';
 import { AuthTypes } from '../enums/signin.enum';
-import SigninPage from '../pages/login';
-import PageNotFound from '../pages/page-not-found';
-import AuthenticatedAppRouter from './AuthenticatedAppRouter';
+import withSuspenseFallback from './withSuspenseFallback';
+
+const AuthenticatedAppRouter = withSuspenseFallback(
+  React.lazy(() => import('./AuthenticatedAppRouter'))
+);
+const SigninPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/login'))
+);
+const PageNotFound = withSuspenseFallback(
+  React.lazy(() => import('../pages/page-not-found'))
+);
 
 const AppRouter = () => {
   const {
@@ -32,13 +40,19 @@ const AppRouter = () => {
     getCallBackComponent,
   } = useAuthContext();
   const callbackComponent = getCallBackComponent();
+  const oidcProviders = [
+    AuthTypes.GOOGLE,
+    AuthTypes.AWS_COGNITO,
+    AuthTypes.CUSTOM_OIDC,
+  ];
+  const isOidcProvider =
+    authConfig?.provider && oidcProviders.includes(authConfig.provider);
 
   return loading ? (
     <Loader />
   ) : (
     <>
-      {authConfig?.provider === AuthTypes.GOOGLE ||
-      authConfig?.provider === AuthTypes.CUSTOM_OIDC ? (
+      {isOidcProvider ? (
         <AuthenticatedAppRouter />
       ) : (
         <>

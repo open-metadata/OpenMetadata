@@ -14,41 +14,23 @@
 package org.openmetadata.catalog.security;
 
 import java.security.Principal;
+import lombok.Getter;
+import lombok.Setter;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Holds context information of authenticated user, which will be used for authorization. */
 public final class AuthenticationContext {
-  private final Principal principal;
-  private User user;
-  private Fields userFields;
+  @Getter private final Principal principal;
+  @Getter @Setter private User user;
+  @Getter @Setter private Fields userFields;
 
   public AuthenticationContext(Principal principal) {
     this.principal = principal;
   }
 
-  public Principal getPrincipal() {
-    return principal;
-  }
-
   @Override
   public String toString() {
     return "AuthenticationContext{" + ", principal=" + principal + '}';
-  }
-
-  public User getUser() {
-    return user;
-  }
-
-  public void setUser(User user) {
-    this.user = user;
-  }
-
-  public Fields getUserFields() {
-    return userFields;
-  }
-
-  public void setUserFields(Fields userFields) {
-    this.userFields = userFields;
   }
 }

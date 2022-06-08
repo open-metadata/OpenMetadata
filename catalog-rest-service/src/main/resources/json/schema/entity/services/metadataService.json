@@ -51,6 +51,10 @@
       "description": "Name that identifies this database service.",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "displayName": {
       "description": "Display Name that identifies this database service.",
       "type": "string"
@@ -61,7 +65,7 @@
     },
     "description": {
       "description": "Description of a database service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
       "$ref": "#/definitions/metadataConnection"

@@ -1,0 +1,20 @@
+source:
+  type: vertica
+  serviceName: local_vertica
+  serviceConnection:
+    config:
+      type: Vertica
+      username: openmetadata_user
+      password: ''
+      hostPort: localhost:5433
+      database: custom_database_name
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

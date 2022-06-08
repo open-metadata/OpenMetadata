@@ -57,7 +57,9 @@ class OMetaTopicTest(TestCase):
     service = CreateMessagingServiceRequest(
         name="test-service-topic",
         serviceType=MessagingServiceType.Kafka,
-        connection=MessagingConnection(config=KafkaConnection()),
+        connection=MessagingConnection(
+            config=KafkaConnection(bootstrapServers="localhost:9092")
+        ),
     )
     service_type = "messagingService"
 
@@ -90,7 +92,7 @@ class OMetaTopicTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=MessagingService, fqdn="test-service-topic"
+                entity=MessagingService, fqn="test-service-topic"
             ).id.__root__
         )
 
@@ -138,7 +140,7 @@ class OMetaTopicTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Topic, fqdn=self.entity.fullyQualifiedName
+            entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -151,7 +153,7 @@ class OMetaTopicTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Topic, fqdn=self.entity.fullyQualifiedName
+            entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Topic, entity_id=res_name.id)
@@ -182,7 +184,7 @@ class OMetaTopicTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Topic, fqdn=self.entity.fullyQualifiedName
+            entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -211,7 +213,7 @@ class OMetaTopicTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Topic, fqdn=self.entity.fullyQualifiedName
+            entity=Topic, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -227,7 +229,7 @@ class OMetaTopicTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Topic, fqdn=self.entity.fullyQualifiedName
+            entity=Topic, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Topic, entity_id=res_name.id.__root__, version=0.1
@@ -243,7 +245,7 @@ class OMetaTopicTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Topic, fqdn=res.fullyQualifiedName
+            entity=Topic, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

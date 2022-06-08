@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -107,8 +106,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Valid
   @Operation(
+      operationId = "listGlossaryTerm",
       summary = "List glossary terms",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description =
           "Get a list of glossary terms. Use `fields` parameter to get only necessary fields. "
               + " Use cursor-based pagination to limit the number "
@@ -196,8 +196,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getGlossaryTermByID",
       summary = "Get a glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Get a glossary term by `id`.",
       responses = {
         @ApiResponse(
@@ -228,8 +229,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getGlossaryTermByFQN",
       summary = "Get a glossary term by name",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Get a glossary term by name.",
       responses = {
         @ApiResponse(
@@ -260,8 +262,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllGlossaryTermVersion",
       summary = "List glossary term versions",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Get a list of all the versions of a glossary terms identified by `id`",
       responses = {
         @ApiResponse(
@@ -280,8 +283,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificGlossaryTermVersion",
       summary = "Get a version of the glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Get a version of the glossary term by given `id`",
       responses = {
         @ApiResponse(
@@ -307,8 +311,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @POST
   @Operation(
+      operationId = "createGlossaryTerm",
       summary = "Create a glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Create a new glossary term.",
       responses = {
         @ApiResponse(
@@ -320,15 +325,16 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
-    GlossaryTerm term = getGlossaryTerm(securityContext, create);
+    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchGlossaryTerm",
       summary = "Update a glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Update an existing glossary term using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -351,8 +357,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateGlossaryTerm",
       summary = "Create or update a glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Create a new glossary term, if it does not exist or update an existing glossary term.",
       responses = {
         @ApiResponse(
@@ -364,7 +371,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
       throws IOException {
-    GlossaryTerm term = getGlossaryTerm(securityContext, create);
+    GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term, ADMIN | BOT);
   }
 
@@ -372,7 +379,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Path("/{id}")
   @Operation(
       summary = "Delete a glossary term",
-      tags = "glossaries",
+      tags = "glossaryTerm",
       description = "Delete a glossary term by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -389,25 +396,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Glossary Term Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private GlossaryTerm getGlossaryTerm(SecurityContext securityContext, CreateGlossaryTerm create) {
-    return new GlossaryTerm()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
+  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
+    return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withGlossary(create.getGlossary())
         .withParent(create.getParent())
         .withRelatedTerms(create.getRelatedTerms())
         .withReferences(create.getReferences())
         .withReviewers(create.getReviewers())
-        .withTags(create.getTags())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

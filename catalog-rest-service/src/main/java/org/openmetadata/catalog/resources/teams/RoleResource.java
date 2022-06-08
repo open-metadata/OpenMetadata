@@ -30,7 +30,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -106,7 +105,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             Role role = JsonUtils.readValue(roleJson, entityClass);
             List<EntityReference> policies = role.getPolicies();
             for (EntityReference policy : policies) {
-              EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName());
+              EntityReference ref =
+                  Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
               policy.setId(ref.getId());
             }
             dao.initSeedData(role);
@@ -130,6 +130,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listRoles",
       summary = "List roles",
       tags = "roles",
       description =
@@ -177,7 +178,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
     ResultList<Role> roles;
     if (defaultParam) {
-      // The number of default roles is usually 1, and hence does not require pagination.
+      // The number of default roles is 1, and hence does not require pagination.
       roles = dao.getDefaultRolesResultList(uriInfo, fields);
     } else if (before != null) { // Reverse paging
       roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
@@ -190,6 +191,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllRoleVersion",
       summary = "List role versions",
       tags = "roles",
       description = "Get a list of all the versions of a role identified by `id`",
@@ -211,6 +213,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getRoleByID",
       summary = "Get a role",
       tags = "roles",
       description = "Get a role by `id`.",
@@ -244,6 +247,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getRoleByFQN",
       summary = "Get a role by name",
       tags = "roles",
       description = "Get a role by `name`.",
@@ -276,6 +280,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificRoleVersion",
       summary = "Get a version of the role",
       tags = "roles",
       description = "Get a version of the role by given `id`",
@@ -303,6 +308,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @POST
   @Operation(
+      operationId = "createRole",
       summary = "Create a role",
       tags = "roles",
       description = "Create a new role.",
@@ -310,13 +316,13 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
-    Role role = getRole(createRole, securityContext);
+    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, role, ADMIN | BOT);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
@@ -324,6 +330,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateRole",
       summary = "Update role",
       tags = "roles",
       description = "Create or Update a role.",
@@ -331,13 +338,13 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The role ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateRole.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateRole(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
       throws IOException {
-    Role role = getRole(createRole, securityContext);
+    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, role, ADMIN | BOT);
     RoleEvaluator.getInstance().update((Role) response.getEntity());
     return response;
@@ -347,6 +354,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchRole",
       summary = "Update a role",
       tags = "roles",
       description = "Update an existing role with JsonPatch.",
@@ -373,6 +381,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteRole",
       summary = "Delete a role",
       tags = "roles",
       description = "Delete a role by given `id`.",
@@ -396,17 +405,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return response;
   }
 
-  private Role getRole(CreateRole cr, SecurityContext securityContext) {
-    if (nullOrEmpty(cr.getPolicies())) {
+  private Role getRole(CreateRole create, String user) {
+    if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return new Role()
-        .withId(UUID.randomUUID())
-        .withName(cr.getName())
-        .withDescription(cr.getDescription())
-        .withDisplayName(cr.getDisplayName())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
-        .withPolicies(cr.getPolicies());
+    return copy(new Role(), create, user).withPolicies(create.getPolicies());
   }
 }

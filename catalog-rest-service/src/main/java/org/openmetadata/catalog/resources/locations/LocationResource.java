@@ -58,6 +58,7 @@ import org.openmetadata.catalog.jdbi3.LocationRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -93,10 +94,11 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     }
   }
 
-  static final String FIELDS = "owner,followers,tags";
+  static final String FIELDS = "owner,followers,tags,path";
 
   @GET
   @Operation(
+      operationId = "listLocations",
       summary = "List locations",
       tags = "locations",
       description =
@@ -148,6 +150,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllLocationVersion",
       summary = "List location versions",
       tags = "locations",
       description = "Get a list of all the versions of a location identified by `id`",
@@ -168,6 +171,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getLocationByID",
       summary = "Get a location",
       tags = "locations",
       description = "Get a location by `id`.",
@@ -200,6 +204,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("prefixes/{fqn}")
   @Operation(
+      operationId = "listLocationPrefixes",
       summary = "List locations that are prefixes",
       tags = "locations",
       description =
@@ -253,6 +258,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getLocationByFQN",
       summary = "Get a location by name",
       tags = "locations",
       description = "Get a location by fully qualified name.",
@@ -289,6 +295,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificLocationVersion",
       summary = "Get a version of the location",
       tags = "locations",
       description = "Get a version of the location by given `id`",
@@ -316,6 +323,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
 
   @POST
   @Operation(
+      operationId = "createLocation",
       summary = "Create a location",
       tags = "locations",
       description = "Create a location under an existing `service`.",
@@ -329,12 +337,13 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
-    Location location = getLocation(securityContext, create);
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, location, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateLocation",
       summary = "Create or update location",
       tags = "locations",
       description = "Create a location, it it does not exist or update an existing location.",
@@ -348,13 +357,14 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateLocation create)
       throws IOException {
-    Location location = getLocation(securityContext, create);
+    Location location = getLocation(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, location, ADMIN | BOT | OWNER);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchLocation",
       summary = "Update a location",
       tags = "locations",
       description = "Update an existing location using JsonPatch.",
@@ -380,6 +390,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteLocation",
       summary = "Delete a location",
       tags = "locations",
       description = "Delete a location by `id`.",
@@ -402,11 +413,15 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollower",
       summary = "Add a follower",
       tags = "locations",
       description = "Add a user identified by `userId` as followed of this location",
       responses = {
-        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
       })
   public Response addFollower(
@@ -423,9 +438,16 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollower",
       summary = "Remove a follower",
       tags = "locations",
-      description = "Remove the user identified `userId` as a follower of the location.")
+      description = "Remove the user identified `userId` as a follower of the location.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+      })
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -444,16 +466,11 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
     return location;
   }
 
-  private Location getLocation(SecurityContext securityContext, CreateLocation create) {
-    return new Location()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private Location getLocation(CreateLocation create, String user) {
+    return copy(new Location(), create, user)
+        .withPath(create.getPath())
         .withService(create.getService())
         .withLocationType(create.getLocationType())
-        .withTags(create.getTags())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withOwner(create.getOwner())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withTags(create.getTags());
   }
 }

@@ -4,6 +4,9 @@
   "title": "CreateTeamRequest",
   "description": "Team entity",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.teams.CreateTeam",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
+
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -14,7 +17,7 @@
     },
     "description": {
       "description": "Optional description of the team.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "profile": {
       "description": "Optional team profile information.",

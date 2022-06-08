@@ -12,9 +12,21 @@
  */
 
 import { AxiosError } from 'axios';
-import { Bucket, SearchDataFunctionType, SearchResponse } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { isEmpty } from 'lodash';
+import {
+  Bucket,
+  FilterObject,
+  SearchDataFunctionType,
+  SearchResponse,
+} from 'Models';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -24,12 +36,14 @@ import {
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
-import { PAGE_SIZE } from '../../constants/constants';
+import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
   getCurrentIndex,
   getCurrentTab,
+  getInitialFilter,
   getQueryParam,
+  getSearchFilter,
   INITIAL_FROM,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -39,11 +53,20 @@ import {
 import { SearchIndex } from '../../enums/search.enum';
 import jsonData from '../../jsons/en';
 import { getTotalEntityCountByType } from '../../utils/EntityUtils';
-import { getFilterString } from '../../utils/FilterUtils';
+import { getFilterString, prepareQueryParams } from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const initialFilter = getFilterString(getQueryParam(location.search));
+  const location = useLocation();
+  const history = useHistory();
+  const initialFilter = useMemo(
+    () => getQueryParam(getInitialFilter(location.search)),
+    [location.search]
+  );
+  const searchFilter = useMemo(
+    () => getQueryParam(getSearchFilter(location.search)),
+    [location.search]
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
@@ -54,6 +77,7 @@ const ExplorePage: FunctionComponent = () => {
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [dbtModelCount, setDbtModelCount] = useState<number>(0);
+  const [mlModelCount, setMlModelCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
@@ -86,8 +110,27 @@ const ExplorePage: FunctionComponent = () => {
     setDbtModelCount(count);
   };
 
+  const handleMlModelCount = (count: number) => {
+    setMlModelCount(count);
+  };
+
   const handlePathChange = (path: string) => {
     AppState.updateExplorePageTab(path);
+  };
+
+  /**
+   * on filter change , change the route
+   * @param filterData - filter object
+   */
+  const handleFilterChange = (filterData: FilterObject) => {
+    const params = prepareQueryParams(filterData, initialFilter);
+
+    const explorePath = getExplorePathWithSearch(searchQuery, tab);
+
+    history.push({
+      pathname: explorePath,
+      search: params,
+    });
   };
 
   const fetchCounts = () => {
@@ -96,6 +139,7 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
+      SearchIndex.MLMODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -103,11 +147,12 @@ const ExplorePage: FunctionComponent = () => {
         searchText,
         0,
         0,
-        initialFilter,
+        getFilterString(initialFilter),
         emptyValue,
         emptyValue,
         entity,
-        showDeleted
+        showDeleted,
+        true
       )
     );
 
@@ -118,6 +163,7 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
+          mlmodel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -147,6 +193,14 @@ const ExplorePage: FunctionComponent = () => {
             pipeline.status === 'fulfilled'
               ? getTotalEntityCountByType(
                   pipeline.value.data.aggregations?.['sterms#EntityType']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setMlModelCount(
+            mlmodel.status === 'fulfilled'
+              ? getTotalEntityCountByType(
+                  mlmodel.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
@@ -210,19 +264,21 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText, showDeleted]);
+  }, [searchText, showDeleted, initialFilter]);
 
   useEffect(() => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
   useEffect(() => {
+    setSearchResult(undefined);
+    setIsLoadingForData(true);
     fetchData([
       {
         queryString: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -231,7 +287,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -240,7 +296,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -249,7 +305,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: initialFilter,
+        filters: getFilterString(initialFilter),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -267,8 +323,12 @@ const ExplorePage: FunctionComponent = () => {
             error={error}
             fetchCount={fetchCounts}
             fetchData={fetchData}
+            handleFilterChange={handleFilterChange}
             handlePathChange={handlePathChange}
             handleSearchText={handleSearchText}
+            initialFilter={initialFilter}
+            isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
+            searchFilter={searchFilter}
             searchQuery={searchQuery}
             searchResult={searchResult}
             searchText={searchText}
@@ -281,9 +341,11 @@ const ExplorePage: FunctionComponent = () => {
               dashboard: dashboardCount,
               pipeline: pipelineCount,
               dbtModel: dbtModelCount,
+              mlModel: mlModelCount,
             }}
             updateDashboardCount={handleDashboardCount}
             updateDbtModelCount={handleDbtModelCount}
+            updateMlModelCount={handleMlModelCount}
             updatePipelineCount={handlePipelineCount}
             updateTableCount={handleTableCount}
             updateTopicCount={handleTopicCount}

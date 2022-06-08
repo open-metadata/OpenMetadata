@@ -62,6 +62,7 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 
 jest.mock('../../utils/RouterUtils', () => ({
   getAddServicePath: jest.fn(),
+  getServicesWithTabPath: jest.fn(),
 }));
 
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
@@ -110,12 +111,6 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
       <span>{children}</span>
     ));
 });
-
-jest.mock('../../components/Modals/AddServiceModal/AddServiceModal', () => ({
-  AddServiceModal: jest
-    .fn()
-    .mockReturnValue(<p data-testid="add-service-modal">AddServiceModal</p>),
-}));
 
 const mockGetAddServicePath = jest.fn();
 

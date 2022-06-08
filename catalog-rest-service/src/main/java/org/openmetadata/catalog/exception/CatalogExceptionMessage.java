@@ -53,12 +53,8 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
-  public static String fieldIsNull(String field) {
-    return String.format("Field %s is null", field);
-  }
-
-  public static String deactivatedUser(UUID id) {
-    return String.format("User %s is deactivated", id);
+  public static String deletedUser(UUID id) {
+    return String.format("User %s is deleted", id);
   }
 
   public static String userAlreadyPartOfTeam(String userName, String teamName) {
@@ -118,5 +114,17 @@ public final class CatalogExceptionMessage {
 
   public static String entityIsNotEmpty(String entityType) {
     return String.format("%s is not empty", entityType);
+  }
+
+  public static String invalidEntity(String entity) {
+    return String.format("Invalid entity %s", entity);
+  }
+
+  public static String unknownCustomField(String fieldName) {
+    return String.format("Unknown custom field %s", fieldName);
+  }
+
+  public static String jsonValidationError(String fieldName, String validationMessages) {
+    return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
   }
 }

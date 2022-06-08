@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,8 +33,6 @@ import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository.IngestionPipelineEntityInterface;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.FilterPattern;
 import org.openmetadata.catalog.metadataIngestion.SourceConfig;
@@ -52,7 +49,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -80,28 +76,28 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
             .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService databaseService =
         new DatabaseServiceResourceTest().createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    SNOWFLAKE_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
         .withName("redshiftDB")
         .withServiceType(DatabaseServiceType.Redshift)
         .withConnection(TestUtils.REDSHIFT_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    REDSHIFT_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
         .withName("bigQueryDB")
         .withServiceType(DatabaseServiceType.BigQuery)
         .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    BIGQUERY_REFERENCE = databaseService.getEntityReference();
 
     createDatabaseService
         .withName("mysqlDB")
         .withServiceType(DatabaseServiceType.Mysql)
         .withConnection(TestUtils.MYSQL_DATABASE_CONNECTION);
     databaseService = databaseServiceResourceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
-    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    MYSQL_REFERENCE = databaseService.getEntityReference();
   }
 
   @Test
@@ -129,8 +125,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     ChangeDescription change = getChangeDescription(service.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description1"));
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
-    SnowflakeConnection snowflakeConnection =
-        new SnowflakeConnection().withHostPort("localhost:3300").withUsername("test");
+    SnowflakeConnection snowflakeConnection = new SnowflakeConnection().withUsername("test");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
     update.withConnection(databaseConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
@@ -180,15 +175,11 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     // Create database service without any database connection
     CreateDatabaseService create = createRequest(test);
     DatabaseService service = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    EntityReference serviceRef = new DatabaseServiceEntityInterface(service).getEntityReference();
+    EntityReference serviceRef = service.getEntityReference();
     DatabaseConnection oldDatabaseConnection = create.getConnection();
 
     SnowflakeConnection snowflakeConnection =
-        new SnowflakeConnection()
-            .withDatabase("test")
-            .withHostPort("host:9000")
-            .withPassword("password")
-            .withUsername("username");
+        new SnowflakeConnection().withDatabase("test").withPassword("password").withUsername("username");
     DatabaseConnection databaseConnection = new DatabaseConnection().withConfig(snowflakeConnection);
 
     // Update database connection to a new connection
@@ -245,16 +236,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
     DatabaseService updatedService = getEntity(service.getId(), "pipelines", ADMIN_AUTH_HEADERS);
     assertEquals(1, updatedService.getPipelines().size());
-    assertReference(
-        new IngestionPipelineEntityInterface(ingestionPipeline).getEntityReference(),
-        updatedService.getPipelines().get(0));
-
-    // TODO remove this
-    DatabaseConnection expectedDatabaseConnection =
-        JsonUtils.convertValue(ingestionPipeline.getSource().getServiceConnection(), DatabaseConnection.class);
-    SnowflakeConnection expectedSnowflake =
-        JsonUtils.convertValue(expectedDatabaseConnection.getConfig(), SnowflakeConnection.class);
-    assertEquals(expectedSnowflake, snowflakeConnection);
+    assertReference(ingestionPipeline.getEntityReference(), updatedService.getPipelines().get(0));
 
     // Delete the database service and ensure ingestion pipeline is deleted
     deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
@@ -262,26 +244,17 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public CreateDatabaseService createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateDatabaseService createRequest(String name) {
     return new CreateDatabaseService()
         .withName(name)
         .withServiceType(DatabaseServiceType.Snowflake)
-        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION)
-        .withOwner(owner)
-        .withDescription(description);
+        .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
   }
 
   @Override
   public void validateCreatedEntity(
       DatabaseService service, CreateDatabaseService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        getEntityInterface(service),
-        createRequest.getDescription(),
-        getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
-
     validateDatabaseConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
   }
 
@@ -291,27 +264,22 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
-    return new DatabaseServiceEntityInterface(entity);
-  }
-
-  @Override
-  public EntityInterface<DatabaseService> validateGetWithDifferentFields(DatabaseService service, boolean byName)
+  public DatabaseService validateGetWithDifferentFields(DatabaseService service, boolean byName)
       throws HttpResponseException {
     String fields = "";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(service.getOwner());
 
     fields = "owner";
     service =
         byName
-            ? getEntityByName(service.getName(), fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(service);
+    return service;
   }
 
   @Override
@@ -382,7 +350,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   public static void validateMysqlConnection(
       MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection) {
-    assertEquals(expectedMysqlConnection.getDatabase(), actualMysqlConnection.getDatabase());
+    assertEquals(expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
     assertEquals(expectedMysqlConnection.getPassword(), actualMysqlConnection.getPassword());
@@ -394,9 +362,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
       BigQueryConnection expectedBigQueryConnection, BigQueryConnection actualBigQueryConnection) {
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
     assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
-    assertEquals(expectedBigQueryConnection.getUsername(), actualBigQueryConnection.getUsername());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
-    assertEquals(expectedBigQueryConnection.getDatabase(), actualBigQueryConnection.getDatabase());
     assertEquals(
         expectedBigQueryConnection.getConnectionArguments(), actualBigQueryConnection.getConnectionArguments());
     assertEquals(expectedBigQueryConnection.getConnectionOptions(), actualBigQueryConnection.getConnectionOptions());
@@ -415,7 +381,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   public static void validateSnowflakeConnection(
       SnowflakeConnection expectedSnowflakeConnection, SnowflakeConnection actualSnowflakeConnection) {
-    assertEquals(expectedSnowflakeConnection.getHostPort(), actualSnowflakeConnection.getHostPort());
     assertEquals(expectedSnowflakeConnection.getRole(), actualSnowflakeConnection.getRole());
     assertEquals(expectedSnowflakeConnection.getUsername(), actualSnowflakeConnection.getUsername());
     assertEquals(expectedSnowflakeConnection.getScheme(), actualSnowflakeConnection.getScheme());

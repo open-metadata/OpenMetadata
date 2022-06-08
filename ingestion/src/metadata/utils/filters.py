@@ -57,9 +57,9 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         validate_regex(filter_pattern.includes)
         return not any(
             [
-                matched
+                name
                 for regex in filter_pattern.includes
-                if (matched := re.match(regex, name))
+                if (re.match(regex, name, re.IGNORECASE))
             ]
         )
 
@@ -67,9 +67,9 @@ def _filter(filter_pattern: Optional[FilterPattern], name: str) -> bool:
         validate_regex(filter_pattern.excludes)
         return any(
             [
-                matched
+                name
                 for regex in filter_pattern.excludes
-                if (matched := re.match(regex, name))
+                if (re.match(regex, name, re.IGNORECASE))
             ]
         )
 
@@ -110,7 +110,7 @@ def filter_by_chart(
     chart_filter_pattern: Optional[FilterPattern], chart_name: str
 ) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the chart needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
@@ -138,7 +138,7 @@ def filter_by_dashboard(
     dashboard_filter_pattern: Optional[FilterPattern], dashboard_name: str
 ) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the dashboard needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
@@ -151,7 +151,7 @@ def filter_by_dashboard(
 
 def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool:
     """
-    Return True if the schema needs to be filtered, False otherwise
+    Return True if the FQN needs to be filtered, False otherwise
 
     Include takes precedence over exclude
 
@@ -160,3 +160,33 @@ def filter_by_fqn(fqn_filter_pattern: Optional[FilterPattern], fqn: str) -> bool
     :return: True for filtering, False otherwise
     """
     return _filter(fqn_filter_pattern, fqn)
+
+
+def filter_by_database(
+    database_filter_pattern: Optional[FilterPattern], database_name: str
+) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param database_filter_pattern: Model defining database filtering logic
+    :param database_name: table database name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(database_filter_pattern, database_name)
+
+
+def filter_by_pipeline(
+    pipeline_filter_pattern: Optional[FilterPattern], pipeline_name: str
+) -> bool:
+    """
+    Return True if the schema needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param pipeline_filter_pattern: Model defining the pipeline filtering logic
+    :param pipeline_name: pipeline name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(pipeline_filter_pattern, pipeline_name)

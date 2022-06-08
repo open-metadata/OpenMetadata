@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { isEven } from '../../utils/CommonUtils';
@@ -27,7 +28,6 @@ import {
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -90,21 +90,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
@@ -141,6 +137,8 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',

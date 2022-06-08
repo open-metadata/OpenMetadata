@@ -32,3 +32,7 @@ mock-api/
 
 # antlr
 src/antlr/generated/
+
+# cypress
+**/*.spec.js
+cypress/

@@ -79,3 +79,20 @@
   width: 82%;
   left: 55px;
 }
+
+.ingestion-deploy-line {
+  top: 29px;
+  bottom: 0;
+  position: absolute;
+  width: 100%;
+  height: 4px;
+}
+
+.ingestion-deploy-rounder {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  margin-top: 0.15rem;
+  z-index: 1;
+}

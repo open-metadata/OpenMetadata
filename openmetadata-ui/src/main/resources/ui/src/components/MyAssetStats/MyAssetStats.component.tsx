@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button, Card } from 'antd';
 import { isNil } from 'lodash';
-import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import AppState from '../../AppState';
 import {
   getExplorePathWithSearch,
   getTeamAndUserDetailsPath,
@@ -33,6 +32,8 @@ type Props = {
   countServices: number;
   countTables: number;
   countTopics: number;
+  countTeams: number;
+  countUsers: number;
 };
 type Summary = {
   icon: string;
@@ -49,8 +50,9 @@ const MyAssetStats: FunctionComponent<Props> = ({
   countServices,
   countTables,
   countTopics,
+  countTeams,
+  countUsers,
 }: Props) => {
-  const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getSummarydata = () => {
@@ -93,7 +95,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       user: {
         icon: Icons.USERS,
         data: 'Users',
-        count: users.length,
+        count: countUsers,
         link: getTeamAndUserDetailsPath(UserType.USERS),
         dataTestId: 'user',
         adminOnly: true,
@@ -101,7 +103,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       teams: {
         icon: Icons.TEAMS_GREY,
         data: 'Teams',
-        count: userTeams.length,
+        count: countTeams,
         link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
       },
@@ -110,13 +112,18 @@ const MyAssetStats: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setdataSummary(getSummarydata());
-  }, [userTeams, users, countServices]);
+  }, []);
 
   return (
-    <div
-      className="tw-mb-3"
+    <Card
       data-testid="data-summary-container"
-      id="assetStatsCount">
+      style={{
+        border: '1px rgb(221, 227, 234) solid',
+        borderRadius: '8px',
+        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+        marginRight: '4px',
+        marginLeft: '4px',
+      }}>
       {Object.values(dataSummary).map((data, index) => (
         <div
           className="tw-flex tw-items-center tw-justify-between tw-mb-2"
@@ -134,22 +141,26 @@ const MyAssetStats: FunctionComponent<Props> = ({
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Link
-                    className="tw-font-medium tw-pl-2"
+                    className="tw-font-medium"
                     data-testid={data.dataTestId}
                     to={data.link}>
-                    <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      type="text">
                       {data.data}
-                    </button>
+                    </Button>
                   </Link>
                 </NonAdminAction>
               ) : (
                 <Link
-                  className="tw-font-medium tw-pl-2"
+                  className="tw-font-medium"
                   data-testid={data.dataTestId}
                   to={data.link}>
-                  <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                  <Button
+                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                    type="text">
                     {data.data}
-                  </button>
+                  </Button>
                 </Link>
               )
             ) : (
@@ -159,8 +170,8 @@ const MyAssetStats: FunctionComponent<Props> = ({
           {!isNil(data.count) && getCountBadge(data.count, '', false)}
         </div>
       ))}
-    </div>
+    </Card>
   );
 };
 
-export default observer(MyAssetStats);
+export default MyAssetStats;

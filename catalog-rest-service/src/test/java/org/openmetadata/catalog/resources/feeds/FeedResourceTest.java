@@ -14,9 +14,9 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
+import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -40,9 +41,12 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -80,6 +84,8 @@ import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Reaction;
+import org.openmetadata.catalog.type.ReactionType;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -100,6 +106,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static String TEAM_LINK;
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
+  public static Comparator<Reaction> REACTION_COMPARATOR =
+      (o1, o2) ->
+          o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
+              ? 0
+              : 1;
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -121,21 +132,22 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withDescription("Team2 description")
             .withUsers(List.of(USER2.getId()));
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
-    EntityReference TEAM2_REF = new EntityReference().withId(TEAM2.getId()).withType(Entity.TEAM);
+    EntityReference TEAM2_REF = TEAM2.getEntityReference();
+
     CreateTable createTable2 = tableResourceTest.createRequest(test);
     createTable2.withName("table2").withOwner(TEAM2_REF);
     TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
-    TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
-    TABLE_COLUMN_LINK = String.format("<#E/table/%s/columns/c1/description>", TABLE.getFullyQualifiedName());
-    TABLE_DESCRIPTION_LINK = String.format("<#E/table/%s/description>", TABLE.getFullyQualifiedName());
+    TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
+    TABLE_COLUMN_LINK = String.format("<#E::table::%s::columns::c1::description>", TABLE.getFullyQualifiedName());
+    TABLE_DESCRIPTION_LINK = String.format("<#E::table::%s::description>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;
-    USER_LINK = String.format("<#E/user/%s>", USER.getName());
+    USER_LINK = String.format("<#E::user::%s>", USER.getName());
 
     TEAM = TableResourceTest.TEAM1;
-    TEAM_LINK = String.format("<#E/team/%s>", TEAM.getName());
+    TEAM_LINK = String.format("<#E::team::%s>", TEAM.getName());
 
     CreateThread createThread = create();
     THREAD = createAndCheck(createThread, ADMIN_AUTH_HEADERS);
@@ -156,19 +168,19 @@ public class FeedResourceTest extends CatalogApplicationTest {
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/>"); // Invalid EntityLink - missing entityType and entityId
+    create.withAbout("<#E::>"); // Invalid EntityLink - missing entityType and entityId
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/table/>"); // Invalid EntityLink - missing entityId
+    create.withAbout("<#E::table::>"); // Invalid EntityLink - missing entityId
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
 
-    create.withAbout("<#E/table/tableName"); // Invalid EntityLink - missing closing bracket ">"
+    create.withAbout("<#E::table::tableName"); // Invalid EntityLink - missing closing bracket ">"
     assertResponseContains(
-        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E/\\S+/\\S+>$\"]");
+        () -> createThread(create, AUTH_HEADERS), BAD_REQUEST, "[about must match \"^<#E::\\S+::\\S+>$\"]");
   }
 
   @Test
@@ -196,7 +208,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void post_feedWithNonExistentAbout_404() {
     // Create thread with non-existent addressed To entity
-    CreateThread create = create().withAbout("<#E/table/invalidTableName>");
+    CreateThread create = create().withAbout("<#E::table::invalidTableName>");
     assertResponse(
         () -> createThread(create, AUTH_HEADERS), NOT_FOUND, entityNotFound(Entity.TABLE, "invalidTableName"));
   }
@@ -282,8 +294,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   private static Stream<Arguments> provideStringsForListThreads() {
     return Stream.of(
-        Arguments.of(String.format("<#E/%s/%s>", Entity.USER, USER.getName())),
-        Arguments.of(String.format("<#E/%s/%s>", Entity.TABLE, TABLE.getFullyQualifiedName())));
+        Arguments.of(String.format("<#E::%s::%s>", Entity.USER, USER.getName())),
+        Arguments.of(String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName())));
   }
 
   @ParameterizedTest
@@ -405,6 +417,21 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void patch_thread_reactions_200() throws IOException {
+    // create a thread
+    CreateThread create = create().withMessage("message");
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    // add reactions
+    Reaction reaction = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER.getEntityReference());
+    Thread updated = thread.withReactions(List.of(reaction));
+
+    patchThreadAndCheck(updated, originalJson, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void patch_thread_not_allowed_fields() throws IOException {
     // create a thread
     CreateThread create = create().withMessage("message");
@@ -414,7 +441,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // update the About of the thread
     String originalAbout = thread.getAbout();
-    Thread updated = thread.withAbout("<#E/user>");
+    Thread updated = thread.withAbout("<#E::user>");
 
     patchThread(updated.getId(), originalJson, updated, ADMIN_AUTH_HEADERS);
     updated = getThread(thread.getId(), ADMIN_AUTH_HEADERS);
@@ -473,7 +500,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
     createAndCheck(
-        create().withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
         ADMIN_AUTH_HEADERS);
 
     assertNotNull(ownerId);
@@ -504,7 +531,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     createAndCheck(
         create()
             .withMessage(String.format("Message mentions %s", USER_LINK))
-            .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+            .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
         ADMIN_AUTH_HEADERS);
 
     // Create a thread that has user mention in a post
@@ -513,7 +540,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
         createAndCheck(
             create()
                 .withMessage("Thread Message")
-                .withAbout(String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName())),
+                .withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())),
             ADMIN_AUTH_HEADERS);
     addPostAndCheck(thread, createPost, ADMIN_AUTH_HEADERS);
 
@@ -524,7 +551,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   @Test
   void list_threadsWithFollowsFilter() throws HttpResponseException {
     // Get the initial thread count of TABLE2
-    String entityLink = String.format("<#E/table/%s>", TABLE2.getFullyQualifiedName());
+    String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
     int initialThreadCount = listThreads(entityLink, null, AUTH_HEADERS).getPaging().getTotal();
 
     // Create threads
@@ -629,6 +656,39 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(() -> deletePost(threadId, postId, AUTH_HEADERS), FORBIDDEN, noPermission(USER.getName()));
   }
 
+  @Test
+  void patch_post_reactions_200() throws IOException {
+    // Create a thread and add a post
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    CreatePost createPost = createPost("reply 1");
+    thread = addPostAndCheck(thread, createPost, AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // patch the post
+    Post post = thread.getPosts().get(0);
+    String originalJson = JsonUtils.pojoToJson(post);
+    Reaction reaction1 = new Reaction().withReactionType(ReactionType.ROCKET).withUser(USER2.getEntityReference());
+    Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER.getEntityReference());
+    post.withReactions(List.of(reaction1, reaction2));
+    Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, AUTH_HEADERS);
+    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2), REACTION_COMPARATOR));
+  }
+
+  @Test
+  void patch_post_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> patchPost(NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, "{}", new Post(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+
+    // Test with an invalid post id
+    assertResponse(
+        () -> patchPost(THREAD.getId(), NON_EXISTENT_ENTITY, "{}", new Post(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Post", NON_EXISTENT_ENTITY));
+  }
+
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Validate returned thread from POST
@@ -685,7 +745,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateThread create() {
-    String about = String.format("<#E/%s/%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     return new CreateThread().withFrom(USER.getName()).withMessage("message").withAbout(about);
   }
 
@@ -724,7 +784,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void followTable(UUID tableId, UUID userId, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("tables/" + tableId + "/followers");
-    TestUtils.put(target, userId.toString(), CREATED, authHeaders);
+    TestUtils.put(target, userId.toString(), OK, authHeaders);
   }
 
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
@@ -756,16 +816,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   protected final Thread patchThreadAndCheck(Thread updated, String originalJson, Map<String, String> authHeaders)
       throws IOException {
-
     // Validate information returned in patch response has the updates
     Thread returned = patchThread(updated.getId(), originalJson, updated, authHeaders);
-
     compareEntities(updated, returned, authHeaders);
 
     // GET the entity and Validate information returned
     Thread getEntity = getThread(updated.getId(), authHeaders);
     compareEntities(updated, getEntity, authHeaders);
-
     return returned;
   }
 
@@ -776,10 +833,62 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.patch(getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
   }
 
+  protected final Post patchPostAndCheck(
+      UUID threadId, Post updated, String originalJson, Map<String, String> authHeaders) throws IOException {
+    // Validate information returned in patch response has the updates
+    Post returned = patchPost(threadId, updated.getId(), originalJson, updated, authHeaders);
+    compareEntities(updated, returned);
+
+    // GET the entity and Validate information returned
+    Thread thread = getThread(threadId, authHeaders);
+    Post post = thread.getPosts().stream().filter(p -> p.getId().equals(updated.getId())).findAny().get();
+    compareEntities(updated, post);
+    return returned;
+  }
+
+  public final Post patchPost(
+      UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
+      throws JsonProcessingException, HttpResponseException {
+    String updatedPostJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
+    return TestUtils.patch(
+        getResource(String.format("feed/%s/posts/%s", threadId, id)), patch, Post.class, authHeaders);
+  }
+
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
     assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
     assertEquals(expected.getMessage(), patched.getMessage());
     assertEquals(expected.getResolved(), patched.getResolved());
-    assertEquals(TestUtils.getPrincipal(authHeaders), patched.getUpdatedBy());
+    assertEquals(getPrincipalName(authHeaders), patched.getUpdatedBy());
+  }
+
+  public void compareEntities(Post expected, Post patched) {
+    assertListNotNull(patched.getId(), patched.getMessage(), patched.getFrom());
+    assertEquals(expected.getMessage(), patched.getMessage());
+    assertEquals(expected.getFrom(), patched.getFrom());
+    assertEquals(expected.getPostTs(), patched.getPostTs());
+    assertEquals(expected.getReactions().size(), patched.getReactions().size());
+    assertTrue(containsAll(expected.getReactions(), patched.getReactions(), REACTION_COMPARATOR));
+  }
+
+  private static <T> BiPredicate<T, T> match(Comparator<T> f) {
+    return (a, b) -> f.compare(a, b) == 0;
+  }
+
+  private static <T, U> Predicate<U> bind(BiPredicate<T, U> f, T t) {
+    return u -> f.test(t, u);
+  }
+
+  private static <T> boolean contains(List<T> list, T item, Comparator<? super T> comparator) {
+    return list.stream().anyMatch(bind(match(comparator), item));
+  }
+
+  private static <T> boolean containsAll(List<T> list, List<T> items, Comparator<? super T> comparator) {
+    for (T item : items) {
+      if (list.stream().noneMatch(bind(match(comparator), item))) {
+        return false;
+      }
+    }
+    return true;
   }
 }

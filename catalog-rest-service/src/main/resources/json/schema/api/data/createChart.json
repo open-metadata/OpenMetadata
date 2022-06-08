@@ -4,6 +4,8 @@
   "title": "CreateChartRequest",
   "description": "Create Chart entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreateChart",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
   "properties": {
     "name": {
       "description": "Name that identifies this Chart.",
@@ -15,15 +17,14 @@
     },
     "description": {
       "description": "Description of the chart instance. What it has and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },
     "chartUrl": {
-      "description": "Chart URL, pointing to its own Service URL",
-      "type": "string",
-      "format": "uri"
+      "description": "Chart URL suffix from its service.",
+      "type": "string"
     },
     "tables": {
       "description": "Link to tables used in this chart.",

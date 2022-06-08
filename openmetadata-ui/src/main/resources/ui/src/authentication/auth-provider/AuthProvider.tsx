@@ -191,13 +191,21 @@ export const AuthProvider = ({
       });
   };
 
+  const handleFailedLogin = () => {
+    setIsSigningIn(false);
+    setIsUserAuthenticated(false);
+    history.push(ROUTES.SIGNIN);
+  };
+
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
           const updatedUserData = getUserDataFromOidc(res.data, user);
-          if (!matchUserDetails(res.data, updatedUserData, ['profile'])) {
+          if (
+            !matchUserDetails(res.data, updatedUserData, ['profile', 'email'])
+          ) {
             getUpdatedUser(updatedUserData, res.data);
           } else {
             appState.updateUserDetails(res.data);
@@ -208,12 +216,15 @@ export const AuthProvider = ({
         }
       })
       .catch((err) => {
-        if (err.response.data.code === 404) {
+        if (err && err.response && err.response.status === 404) {
           appState.updateNewUser(user.profile);
           appState.updateUserDetails({} as User);
           appState.updateUserPermissions({} as UserPermissions);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
+        } else {
+          showErrorToast(err);
+          history.push(ROUTES.SIGNIN);
         }
       })
       .finally(() => {
@@ -305,6 +316,7 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
+            showErrorToast(error);
             resetUserDetails(true);
           } else if (status === ClientErrors.FORBIDDEN) {
             showErrorToast(jsonData['api-error-messages']['forbidden-error']);
@@ -407,7 +419,8 @@ export const AuthProvider = ({
         );
       }
       case AuthTypes.GOOGLE:
-      case AuthTypes.CUSTOM_OIDC: {
+      case AuthTypes.CUSTOM_OIDC:
+      case AuthTypes.AWS_COGNITO: {
         return authConfig ? (
           <OidcAuthenticator
             childComponentType={childComponentType}
@@ -415,6 +428,7 @@ export const AuthProvider = ({
             userConfig={getUserManagerConfig({
               ...(authConfig as Record<string, string>),
             })}
+            onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>
             {children}

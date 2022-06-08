@@ -52,20 +52,25 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.UserRepository;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -77,11 +82,14 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "users")
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
+  public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  private final JWTTokenGenerator jwtTokenGenerator;
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
@@ -89,6 +97,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   public UserResource(CollectionDAO dao, Authorizer authorizer) {
     super(User.class, new UserRepository(dao), authorizer);
+    jwtTokenGenerator = JWTTokenGenerator.getInstance();
+    allowedFields.remove(USER_PROTECTED_FIELDS);
   }
 
   public static class UserList extends ResultList<User> {
@@ -105,6 +115,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listUsers",
       summary = "List users",
       tags = "users",
       description =
@@ -154,6 +165,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllUserVersion",
       summary = "List user versions",
       tags = "users",
       description = "Get a list of all the versions of a user identified by `id`",
@@ -175,6 +187,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getUserByID",
       summary = "Get a user",
       tags = "users",
       description = "Get a user by `id`",
@@ -208,6 +221,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getUserByFQN",
       summary = "Get a user by name",
       tags = "users",
       description = "Get a user by `name`.",
@@ -241,6 +255,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Valid
   @Path("/loggedInUser")
   @Operation(
+      operationId = "getCurrentLoggedInUser",
       summary = "Get current logged in user",
       tags = "users",
       description = "Get the user who is authenticated and is currently logged in.",
@@ -269,6 +284,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificUserVersion",
       summary = "Get a version of the user",
       tags = "users",
       description = "Get a version of the user by given `id`",
@@ -296,6 +312,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   @POST
   @Operation(
+      operationId = "createUser",
       summary = "Create a user",
       tags = "users",
       description = "Create a new user.",
@@ -303,16 +320,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The user ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateUser.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = User.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+    User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     }
     // TODO do we need to authenticate user is creating himself?
-    User user = getUser(securityContext, create);
     addHref(uriInfo, dao.create(uriInfo, user));
     return Response.created(user.getHref()).entity(user).build();
   }
@@ -331,22 +348,125 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) throws IOException {
+    User user = getUser(securityContext, create);
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } else {
+      SecurityUtil.authorize(authorizer, securityContext, null, user.getEntityReference(), ADMIN | BOT | OWNER);
     }
-    // TODO this is different from POST method
-    User user = getUser(securityContext, create);
-    SecurityUtil.authorize(
-        authorizer, securityContext, null, new UserEntityInterface(user).getEntityReference(), ADMIN | BOT | OWNER);
     RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  @PUT
+  @Path("/generateToken/{id}")
+  @Operation(
+      operationId = "generateJWTTokenForBotUser",
+      summary = "Generate JWT Token for a Bot User",
+      tags = "users",
+      description = "Generate JWT Token for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTTokenExpiry.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public JWTAuthMechanism generateToken(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      JWTTokenExpiry jwtTokenExpiry)
+      throws IOException {
+
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    if (!user.getIsBot()) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, jwtTokenExpiry);
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+    user.setAuthenticationMechanism(authenticationMechanism);
+    User updatedUser = dao.createOrUpdate(uriInfo, user).getEntity();
+    jwtAuthMechanism =
+        JsonUtils.convertValue(updatedUser.getAuthenticationMechanism().getConfig(), JWTAuthMechanism.class);
+    return jwtAuthMechanism;
+  }
+
+  @PUT
+  @Path("/revokeToken/{id}")
+  @Operation(
+      operationId = "revokeJWTTokenForBotUser",
+      summary = "Revoke JWT Token for a Bot User",
+      tags = "users",
+      description = "Revoke JWT Token for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response revokeToken(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+
+    User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    if (!user.getIsBot()) {
+      throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
+    }
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+    JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTToken(StringUtils.EMPTY);
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+    user.setAuthenticationMechanism(authenticationMechanism);
+    RestUtil.PutResponse<User> response = dao.createOrUpdate(uriInfo, user);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
+  @GET
+  @Path("/token/{id}")
+  @Operation(
+      operationId = "getJWTTokenForBotUser",
+      summary = "Get JWT Token for a Bot User",
+      tags = "users",
+      description = "Get JWT Token for a Bot User.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = JWTAuthMechanism.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public JWTAuthMechanism getToken(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+
+    User user = dao.get(uriInfo, id, new Fields(List.of("authenticationMechanism")));
+    if (!user.getIsBot()) {
+      throw new IllegalArgumentException("JWT token is only supported for bot users");
+    }
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
+    AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
+    if (authenticationMechanism != null
+        && authenticationMechanism.getConfig() != null
+        && authenticationMechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT) {
+      return JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);
+    }
+    return new JWTAuthMechanism();
   }
 
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchUser",
       summary = "Update a user",
       tags = "users",
       description = "Update an existing user using JsonPatch.",
@@ -399,6 +519,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteUser",
       summary = "Delete a user",
       tags = "users",
       description = "Users can't be deleted but are soft-deleted.",
@@ -422,6 +543,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return new User()
         .withId(UUID.randomUUID())
         .withName(create.getName())
+        .withFullyQualifiedName(create.getName())
         .withEmail(create.getEmail())
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())

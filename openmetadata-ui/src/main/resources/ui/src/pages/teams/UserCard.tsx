@@ -17,8 +17,8 @@ import { capitalize } from 'lodash';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
-import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -73,6 +73,7 @@ const UserCard = ({
       case AssetsType.TABLE:
         return getPartialNameFromTableFQN(fqn, [
           FqnPart.Database,
+          FqnPart.Schema,
           FqnPart.Table,
         ]);
 
@@ -132,6 +133,10 @@ const UserCard = ({
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
+      case AssetsType.MLMODEL:
+        link = getEntityLink(SearchIndex.MLMODEL, fqn);
+
+        break;
       case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
@@ -140,10 +145,10 @@ const UserCard = ({
     }
 
     return (
-      <Link data-testid="dataset-link" to={link}>
-        <button className="tw-font-medium tw-text-grey-body tw-break-all">
+      <Link className="tw-no-underline" data-testid="dataset-link" to={link}>
+        <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
           {getAssetDisplayName(type, fqn)}
-        </button>
+        </span>
       </Link>
     );
   };
@@ -155,17 +160,25 @@ const UserCard = ({
         { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
-      <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
+      <div
+        className={`tw-flex ${
+          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 tw-items-center'
+        }`}>
         {isIconVisible && !isDataset ? (
-          <Avatar name={item.displayName} />
+          <ProfilePicture
+            displayName={item.displayName || item.name}
+            id={item.id || ''}
+            name={item.name || ''}
+          />
         ) : (
           <Fragment>{getDatasetIcon(item.type)}</Fragment>
         )}
 
         <div
-          className={classNames('tw-flex tw-justify-center tw-flex-col', {
-            'tw-pl-2': !isDataset,
-          })}
+          className={classNames(
+            'tw-flex tw-justify-center tw-flex-col',
+            isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
+          )}
           data-testid="data-container">
           {isDataset ? (
             <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
@@ -186,7 +199,7 @@ const UserCard = ({
                 }}>
                 {item.displayName}
               </p>
-              {item.name && (
+              {item.name && item.name !== item.displayName && (
                 <p
                   className={classNames(
                     isActionVisible ? 'tw-truncate tw-w-32' : null

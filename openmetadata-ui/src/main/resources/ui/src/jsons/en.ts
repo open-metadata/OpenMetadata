@@ -22,6 +22,7 @@ const jsonData = {
     'add-ingestion-error': 'Error while adding ingestion workflow!',
     'add-service-error': 'Error while adding service!',
 
+    'check-status-airflow': 'Error while connecting to Airflow instance!',
     'create-user-error': 'Error while creating user!',
     'create-conversation-error': 'Error while creating conversation!',
     'create-message-error': 'Error while creating message!',
@@ -106,6 +107,7 @@ const jsonData = {
     'fetch-version-error': 'Error while fetching version!',
     'fetch-webhook-error': 'Error while fetching webhooks!',
     'fetch-user-count-error': 'Error while getting users count!',
+    'fetch-users-error': 'Error while fetching users!',
 
     'test-connection-error': 'Error while testing connection!',
 
@@ -147,6 +149,8 @@ const jsonData = {
     'delete-test': 'Test deleted successfully!',
     'delete-message': 'Message deleted successfully!',
     'delete-entity-success': 'Entity deleted successfully!',
+    'delete-glossary-success': 'Glossary deleted successfully!',
+    'delete-glossary-term-success': 'Glossary term deleted successfully!',
     'test-connection-success': 'Connection tested successfully!',
   },
   'form-error-messages': {
@@ -162,6 +166,7 @@ const jsonData = {
   message: {
     'no-services': 'No services',
     'fail-to-deploy-pipeline': 'Failed to deploy Ingestion Pipeline!',
+    'no-custom-entity': 'No custom entity data available',
   },
 };
 

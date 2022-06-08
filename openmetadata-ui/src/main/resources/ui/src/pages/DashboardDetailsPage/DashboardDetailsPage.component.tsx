@@ -467,6 +467,7 @@ const DashboardDetailsPage = () => {
     saveUpdatedDashboardData(updatedDashboard)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setDashboardDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTags(getTagsWithoutTier(res.data.tags));
@@ -758,7 +759,6 @@ const DashboardDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
-          users={AppState.users}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

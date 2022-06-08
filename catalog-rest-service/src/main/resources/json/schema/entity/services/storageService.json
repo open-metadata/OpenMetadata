@@ -5,6 +5,7 @@
   "description": "This schema defines the Storage Service entity, such as S3, GCS, HDFS.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.services.StorageService",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier of this storage service instance.",
@@ -13,6 +14,10 @@
     "name": {
       "description": "Name that identifies this storage service.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this storage service.",
@@ -24,7 +29,7 @@
     },
     "description": {
       "description": "Description of a storage service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

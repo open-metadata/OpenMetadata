@@ -18,7 +18,6 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response.Status;
@@ -27,12 +26,9 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -52,10 +48,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
         DATABASE_UPDATE_FIELDS);
   }
 
-  public static String getFQN(Database database) {
-    return (database != null && database.getService() != null)
-        ? FullyQualifiedName.add(database.getService().getFullyQualifiedName(), database.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(Database database) {
+    database.setFullyQualifiedName(FullyQualifiedName.add(database.getService().getName(), database.getName()));
   }
 
   @Transaction
@@ -66,7 +61,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   @Override
   public void prepare(Database database) throws IOException {
     populateService(database);
-    database.setFullyQualifiedName(getFQN(database));
+    setFullyQualifiedName(database);
     populateOwner(database.getOwner()); // Validate owner
   }
 
@@ -120,11 +115,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
         .withId(original.getId());
   }
 
-  @Override
-  public EntityInterface<Database> getEntityInterface(Database entity) {
-    return new DatabaseEntityInterface(entity);
-  }
-
   private EntityReference getLocation(Database database) throws IOException {
     if (database == null) {
       return null;
@@ -144,7 +134,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   private void populateService(Database database) throws IOException {
     DatabaseService service = getService(database.getService().getId(), database.getService().getType());
-    database.setService(new DatabaseServiceEntityInterface(service).getEntityReference());
+    database.setService(service.getEntityReference());
     database.setServiceType(service.getServiceType());
   }
 
@@ -164,130 +154,5 @@ public class DatabaseRepository extends EntityRepository<Database> {
     deleteFrom(databaseId, Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
     addRelationship(databaseId, locationId, Entity.DATABASE, Entity.LOCATION, Relationship.HAS);
     return CREATED;
-  }
-
-  public static class DatabaseEntityInterface extends EntityInterface<Database> {
-    public DatabaseEntityInterface(Database entity) {
-      super(Entity.DATABASE, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : DatabaseRepository.getFQN(entity);
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public Database getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public Database withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
   }
 }

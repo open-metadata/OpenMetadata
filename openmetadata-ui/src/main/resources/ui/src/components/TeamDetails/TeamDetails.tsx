@@ -14,8 +14,8 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isUndefined, orderBy } from 'lodash';
-import { ExtraInfo, TableDetail } from 'Models';
+import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
+import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -32,11 +32,12 @@ import {
   EntityReference as UserTeams,
   User,
 } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
-import { getInfoElements } from '../../utils/EntityUtils';
+import { filterEntityAssets, getInfoElements } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -118,7 +119,7 @@ const TeamDetails = ({
       name: 'Assets',
       isProtected: false,
       position: 2,
-      count: currentTeam?.owns?.length,
+      count: filterEntityAssets(currentTeam?.owns || []).length,
     },
     {
       name: 'Roles',
@@ -150,6 +151,10 @@ const TeamDetails = ({
       currentTeam?.owner?.displayName || currentTeam?.owner?.name || '',
     isLink: currentTeam?.owner?.type === 'team',
     openInNewTab: false,
+    profileName:
+      currentTeam?.owner?.type === OwnerType.USER
+        ? currentTeam?.owner?.name
+        : undefined,
   };
 
   const isActionAllowed = (operation = false) => {
@@ -236,11 +241,11 @@ const TeamDetails = ({
     }
   };
 
-  const handleManageSave = (owner: TableDetail['owner']) => {
+  const handleManageSave = (owner?: EntityReference) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
-        owner: owner,
+        owner: !isUndefined(owner) ? owner : currentTeam.owner,
       };
 
       return updateTeamHandler(updatedData);
@@ -314,7 +319,7 @@ const TeamDetails = ({
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <Button
                   className="tw-h-8 tw-px-2"
-                  data-testid="add-teams"
+                  data-testid="add-user"
                   size="small"
                   theme="primary"
                   variant="contained"
@@ -344,6 +349,7 @@ const TeamDetails = ({
                     <p>Would like to start adding some?</p>
                     <Button
                       className="tw-h-8 tw-rounded tw-my-2"
+                      data-testid="add-new-user"
                       size="small"
                       theme="primary"
                       variant="contained"
@@ -357,7 +363,7 @@ const TeamDetails = ({
               <Fragment>
                 <div
                   className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-                  data-testid="user-card-container">
+                  data-testid="user-data-container">
                   {sortedUser.map((user, index) => {
                     const User = {
                       displayName: user.displayName || user.name,
@@ -402,10 +408,12 @@ const TeamDetails = ({
    * @returns - dataset cards
    */
   const getDatasetCards = () => {
-    if ((currentTeam?.owns?.length as number) <= 0) {
+    const ownData = filterEntityAssets(currentTeam?.owns || []);
+
+    if (ownData.length <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>Your team does not have any dataset</p>
+          <p>Your team does not have any assets</p>
           <p>Would like to start adding some?</p>
           <Link to="/explore">
             <Button
@@ -426,7 +434,7 @@ const TeamDetails = ({
           className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
           data-testid="dataset-card">
           {' '}
-          {currentTeam?.owns?.map((dataset, index) => {
+          {ownData.map((dataset, index) => {
             const Dataset = {
               displayName: dataset.displayName || dataset.name || '',
               type: dataset.type,
@@ -460,7 +468,7 @@ const TeamDetails = ({
     ) : (
       <Button
         className="tw-h-8 tw-rounded tw-ml-2"
-        data-testid="delete-team-button"
+        data-testid="leave-team-button"
         size="small"
         theme="primary"
         variant="outlined"
@@ -510,7 +518,7 @@ const TeamDetails = ({
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
-              className="tw-form-inputs tw-px-3 tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
               data-testid="synonyms"
               id="synonyms"
               name="synonyms"
@@ -542,7 +550,7 @@ const TeamDetails = ({
           </div>
         ) : (
           <div className="tw-flex tw-group">
-            <span>{heading}</span>
+            <span data-testid="team-heading">{heading}</span>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <NonAdminAction
@@ -569,8 +577,10 @@ const TeamDetails = ({
   };
 
   return (
-    <div className="tw-h-full tw-flex tw-flex-col tw-flex-grow">
-      {teams.length && currentTeam ? (
+    <div
+      className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
+      data-testid="team-details-container">
+      {teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"
@@ -626,7 +636,7 @@ const TeamDetails = ({
                     hideTier
                     afterDeleteAction={afterDeleteAction}
                     allowTeamOwner={false}
-                    currentUser={currentTeam.owner?.id}
+                    currentUser={currentTeam.owner}
                     entityId={currentTeam.id}
                     entityName={currentTeam.displayName || currentTeam.name}
                     entityType="team"

@@ -12,6 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { cloneDeep, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -22,17 +23,15 @@ import {
   getGlossaryTermByFQN,
 } from '../../axiosAPIs/glossaryAPI';
 import AddGlossaryTerm from '../../components/AddGlossaryTerm/AddGlossaryTerm.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
-import {
-  getGlossaryPath,
-  getParentGlossaryPath,
-} from '../../constants/constants';
 import { CreateGlossaryTerm } from '../../generated/api/data/createGlossaryTerm';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddGlossaryTermPage = () => {
@@ -44,6 +43,9 @@ const AddGlossaryTermPage = () => {
   const [status, setStatus] = useState<LoadingState>('initial');
   const [isLoading, setIsLoading] = useState(true);
   const [glossaryData, setGlossaryData] = useState<Glossary>();
+  const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<
+    TitleBreadcrumbProps['titleLinks']
+  >([]);
 
   const [parentGlossaryData, setParentGlossaryData] = useState<GlossaryTerm>();
 
@@ -51,8 +53,9 @@ const AddGlossaryTermPage = () => {
     history.push(path);
   };
 
-  const goToGlossary = (name = '') => {
-    goToGlossaryPath(getGlossaryPath(name));
+  const goToGlossary = () => {
+    const fqn = glossaryTermsFQN || glossaryName || '';
+    goToGlossaryPath(getGlossaryPath(fqn));
   };
 
   const handleCancel = () => {
@@ -75,9 +78,7 @@ const AddGlossaryTermPage = () => {
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
-            goToGlossaryPath(
-              getParentGlossaryPath(res?.data?.fullyQualifiedName)
-            );
+            goToGlossary();
           }, 500);
         } else {
           handleSaveFailure(
@@ -151,6 +152,45 @@ const AddGlossaryTermPage = () => {
     }
   }, [glossaryTermsFQN]);
 
+  useEffect(() => {
+    let breadcrumb = [];
+
+    if (isUndefined(glossaryTermsFQN)) {
+      breadcrumb.push({
+        name: glossaryName,
+        url: getGlossaryPath(glossaryName),
+      });
+    } else {
+      breadcrumb = glossaryTermsFQN.split('.').map((fqn, i, arr) => {
+        const cloneArr = cloneDeep(arr);
+        if (i === 0) {
+          return {
+            name: glossaryName,
+            url: getGlossaryPath(glossaryName),
+          };
+        }
+
+        return {
+          name: fqn,
+          url: getGlossaryPath(cloneArr.splice(0, i + 1).join('.')),
+        };
+      });
+    }
+
+    setSlashedBreadcrumb([
+      {
+        name: 'Glossary',
+        url: getGlossaryPath(),
+      },
+      ...breadcrumb,
+      {
+        name: 'Add Glossary Term',
+        url: '',
+        activeTitle: true,
+      },
+    ]);
+  }, [glossaryTermsFQN, glossaryName]);
+
   return (
     <PageContainerV1>
       {isLoading ? (
@@ -161,6 +201,7 @@ const AddGlossaryTermPage = () => {
           glossaryData={glossaryData as Glossary}
           parentGlossaryData={parentGlossaryData}
           saveState={status}
+          slashedBreadcrumb={slashedBreadcrumb}
           onCancel={handleCancel}
           onSave={onSave}
         />

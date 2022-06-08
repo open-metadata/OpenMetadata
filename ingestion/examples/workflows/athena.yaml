@@ -1,0 +1,23 @@
+source:
+  type: athena
+  serviceName: local_athena
+  serviceConnection:
+    config:
+      type: Athena
+      database: database_name
+      awsConfig:
+        awsAccessKeyId: access key id
+        awsSecretAccessKey: access secret key
+        awsRegion: aws region name
+      s3StagingDir: s3 directory for datasource
+      workgroup: workgroup name
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

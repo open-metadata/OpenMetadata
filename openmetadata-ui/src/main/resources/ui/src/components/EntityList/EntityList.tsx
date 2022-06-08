@@ -11,19 +11,29 @@
  *  limitations under the License.
  */
 
+import { Button, Card, Typography } from 'antd';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
-
 interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
   noDataPlaceholder: JSX.Element;
   testIDText: string;
 }
+
+interface AntdEntityListProp {
+  entityList: Array<FormatedTableData>;
+  headerText?: string | JSX.Element;
+  headerTextLabel: string;
+  noDataPlaceholder: JSX.Element;
+  testIDText: string;
+}
+
+const { Text } = Typography;
 
 const EntityList: FunctionComponent<Prop> = ({
   entityList = [],
@@ -33,9 +43,9 @@ const EntityList: FunctionComponent<Prop> = ({
 }: Prop) => {
   return (
     <Fragment>
-      <h6 className="tw-heading tw-mb-3" data-testid="filter-heading">
+      <Text className="tw-font-semibold" type="secondary">
         {headerText}
-      </h6>
+      </Text>
       {entityList.length
         ? entityList.map((item, index) => {
             return (
@@ -46,15 +56,19 @@ const EntityList: FunctionComponent<Prop> = ({
                 )}`}
                 key={index}>
                 <div className="tw-flex">
-                  {getEntityIcon(item.index)}
+                  {getEntityIcon(item.index || item.type || '')}
                   <Link
-                    className="tw-font-medium tw-pl-2"
-                    to={getEntityLink(item.index, item.fullyQualifiedName)}>
-                    <button
-                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline tw-w-52 tw-truncate tw-text-left"
-                      title={getEntityName(item as unknown as EntityReference)}>
+                    className="tw-font-medium"
+                    to={getEntityLink(
+                      item.index || item.type || '',
+                      item.fullyQualifiedName
+                    )}>
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      title={getEntityName(item as unknown as EntityReference)}
+                      type="text">
                       {getEntityName(item as unknown as EntityReference)}
-                    </button>
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -62,6 +76,57 @@ const EntityList: FunctionComponent<Prop> = ({
           })
         : noDataPlaceholder}
     </Fragment>
+  );
+};
+
+export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
+  entityList = [],
+  headerText,
+  headerTextLabel,
+  noDataPlaceholder,
+  testIDText,
+}: AntdEntityListProp) => {
+  return (
+    <Card
+      extra={headerText}
+      style={{
+        border: '1px rgb(221, 227, 234) solid',
+        borderRadius: '8px',
+        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+        marginRight: '4px',
+        marginLeft: '4px',
+      }}
+      title={headerTextLabel}>
+      {entityList.length
+        ? entityList.map((item, index) => {
+            return (
+              <div
+                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                data-testid={`${testIDText}-${getEntityName(
+                  item as unknown as EntityReference
+                )}`}
+                key={index}>
+                <div className="tw-flex">
+                  {getEntityIcon(item.index || item.type || '')}
+                  <Link
+                    className="tw-font-medium"
+                    to={getEntityLink(
+                      item.index || item.type || '',
+                      item.fullyQualifiedName
+                    )}>
+                    <Button
+                      className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                      title={getEntityName(item as unknown as EntityReference)}
+                      type="text">
+                      {getEntityName(item as unknown as EntityReference)}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        : noDataPlaceholder}
+    </Card>
   );
 };
 

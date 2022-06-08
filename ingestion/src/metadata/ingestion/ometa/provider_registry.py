@@ -11,9 +11,26 @@
 """
 Register auth provider init functions here
 """
+# Complains about same imports
+# pylint: disable=duplicate-code
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.auth0SSOClientConfig import (
+    Auth0SSOClientConfig,
+)
+from metadata.generated.schema.security.client.azureSSOClientConfig import (
+    AzureSSOClientConfig,
+)
+from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
+    CustomOIDCSSOClientConfig,
+)
+from metadata.generated.schema.security.client.googleSSOClientConfig import (
+    GoogleSSOClientConfig,
+)
+from metadata.generated.schema.security.client.oktaSSOClientConfig import (
+    OktaSSOClientConfig,
 )
 from metadata.ingestion.ometa.auth_provider import (
     Auth0AuthenticationProvider,
@@ -23,6 +40,8 @@ from metadata.ingestion.ometa.auth_provider import (
     GoogleAuthenticationProvider,
     NoOpAuthenticationProvider,
     OktaAuthenticationProvider,
+    OpenMetadataAuthenticationProvider,
+    OpenMetadataJWTClientConfig,
 )
 from metadata.utils.dispatch import enum_register
 
@@ -65,3 +84,19 @@ def azure_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
 @auth_provider_registry.add(AuthProvider.custom_oidc.value)
 def custom_oidc_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return CustomOIDCAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.openmetadata.value)
+def om_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    return OpenMetadataAuthenticationProvider.create(config)
+
+
+PROVIDER_CLASS_MAP = {
+    AuthProvider.no_auth.value: None,
+    AuthProvider.google.value: GoogleSSOClientConfig,
+    AuthProvider.azure.value: AzureSSOClientConfig,
+    AuthProvider.okta.value: OktaSSOClientConfig,
+    AuthProvider.auth0.value: Auth0SSOClientConfig,
+    AuthProvider.custom_oidc.value: CustomOIDCSSOClientConfig,
+    AuthProvider.openmetadata.value: OpenMetadataJWTClientConfig,
+}

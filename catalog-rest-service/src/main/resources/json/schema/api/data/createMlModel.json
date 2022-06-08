@@ -4,6 +4,9 @@
   "title": "CreateMlModelRequest",
   "description": "Create Ml Model entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.data.CreateMlModel",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
+
   "properties": {
     "name": {
       "description": "Name that identifies this ML model.",
@@ -15,7 +18,7 @@
     },
     "description": {
       "description": "Description of the ML model instance. How it was trained and for what it is used.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model",

@@ -29,11 +29,16 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.SQLException;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 import java.util.Optional;
+import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -64,6 +69,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.NoopAuthorizer;
 import org.openmetadata.catalog.security.NoopFilter;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
@@ -77,8 +83,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, SQLException {
+          InvocationTargetException, IOException {
     final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -97,6 +104,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Instantiate JWT Token Generator
+    JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -122,7 +132,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
+    environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
     registerResources(catalogConfig, environment, jdbi);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
@@ -134,9 +144,13 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
+    FilterRegistration.Dynamic micrometerFilter =
+        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
   }
 
   @SneakyThrows
@@ -160,6 +174,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
+    bootstrap.addBundle(new MicrometerBundle());
     super.initialize(bootstrap);
   }
 
@@ -187,21 +202,23 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     if (authorizerConf != null) {
-      authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
+      authorizer =
+          Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
-            ((Class<ContainerRequestFilter>) Class.forName(filterClazzName))
-                .getConstructor(AuthenticationConfiguration.class)
-                .newInstance(authenticationConfiguration);
+            Class.forName(filterClazzName)
+                .asSubclass(ContainerRequestFilter.class)
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         environment.jersey().register(filter);
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
-      authorizer = NoopAuthorizer.class.getConstructor().newInstance();
-      ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
+      authorizer = new NoopAuthorizer();
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       environment.jersey().register(filter);
     }
   }
@@ -252,12 +269,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static class ManagedShutdown implements Managed {
 
     @Override
-    public void start() throws Exception {
+    public void start() {
       LOG.info("Starting the application");
     }
 
     @Override
-    public void stop() throws Exception {
+    public void stop() throws InterruptedException {
       EventPubSub.shutdown();
       LOG.info("Stopping the application");
     }

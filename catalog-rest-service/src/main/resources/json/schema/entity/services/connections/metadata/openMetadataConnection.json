@@ -25,9 +25,17 @@
       "default": "http://localhost:8585/api"
     },
     "authProvider": {
-      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadaata server.",
+      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
       "type": "string",
-      "enum": ["no-auth", "azure", "google", "okta", "auth0", "custom-oidc"],
+      "enum": [
+        "no-auth",
+        "azure",
+        "google",
+        "okta",
+        "auth0",
+        "custom-oidc",
+        "openmetadata"
+      ],
       "default": "no-auth"
     },
     "securityConfig": {
@@ -47,6 +55,9 @@
         },
         {
           "$ref": "../../../../security/client/customOidcSSOClientConfig.json"
+        },
+        {
+          "$ref": "../../../../security/client/openMetadataJWTClientConfig.json"
         }
       ]
     },
@@ -75,6 +86,11 @@
       "type": "boolean",
       "default": true
     },
+    "includeMlModels": {
+      "description": "Include MlModels for Indexing",
+      "type": "boolean",
+      "default": true
+    },
     "includeUsers": {
       "description": "Include Users for Indexing",
       "type": "boolean",
@@ -87,6 +103,36 @@
     },
     "includeGlossaryTerms": {
       "description": "Include Glossary Terms for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includeTags": {
+      "description": "Include Tags for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePolicy": {
+      "description": "Include Tags for Policy",
+      "type": "boolean",
+      "default": true
+    },
+    "includeMessagingServices": {
+      "description": "Include Messaging Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "enableVersionValidation": {
+      "description": "Validate Openmetadata Server & Client Version.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeDatabaseServices": {
+      "description": "Include Database Services for Indexing",
+      "type": "boolean",
+      "default": true
+    },
+    "includePipelineServices": {
+      "description": "Include Pipeline Services for Indexing",
       "type": "boolean",
       "default": true
     },

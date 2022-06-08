@@ -26,7 +26,7 @@ const mockThreadData = {
   id: '35442ff6-ad28-4725-9fa0-3eab9078c3a6',
   href: 'http://localhost:8585/api/v1/feed/35442ff6-ad28-4725-9fa0-3eab9078c3a6',
   threadTs: 1647838571960,
-  about: '<#E/table/bigquery_gcp.shopify.raw_product_catalog/description>',
+  about: '<#E::table::bigquery_gcp.shopify.raw_product_catalog::description>',
   entityId: 'cb7944d3-f5fe-4289-8672-f8ba6036d551',
   createdBy: 'anonymous',
   updatedAt: 1647852740613,

@@ -24,6 +24,11 @@ export const topicDetailsTabs = [
     field: TabSpecificField.ACTIVITY_FEED,
   },
   {
+    name: 'Sample Data',
+    path: 'sample_data',
+    field: TabSpecificField.SAMPLE_DATA,
+  },
+  {
     name: 'Config',
     path: 'config',
   },
@@ -40,12 +45,16 @@ export const getCurrentTopicTab = (tab: string) => {
       currentTab = 2;
 
       break;
-    case 'config':
+    case 'sample_data':
       currentTab = 3;
 
       break;
-    case 'manage':
+    case 'config':
       currentTab = 4;
+
+      break;
+    case 'manage':
+      currentTab = 5;
 
       break;
 

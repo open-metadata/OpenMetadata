@@ -49,6 +49,7 @@ const exploreCount = {
   dashboard: 0,
   pipeline: 0,
   dbtModel: 0,
+  mlModel: 0,
 };
 
 const TourPage = () => {
@@ -68,6 +69,14 @@ const TourPage = () => {
 
   const handleCountChange = () => {
     setExplorePageCounts(exploreCount);
+  };
+
+  /**
+   *
+   * @returns void
+   */
+  const handleFilterChange = () => {
+    return;
   };
 
   const mockPromiseFunction = (): Promise<void> => {
@@ -121,7 +130,9 @@ const TourPage = () => {
             countPipelines={8}
             countServices={4}
             countTables={21}
+            countTeams={7}
             countTopics={20}
+            countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
@@ -133,8 +144,10 @@ const TourPage = () => {
             }}
             fetchFeedHandler={handleOnClick}
             followedData={[]}
+            followedDataCount={1}
             isFeedLoading={false}
             ownedData={[]}
+            ownedDataCount={1}
             paging={{} as Paging}
             postFeedHandler={handleOnClick}
             userDetails={AppState.userDetails}
@@ -144,9 +157,11 @@ const TourPage = () => {
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
+            isFilterSelected
             error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}
+            handleFilterChange={handleFilterChange}
             handlePathChange={handleCountChange}
             handleSearchText={() => setExploreSearchResult(exploreSearchData)}
             searchQuery=""
@@ -158,6 +173,7 @@ const TourPage = () => {
             tabCounts={explorePageCounts}
             updateDashboardCount={handleCountChange}
             updateDbtModelCount={handleCountChange}
+            updateMlModelCount={handleCountChange}
             updatePipelineCount={handleCountChange}
             updateTableCount={handleCountChange}
             updateTopicCount={handleCountChange}
@@ -190,6 +206,7 @@ const TourPage = () => {
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
             handleAddTableTestCase={handleCountChange}
+            handleExtentionUpdate={handleCountChange}
             handleRemoveColumnTest={handleCountChange}
             handleRemoveTableTest={handleCountChange}
             handleSelectedColumn={handleCountChange}
@@ -229,7 +246,6 @@ const TourPage = () => {
             usageSummary={
               mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }
-            users={[]}
             versionHandler={handleCountChange}
           />
         );

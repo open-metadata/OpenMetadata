@@ -143,7 +143,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const getUserName = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
     return currentUser?.displayName || currentUser?.name || TERM_USER;
@@ -151,12 +151,14 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const getUserData = () => {
     const currentUser = isAuthDisabled
-      ? appState.users[0]
+      ? appState.nonSecureUserDetails
       : appState.userDetails;
 
     const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
     const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+    const inheritedRoles =
+      currentUser?.inheritedRoles?.map((r) => r.displayName) || [];
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
@@ -180,13 +182,24 @@ const Appbar: React.FC = (): JSX.Element => {
             <hr className="tw-my-1.5" />
           </div>
         ) : null}
+        {inheritedRoles.length > 0 ? (
+          <div>
+            <div className="tw-font-medium tw-text-xs">Inherited Roles</div>
+            {inheritedRoles.map((inheritedRole, i) => (
+              <p className="tw-text-grey-muted" key={i}>
+                {inheritedRole}
+              </p>
+            ))}
+            <hr className="tw-my-1.5" />
+          </div>
+        ) : null}
         {teams.length > 0 ? (
           <div>
             <span className="tw-font-medium tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>
-                  {t.displayName}
+                  {t.displayName || t.name}
                 </Link>
               </p>
             ))}

@@ -12,6 +12,8 @@
 """
 Unique Ratio Composed Metric definition
 """
+# pylint: disable=duplicate-code
+
 from typing import Any, Dict, Optional, Tuple
 
 from metadata.orm_profiler.metrics.core import ComposedMetric

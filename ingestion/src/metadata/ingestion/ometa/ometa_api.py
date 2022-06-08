@@ -16,7 +16,12 @@ working with OpenMetadata entities.
 """
 
 import urllib
-from typing import Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+
+try:
+    from typing import get_args
+except ImportError:
+    from typing_compat import get_args
 
 from pydantic import BaseModel
 
@@ -58,9 +63,11 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
 from metadata.ingestion.ometa.mixins.tag_mixin import OMetaTagMixin
+from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.provider_registry import (
     InvalidAuthProviderException,
@@ -114,11 +121,13 @@ class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
+    OMetaTopicMixin,
     OMetaVersionMixin,
     OMetaTagMixin,
     GlossaryMixin,
     OMetaServiceMixin,
     ESMixin,
+    OMetaServerMixin,
     Generic[T, C],
 ):
     """
@@ -139,6 +148,7 @@ class OpenMetadata(
     policies_path = "policies"
     services_path = "services"
     teams_path = "teams"
+    tags_path = "tags"
 
     def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
         self.config = config
@@ -158,10 +168,12 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
+        if self.config.enableVersionValidation:
+            self.validate_versions()
 
     def get_suffix(self, entity: Type[T]) -> str:  # pylint: disable=R0911,R0912
         """
@@ -238,13 +250,28 @@ class OpenMetadata(
         if issubclass(entity, Report):
             return "/reports"
 
-        if issubclass(entity, (Tag, TagCategory)):
+        if issubclass(
+            entity,
+            get_args(
+                Union[
+                    Tag,
+                    self.get_create_entity_type(Tag),
+                    TagCategory,
+                    self.get_create_entity_type(TagCategory),
+                ]
+            ),
+        ):
             return "/tags"
 
-        if issubclass(entity, Glossary):
+        if issubclass(
+            entity, get_args(Union[Glossary, self.get_create_entity_type(Glossary)])
+        ):
             return "/glossaries"
 
-        if issubclass(entity, GlossaryTerm):
+        if issubclass(
+            entity,
+            get_args(Union[GlossaryTerm, self.get_create_entity_type(GlossaryTerm)]),
+        ):
             return "/glossaryTerms"
 
         if issubclass(entity, get_args(Union[Role, self.get_create_entity_type(Role)])):
@@ -313,6 +340,9 @@ class OpenMetadata(
         if "service" in entity.__name__.lower():
             return self.services_path
 
+        if "tag" in entity.__name__.lower():
+            return self.tags_path
+
         if (
             "user" in entity.__name__.lower()
             or "role" in entity.__name__.lower()
@@ -360,7 +390,11 @@ class OpenMetadata(
         """
 
         class_name = create.__name__.replace("Create", "").replace("Request", "")
-        file_name = class_name.lower()
+        file_name = (
+            class_name.lower()
+            .replace("glossaryterm", "glossaryTerm")
+            .replace("tagcategory", "tagCategory")
+        )
 
         class_path = ".".join(
             [
@@ -406,14 +440,14 @@ class OpenMetadata(
     def get_by_name(
         self,
         entity: Type[T],
-        fqdn: Union[str, FullyQualifiedEntityName],
+        fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{model_str(fqdn)}", fields=fields)
+        return self._get(entity=entity, path=f"name/{model_str(fqn)}", fields=fields)
 
     def get_by_id(
         self,
@@ -433,7 +467,7 @@ class OpenMetadata(
         """
         Generic GET operation for an entity
         :param entity: Entity Class
-        :param path: URL suffix by FQDN or ID
+        :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
@@ -466,16 +500,16 @@ class OpenMetadata(
             return None
 
     def get_entity_reference(
-        self, entity: Type[T], fqdn: str
+        self, entity: Type[T], fqn: str
     ) -> Optional[EntityReference]:
         """
         Helper method to obtain an EntityReference from
-        a FQDN and the Entity class.
+        a FQN and the Entity class.
         :param entity: Entity Class
-        :param fqdn: Entity instance FQDN
+        :param fqn: Entity instance FQN
         :return: EntityReference or None
         """
-        instance = self.get_by_name(entity, fqdn)
+        instance = self.get_by_name(entity, fqn)
         if instance:
             return EntityReference(
                 id=instance.id,
@@ -485,7 +519,7 @@ class OpenMetadata(
                 href=instance.href,
             )
 
-        logger.error("Cannot find the Entity %s", fqdn)
+        logger.error("Cannot find the Entity %s", fqn)
         return None
 
     # pylint: disable=too-many-arguments,dangerous-default-value
@@ -517,6 +551,39 @@ class OpenMetadata(
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
+
+    def list_all_entities(
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        limit: int = 1000,
+        params: Optional[Dict[str, str]] = None,
+    ) -> Iterable[T]:
+        """
+        Utility method that paginates over all EntityLists
+        to return a generator to fetch entities
+        :param entity: Entity Type, such as Table
+        :param fields: Extra fields to return
+        :param limit: Number of entities in each pagination
+        :param params: Extra parameters, e.g., {"service": "serviceName"} to filter
+        :return: Generator that will be yielding all Entities
+        """
+
+        # First batch of Entities
+        entity_list = self.list_entities(
+            entity=entity, fields=fields, limit=limit, params=params
+        )
+        for elem in entity_list.entities:
+            yield elem
+
+        after = entity_list.after
+        while after:
+            entity_list = self.list_entities(
+                entity=entity, fields=fields, limit=limit, params=params, after=after
+            )
+            for elem in entity_list.entities:
+                yield elem
+            after = entity_list.after
 
     def list_versions(
         self, entity_id: Union[str, basic.Uuid], entity: Type[T]
@@ -582,9 +649,10 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run endpoint health-check. Return `true` if OK
+        Run version api call. Return `true` if response is not None
         """
-        return self.client.get("/health-check")["status"] == "healthy"
+        raw_version = self.client.get("/version")["version"]
+        return raw_version is not None
 
     def close(self):
         """

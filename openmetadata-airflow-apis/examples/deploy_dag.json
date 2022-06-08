@@ -29,6 +29,7 @@
         "sampleDataQuery": "select * from {}.{} limit 50",
         "enableDataProfiler": false,
         "schemaFilterPattern": null,
+        "databaseFilterPattern":null,
         "tableFilterPattern": null,
         "dbtCatalogFilePath": null,
         "dbtManifestFilePath": null

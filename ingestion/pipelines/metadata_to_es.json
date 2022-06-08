@@ -4,24 +4,17 @@
     "serviceName": "openMetadata",
     "serviceConnection": {
       "config":{
-        "type":"MetadataES",
-        "includeTables": "true",
-        "includeUsers": "true",
-        "includeTopics": "true",
-        "includeDashboards": "true",
-        "limitRecords": 10
-      } 
+        "type":"MetadataES"
+      }
     },
     "sourceConfig":{"config":{}}
   },
   "sink": {
     "type": "elasticsearch",
     "config": {
-      "index_tables": "true",
-      "index_topics": "true",
-      "index_dashboards": "true",
       "es_host": "localhost",
-      "es_port": 9200
+      "es_port": 9200,
+      "recreate_indexes": true
     }
   },
   "workflowConfig": {

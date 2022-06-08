@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getByTestId, render } from '@testing-library/react';
+import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
@@ -30,20 +30,21 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
+const mockProp = {
+  countDashboards: 10,
+  countPipelines: 3,
+  countServices: 193,
+  countTables: 40,
+  countTeams: 7,
+  countTopics: 13,
+  countUsers: 100,
+};
+
 describe('Test MyDataHeader Component', () => {
   it('Component should render', () => {
-    const { container } = render(
-      <MyAssetStats
-        countDashboards={10}
-        countPipelines={3}
-        countServices={193}
-        countTables={40}
-        countTopics={13}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<MyAssetStats {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
 
     const myDataHeader = getByTestId(container, 'data-summary-container');
 
@@ -51,33 +52,18 @@ describe('Test MyDataHeader Component', () => {
   });
 
   it('Should have 7 data summary details', () => {
-    const { container } = render(
-      <MyAssetStats
-        countDashboards={10}
-        countPipelines={3}
-        countServices={193}
-        countTables={40}
-        countTopics={13}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<MyAssetStats {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
 
-    const dataSummary = getByTestId(container, 'data-summary-container');
+    const dataSummary = getAllByTestId(container, /-summary$/);
 
-    expect(dataSummary.childElementCount).toBe(7);
+    expect(dataSummary.length).toBe(7);
   });
 
   it('OnClick it should redirect to respective page', () => {
     const { container } = render(
-      <MyAssetStats
-        countDashboards={10}
-        countPipelines={3}
-        countServices={4}
-        countTables={40}
-        countTopics={13}
-      />,
+      <MyAssetStats {...mockProp} countServices={4} />,
       {
         wrapper: MemoryRouter,
       }

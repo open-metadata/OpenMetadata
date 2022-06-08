@@ -26,6 +26,7 @@ import {
 } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -40,6 +41,7 @@ const AddGlossary = ({
   header,
   allowAccess = true,
   saveState = 'initial',
+  slashedBreadcrumb,
   onCancel,
   onSave,
 }: AddGlossaryProps) => {
@@ -185,7 +187,8 @@ const AddGlossary = ({
 
   return (
     <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
+      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <h6 className="tw-heading tw-text-base">{header}</h6>
@@ -196,7 +199,7 @@ const AddGlossary = ({
           </label>
 
           <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
+            className="tw-form-inputs tw-form-inputs-padding"
             data-testid="name"
             id="name"
             name="name"
@@ -240,7 +243,7 @@ const AddGlossary = ({
               <FontAwesomeIcon icon="plus" />
             </Button>
           </div>
-          <div className="tw-my-4">
+          <div className="tw-my-4" data-testid="reviewers-container">
             {Boolean(reviewer.length) &&
               reviewer.map((d, index) => {
                 return (

@@ -22,7 +22,6 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertListNull;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -50,9 +49,6 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.catalog.exception.IngestionPipelineDeploymentException;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.catalog.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -69,7 +65,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -120,19 +115,13 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
-  public CreateIngestionPipeline createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+  public CreateIngestionPipeline createRequest(String name) {
     return new CreateIngestionPipeline()
         .withName(name)
-        .withDescription(description)
-        .withDisplayName(displayName)
         .withPipelineType(PipelineType.METADATA)
         .withService(getContainer())
         .withSourceConfig(DATABASE_METADATA_CONFIG)
-        .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(false))
-        .withDescription(description)
-        .withDisplayName(displayName)
-        .withOwner(owner);
+        .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21"));
   }
 
   @Override
@@ -141,34 +130,24 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
+  public EntityReference getContainer(IngestionPipeline entity) {
+    return entity.getService();
+  }
+
+  @Override
   public void validateCreatedEntity(
       IngestionPipeline ingestion, CreateIngestionPipeline createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(ingestion),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
     assertEquals(createRequest.getAirflowConfig().getConcurrency(), ingestion.getAirflowConfig().getConcurrency());
-    validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(createRequest.getSourceConfig(), ingestion.getSourceConfig(), ingestion);
   }
 
   @Override
   public void compareEntities(IngestionPipeline expected, IngestionPipeline updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(updated),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertReference(expected.getService(), updated.getService());
-    assertEquals(expected.getSource().getSourceConfig(), updated.getSource().getSourceConfig());
-  }
-
-  @Override
-  public EntityInterface<IngestionPipeline> getEntityInterface(IngestionPipeline entity) {
-    return new IngestionPipelineRepository.IngestionPipelineEntityInterface(entity);
+    assertEquals(expected.getSourceConfig(), updated.getSourceConfig());
   }
 
   @Override
@@ -198,18 +177,6 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void post_IngestionPipelineWithoutRequiredService_4xx(TestInfo test) {
     CreateIngestionPipeline create = createRequest(test).withService(null);
     assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "service must not be null");
-  }
-
-  @Test
-  void post_IngestionPipelineWithDeploy_4xx(TestInfo test) {
-    CreateIngestionPipeline create =
-        createRequest(test)
-            .withService(BIGQUERY_REFERENCE)
-            .withAirflowConfig(new AirflowConfig().withStartDate("2021-11-21").withForceDeploy(true));
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        IngestionPipelineDeploymentException.buildMessageByName(create.getName(), "value"));
   }
 
   @Test
@@ -248,7 +215,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
-    validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -287,7 +254,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
-    validateSourceConfig(queryUsageConfig, ingestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(queryUsageConfig, ingestion.getSourceConfig(), ingestion);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -353,7 +320,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
 
     assertEquals(LogLevels.ERROR, updatedIngestion.getLoggerLevel());
 
-    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSourceConfig(), ingestion);
   }
 
   @Test
@@ -407,7 +374,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSourceConfig(), ingestion);
   }
 
   @Test
@@ -460,7 +427,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSource().getSourceConfig(), ingestion);
+    validateSourceConfig(updatedSourceConfig, updatedIngestion.getSourceConfig(), ingestion);
   }
 
   @Test
@@ -493,7 +460,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             ADMIN_AUTH_HEADERS);
 
     String expectedFQN = FullyQualifiedName.add(BIGQUERY_REFERENCE.getFullyQualifiedName(), ingestion.getName());
-    validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSource().getSourceConfig(), ingestionPipeline);
+    validateSourceConfig(DATABASE_METADATA_CONFIG, ingestion.getSourceConfig(), ingestionPipeline);
     assertEquals(startDate.toString(), ingestion.getAirflowConfig().getStartDate());
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
@@ -506,10 +473,14 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
     DatabaseService databaseService =
         Entity.getEntity(ingestionPipeline.getService(), Fields.EMPTY_FIELDS, Include.ALL);
     DatabaseConnection databaseConnection = databaseService.getConnection();
+    Map<String, String> advConfig = new HashMap<>();
+    advConfig.put("hive.execution.engine", "tez");
+    advConfig.put("tez.queue.name", "tez");
     ConnectionArguments connectionArguments =
         new ConnectionArguments()
             .withAdditionalProperty("credentials", "/tmp/creds.json")
-            .withAdditionalProperty("client_email", "ingestion-bot@domain.com");
+            .withAdditionalProperty("client_email", "ingestion-bot@domain.com")
+            .withAdditionalProperty("configuration", advConfig);
     ConnectionOptions connectionOptions =
         new ConnectionOptions().withAdditionalProperty("key1", "value1").withAdditionalProperty("key2", "value2");
     BigQueryConnection bigQueryConnection =
@@ -540,7 +511,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withConnection(TestUtils.SNOWFLAKE_DATABASE_CONNECTION);
     DatabaseService snowflakeDatabaseService =
         databaseServiceResourceTest.createEntity(createSnowflakeService, ADMIN_AUTH_HEADERS);
-    EntityReference snowflakeRef = new DatabaseServiceEntityInterface(snowflakeDatabaseService).getEntityReference();
+    EntityReference snowflakeRef = snowflakeDatabaseService.getEntityReference();
 
     CreateDatabaseService createBigQueryService =
         new CreateDatabaseService()
@@ -549,7 +520,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             .withConnection(TestUtils.BIGQUERY_DATABASE_CONNECTION);
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(createBigQueryService, ADMIN_AUTH_HEADERS);
-    EntityReference bigqueryRef = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+    EntityReference bigqueryRef = databaseService.getEntityReference();
 
     CreateIngestionPipeline requestPipeline_1 =
         createRequest(test)
@@ -614,7 +585,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
-  public EntityInterface<IngestionPipeline> validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
+  public IngestionPipeline validateGetWithDifferentFields(IngestionPipeline ingestion, boolean byName)
       throws HttpResponseException {
     String fields = "";
     ingestion =
@@ -630,7 +601,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(ingestion);
+    return ingestion;
   }
 
   private void validateSourceConfig(SourceConfig orig, SourceConfig updated, IngestionPipeline ingestionPipeline) {

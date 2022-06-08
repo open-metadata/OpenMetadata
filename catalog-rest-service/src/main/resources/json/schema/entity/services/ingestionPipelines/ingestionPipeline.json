@@ -4,6 +4,8 @@
   "title": "IngestionPipeline",
   "description": "Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "pipelineType": {
       "description": "Type of Pipeline - metadata, usage",
@@ -40,11 +42,6 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig",
       "properties": {
-        "forceDeploy": {
-          "description": "Deploy the pipeline by overwriting existing pipeline with the same name.",
-          "type": "boolean",
-          "default": false
-        },
         "pausePipeline": {
           "description": "pause the pipeline from running once the deploy is finished successfully.",
           "type": "boolean",
@@ -131,7 +128,7 @@
     },
     "description": {
       "description": "Description of the Pipeline.",
-      "type": "string"
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
     "pipelineType": {
       "$ref": "#/definitions/pipelineType"
@@ -145,8 +142,8 @@
       "description": "Name that uniquely identifies a Pipeline.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "source": {
-      "$ref": "../../../metadataIngestion/workflow.json#/definitions/source"
+    "sourceConfig": {
+      "$ref": "../../../metadataIngestion/workflow.json#/definitions/sourceConfig"
     },
     "openMetadataServerConnection": {
       "$ref": "../connections/metadata/openMetadataConnection.json"
@@ -203,7 +200,7 @@
   "required": [
     "name",
     "pipelineType",
-    "source",
+    "sourceConfig",
     "openMetadataServerConnection",
     "airflowConfig"
   ],

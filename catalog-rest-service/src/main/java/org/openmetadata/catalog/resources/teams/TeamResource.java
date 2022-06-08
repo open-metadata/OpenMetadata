@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -97,6 +96,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Valid
   @Operation(
+      operationId = "listTeams",
       summary = "List teams",
       tags = "teams",
       description =
@@ -143,6 +143,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllTeamVersion",
       summary = "List team versions",
       tags = "teams",
       description = "Get a list of all the versions of a team identified by `id`",
@@ -164,6 +165,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/{id}")
   @Operation(
+      operationId = "getTeamByID",
       summary = "Get a team",
       tags = "teams",
       description = "Get a team by `id`.",
@@ -197,6 +199,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Valid
   @Path("/name/{name}")
   @Operation(
+      operationId = "getTeamByFQN",
       summary = "Get a team by name",
       tags = "teams",
       description = "Get a team by `name`.",
@@ -229,6 +232,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificRoleVersion",
       summary = "Get a version of the team",
       tags = "teams",
       description = "Get a version of the team by given `id`",
@@ -256,6 +260,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @POST
   @Operation(
+      operationId = "createTeam",
       summary = "Create a team",
       tags = "teams",
       description = "Create a new team.",
@@ -263,17 +268,18 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct)
       throws IOException {
-    Team team = getTeam(ct, securityContext);
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateTeam",
       summary = "Update team",
       tags = "teams",
       description = "Create or Update a team.",
@@ -281,12 +287,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The team ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateTeam.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Team.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) throws IOException {
-    Team team = getTeam(ct, securityContext);
+    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team, ADMIN | BOT | OWNER);
   }
 
@@ -294,6 +300,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
+      operationId = "patchTeam",
       summary = "Update a team",
       tags = "teams",
       description = "Update an existing team with JsonPatch.",
@@ -318,6 +325,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteTeam",
       summary = "Delete a team",
       tags = "teams",
       description = "Delete a team by given `id`.",
@@ -337,17 +345,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private Team getTeam(CreateTeam ct, SecurityContext securityContext) {
-    return new Team()
-        .withId(UUID.randomUUID())
-        .withName(ct.getName())
-        .withDescription(ct.getDescription())
-        .withDisplayName(ct.getDisplayName())
+  private Team getTeam(CreateTeam ct, String user) {
+    return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
-        .withOwner(ct.getOwner())
         .withIsJoinable(ct.getIsJoinable())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis())
         .withUsers(dao.getEntityReferences(ct.getUsers()))
         .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
   }

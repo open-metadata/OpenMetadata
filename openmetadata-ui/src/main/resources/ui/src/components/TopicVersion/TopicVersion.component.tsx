@@ -16,6 +16,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
@@ -25,7 +26,6 @@ import {
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import { bytesToSize } from '../../utils/StringsUtils';
-import { getOwnerFromId } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -121,21 +121,17 @@ const TopicVersion: FC<TopicVersionProp> = ({
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
 
-    const oldOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.oldValue ??
-          ownerDiff?.deleted?.oldValue ??
-          ownerDiff?.updated?.oldValue ??
-          '{}'
-      )?.id
+    const oldOwner = JSON.parse(
+      ownerDiff?.added?.oldValue ??
+        ownerDiff?.deleted?.oldValue ??
+        ownerDiff?.updated?.oldValue ??
+        '{}'
     );
-    const newOwner = getOwnerFromId(
-      JSON.parse(
-        ownerDiff?.added?.newValue ??
-          ownerDiff?.deleted?.newValue ??
-          ownerDiff?.updated?.newValue ??
-          '{}'
-      )?.id
+    const newOwner = JSON.parse(
+      ownerDiff?.added?.newValue ??
+        ownerDiff?.deleted?.newValue ??
+        ownerDiff?.updated?.newValue ??
+        '{}'
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
@@ -172,6 +168,8 @@ const TopicVersion: FC<TopicVersionProp> = ({
             : ownerPlaceHolder
             ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
             : '',
+        profileName:
+          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
       },
       {
         key: 'Tier',

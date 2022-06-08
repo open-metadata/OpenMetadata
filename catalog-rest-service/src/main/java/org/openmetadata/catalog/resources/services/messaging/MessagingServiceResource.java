@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -91,8 +90,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   @GET
   @Operation(
+      operationId = "listMessagingService",
       summary = "List messaging services",
-      tags = "services",
+      tags = "MessagingService",
       description =
           "Get a list of messaging services. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
@@ -137,8 +137,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getMessagingServiceByID",
       summary = "Get a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a messaging service by `id`.",
       responses = {
         @ApiResponse(
@@ -170,8 +171,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getMessagingServiceByFQN",
       summary = "Get messaging service by name",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a messaging service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -203,8 +205,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllMessagingServiceVersion",
       summary = "List messaging service versions",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a list of all the versions of a messaging service identified by `id`",
       responses = {
         @ApiResponse(
@@ -223,8 +226,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificMessagingServiceVersion",
       summary = "Get a version of the messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Get a version of the messaging service by given `id`",
       responses = {
         @ApiResponse(
@@ -251,39 +255,37 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   @POST
   @Operation(
+      operationId = "createMessagingService",
       summary = "Create a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Create a new messaging service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateMessagingService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
       throws IOException {
-    MessagingService service = getService(create, securityContext);
+    MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateMessagingService",
       summary = "Update messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Create a new messaging service or Update an existing messaging service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Messaging service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateMessagingService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -293,15 +295,16 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           String id,
       @Valid CreateMessagingService update)
       throws IOException {
-    MessagingService service = getService(update, securityContext);
+    MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteMessagingService",
       summary = "Delete a messaging service",
-      tags = "services",
+      tags = "MessagingService",
       description = "Delete a messaging service. If topics belong the service, it can't be " + "deleted.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -324,15 +327,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private MessagingService getService(CreateMessagingService create, SecurityContext securityContext) {
-    return new MessagingService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private MessagingService getService(CreateMessagingService create, String user) {
+    return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withServiceType(create.getServiceType());
   }
 }

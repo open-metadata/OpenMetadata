@@ -13,6 +13,7 @@
 OpenMetadata high-level API Table test
 """
 import uuid
+from copy import deepcopy
 from datetime import datetime
 from unittest import TestCase
 
@@ -34,7 +35,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
     ColumnProfile,
     DataType,
-    JoinedWithItem,
+    JoinedWith,
     Table,
     TableData,
     TableJoins,
@@ -61,7 +62,7 @@ from metadata.generated.schema.tests.table.tableRowCountToEqual import (
 )
 from metadata.generated.schema.tests.tableTest import TableTestCase, TableTestType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -148,7 +149,7 @@ class OMetaTableTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-table"
+                entity=DatabaseService, fqn="test-service-table"
             ).id.__root__
         )
 
@@ -196,7 +197,7 @@ class OMetaTableTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -209,7 +210,7 @@ class OMetaTableTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Table, entity_id=str(res_name.id.__root__))
@@ -223,13 +224,29 @@ class OMetaTableTest(TestCase):
 
         self.metadata.create_or_update(data=self.create)
 
-        res = self.metadata.list_entities(entity=Table, limit=100)
+        res = self.metadata.list_entities(entity=Table)
 
         # Fetch our test Database. We have already inserted it, so we should find it
         data = next(
             iter(ent for ent in res.entities if ent.name == self.entity.name), None
         )
         assert data
+
+    def test_list_all(self):
+        """
+        Validate generator utility to fetch all tables
+        """
+        fake_create = deepcopy(self.create)
+        for i in range(0, 10):
+            fake_create.name = self.create.name.__root__ + str(i)
+            self.metadata.create_or_update(data=fake_create)
+
+        all_entities = self.metadata.list_all_entities(
+            entity=Table, limit=2  # paginate in batches of pairs
+        )
+        assert (
+            len(list(all_entities)) >= 10
+        )  # In case the default testing entity is not present
 
     def test_delete(self):
         """
@@ -240,7 +257,7 @@ class OMetaTableTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(entity=Table, entity_id=res_name.id)
@@ -268,7 +285,7 @@ class OMetaTableTest(TestCase):
 
         # First pick up by name
         res = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
         sample_data = TableData(columns=["id"], rows=[[1], [2], [3]])
@@ -285,7 +302,7 @@ class OMetaTableTest(TestCase):
 
         # First pick up by name
         res = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
         profile = [
@@ -320,10 +337,10 @@ class OMetaTableTest(TestCase):
 
         # First pick up by name
         res = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        usage = TableUsageRequest(date="2021-10-20", count=10)
+        usage = UsageRequest(date="2021-10-20", count=10)
 
         self.metadata.publish_table_usage(res, usage)
 
@@ -336,24 +353,37 @@ class OMetaTableTest(TestCase):
 
         # First pick up by name
         res = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        another_table = CreateTableRequest(
+        column_join_table_req = CreateTableRequest(
             name="another-test",
             databaseSchema=self.schema_reference,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
-        another_res = self.metadata.create_or_update(another_table)
+        column_join_table_res = self.metadata.create_or_update(column_join_table_req)
+
+        direct_join_table_req = CreateTableRequest(
+            name="direct-join-test",
+            databaseSchema=self.schema_reference,
+            columns=[],
+        )
+        direct_join_table_res = self.metadata.create_or_update(direct_join_table_req)
 
         joins = TableJoins(
             startDate=datetime.now(),
             dayCount=1,
+            directTableJoins=[
+                JoinedWith(
+                    fullyQualifiedName="test-service-table.test-db.test-schema.direct-join-test",
+                    joinCount=2,
+                )
+            ],
             columnJoins=[
                 ColumnJoins(
                     columnName="id",
                     joinedWith=[
-                        JoinedWithItem(
+                        JoinedWith(
                             fullyQualifiedName="test-service-table.test-db.test-schema.another-test.another_id",
                             joinCount=2,
                         )
@@ -363,7 +393,12 @@ class OMetaTableTest(TestCase):
         )
 
         self.metadata.publish_frequently_joined_with(res, joins)
-        self.metadata.delete(entity=Table, entity_id=str(another_res.id.__root__))
+        self.metadata.delete(
+            entity=Table, entity_id=str(column_join_table_res.id.__root__)
+        )
+        self.metadata.delete(
+            entity=Table, entity_id=str(direct_join_table_res.id.__root__)
+        )
 
     def test_list_versions(self):
         """
@@ -373,7 +408,7 @@ class OMetaTableTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -389,7 +424,7 @@ class OMetaTableTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Table, fqdn=self.entity.fullyQualifiedName
+            entity=Table, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=Table, entity_id=res_name.id.__root__, version=0.1
@@ -405,7 +440,7 @@ class OMetaTableTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=Table, fqdn=res.fullyQualifiedName
+            entity=Table, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id
@@ -539,11 +574,11 @@ class OMetaTableTest(TestCase):
         assert table.profileSample is None
 
         updated = self.metadata.update_profile_sample(
-            fqdn=table.fullyQualifiedName.__root__, profile_sample=50.0
+            fqn=table.fullyQualifiedName.__root__, profile_sample=50.0
         )
         assert updated.profileSample == 50.0
 
         stored = self.metadata.get_by_name(
-            entity=Table, fqdn=table.fullyQualifiedName, fields=["profileSample"]
+            entity=Table, fqn=table.fullyQualifiedName, fields=["profileSample"]
         )
         assert stored.profileSample == 50.0

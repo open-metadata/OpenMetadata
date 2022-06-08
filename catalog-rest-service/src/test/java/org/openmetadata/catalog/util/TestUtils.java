@@ -44,22 +44,25 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.credentials.AWSCredentials;
 import org.openmetadata.catalog.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.catalog.services.connections.database.BigQueryConnection;
 import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
 import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.catalog.services.connections.pipeline.GlueConnection;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MessagingConnection;
-import org.openmetadata.catalog.type.Tag;
+import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
 
@@ -83,6 +86,9 @@ public final class TestUtils {
   public static final DatabaseConnection BIGQUERY_DATABASE_CONNECTION;
   public static final DatabaseConnection REDSHIFT_DATABASE_CONNECTION;
 
+  public static PipelineConnection AIRFLOW_CONNECTION;
+  public static PipelineConnection GLUE_CONNECTION;
+
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
 
@@ -104,15 +110,10 @@ public final class TestUtils {
             .withConfig(
                 new RedshiftConnection().withHostPort("localhost:5002").withUsername("test").withPassword("test"));
     BIGQUERY_DATABASE_CONNECTION =
-        new DatabaseConnection()
-            .withConfig(new BigQueryConnection().withHostPort("localhost:1000").withUsername("bigquery"));
+        new DatabaseConnection().withConfig(new BigQueryConnection().withHostPort("localhost:1000"));
     SNOWFLAKE_DATABASE_CONNECTION =
         new DatabaseConnection()
-            .withConfig(
-                new SnowflakeConnection()
-                    .withHostPort("snowflake:1000")
-                    .withUsername("snowflake")
-                    .withPassword("snowflake"));
+            .withConfig(new SnowflakeConnection().withUsername("snowflake").withPassword("snowflake"));
   }
 
   static {
@@ -147,6 +148,19 @@ public final class TestUtils {
   static {
     try {
       PIPELINE_URL = new URI("http://localhost:8080");
+      AIRFLOW_CONNECTION =
+          new PipelineConnection()
+              .withConfig(new AirflowConnection().withHostPort(PIPELINE_URL).withConnection(MYSQL_DATABASE_CONNECTION));
+
+      GLUE_CONNECTION =
+          new PipelineConnection()
+              .withConfig(
+                  new GlueConnection()
+                      .withAwsConfig(
+                          new AWSCredentials()
+                              .withAwsAccessKeyId("ABCD")
+                              .withAwsSecretAccessKey("1234")
+                              .withAwsRegion("eu-west-2")));
     } catch (URISyntaxException e) {
       PIPELINE_URL = null;
       e.printStackTrace();
@@ -312,7 +326,7 @@ public final class TestUtils {
     for (TagLabel expected : expectedList) {
       if (expected.getSource() == Source.GLOSSARY) {
         GlossaryTerm glossaryTerm =
-            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), "tags", ADMIN_AUTH_HEADERS);
+            new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
         for (TagLabel tag : listOrEmpty(glossaryTerm.getTags())) {
           Tag associatedTag = TagResourceTest.getTag(tag.getTagFQN(), ADMIN_AUTH_HEADERS);
@@ -350,15 +364,6 @@ public final class TestUtils {
     existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }
 
-  public static String getPrincipal(Map<String, String> authHeaders) {
-    // Get username from the email address
-    if (authHeaders == null) {
-      return null;
-    }
-    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
-    return principal == null ? null : principal.split("@")[0];
-  }
-
   // TODO remove this
   public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {
     if (updateType == UpdateType.CREATED) {
@@ -378,6 +383,7 @@ public final class TestUtils {
       return;
     }
     if (expected != null) {
+      actual = listOrEmpty(actual);
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);

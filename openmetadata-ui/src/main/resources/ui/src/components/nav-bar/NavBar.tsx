@@ -95,7 +95,7 @@ const NavBar = ({
               className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
               data-testid="searchBox"
               id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards and Pipeline"
+              placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
               type="text"
               value={searchValue}
               onBlur={() => setSearchIcon('icon-searchv1')}
@@ -177,9 +177,10 @@ const NavBar = ({
                     title="Profile"
                     trigger="mouseenter">
                     {AppState?.userDetails?.profile?.images?.image512 ? (
-                      <div className="profile-image tw--mr-2">
+                      <div className="profile-image square tw--mr-2">
                         <img
                           alt="user"
+                          referrerPolicy="no-referrer"
                           src={AppState.userDetails.profile.images.image512}
                         />
                       </div>

@@ -57,7 +57,6 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -67,6 +66,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -90,9 +90,6 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.jdbi3.DatabaseSchemaRepository.DatabaseSchemaEntityInterface;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.glossary.GlossaryResourceTest;
@@ -137,7 +134,6 @@ import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -162,12 +158,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
     CreateDatabase create = databaseResourceTest.createRequest(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = databaseResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    DATABASE_REFERENCE = new DatabaseEntityInterface(DATABASE).getEntityReference();
+    DATABASE_REFERENCE = DATABASE.getEntityReference();
 
     DatabaseSchemaResourceTest databaseSchemaResourceTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createSchema = databaseSchemaResourceTest.createRequest(test).withDatabase(DATABASE_REFERENCE);
     DATABASE_SCHEMA = databaseSchemaResourceTest.createAndCheckEntity(createSchema, ADMIN_AUTH_HEADERS);
-    DATABASE_SCHEMA_REFERENCE = new DatabaseSchemaEntityInterface(DATABASE_SCHEMA).getEntityReference();
+    DATABASE_SCHEMA_REFERENCE = DATABASE_SCHEMA.getEntityReference();
 
     COLUMNS =
         Arrays.asList(
@@ -695,7 +691,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void put_tableJoins_200(TestInfo test) throws IOException, ParseException {
+  void put_tableJoins_200(TestInfo test) throws IOException {
     Table table1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Table table2 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
     Table table3 = createAndCheckEntity(createRequest(test, 3), ADMIN_AUTH_HEADERS);
@@ -711,7 +707,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     String t3c2 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "c2");
     String t3c3 = FullyQualifiedName.add(table3.getFullyQualifiedName(), "\"c.3\"");
 
-    List<ColumnJoin> reportedJoins =
+    List<ColumnJoin> reportedColumnJoins =
         Arrays.asList(
             // table1.c1 is joined with table2.c1, and table3.c1 with join count 10
             new ColumnJoin()
@@ -735,14 +731,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                         new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30),
                         new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30))));
 
+    List<JoinedWith> reportedDirectTableJoins =
+        List.of(
+            new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName()).withJoinCount(10),
+            new JoinedWith().withFullyQualifiedName(table3.getFullyQualifiedName()).withJoinCount(20));
+
     for (int i = 1; i <= 30; i++) {
       // Report joins starting from today back to 30 days. After every report, check the cumulative
       // join count
       TableJoins table1Joins =
-          new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-(i - 1))).withColumnJoins(reportedJoins);
+          new TableJoins()
+              .withDayCount(1)
+              .withStartDate(RestUtil.today(-(i - 1)))
+              .withColumnJoins(reportedColumnJoins)
+              .withDirectTableJoins(reportedDirectTableJoins);
       Table putResponse = putJoins(table1.getId(), table1Joins, ADMIN_AUTH_HEADERS);
 
-      List<ColumnJoin> expectedJoins1 =
+      List<ColumnJoin> expectedColumnJoins1 =
           Arrays.asList(
               // table1.c1 is joined with table2.c1, and table3.c1 with join count 10
               new ColumnJoin()
@@ -766,16 +771,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                           new JoinedWith().withFullyQualifiedName(t2c3).withJoinCount(30 * i),
                           new JoinedWith().withFullyQualifiedName(t3c3).withJoinCount(30 * i))));
 
+      List<JoinedWith> expectedDirectTableJoins1 =
+          List.of(
+              new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName()).withJoinCount(10 * i),
+              new JoinedWith().withFullyQualifiedName(table3.getFullyQualifiedName()).withJoinCount(20 * i));
+
       // Ensure PUT response returns the joins information
-      assertColumnJoins(expectedJoins1, putResponse.getJoins());
+      TableJoins actualJoins1 = putResponse.getJoins();
+      assertColumnJoins(expectedColumnJoins1, actualJoins1);
+      assertDirectTableJoins(expectedDirectTableJoins1, actualJoins1);
 
       // getTable and ensure the following column joins are correct
       table1 = getEntity(table1.getId(), "joins", ADMIN_AUTH_HEADERS);
-      assertColumnJoins(expectedJoins1, table1.getJoins());
+      assertColumnJoins(expectedColumnJoins1, table1.getJoins());
 
       // getTable and ensure the following column joins are correct
       table2 = getEntity(table2.getId(), "joins", ADMIN_AUTH_HEADERS);
-      List<ColumnJoin> expectedJoins2 =
+      List<ColumnJoin> expectedColumnJoins2 =
           Arrays.asList(
               // table2.c1 is joined with table1.c1 with join count 10
               new ColumnJoin()
@@ -789,11 +801,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               new ColumnJoin()
                   .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      assertColumnJoins(expectedJoins2, table2.getJoins());
+
+      List<JoinedWith> expectedDirectTableJoins2 =
+          List.of(new JoinedWith().withFullyQualifiedName(table1.getFullyQualifiedName()).withJoinCount(10 * i));
+
+      TableJoins actualJoins2 = table2.getJoins();
+      assertColumnJoins(expectedColumnJoins2, actualJoins2);
+      assertDirectTableJoins(expectedDirectTableJoins2, actualJoins2);
 
       // getTable and ensure the following column joins
       table3 = getEntity(table3.getId(), "joins", ADMIN_AUTH_HEADERS);
-      List<ColumnJoin> expectedJoins3 =
+      List<ColumnJoin> expectedColumnJoins3 =
           Arrays.asList(
               // table3.c1 is joined with table1.c1 with join count 10
               new ColumnJoin()
@@ -807,55 +825,112 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
               new ColumnJoin()
                   .withColumnName("\"c.3\"")
                   .withJoinedWith(singletonList(new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      assertColumnJoins(expectedJoins3, table3.getJoins());
+
+      List<JoinedWith> expectedDirectTableJoins3 =
+          List.of(new JoinedWith().withFullyQualifiedName(table1.getFullyQualifiedName()).withJoinCount(20 * i));
+      TableJoins actualJoins3 = table3.getJoins();
+      assertColumnJoins(expectedColumnJoins3, actualJoins3);
+      assertDirectTableJoins(expectedDirectTableJoins3, actualJoins3);
 
       // Report again for the previous day and make sure aggregate counts are correct
-      table1Joins = new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-1)).withColumnJoins(reportedJoins);
+      table1Joins =
+          new TableJoins()
+              .withDayCount(1)
+              .withStartDate(RestUtil.today(-1))
+              .withColumnJoins(reportedColumnJoins)
+              .withDirectTableJoins(reportedDirectTableJoins);
       putJoins(table1.getId(), table1Joins, ADMIN_AUTH_HEADERS);
       table1 = getEntity(table1.getId(), "joins", ADMIN_AUTH_HEADERS);
     }
   }
 
   @Test
-  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException, ParseException {
+  void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException {
     Table table1 = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     Table table2 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
-    List<ColumnJoin> joins = singletonList(new ColumnJoin().withColumnName("c1"));
-    TableJoins tableJoins = new TableJoins().withStartDate(RestUtil.today(0)).withDayCount(1).withColumnJoins(joins);
-
     // Invalid database name
-    String columnFQN = "invalidDB";
-    JoinedWith joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
-    joins.get(0).withJoinedWith(singletonList(joinedWith));
+    String invalidColumnFQN1 = "columnDB";
+    TableJoins tableJoins1 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN1)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
+        () -> putJoins(table1.getId(), tableJoins1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN1));
 
     // Invalid table name
-    columnFQN = table2.getDatabase().getName() + ".invalidTable";
-    joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
-    joins.get(0).withJoinedWith(singletonList(joinedWith));
+    String invalidColumnFQN2 = table2.getDatabase().getName() + ".invalidTable" + ".c1";
+    TableJoins tableJoins2 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN2)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
+        () -> putJoins(table1.getId(), tableJoins2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN2));
 
     // Invalid column name
-    columnFQN = table2.getFullyQualifiedName() + ".invalidColumn";
-    joinedWith = new JoinedWith().withFullyQualifiedName(columnFQN);
-    joins.get(0).withJoinedWith(singletonList(joinedWith));
+    String invalidColumnFQN3 = table2.getFullyQualifiedName() + ".invalidColumn";
+    TableJoins tableJoins3 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN3)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS), BAD_REQUEST, invalidColumnFQN(columnFQN));
+        () -> putJoins(table1.getId(), tableJoins3, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        invalidColumnFQN(invalidColumnFQN3));
 
     // Invalid date older than 30 days
-    joinedWith = new JoinedWith().withFullyQualifiedName(table2.getFullyQualifiedName() + ".c1");
-    joins.get(0).withJoinedWith(singletonList(joinedWith));
-    tableJoins.withStartDate(RestUtil.today(-30)); // 30 days older than today
+    String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
+    TableJoins tableJoins4 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(-30))
+            .withDayCount(1)
+            .withColumnJoins(
+                List.of(
+                    new ColumnJoin()
+                        .withColumnName("c1")
+                        .withJoinedWith(
+                            List.of(new JoinedWith().withJoinCount(1).withFullyQualifiedName(invalidColumnFQN4)))));
     assertResponse(
-        () -> putJoins(table1.getId(), tableJoins, ADMIN_AUTH_HEADERS),
+        () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "Date range can only include past 30 days starting today");
+
+    // Invalid direct table name
+    String invalidTableFQN = table2.getDatabase().getName() + ".invalidTable";
+    TableJoins tableJoins5 =
+        new TableJoins()
+            .withStartDate(RestUtil.today(0))
+            .withDayCount(1)
+            .withDirectTableJoins(List.of(new JoinedWith().withFullyQualifiedName(invalidTableFQN).withJoinCount(1)));
+    assertResponse(
+        () -> putJoins(table1.getId(), tableJoins5, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid table name " + invalidTableFQN);
   }
 
-  public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
+  public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) {
     // Table reports last 30 days of aggregated join count
     assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
     assertEquals(30, actual.getDayCount());
@@ -868,6 +943,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         .getColumnJoins()
         .forEach(c -> c.getJoinedWith().sort(Comparator.comparing(JoinedWith::getFullyQualifiedName)));
     assertEquals(expected, actual.getColumnJoins());
+  }
+
+  public void assertDirectTableJoins(List<JoinedWith> expected, TableJoins actual) {
+    // Table reports last 30 days of aggregated join count
+    assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
+    assertEquals(30, actual.getDayCount());
+
+    // Sort the columnJoins and the joinedWith to account for different ordering
+    assertEquals(
+        expected.stream().sorted(Comparator.comparing(JoinedWith::getFullyQualifiedName)).collect(Collectors.toList()),
+        actual.getDirectTableJoins().stream()
+            .sorted(Comparator.comparing(JoinedWith::getFullyQualifiedName))
+            .collect(Collectors.toList()));
   }
 
   @Test
@@ -1693,8 +1781,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public EntityInterface<Table> validateGetWithDifferentFields(Table table, boolean byName)
-      throws HttpResponseException {
+  public Table validateGetWithDifferentFields(Table table, boolean byName) throws HttpResponseException {
     table =
         byName
             ? getEntityByName(table.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
@@ -1731,7 +1818,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .getTableProfile(),  table.getLocation(), table.getTableQueries(), table.getDataModel()*/);
     assertListNotEmpty(table.getTableConstraints());
     // Checks for other owner, tags, and followers is done in the base class
-    return getEntityInterface(table);
+    return table;
   }
 
   private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
@@ -1780,7 +1867,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         databaseResourceTest.createAndCheckEntity(
             databaseResourceTest.createRequest(test).withService(serviceRef), ADMIN_AUTH_HEADERS);
     CreateTable create = createRequest(test, index);
-    return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(Entity.getEntityReference(database));
+    return createEntity(create, ADMIN_AUTH_HEADERS).withDatabase(database.getEntityReference());
   }
 
   public static Table putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
@@ -1863,12 +1950,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   private static int getGlossaryUsageCount(String name, Map<String, String> authHeaders) throws HttpResponseException {
-    return new GlossaryResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+    return new GlossaryResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
   }
 
   private static int getGlossaryTermUsageCount(String name, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return new GlossaryTermResourceTest().getEntityByName(name, "usageCount", authHeaders).getUsageCount();
+    return new GlossaryTermResourceTest().getEntityByName(name, null, "usageCount", authHeaders).getUsageCount();
   }
 
   private void verifyTableProfileData(List<TableProfile> actualProfiles, List<TableProfile> expectedProfiles) {
@@ -2020,16 +2107,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
-  public CreateTable createRequest(String name, String description, String displayName, EntityReference owner) {
+  public CreateTable createRequest(String name) {
     TableConstraint constraint =
         new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(COLUMNS.get(0).getName()));
     return new CreateTable()
         .withName(name)
         .withDatabaseSchema(getContainer())
         .withColumns(COLUMNS)
-        .withTableConstraints(List.of(constraint))
-        .withDescription(description)
-        .withOwner(owner);
+        .withTableConstraints(List.of(constraint));
   }
 
   @Override
@@ -2048,14 +2133,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Override
+  public EntityReference getContainer(Table entity) {
+    return entity.getDatabaseSchema();
+  }
+
+  @Override
   public void validateCreatedEntity(Table createdEntity, CreateTable createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(createdEntity),
-        createRequest.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        createRequest.getOwner());
-
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
@@ -2091,12 +2175,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Override
   public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        getEntityInterface(patched),
-        expected.getDescription(),
-        TestUtils.getPrincipal(authHeaders),
-        expected.getOwner());
-
     // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
     assertColumns(expected.getColumns(), patched.getColumns());
@@ -2126,11 +2204,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     for (int i = 0; i < expectedPartition.getColumns().size(); i++) {
       assertEquals(expectedPartition.getColumns().get(i), actualPartition.getColumns().get(i));
     }
-  }
-
-  @Override
-  public EntityInterface<Table> getEntityInterface(Table entity) {
-    return new TableEntityInterface(entity);
   }
 
   @Override

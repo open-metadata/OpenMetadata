@@ -4,32 +4,33 @@
   "title": "CreatePipelineServiceRequest",
   "description": "Create Pipeline service entity request",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.api.services.CreatePipelineService",
+  "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
+
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this pipeline service.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of pipeline service entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineServiceType"
     },
-    "pipelineUrl": {
-      "description": "Pipeline UI URL",
-      "type": "string",
-      "format": "uri"
-    },
-    "ingestionSchedule": {
-      "description": "Schedule for running pipeline ingestion jobs",
-      "$ref": "../../type/schedule.json"
+    "connection": {
+      "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineConnection"
     },
     "owner": {
       "description": "Owner of this pipeline service.",
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "serviceType", "pipelineUrl"],
+  "required": ["name", "serviceType", "connection"],
   "additionalProperties": false
 }

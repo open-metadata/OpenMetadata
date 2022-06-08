@@ -1,0 +1,201 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/workflow.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetadataWorkflow",
+  "description": "OpenMetadata Ingestion Framework definition.",
+  "type": "object",
+  "definitions": {
+    "sourceConfig": {
+      "description": "Additional connection configuration.",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.SourceConfig",
+      "type": "object",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "databaseServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "databaseServiceQueryUsagePipeline.json"
+            },
+            {
+              "$ref": "dashboardServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "messagingServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "databaseServiceProfilerPipeline.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "componentConfig": {
+      "description": "key/value pairs to pass to sink component.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Type of the source connector ex: mysql, snowflake, tableau etc..",
+          "type": "string"
+        },
+        "serviceConnection": {
+          "description": "Connection configuration for the source. ex: mysql , tableau connection.",
+          "$ref": "../entity/services/connections/serviceConnection.json#/definitions/serviceConnection"
+        },
+        "sourceConfig": {
+          "$ref": "#/definitions/sourceConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type", "serviceName", "serviceConnection", "sourceConfig"]
+    },
+    "processor": {
+      "description": "Configuration for Processor Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of processor component ex: pii-processor",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "stage": {
+      "description": "Configuration for Stage Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of stage component ex: table-usage",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "sink": {
+      "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of sink component ex: metadata",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "bulkSink": {
+      "description": "Configuration for BulkSink Component in the OpenMetadata Ingestion Framework.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of BulkSink component ex: metadata-usage",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["type"]
+    },
+    "logLevels": {
+      "description": "Supported logging levels",
+      "javaType": "org.openmetadata.catalog.metadataIngestion.LogLevels",
+      "type": "string",
+      "enum": [
+        "DEBUG",
+        "INFO",
+        "WARN",
+        "ERROR"
+      ],
+      "default": "INFO"
+    },
+    "workflowConfig": {
+      "description": "Configuration for the entire Ingestion Workflow.",
+      "type": "object",
+      "properties": {
+        "loggerLevel": {
+          "$ref": "#/definitions/logLevels",
+          "default": "INFO"
+        },
+        "openMetadataServerConfig": {
+          "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"
+        },
+        "config": {
+          "$ref": "#/definitions/componentConfig"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["openMetadataServerConfig"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this pipeline.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "openMetadataWorkflowConfig": {
+      "description": "OpenMetadata Ingestion Workflow Config.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/source"
+        },
+        "processor": {
+          "$ref": "#/definitions/processor"
+        },
+        "sink": {
+          "$ref": "#/definitions/sink"
+        },
+        "stage": {
+          "$ref": "#/definitions/stage"
+        },
+        "bulkSink": {
+          "$ref": "#/definitions/bulkSink"
+        },
+        "workflowConfig": {
+          "$ref": "#/definitions/workflowConfig"
+        }
+      },
+      "required": ["source", "workflowConfig"],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "sink"]
+    },
+    {
+      "required": ["name", "openMetadataWorkflowConfig", "source", "bulkSink"]
+    }
+  ],
+  "additionalProperties": false
+}

@@ -28,15 +28,19 @@ import React, {
 import { TableData } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
 import { isEven } from '../../utils/CommonUtils';
+import { RowData } from './RowData';
 
-export type SampleColumns = { name: string; dataType: string };
+export interface SampleColumns {
+  name: string;
+  dataType: string;
+}
 
-type Props = {
+interface Props {
   sampleData?: {
     columns?: Array<SampleColumns>;
     rows?: TableData['rows'];
   };
-};
+}
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   const tableRef = useRef<HTMLDivElement>(null);
@@ -133,7 +137,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                           className="tableBody-cell"
                           data-testid="cell"
                           key={index}>
-                          {data ? data.toString() : '--'}
+                          <RowData data={data} />
                         </td>
                       );
                     })}

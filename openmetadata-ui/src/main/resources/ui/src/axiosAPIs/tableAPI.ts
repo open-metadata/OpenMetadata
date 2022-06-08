@@ -12,12 +12,12 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { Table } from 'Models';
-import { ColumnTestType } from '../enums/columnTest.enum';
+import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
+import { ColumnTestType } from '../generated/entity/data/table';
 import { TableTestType } from '../generated/tests/tableTest';
-import { ColumnTest } from '../interface/dataQuality.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -62,12 +62,17 @@ export const getTableDetailsByFQN: Function = (
 
 export const getAllTables = (
   arrQueryFields?: string,
-  limit?: number
+  limit?: number,
+  database?: string
 ): Promise<AxiosResponse> => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
     searchParams.set('limit', `${limit}`);
+  }
+
+  if (!isUndefined(database)) {
+    searchParams.set('database', database);
   }
 
   const url = getURLWithQueryFields(
@@ -150,7 +155,7 @@ export const deleteTableTestCase = (
   );
 };
 
-export const addColumnTestCase = (tableId: string, data: ColumnTest) => {
+export const addColumnTestCase = (tableId: string, data: CreateColumnTest) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };

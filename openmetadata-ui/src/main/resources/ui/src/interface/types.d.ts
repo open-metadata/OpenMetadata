@@ -222,6 +222,7 @@ declare module 'Models' {
       name: string[];
     };
     index: string;
+    type?: string;
     database?: string;
     databaseSchema?: string;
     deleted?: boolean;
@@ -236,13 +237,25 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormattedTeamsData = {
+    name: string;
+    displayName: string;
+    type: string;
+    id: string;
+  };
+
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     type: string;
     id: string;
     description?: string;
+  };
+
+  export type SearchedUsersAndTeams = {
+    users: FormattedUsersData[];
+    teams: FormattedTeamsData[];
   };
 
   export type TagOption = {
@@ -493,6 +506,8 @@ declare module 'Models' {
     placeholderText?: string;
     openInNewTab?: boolean;
     showLabel?: boolean;
+    avatarWidth?: string;
+    profileName?: string;
   };
 
   export type TourSteps = {
@@ -600,5 +615,12 @@ declare module 'Models' {
     entityLink: string;
     count: number;
     entityField: string;
+  }
+
+  export type ImageShape = 'circle' | 'square';
+
+  export interface SelectableOption {
+    readonly label: string;
+    readonly value: string;
   }
 }

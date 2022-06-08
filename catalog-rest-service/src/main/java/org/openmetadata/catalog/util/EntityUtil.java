@@ -19,6 +19,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -29,6 +30,7 @@ import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.ws.rs.WebApplicationException;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,8 +40,10 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -78,14 +82,12 @@ public final class EntityUtil {
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
+  public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
 
   //
   // Matchers used for matching two items in a list
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
-
-  public static final BiPredicate<EntityInterface<?>, EntityInterface<?>> entityMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
@@ -128,6 +130,9 @@ public final class EntityUtil {
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
+  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
+      (ref1, ref2) -> ref1.getName().equals(ref2.getName());
+
   private EntityUtil() {}
 
   /** Validate Ingestion Schedule */
@@ -167,6 +172,7 @@ public final class EntityUtil {
     return entity;
   }
 
+  // TODO delete
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -176,6 +182,18 @@ public final class EntityUtil {
       list.sort(compareEntityReference);
     }
     return list;
+  }
+
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
+    if (list == null) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityRelationshipRecord ref : list) {
+      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+    }
+    refs.sort(compareEntityReference);
+    return refs;
   }
 
   public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
@@ -188,7 +206,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
+  public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
 
@@ -233,7 +251,7 @@ public final class EntityUtil {
   @RequiredArgsConstructor
   public static class Fields {
     public static final Fields EMPTY_FIELDS = new Fields(null, null);
-    private final List<String> fieldList;
+    @Getter private final List<String> fieldList;
 
     public Fields(List<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
@@ -259,10 +277,6 @@ public final class EntityUtil {
 
     public boolean contains(String field) {
       return fieldList.contains(field);
-    }
-
-    public List<String> getList() {
-      return fieldList;
     }
   }
 

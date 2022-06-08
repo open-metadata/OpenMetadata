@@ -75,7 +75,7 @@ const ReviewerModal = ({
     getSuggestions(searchText, SearchIndex.USER)
       .then((res: AxiosResponse) => {
         const data = formatUsersResponse(
-          res.data.suggest['table-suggest'][0].options
+          res.data.suggest['metadata-suggest'][0].options
         );
         setOptions(data);
       })
@@ -116,9 +116,11 @@ const ReviewerModal = ({
         isIconVisible
         item={{
           name: d.name,
-          description: d.displayName,
+          displayName: d.displayName || d.name,
+          email: d.email,
           id: d.id,
           isChecked: isIncludeInOptions(d.id),
+          type: d.type,
         }}
         key={d.id}
         onSelect={selectionHandler}

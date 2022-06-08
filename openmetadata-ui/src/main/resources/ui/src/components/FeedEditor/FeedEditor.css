@@ -993,12 +993,12 @@
   background: white;
 }
 .ql-toolbar.ql-snow {
-  border-color: rgb(220, 227, 236);
+  border-color: rgb(221, 227, 234);
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
 }
 .ql-container.ql-snow {
-  border-color: rgb(220, 227, 236);
+  border-color: rgb(221, 227, 234);
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
 }
@@ -1054,4 +1054,12 @@
   justify-content: center;
   align-items: center;
   height: 40px;
+}
+
+button.ql-emoji {
+  vertical-align: bottom;
+}
+#tab-panel {
+  gap: 4px;
+  margin-top: 8px;
 }

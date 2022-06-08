@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -91,8 +90,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
 
   @GET
   @Operation(
+      operationId = "listDashboardsService",
       summary = "List dashboard services",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a list of dashboard services.",
       responses = {
         @ApiResponse(
@@ -134,8 +134,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDashboardServiceByID",
       summary = "Get a dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a dashboard service by `id`.",
       responses = {
         @ApiResponse(
@@ -167,8 +168,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getDashboardServiceByFQN",
       summary = "Get dashboard service by name",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a dashboard service by the service `name`.",
       responses = {
         @ApiResponse(
@@ -200,8 +202,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDashboardServiceVersion",
       summary = "List dashboard service versions",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a list of all the versions of a dashboard service identified by `id`",
       responses = {
         @ApiResponse(
@@ -220,8 +223,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDashboardServiceVersion",
       summary = "Get a version of the dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Get a version of the dashboard service by given `id`",
       responses = {
         @ApiResponse(
@@ -248,53 +252,52 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
 
   @POST
   @Operation(
+      operationId = "createDashboardService",
       summary = "Create a dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Create a new dashboard service.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDashboardService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException {
-    DashboardService service = getService(create, securityContext);
+    DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, service, ADMIN | BOT);
   }
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDashboardService",
       summary = "Update a Dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description = "Update an existing dashboard service identified by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Dashboard service instance",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateDashboardService.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DashboardService.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
-    DashboardService service = getService(update, securityContext);
+    DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDashboardService",
       summary = "Delete a Dashboard service",
-      tags = "services",
+      tags = "dashboardServices",
       description =
           "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " + "deleted.",
       responses = {
@@ -318,15 +321,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private DashboardService getService(CreateDashboardService create, SecurityContext securityContext) {
-    return new DashboardService()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
+  private DashboardService getService(CreateDashboardService create, String user) {
+    return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+        .withConnection(create.getConnection());
   }
 }

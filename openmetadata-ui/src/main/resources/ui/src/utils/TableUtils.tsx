@@ -14,17 +14,17 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { upperCase } from 'lodash';
-import { EntityTags, TableDetail } from 'Models';
+import { EntityTags } from 'Models';
 import React, { Fragment } from 'react';
-import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
-  getGlossaryPath,
+  getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -37,6 +37,7 @@ import { Column, DataType } from '../generated/entity/data/table';
 import { TableTest, TestCaseStatus } from '../generated/tests/tableTest';
 import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
+import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -123,40 +124,6 @@ export const getSearchTableTagsWithoutTier = (
   );
 };
 
-export const getOwnerFromId = (
-  id?: string
-): TableDetail['owner'] | undefined => {
-  let retVal: TableDetail['owner'];
-  if (id) {
-    const user = AppState.users.find((item) => item.id === id);
-    if (user) {
-      retVal = {
-        name: user.displayName || user.name,
-        id: user.id,
-        type: 'user',
-      };
-    } else {
-      const team = AppState.userTeams.find((item) => item.id === id);
-      if (team) {
-        retVal = {
-          name: team.name,
-          displayName: team.displayName || team.name,
-          id: team.id,
-          type: 'team',
-        };
-      }
-    }
-  }
-
-  return retVal;
-};
-
-export const getFollowerDetail = (id: string) => {
-  const follower = AppState.users.find((user) => user.id === id);
-
-  return follower;
-};
-
 export const getConstraintIcon = (constraint = '', className = '') => {
   let title: string, icon: string;
   switch (constraint) {
@@ -201,6 +168,8 @@ export const getEntityLink = (
   indexType: string,
   fullyQualifiedName: string
 ) => {
+  // encode the FQN for entities that can have "/" in their names
+  fullyQualifiedName = encodeURIComponent(fullyQualifiedName);
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
@@ -232,6 +201,13 @@ export const getEntityLink = (
 
     case EntityType.WEBHOOK:
       return getEditWebhookPath(fullyQualifiedName);
+
+    case EntityType.TYPE:
+      return getCustomEntityPath(fullyQualifiedName);
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return getMlModelPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -351,10 +327,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
                       icon="check-square"
                     />
                   </div>
-                  <p>{`${passingTests.length} tests`}</p>
+                  <>{`${passingTests.length} tests`}</>
                 </div>
               ) : (
-                <p>{`${tableTestLength} tests`}</p>
+                <>{`${tableTestLength} tests`}</>
               )}
             </Fragment>
           )}

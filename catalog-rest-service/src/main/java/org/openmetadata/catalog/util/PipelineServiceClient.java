@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
@@ -18,7 +19,7 @@ import org.openmetadata.catalog.exception.PipelineServiceClientException;
  *
  * <ul>
  *   <li>A PipelineService is a service such as AirFlow to which a pipeline can be deployed
- *   <li>A Pipeline is a workflow for performing certain taks. Example - ingestion pipeline is a workflow that connects
+ *   <li>A Pipeline is a workflow for performing certain tasks. Example - ingestion pipeline is a workflow that connects
  *       to a database service or other services and collect metadata.
  *   <li>Pipeline uses `Connection` to a service as dependency. A Pipeline might need to connection to database service
  *       to collect metadata, OpenMetadata to user metadata over APIs, etc.
@@ -55,18 +56,19 @@ public abstract class PipelineServiceClient {
 
   public final HttpResponse<String> post(String endpoint, String payload, boolean authenticate)
       throws IOException, InterruptedException {
-    String authToken = authenticate ? String.format(AUTH_TOKEN, authenticate()) : null;
-    HttpRequest request =
+    String authToken = authenticate ? authenticate() : null;
+    HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(URI.create(endpoint))
             .header(CONTENT_HEADER, CONTENT_TYPE)
-            .header(AUTH_HEADER, authToken)
-            .POST(HttpRequest.BodyPublishers.ofString(payload))
-            .build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+            .POST(HttpRequest.BodyPublishers.ofString(payload));
+    if (authenticate) {
+      requestBuilder.header(AUTH_HEADER, String.format(AUTH_TOKEN, authToken));
+    }
+    return client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   /* Authenticate with the service */
-  public abstract String authenticate() throws IOException;
+  public abstract String authenticate();
 
   /* Check the status of pipeline service to ensure it is healthy */
   public abstract HttpResponse<String> getServiceStatus();
@@ -85,4 +87,7 @@ public abstract class PipelineServiceClient {
 
   /* Get the status of a deployed pipeline */
   public abstract IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline);
+
+  /* Get the all last run logs of a deployed pipeline */
+  public abstract Map<String, String> getLastIngestionLogs(String pipelineName);
 }

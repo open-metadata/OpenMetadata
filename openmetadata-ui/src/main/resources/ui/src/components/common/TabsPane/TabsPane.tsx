@@ -17,7 +17,8 @@ import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
-type Tab = {
+
+export type Tab = {
   name: string;
   icon?: {
     alt: string;

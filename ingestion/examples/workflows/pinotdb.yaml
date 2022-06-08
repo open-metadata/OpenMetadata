@@ -1,0 +1,22 @@
+source:
+  type: pinotdb
+  serviceName: local_pinotdb
+  serviceConnection:
+    config:
+      type: PinotDB
+      username: ''
+      password: ''
+      hostPort: localhost:8000
+      pinotControllerHost: http://localhost:9000/
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

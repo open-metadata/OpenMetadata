@@ -1,0 +1,23 @@
+source:
+  type: openmetadata
+  serviceName: local_metadata
+  serviceConnection:
+    config:
+      type: OpenMetadata
+      hostPort: '{scheme}://{host}:{port}/api'
+      authProvider: no-auth
+      includeTables: true
+      includeUsers: true
+      includeTopics: true
+      includeDashboards: true
+      limitRecords: 10
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

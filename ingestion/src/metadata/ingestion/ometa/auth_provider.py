@@ -13,13 +13,16 @@ Interface definition for an Auth provider
 """
 import http.client
 import json
+import os.path
 import sys
 import traceback
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Tuple
 
 import requests
+from dateutil.relativedelta import relativedelta
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -27,6 +30,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.security.client.auth0SSOClientConfig import (
     Auth0SSOClientConfig,
+)
+from metadata.generated.schema.security.client.azureSSOClientConfig import (
+    AzureSSOClientConfig,
 )
 from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
     CustomOIDCSSOClientConfig,
@@ -37,8 +43,14 @@ from metadata.generated.schema.security.client.googleSSOClientConfig import (
 from metadata.generated.schema.security.client.oktaSSOClientConfig import (
     OktaSSOClientConfig,
 )
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
+
+# Only load security providers on call
+# pylint: disable=import-outside-toplevel
 
 logger = ometa_logger()
 
@@ -171,7 +183,9 @@ class OktaAuthenticationProvider(AuthenticationProvider):
     def create(cls, config: OpenMetadataConnection):
         return cls(config)
 
-    async def auth_token(self) -> None:
+    async def auth_token(  # pylint: disable=invalid-overridden-method, too-many-locals
+        self,
+    ) -> None:
         import time
         import uuid
         from urllib.parse import quote, urlencode
@@ -181,7 +195,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         from okta.request_executor import RequestExecutor
 
         try:
-            my_pem, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
+            _, my_jwk = JWT.get_PEM_JWK(self.security_config.privateKey)
             issued_time = int(time.time())
             expiry_time = issued_time + JWT.ONE_HOUR
             generated_jwt_id = str(uuid.uuid4())
@@ -226,7 +240,7 @@ class OktaAuthenticationProvider(AuthenticationProvider):
                 },
                 oauth=True,
             )
-            _, res_details, res_json, err = await request_exec.fire_request(
+            _, _, res_json, err = await request_exec.fire_request(
                 token_request_object[0]
             )
             if err:
@@ -307,7 +321,7 @@ class AzureAuthenticationProvider(AuthenticationProvider):
     # TODO: Prepare JSON for Azure Auth
     def __init__(self, config: OpenMetadataConnection):
         self.config = config
-        self.security_config: AzureSSOConfig = self.config.securityConfig
+        self.security_config: AzureSSOClientConfig = self.config.securityConfig
         self.generated_auth_token = None
         self.expiry = None
 
@@ -392,3 +406,37 @@ class CustomOIDCAuthenticationProvider(AuthenticationProvider):
     def get_access_token(self) -> Tuple[str, int]:
         self.auth_token()
         return self.generated_auth_token, self.expiry
+
+
+class OpenMetadataAuthenticationProvider(AuthenticationProvider):
+    """
+    OpenMetadata authentication implementation
+
+    Args:
+        config (MetadataServerConfig):
+
+    Attributes:
+        config (MetadataServerConfig)
+    """
+
+    def __init__(self, config: OpenMetadataConnection):
+        self.config = config
+        self.security_config: OpenMetadataJWTClientConfig = self.config.securityConfig
+        self.jwt_token = None
+        self.expiry = datetime.now() - relativedelta(years=1)
+
+    @classmethod
+    def create(cls, config: OpenMetadataConnection):
+        return cls(config)
+
+    def auth_token(self) -> None:
+        if not self.jwt_token:
+            if os.path.isfile(self.security_config.jwtToken):
+                with open(self.security_config.jwtToken, "r", encoding="utf-8") as file:
+                    self.jwt_token = file.read().rstrip()
+            else:
+                self.jwt_token = self.security_config.jwtToken
+
+    def get_access_token(self):
+        self.auth_token()
+        return self.jwt_token, self.expiry

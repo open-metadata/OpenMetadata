@@ -13,19 +13,32 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { debounce, isEqual, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { TableDetail } from 'Models';
-import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import appState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getCategory } from '../../axiosAPIs/tagAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  FQN_SEPARATOR_CHAR,
+  WILD_CARD_CHAR,
+} from '../../constants/char.constants';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getOwnerList } from '../../utils/ManageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  searchFormattedUsersAndTeams,
+  suggestFormattedUsersAndTeams,
+} from '../../utils/UserDataUtils';
 import CardListItem from '../cardlist/CardListItem/CardWithListItem';
 import { CardWithListItems } from '../cardlist/CardListItem/CardWithListItem.interface';
 import DeleteWidget from '../common/DeleteWidget/DeleteWidget';
@@ -36,7 +49,7 @@ import { ManageProps, Status } from './ManageTab.interface';
 
 const ManageTab: FunctionComponent<ManageProps> = ({
   currentTier = '',
-  currentUser = '',
+  currentUser,
   hideTier = false,
   hideOwner = false,
   onSave,
@@ -56,6 +69,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [statusOwner, setStatusOwner] = useState<Status>('initial');
   const [statusTier, setStatusTier] = useState<Status>('initial');
   const [activeTier, setActiveTier] = useState(currentTier);
@@ -66,10 +80,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [owner, setOwner] = useState(currentUser);
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
-
-  const getOwnerById = (): string => {
-    return listOwners.find((item) => item.value === owner)?.name || '';
-  };
+  const [searchText, setSearchText] = useState<string>('');
 
   const setInitialOwnerLoadingState = () => {
     setStatusOwner('initial');
@@ -79,24 +90,20 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     setStatusTier('initial');
   };
 
-  const prepareOwner = (updatedOwner: string) => {
-    return updatedOwner !== currentUser
-      ? {
-          id: updatedOwner,
-          type: listOwners.find((item) => item.value === updatedOwner)?.type as
-            | 'user'
-            | 'team',
-        }
-      : undefined;
+  const prepareOwner = (updatedOwner?: EntityReference) => {
+    return !isEqual(updatedOwner, currentUser) ? updatedOwner : undefined;
   };
 
   const prepareTier = (updatedTier: string) => {
     return updatedTier !== currentTier ? updatedTier : undefined;
   };
 
-  const handleOwnerSave = (updatedOwner: string, updatedTier: string) => {
+  const handleOwnerSave = (
+    updatedOwner: EntityReference,
+    updatedTier: string
+  ) => {
     setStatusOwner('waiting');
-    const newOwner: TableDetail['owner'] = prepareOwner(updatedOwner);
+    const newOwner = prepareOwner(updatedOwner);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
         onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
@@ -115,7 +122,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleTierSave = (updatedTier: string) => {
     setStatusTier('waiting');
-    const newOwner: TableDetail['owner'] = prepareOwner(currentUser);
+    const newOwner = prepareOwner(currentUser);
     if (hideTier) {
       if (newOwner || !isUndefined(teamJoinable)) {
         onSave?.(newOwner, '', Boolean(teamJoinable)).catch(() => {
@@ -139,8 +146,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (value) {
       const newOwner = listOwners.find((item) => item.value === value);
       if (newOwner) {
-        setOwner(newOwner.value);
-        handleOwnerSave(newOwner.value, activeTier);
+        const { value: id, type } = newOwner;
+        setOwner({ id, type });
+        handleOwnerSave({ id, type }, activeTier);
       }
     }
     setListVisible(false);
@@ -148,6 +156,62 @@ const ManageTab: FunctionComponent<ManageProps> = ({
 
   const handleCardSelection = (cardId: string) => {
     setActiveTier(cardId);
+  };
+
+  const getOwnerSearch = useCallback(
+    (searchQuery = WILD_CARD_CHAR, from = 1) => {
+      setIsUserLoading(true);
+      searchFormattedUsersAndTeams(searchQuery, from)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const getOwnerSuggestion = useCallback(
+    (qSearchText = '') => {
+      setIsUserLoading(true);
+      suggestFormattedUsersAndTeams(qSearchText)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      if (text) {
+        getOwnerSuggestion(text);
+      } else {
+        getOwnerSearch();
+      }
+    },
+    [getOwnerSuggestion, getOwnerSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
+
+  const handleOwnerSearch = (text: string) => {
+    setSearchText(text);
+    debounceOnSearch(text);
   };
 
   const getDeleteEntityWidget = () => {
@@ -223,7 +287,6 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     );
   };
 
-  const ownerName = getOwnerById();
   const getTierData = () => {
     setIsLoadingTierData(true);
     getCategory('Tier')
@@ -263,6 +326,9 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     if (!hideTier) {
       getTierData();
     }
+    if (!hideOwner) {
+      getOwnerSearch();
+    }
   }, []);
 
   useEffect(() => {
@@ -278,7 +344,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       setStatusOwner('success');
       setTimeout(() => {
         setInitialOwnerLoadingState();
-      }, 3000);
+      }, 300);
     }
   }, [currentUser]);
 
@@ -287,17 +353,23 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       setStatusTier('success');
       setTimeout(() => {
         setInitialTierLoadingState();
-      }, 3000);
+      }, 300);
     }
   }, [currentTier]);
 
   useEffect(() => {
-    setListOwners(getOwnerList());
+    debounceOnSearch(searchText);
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
   useEffect(() => {
     setTeamJoinable(isJoinable);
   }, [isJoinable]);
+
+  useEffect(() => {
+    if (!listVisible) {
+      handleOwnerSearch('');
+    }
+  }, [listVisible]);
 
   return (
     <div
@@ -314,16 +386,19 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             entityType={entityType}
             handleIsJoinable={handleIsJoinable}
             handleOwnerSelection={handleOwnerSelection}
+            handleSearchOwnerDropdown={handleOwnerSearch}
             handleSelectOwnerDropdown={() =>
               setListVisible((visible) => !visible)
             }
             hasEditAccess={hasEditAccess}
             isAuthDisabled={isAuthDisabled}
             isJoinableActionAllowed={isJoinableActionAllowed()}
+            isListLoading={isUserLoading}
             listOwners={listOwners}
             listVisible={listVisible}
-            owner={owner}
-            ownerName={ownerName}
+            owner={owner || ({} as EntityReference)}
+            ownerName={currentUser?.displayName || currentUser?.name || ''}
+            ownerSearchText={searchText}
             statusOwner={statusOwner}
             teamJoinable={teamJoinable}
           />

@@ -11,35 +11,33 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
-import { isEmpty, isEqual } from 'lodash';
+import { AxiosError, AxiosResponse } from 'axios';
+import { isEqual, isUndefined } from 'lodash';
+import { SearchedUsersAndTeams, SearchResponse } from 'Models';
 import AppState from '../AppState';
 import { OidcUser } from '../authentication/auth-provider/AuthProvider.interface';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getSuggestedTeams,
+  getSuggestedUsers,
+} from '../axiosAPIs/miscAPI';
 import { getRoles } from '../axiosAPIs/rolesAPI';
-import { getTeams } from '../axiosAPIs/teamsAPI';
-import { getUsers } from '../axiosAPIs/userAPI';
-import { API_RES_MAX_SIZE } from '../constants/constants';
+import { getUserById, getUserByName, getUsers } from '../axiosAPIs/userAPI';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SettledStatus } from '../enums/axios.enum';
 import { User } from '../generated/entity/teams/user';
+import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
-const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, API_RES_MAX_SIZE)
+export const getAllUsersList = (arrQueryFields = ''): void => {
+  getUsers(arrQueryFields, 1)
     .then((res) => {
       AppState.updateUsers(res.data.data);
     })
     .catch(() => {
       AppState.updateUsers([]);
-    });
-};
-
-const getAllTeams = (): void => {
-  getTeams('defaultRoles')
-    .then((res: AxiosResponse) => {
-      AppState.updateUserTeam(res.data.data);
-    })
-    .catch(() => {
-      AppState.updateUserTeam([]);
     });
 };
 
@@ -54,8 +52,8 @@ const getAllRoles = (): void => {
 };
 
 export const fetchAllUsers = () => {
+  AppState.loadUserProfilePics();
   getAllUsersList('profile,teams,roles');
-  getAllTeams();
   getAllRoles();
 };
 
@@ -66,11 +64,14 @@ export const getUserDataFromOidc = (
   const images = oidcUser.profile.picture
     ? getImages(oidcUser.profile.picture)
     : undefined;
+  const profileEmail = oidcUser.profile.email;
+  const email = profileEmail ? profileEmail : userData.email;
 
   return {
     ...userData,
+    email,
     displayName: oidcUser.profile.name,
-    profile: !isEmpty(images) ? { images } : userData.profile,
+    profile: images ? { images } : userData.profile,
   };
 };
 
@@ -89,4 +90,118 @@ export const matchUserDetails = (
   }
 
   return isMatch;
+};
+
+export const isCurrentUserAdmin = () => {
+  return Boolean(AppState.getCurrentUserDetails()?.isAdmin);
+};
+
+export const fetchUserProfilePic = (userId?: string, username?: string) => {
+  let promise;
+
+  if (userId) {
+    promise = getUserById(userId, 'profile');
+  } else if (username) {
+    promise = getUserByName(username, 'profile');
+  } else {
+    return;
+  }
+
+  AppState.updateProfilePicsLoading(userId, username);
+
+  promise
+    .then((res) => {
+      const userData = res.data as User;
+      const profile = userData.profile?.images?.image512 || '';
+
+      AppState.updateUserProfilePic(userData.id, userData.name, profile);
+    })
+    .catch((err: AxiosError) => {
+      // ignore exception
+      AppState.updateUserProfilePic(
+        userId,
+        username,
+        err.response?.status === 404 ? '' : undefined
+      );
+    })
+    .finally(() => {
+      AppState.removeProfilePicsLoading(userId, username);
+    });
+};
+
+export const getUserProfilePic = (userId?: string, username?: string) => {
+  let profile;
+  if (userId || username) {
+    profile = AppState.getUserProfilePic(userId, username);
+
+    if (
+      isUndefined(profile) &&
+      !AppState.isProfilePicLoading(userId, username)
+    ) {
+      fetchUserProfilePic(userId, username);
+    }
+  }
+
+  return profile;
+};
+
+export const searchFormattedUsersAndTeams = (
+  searchQuery = WILD_CARD_CHAR,
+  from = 1
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSearchedUsers(searchQuery, from),
+      getSearchedTeams(searchQuery, from),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<SearchResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(resUsers.value.data.hits.hits)
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(resTeams.value.data.hits.hits)
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
+};
+
+export const suggestFormattedUsersAndTeams = (
+  searchQuery: string
+): Promise<SearchedUsersAndTeams> => {
+  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
+    const promises = [
+      getSuggestedUsers(searchQuery),
+      getSuggestedTeams(searchQuery),
+    ];
+    Promise.allSettled(promises)
+      .then(
+        ([resUsers, resTeams]: Array<PromiseSettledResult<AxiosResponse>>) => {
+          const users =
+            resUsers.status === SettledStatus.FULFILLED
+              ? formatUsersResponse(
+                  resUsers.value.data.suggest['metadata-suggest'][0].options
+                )
+              : [];
+          const teams =
+            resTeams.status === SettledStatus.FULFILLED
+              ? formatTeamsResponse(
+                  resTeams.value.data.suggest['metadata-suggest'][0].options
+                )
+              : [];
+          resolve({ users, teams });
+        }
+      )
+      .catch((err: AxiosError) => {
+        reject(err);
+      });
+  });
 };

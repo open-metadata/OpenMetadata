@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.reports;
 
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
+import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -78,6 +79,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @GET
   @Operation(
+      operationId = "listReports",
       summary = "List reports",
       tags = "reports",
       description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
@@ -103,6 +105,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getReportByID",
       summary = "Get a report",
       tags = "reports",
       description = "Get a report by `id`.",
@@ -134,6 +137,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @POST
   @Operation(
+      operationId = "getReportByFQN",
       summary = "Create a report",
       tags = "reports",
       description = "Create a new report.",
@@ -152,6 +156,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateReport",
       summary = "Create or update a report",
       tags = "reports",
       description = "Create a new report, it it does not exist or update an existing report.",
@@ -165,7 +170,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
     addToReport(securityContext, report);
-    return createOrUpdate(uriInfo, securityContext, report);
+    return createOrUpdate(uriInfo, securityContext, report, ADMIN | BOT | OWNER);
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

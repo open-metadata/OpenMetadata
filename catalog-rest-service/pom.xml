@@ -13,12 +13,12 @@
 
   <properties>
     <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-    <testng.version>7.5</testng.version>
     <selenium.version>4.1.2</selenium.version>
-
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
+    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
+    <org.testcontainers.version>1.17.2</org.testcontainers.version>
   </properties>
 
   <dependencies>
@@ -93,6 +93,14 @@
     <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-multipart</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+      <artifactId>dropwizard-micrometer-jdbi</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-lang</groupId>
@@ -170,11 +178,6 @@
       <artifactId>jackson-databind</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.openmetadata</groupId>
-      <artifactId>common</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
       <exclusions>
@@ -238,10 +241,6 @@
       <artifactId>jersey-client</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-engine</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-client</artifactId>
     </dependency>
@@ -256,7 +255,17 @@
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-all</artifactId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -271,25 +280,25 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.16.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>1.16.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
-      <version>1.16.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>mysql</artifactId>
-      <version>1.16.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
@@ -313,6 +322,12 @@
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
       <version>20220320</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.networknt</groupId>
+      <artifactId>json-schema-validator</artifactId>
+      <version>${json-schema-validator.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
@@ -489,6 +504,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven-surefire.version}</version>
+        <configuration>
+          <trimStackTrace>false</trimStackTrace>
+        </configuration>
         <executions>
           <execution>
             <id>default-test</id>
@@ -503,6 +521,10 @@
             <id>unit-tests</id>
             <configuration>
               <excludes>**/*ResourceTest.java</excludes>
+              <systemPropertyVariables>
+                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                <jdbcContainerImage>mysql:8</jdbcContainerImage>
+              </systemPropertyVariables>
             </configuration>
           </execution>
           <execution>

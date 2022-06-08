@@ -34,12 +34,19 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
     PipelineService,
     PipelineServiceType,
 )
@@ -76,7 +83,12 @@ class OMetaLineageTest(TestCase):
     pipeline_service = CreatePipelineServiceRequest(
         name="test-service-pipeline-lineage",
         serviceType=PipelineServiceType.Airflow,
-        pipelineUrl="https://localhost:1000",
+        connection=PipelineConnection(
+            config=AirflowConnection(
+                hostPort="http://localhost:8080",
+                connection=BackendConnection(),
+            ),
+        ),
     )
 
     @classmethod
@@ -146,13 +158,13 @@ class OMetaLineageTest(TestCase):
 
         db_service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service-db-lineage"
+                entity=DatabaseService, fqn="test-service-db-lineage"
             ).id.__root__
         )
 
         pipeline_service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqdn="test-service-pipeline-lineage"
+                entity=PipelineService, fqn="test-service-pipeline-lineage"
             ).id.__root__
         )
 

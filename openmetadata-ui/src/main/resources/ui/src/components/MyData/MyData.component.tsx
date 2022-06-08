@@ -22,24 +22,23 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getExplorePathWithSearch } from '../../constants/constants';
 import { filterList, observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getOwnerIds } from '../../utils/CommonUtils';
+import { getExploreLinkByFilter } from '../../utils/CommonUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageLayout from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
-import EntityList from '../EntityList/EntityList';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
-import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
+import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsAntd';
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
@@ -49,10 +48,14 @@ const MyData: React.FC<MyDataProps> = ({
   countServices,
   countTables,
   countTopics,
+  countTeams,
+  countUsers,
   ownedData,
   followedData,
   feedData,
   feedFilter,
+  ownedDataCount,
+  followedDataCount,
   feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
@@ -80,10 +83,9 @@ const MyData: React.FC<MyDataProps> = ({
             data-testid="feeds"
             size="custom"
             tag="button"
-            theme="primary"
             variant="link"
             onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-font-medium">
+            <span className="tw-font-medium tw-text-grey">
               {filterList.find((f) => f.value === feedFilter)?.name}
             </span>
             <DropDownIcon />
@@ -100,76 +102,87 @@ const MyData: React.FC<MyDataProps> = ({
     );
   };
 
-  const getLinkByFilter = (filter: Ownership) => {
-    return `${getExplorePathWithSearch()}?${filter}=${getOwnerIds(
-      filter,
-      AppState.userDetails,
-      AppState.nonSecureUserDetails
-    ).join()}`;
-  };
-
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-12">
+      <div className="tw-mt-4">
         <MyAssetStats
           countDashboards={countDashboards}
           countPipelines={countPipelines}
           countServices={countServices}
           countTables={countTables}
+          countTeams={countTeams}
           countTopics={countTopics}
+          countUsers={countUsers}
         />
-        <div className="tw-filter-seperator" />
+        <div className="tw-mb-5" />
         <RecentlyViewed />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <RecentSearchedTerms />
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mb-5" />
+        <RecentSearchedTermsAntd />
       </div>
     );
   };
 
   const getRightPanel = useCallback(() => {
     return (
-      <div className="tw-mt-12">
-        <EntityList
-          entityList={ownedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              My Data
-              {ownedData.length ? (
-                <Link
-                  data-testid="my-data"
-                  to={getLinkByFilter(Ownership.OWNER)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not owned anything yet.</>}
-          testIDText="My data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <EntityList
-          entityList={followedData}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              Following
-              {followedData.length ? (
-                <Link
-                  data-testid="following-data"
-                  to={getLinkByFilter(Ownership.FOLLOWERS)}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not followed anything yet.</>}
-          testIDText="Following data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
+      <div className="tw-mt-4">
+        <div data-testid="my-data-container">
+          <EntityListWithAntd
+            entityList={ownedData}
+            headerText={
+              <>
+                {ownedData.length ? (
+                  <Link
+                    data-testid="my-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.OWNER,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="my-data-total-count">
+                        ({ownedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </>
+            }
+            headerTextLabel="My Data"
+            noDataPlaceholder={<>You have not owned anything yet.</>}
+            testIDText="My data"
+          />
+        </div>
+        <div className="tw-mt-5" />
+        <div data-testid="following-data-container">
+          <EntityListWithAntd
+            entityList={followedData}
+            headerText={
+              <>
+                {followedData.length ? (
+                  <Link
+                    data-testid="following-data"
+                    to={getExploreLinkByFilter(
+                      Ownership.FOLLOWERS,
+                      AppState.userDetails,
+                      AppState.nonSecureUserDetails
+                    )}>
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
+                      View All{' '}
+                      <span data-testid="following-data-total-count">
+                        ({followedDataCount})
+                      </span>
+                    </span>
+                  </Link>
+                ) : null}
+              </>
+            }
+            headerTextLabel="Following"
+            noDataPlaceholder={<>You have not followed anything yet.</>}
+            testIDText="Following data"
+          />
+        </div>
+        <div className="tw-mt-5" />
       </div>
     );
   }, [ownedData, followedData]);

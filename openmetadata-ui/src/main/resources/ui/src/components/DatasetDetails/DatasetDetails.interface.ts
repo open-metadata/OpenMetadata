@@ -19,24 +19,23 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
-import { ColumnTestType } from '../../enums/columnTest.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
 import {
+  ColumnTestType,
   Table,
   TableData,
   TableJoins,
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { User } from '../../generated/entity/teams/user';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
-  ColumnTest,
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
@@ -50,7 +49,6 @@ export interface DatasetDetailsProps {
   joins: TableJoins;
   tableType: TableType;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
-  users: Array<User>;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
@@ -103,7 +101,7 @@ export interface DatasetDetailsProps {
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   handleAddTableTestCase: (data: CreateTableTest) => void;
-  handleAddColumnTestCase: (data: ColumnTest) => void;
+  handleAddColumnTestCase: (data: CreateColumnTest) => void;
   handleRemoveTableTest: (testType: TableTestType) => void;
   handleRemoveColumnTest: (
     columnName: string,
@@ -111,4 +109,5 @@ export interface DatasetDetailsProps {
   ) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
   fetchFeedHandler: (after?: string) => void;
+  handleExtentionUpdate: (updatedTable: Table) => void;
 }

@@ -14,7 +14,7 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent } from 'react';
+import React, { Fragment, FunctionComponent, useMemo } from 'react';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
@@ -34,9 +34,13 @@ import { ConfigData } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
-import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
+import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import {
+  getTestConnectionType,
+  shouldTestConnection,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
@@ -44,6 +48,7 @@ interface Props {
   data: DatabaseService | MessagingService | DashboardService | PipelineService;
   okText?: string;
   cancelText?: string;
+  serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onCancel?: () => void;
@@ -54,29 +59,36 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   data,
   okText = 'Save',
   cancelText = 'Cancel',
+  serviceType,
   serviceCategory,
   status,
   onCancel,
   onSave,
 }: Props) => {
+  const allowTestConn = useMemo(() => {
+    return shouldTestConnection(serviceType, serviceCategory);
+  }, [serviceType, serviceCategory]);
+
   const config = !isNil(data)
     ? /* eslint-disable-next-line no-prototype-builtins */
       data.hasOwnProperty('connection')
       ? ((data as DatabaseService | MessagingService | DashboardService)
           .connection.config as ConfigData)
-      : ({ pipelineUrl: (data as PipelineService).pipelineUrl } as ConfigData)
+      : ({
+          pipelineUrl: (data as PipelineService).connection.config?.hostPort,
+        } as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {
-    const updatedFormData = escapeBackwardSlashChar(data.formData);
+    const updatedFormData = formatFormDataForSubmit(data.formData);
     onSave({ ...data, formData: updatedFormData });
   };
 
   const handleTestConnection = (formData: ConfigData) => {
-    const updatedFormData = escapeBackwardSlashChar(formData);
+    const updatedFormData = formatFormDataForSubmit(formData);
 
     return new Promise<void>((resolve, reject) => {
-      TestConnection(updatedFormData, 'Database')
+      TestConnection(updatedFormData, getTestConnectionType(serviceCategory))
         .then((res) => {
           // This api only responds with status 200 on success
           // No data sent on api success
@@ -149,7 +161,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
         onSubmit={handleSave}
-        onTestConnection={handleTestConnection}
+        onTestConnection={allowTestConn ? handleTestConnection : undefined}
       />
     );
   };

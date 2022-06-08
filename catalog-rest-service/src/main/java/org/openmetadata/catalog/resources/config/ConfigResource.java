@@ -28,6 +28,8 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.sandbox.SandboxConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.jwt.JWKSResponse;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -35,16 +37,19 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 @Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
+  private final JWTTokenGenerator jwtTokenGenerator;
 
   public ConfigResource(CatalogApplicationConfig catalogApplicationConfig) {
     this.catalogApplicationConfig = catalogApplicationConfig;
+    this.jwtTokenGenerator = JWTTokenGenerator.getInstance();
   }
 
   @GET
   @Path(("/auth"))
   @Operation(
+      operationId = "getAuthConfiguration",
       summary = "Get auth configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -65,8 +70,9 @@ public class ConfigResource {
   @GET
   @Path(("/authorizer"))
   @Operation(
+      operationId = "getAuthorizerConfig",
       summary = "Get authorizer configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -87,8 +93,9 @@ public class ConfigResource {
   @GET
   @Path(("/sandbox"))
   @Operation(
+      operationId = "getSandboxConfiguration",
       summary = "Get sandbox mode",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -107,8 +114,9 @@ public class ConfigResource {
   @GET
   @Path(("/airflow"))
   @Operation(
+      operationId = "getAirflowConfiguration",
       summary = "Get airflow configuration",
-      tags = "general",
+      tags = "config",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -124,5 +132,21 @@ public class ConfigResource {
       airflowConfigurationForAPI.setApiEndpoint(catalogApplicationConfig.getAirflowConfiguration().getApiEndpoint());
     }
     return airflowConfigurationForAPI;
+  }
+
+  @GET
+  @Path(("/jwks"))
+  @Operation(
+      operationId = "getJWKSResponse",
+      summary = "Get JWKS public key",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JWKS public key",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = JWKSResponse.class)))
+      })
+  public JWKSResponse getJWKSResponse() {
+    return jwtTokenGenerator.getJWKSResponse();
   }
 }

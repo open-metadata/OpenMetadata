@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -101,6 +100,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Valid
   @Operation(
+      operationId = "listGlossaries",
       summary = "List Glossaries",
       tags = "glossaries",
       description =
@@ -147,6 +147,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getGlossaryByID",
       summary = "Get a glossary",
       tags = "glossaries",
       description = "Get a glossary by `id`.",
@@ -179,6 +180,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getGlossaryByFQN",
       summary = "Get a glossary by name",
       tags = "glossaries",
       description = "Get a glossary by name.",
@@ -211,6 +213,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllGlossaryVersion",
       summary = "List glossary versions",
       tags = "glossaries",
       description = "Get a list of all the versions of a glossary identified by `id`",
@@ -231,6 +234,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificGlossaryVersion",
       summary = "Get a version of the glossaries",
       tags = "glossaries",
       description = "Get a version of the glossary by given `id`",
@@ -258,6 +262,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @POST
   @Operation(
+      operationId = "createGlossary",
       summary = "Create a glossary",
       tags = "glossaries",
       description = "Create a new glossary.",
@@ -265,20 +270,20 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The glossary",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateGlossary.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Glossary.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
-    Glossary glossary = getGlossary(securityContext, create);
+    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, glossary, ADMIN | BOT);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchGlossary",
       summary = "Update a glossary",
       tags = "glossaries",
       description = "Update an existing glossary using JsonPatch.",
@@ -303,6 +308,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateGlossary",
       summary = "Create or update a glossary",
       tags = "glossaries",
       description = "Create a new glossary, if it does not exist or update an existing glossary.",
@@ -316,13 +322,14 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossary create)
       throws IOException {
-    Glossary glossary = getGlossary(securityContext, create);
+    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, glossary, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteGlossary",
       summary = "Delete a Glossary",
       tags = "glossaries",
       description = "Delete a glossary by `id`.",
@@ -341,21 +348,12 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      @Parameter(description = "Glossary Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private Glossary getGlossary(SecurityContext securityContext, CreateGlossary create) {
-    return new Glossary()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
-        .withReviewers(create.getReviewers())
-        .withTags(create.getTags())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Glossary getGlossary(CreateGlossary create, String user) {
+    return copy(new Glossary(), create, user).withReviewers(create.getReviewers()).withTags(create.getTags());
   }
 }

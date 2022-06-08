@@ -42,7 +42,7 @@ export const getRedirectUri = (callbackUrl: string) => {
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority, clientId, callbackUrl } = authClient;
+  const { authority, clientId, callbackUrl, responseType, scope } = authClient;
 
   return {
     authority,
@@ -50,10 +50,10 @@ export const getUserManagerConfig = (
     // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: clientId,
     // eslint-disable-next-line @typescript-eslint/camelcase
-    response_type: 'id_token',
+    response_type: responseType,
     // eslint-disable-next-line @typescript-eslint/camelcase
     redirect_uri: getRedirectUri(callbackUrl),
-    scope: 'openid email profile',
+    scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };
 };
@@ -87,6 +87,8 @@ export const getAuthConfig = (
           callbackUrl: redirectUri,
           provider,
           providerName,
+          scope: 'openid email profile',
+          responseType: 'id_token',
         };
       }
 
@@ -98,6 +100,21 @@ export const getAuthConfig = (
           clientId,
           callbackUrl: redirectUri,
           provider,
+          scope: 'openid email profile',
+          responseType: 'id_token',
+        };
+      }
+
+      break;
+    case AuthTypes.AWS_COGNITO:
+      {
+        config = {
+          authority,
+          clientId,
+          callbackUrl: redirectUri,
+          provider,
+          scope: 'openid email profile',
+          responseType: 'code',
         };
       }
 
@@ -151,7 +168,8 @@ export const getNameFromEmail = (email: string) => {
   if (email?.match(validEmailRegEx)) {
     return email.split('@')[0];
   } else {
-    return '';
+    // if the string does not conform to email format return the string
+    return email;
   }
 };
 

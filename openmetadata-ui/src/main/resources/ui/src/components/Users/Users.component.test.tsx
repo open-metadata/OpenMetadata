@@ -17,7 +17,7 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
 import Users from './Users.component';
@@ -94,10 +94,23 @@ const mockUserData = {
       href: 'http://localhost:8585/api/v1/roles/ce4df2a5-aaf5-4580-8556-254f42574aa7',
     },
   ],
+  inheritedRoles: [
+    {
+      id: '3fa30148-72f6-4205-8cab-56696cc23440',
+      type: 'role',
+      name: 'DataConsumer',
+      fullyQualifiedName: 'DataConsumer',
+      description:
+        'Users with Data Consumer role use different data assets for their day to day work.',
+      displayName: 'Data Consumer',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/roles/3fa30148-72f6-4205-8cab-56696cc23440',
+    },
+  ],
 };
 
-jest.mock('../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p>Avatar</p>);
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 jest.mock('../../pages/teams/UserCard', () => {
@@ -122,13 +135,35 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
   ),
 }));
 
+jest.mock('../containers/PageLayout', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        leftPanel,
+        rightPanel,
+      }: {
+        children: ReactNode;
+        rightPanel: ReactNode;
+        leftPanel: ReactNode;
+      }) => (
+        <div data-testid="PageLayout">
+          <div>{leftPanel}</div>
+          <div>{rightPanel}</div>
+          {children}
+        </div>
+      )
+    )
+);
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../EntityList/EntityList', () => {
-  return jest.fn().mockReturnValue(<p>EntityList.component</p>);
-});
+jest.mock('../EntityList/EntityList', () => ({
+  EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
+}));
 
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
@@ -260,5 +295,17 @@ describe('Test User Component', () => {
     expect(obServerElement).toBeInTheDocument();
 
     expect(mockObserve).toHaveBeenCalled();
+  });
+
+  it('Should render inherited roles', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+    const inheritedRoles = await findByTestId(container, 'inherited-roles');
+
+    expect(inheritedRoles).toBeInTheDocument();
   });
 });

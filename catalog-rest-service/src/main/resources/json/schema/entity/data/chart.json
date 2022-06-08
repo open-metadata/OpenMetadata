@@ -4,6 +4,8 @@
   "title": "Chart",
   "description": "This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Chart",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "chartType": {
       "javaType": "org.openmetadata.catalog.type.ChartType",
@@ -74,7 +76,7 @@
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -92,9 +94,8 @@
       "$ref": "#/definitions/chartType"
     },
     "chartUrl": {
-      "description": "Chart URL, pointing to its own Service URL.",
-      "type": "string",
-      "format": "uri"
+      "description": "Chart URL suffix from its service.",
+      "type": "string"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

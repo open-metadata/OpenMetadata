@@ -13,12 +13,17 @@ Metadata DAG common functions
 """
 import json
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Optional, Union
 
 from airflow import DAG
 
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.logger import set_loggers_level
 
@@ -27,19 +32,62 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
-from airflow_provider_openmetadata.lineage.callback import (
-    failure_callback,
-    success_callback,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     LogLevels,
     OpenMetadataWorkflowConfig,
-    WorkflowConfig,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.workflow import Workflow
+
+
+def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
+    """
+    Use the service EntityReference to build the Source.
+    Building the source dynamically helps us to not store any
+    sensitive info.
+    :param ingestion_pipeline: With the service ref
+    :return: WorkflowSource
+    """
+
+    metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+
+    service_type = ingestion_pipeline.service.type
+    service: Optional[
+        Union[DatabaseService, MessagingService, PipelineService, DashboardService]
+    ] = None
+
+    if service_type == "databaseService":
+        service: DatabaseService = metadata.get_by_name(
+            entity=DatabaseService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "pipelineService":
+        service: PipelineService = metadata.get_by_name(
+            entity=PipelineService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "dashboardService":
+        service: DashboardService = metadata.get_by_name(
+            entity=DashboardService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "messagingService":
+        service: MessagingService = metadata.get_by_name(
+            entity=MessagingService, fqn=ingestion_pipeline.service.name
+        )
+
+    if not service:
+        raise ValueError(f"Could not get service from type {service_type}")
+
+    return WorkflowSource(
+        type=service.serviceType.value.lower(),
+        serviceName=service.name.__root__,
+        serviceConnection=service.connection,
+        sourceConfig=ingestion_pipeline.sourceConfig,
+    )
 
 
 def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -109,19 +157,6 @@ def build_workflow_config_property(
     )
 
 
-def build_default_args() -> Dict[str, Any]:
-    """
-    Build the default_args dict to be passed
-    to the DAG regardless of the airflow_pipeline
-    payload.
-    """
-    return {
-        # Run the lineage backend callbacks to gather the Pipeline info
-        "on_failure_callback": failure_callback,
-        "on_success_callback": success_callback,
-    }
-
-
 def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     Prepare kwargs to send to DAG
@@ -131,7 +166,6 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return {
         "dag_id": ingestion_pipeline.name.__root__,
         "description": ingestion_pipeline.description,
-        "default_args": build_default_args(),
         "start_date": date_to_datetime(ingestion_pipeline.airflowConfig.startDate),
         "end_date": date_to_datetime(ingestion_pipeline.airflowConfig.endDate),
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,

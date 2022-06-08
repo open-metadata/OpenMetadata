@@ -32,6 +32,7 @@ const DropDown: React.FC<DropDownProp> = ({
   hiddenItems = [],
   isDropDownIconVisible = true,
   isLableVisible = true,
+  dataTestId = 'dropdown-item',
 }: DropDownProp) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
@@ -70,7 +71,7 @@ const DropDown: React.FC<DropDownProp> = ({
         className={`tw-relative tw-inline-block tw-text-left ${
           type === DropDownType.CHECKBOX && 'tw-w-full'
         }`}
-        data-testid="dropdown-item">
+        data-testid={dataTestId}>
         <div>
           <button
             aria-expanded="true"
@@ -124,11 +125,11 @@ const DropDown: React.FC<DropDownProp> = ({
               <>
                 {Icon && Icon}
                 {label && isLableVisible && (
-                  <p
+                  <span
                     className="hover:tw-underline"
                     style={{ color: `${isOpen ? activeLink : normalLink}` }}>
                     {label}
-                  </p>
+                  </span>
                 )}
 
                 {isDropDownIconVisible ? (

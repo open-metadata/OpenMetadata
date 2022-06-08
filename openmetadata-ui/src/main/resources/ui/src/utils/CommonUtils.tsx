@@ -32,17 +32,15 @@ import {
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
 import {
-  FQN_REGEX,
   UrlEntityCharRegEx,
   validEmailRegEx,
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
-import {
-  EntityReference,
-  EntityReference as UserTeams,
-  User,
-} from '../generated/entity/teams/user';
+import { EntityReference, User } from '../generated/entity/teams/user';
+import { getTitleCase } from './EntityUtils';
+import Fqn from './Fqn';
+import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
@@ -81,7 +79,7 @@ export const getPartialNameFromFQN = (
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
   joinSeperator = '/'
 ): string => {
-  const arrFqn = fqn.split(FQN_SEPARATOR_CHAR);
+  const arrFqn = Fqn.split(fqn);
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -106,31 +104,30 @@ export const getPartialNameFromTableFQN = (
   if (!fqn) {
     return '';
   }
+  const splitFqn = Fqn.split(fqn);
   // if nested column is requested, then ignore all the other
   // parts and just return the nested column name
   if (fqnParts.includes(FqnPart.NestedColumn)) {
-    const splitFqn = fqn.split(FQN_SEPARATOR_CHAR);
     // Remove the first 4 parts (service, database, schema, table)
 
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
-  const arrFqn = fqn.match(FQN_REGEX) || [];
   const arrPartialName = [];
-  if (arrFqn.length > 0) {
+  if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
-      arrPartialName.push(arrFqn[0]);
+      arrPartialName.push(splitFqn[0]);
     }
-    if (fqnParts.includes(FqnPart.Database) && arrFqn.length > 1) {
-      arrPartialName.push(arrFqn[1]);
+    if (fqnParts.includes(FqnPart.Database) && splitFqn.length > 1) {
+      arrPartialName.push(splitFqn[1]);
     }
-    if (fqnParts.includes(FqnPart.Schema) && arrFqn.length > 2) {
-      arrPartialName.push(arrFqn[2]);
+    if (fqnParts.includes(FqnPart.Schema) && splitFqn.length > 2) {
+      arrPartialName.push(splitFqn[2]);
     }
-    if (fqnParts.includes(FqnPart.Table) && arrFqn.length > 3) {
-      arrPartialName.push(arrFqn[3]);
+    if (fqnParts.includes(FqnPart.Table) && splitFqn.length > 3) {
+      arrPartialName.push(splitFqn[3]);
     }
-    if (fqnParts.includes(FqnPart.Column) && arrFqn.length > 4) {
-      arrPartialName.push(arrFqn[4]);
+    if (fqnParts.includes(FqnPart.Column) && splitFqn.length > 4) {
+      arrPartialName.push(splitFqn[4]);
     }
   }
 
@@ -158,31 +155,20 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
         count > 1 ? noun : noun.slice(0, noun.length - 1)
       }`;
     } else {
-      return `${countString} ${noun}${count !== 1 ? suffix : ''}`;
+      return `${countString} ${noun}${count > 1 ? suffix : ''}`;
     }
   }
 };
 
-export const getUserTeams = (): Array<UserTeams> => {
-  let retVal: Array<UserTeams>;
-  if (AppState.userDetails.teams) {
-    retVal = AppState.userDetails.teams.map((item) => {
-      const team = AppState.userTeams.find((obj) => obj.id === item.id);
-
-      return { ...item, displayName: team?.displayName };
-    });
-  } else {
-    retVal = AppState.userTeams;
-  }
-
-  return retVal || [];
-};
-
 export const hasEditAccess = (type: string, id: string) => {
+  const loggedInUser = AppState.getCurrentUserDetails();
   if (type === 'user') {
-    return id === getCurrentUserId();
+    return id === loggedInUser?.id;
   } else {
-    return getUserTeams().some((team) => team.id === id);
+    return Boolean(
+      loggedInUser?.teams?.length &&
+        loggedInUser?.teams?.some((team) => team.id === id)
+    );
   }
 };
 
@@ -207,7 +193,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
         clsBG,
         className
       )}>
@@ -621,6 +607,30 @@ export const getEntityPlaceHolder = (value: string, isDeleted?: boolean) => {
  * @param entity - entity reference
  * @returns - entity name
  */
-export const getEntityName = (entity: EntityReference) => {
+export const getEntityName = (entity?: EntityReference) => {
   return entity?.displayName || entity?.name || '';
+};
+
+export const getEntityDeleteMessage = (entity: string, dependents: string) => {
+  if (dependents) {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
+  } else {
+    return `Deleting this ${getTitleCase(
+      entity
+    )} will permanently remove its metadata from OpenMetadata.`;
+  }
+};
+
+export const getExploreLinkByFilter = (
+  filter: Ownership,
+  userDetails: User,
+  nonSecureUserDetails: User
+) => {
+  return getExplorePathWithInitFilters(
+    '',
+    undefined,
+    `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
+  );
 };

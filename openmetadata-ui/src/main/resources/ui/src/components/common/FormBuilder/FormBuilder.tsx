@@ -14,10 +14,11 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Form, { FormProps } from '@rjsf/core';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { FunctionComponent, useCallback, useState } from 'react';
+import React, { FunctionComponent, useState } from 'react';
 import { ConfigData } from '../../../interface/service.interface';
+import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate';
@@ -43,18 +44,19 @@ const FormBuilder: FunctionComponent<Props> = ({
   onCancel,
   onSubmit,
   onTestConnection,
+  uiSchema,
   ...props
 }: Props) => {
   let oForm: Form<ConfigData> | null;
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
-    formData
+    formatFormDataForRender(formData)
   );
   const [connectionTesting, setConnectionTesting] = useState<boolean>(false);
   const [connectionTestingState, setConnectionTestingState] =
     useState<LoadingState>('initial');
 
   const handleCancel = () => {
-    setLocalFormData(formData);
+    setLocalFormData(formatFormDataForRender(formData));
     if (onCancel) {
       onCancel();
     }
@@ -72,34 +74,19 @@ const FormBuilder: FunctionComponent<Props> = ({
       setConnectionTestingState('waiting');
       onTestConnection(localFormData)
         .then(() => {
-          setTimeout(() => {
-            setConnectionTestingState('success');
-          }, 500);
+          setConnectionTestingState('success');
         })
         .catch(() => {
-          setTimeout(() => {
-            setConnectionTestingState('initial');
-          }, 500);
+          setConnectionTestingState('initial');
         })
         .finally(() => {
-          setTimeout(() => {
-            setConnectionTesting(false);
-          }, 500);
+          setConnectionTesting(false);
         });
     }
   };
-  const debouncedOnChange = useCallback(
-    (updatedData: ConfigData): void => {
-      setLocalFormData(updatedData);
-    },
-    [setLocalFormData]
-  );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
   const handleChange = (updatedData: ConfigData) => {
-    debounceOnSearch(updatedData);
+    setLocalFormData(updatedData);
   };
 
   const getConnectionTestingMessage = () => {
@@ -108,7 +95,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         return (
           <div className="tw-flex">
             <Loader size="small" type="default" />{' '}
-            <span className="tw-ml-2">Running test...</span>
+            <span className="tw-ml-2">Testing Connection</span>
           </div>
         );
       case 'success':
@@ -137,6 +124,7 @@ const FormBuilder: FunctionComponent<Props> = ({
         oForm = form;
       }}
       schema={schema}
+      uiSchema={uiSchema}
       onChange={(e) => {
         handleChange(e.formData);
         props.onChange && props.onChange(e);

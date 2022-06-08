@@ -13,8 +13,6 @@ REST Auth & Client for Apache Superset
 """
 import json
 
-from pydantic import SecretStr
-
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -32,15 +30,17 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
 
     def __init__(self, config: WorkflowSource):
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
+        self.service_connection = self.config
         client_config = ClientConfig(
-            base_url=config.serviceConnection.__root__.config.hostPort,
+            base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
         )
         self.client = REST(client_config)
+        self.generated_auth_token = None
+        self.expiry = None
         super().__init__()
 
     @classmethod
@@ -79,9 +79,9 @@ class SupersetAPIClient:
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         client_config = ClientConfig(
-            base_url=config.serviceConnection.__root__.config.hostPort,
+            base_url=config.hostPort,
             api_version="api/v1",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
         )
@@ -165,4 +165,17 @@ class SupersetAPIClient:
             requests.Response
         """
         response = self.client.get(f"/database/{database_id}")
+        return response
+
+    def fetch_menu(self):
+        """
+        Check Current User
+
+        Args:
+            No Arguments
+
+        Returns:
+            requests.Response
+        """
+        response = self.client.get("/menu/")
         return response

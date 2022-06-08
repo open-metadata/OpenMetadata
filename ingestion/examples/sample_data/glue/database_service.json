@@ -9,12 +9,14 @@
         "awsSecretAccessKey": "aws secret access key",
         "awsRegion": "aws region",
         "endPointURL": "https://glue.<region_name>.amazonaws.com/"
-      }
+      },
+      "storageServiceName": "glue_s3",
+      "pipelineServiceName": "glue_etl"
     }
   },
   "sourceConfig": {
     "config": {
-      "enableDataProfiler": false
+      "type": "DatabaseMetadata"
     }
   }
 }

@@ -32,8 +32,10 @@ class InvalidSourceException(Exception):
 class SourceStatus(Status):
     records = 0
 
-    warnings: List[str] = field(default_factory=list)
+    success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
 
     def scanned(self, record: Any) -> None:
         self.records += 1
@@ -44,8 +46,10 @@ class SourceStatus(Status):
     def failure(self, key: str, reason: str) -> None:
         self.failures.append({key: reason})
 
+    def filter(self, key: str, reason: str) -> None:
+        self.filtered.append({key: reason})
 
-@dataclass  # type: ignore[misc]
+
 class Source(Closeable, Generic[Entity], metaclass=ABCMeta):
     @classmethod
     @abstractmethod

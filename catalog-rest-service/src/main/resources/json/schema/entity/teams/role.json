@@ -3,6 +3,8 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Role",
   "description": "This schema defines the Role entity. A Role has access to zero or more data assets.",
+  "javaType": "org.openmetadata.catalog.entity.teams.Role",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "type": "object",
   "definitions": {
     "roleName": {
@@ -17,13 +19,17 @@
     "name": {
       "$ref": "#/definitions/roleName"
     },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Consumer'.",
       "type": "string"
     },
     "description": {
       "description": "Description of the role.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -55,7 +61,7 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "defaultRole": {
-      "description": "If `true`, this role is set as default role and will be assigned to all users.",
+      "description": "If `true`, this role is set as default system role and will be inherited by all the users.",
       "type": "boolean",
       "default": false
     },

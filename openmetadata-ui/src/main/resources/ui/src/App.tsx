@@ -18,6 +18,8 @@ import {
   faCheckSquare,
   faChevronDown,
   faChevronRight,
+  faChevronUp,
+  faEllipsisV,
   faPlus,
   faSearch,
   faTimes,
@@ -39,7 +41,9 @@ const App: FunctionComponent = () => {
     faCheckSquare,
     faCheckCircle,
     faChevronDown,
-    faChevronRight
+    faChevronRight,
+    faChevronUp,
+    faEllipsisV
   );
 
   return (
@@ -50,7 +54,7 @@ const App: FunctionComponent = () => {
             <AppRouter />
           </AuthProvider>
         </Router>
-        <ToastContainer {...toastOptions} />
+        <ToastContainer {...toastOptions} newestOnTop />
       </div>
     </div>
   );

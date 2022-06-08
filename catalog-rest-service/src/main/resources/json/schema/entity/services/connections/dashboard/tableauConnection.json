@@ -55,7 +55,8 @@
     "personalAccessTokenSecret": {
       "title": "Personal Access Token Secret",
       "description": "Personal Access Token Secret.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "env": {
       "title": "Tableau Environment",
@@ -63,15 +64,11 @@
       "type": "string",
       "default": "tableau_prod"
     },
-    "dbServiceName": {
-      "description": "Database Service Name in order to add data lineage.",
-      "type": "string"
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "apiVersion", "siteName", "env"]
+  "required": ["apiVersion", "siteName", "env"]
 }

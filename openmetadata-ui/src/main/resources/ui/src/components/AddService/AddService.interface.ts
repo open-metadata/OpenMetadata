@@ -14,10 +14,21 @@
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
+import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface AddServiceProps {
   serviceCategory: ServiceCategory;
+  addIngestion: boolean;
   onAddServiceSave: (service: DataObj) => Promise<void>;
+  handleAddIngestion: (value: boolean) => void;
   onAddIngestionSave: (ingestion: CreateIngestionPipeline) => Promise<void>;
   newServiceData: DataObj | undefined;
+  isIngestionDeployed: boolean;
+  isIngestionCreated: boolean;
+  ingestionProgress: number;
+  ingestionAction: string;
+  showDeployButton?: boolean;
+  slashedBreadcrumb: TitleBreadcrumbProps['titleLinks'];
+  onIngestionDeploy?: () => Promise<void>;
+  onAirflowStatusCheck: () => Promise<void>;
 }

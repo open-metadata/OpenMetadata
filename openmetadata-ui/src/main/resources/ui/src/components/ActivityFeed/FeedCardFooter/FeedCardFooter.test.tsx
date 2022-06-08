@@ -12,7 +12,6 @@
  */
 
 import {
-  findAllByTestId,
   findByTestId,
   queryAllByTestId,
   queryByTestId,
@@ -30,8 +29,10 @@ jest.mock('../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/avatar/Avatar', () => {
-  return jest.fn().mockReturnValue(<p data-testid="replied-user">Avatar</p>);
+jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="replied-user">ProfilePicture</p>);
 });
 
 const mockFeedCardFooterPorps = {
@@ -52,13 +53,9 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const repliedUsers = await findAllByTestId(container, 'replied-user');
     const replyCount = await findByTestId(container, 'reply-count');
-    const lastReply = await findByTestId(container, 'last-reply');
 
-    expect(repliedUsers).toHaveLength(2);
     expect(replyCount).toBeInTheDocument();
-    expect(lastReply).toBeInTheDocument();
   });
 
   it('Check if FeedCardFooter has isFooterVisible as false', async () => {
@@ -124,11 +121,9 @@ describe('Test FeedCardFooter component', () => {
       }
     );
 
-    const repliedUsers = queryAllByTestId(container, 'replied-user');
     const replyCount = queryByTestId(container, 'reply-count');
     const lastReply = queryByTestId(container, 'last-reply');
 
-    expect(repliedUsers).toHaveLength(2);
     expect(replyCount).toBeInTheDocument();
     expect(lastReply).not.toBeInTheDocument();
   });

@@ -28,12 +28,16 @@ config = """
         "sampleDataFolder": "ingestion/examples/sample_data"
       }
     },
-    "sourceConfig": {}
+    "sourceConfig": {
+      "config":{
+        "type": "DatabaseUsage"
+      }
+      
+    }
   },
   "processor": {
     "type": "query-parser",
     "config": {
-      "filter": ""
     }
   },
   "stage": {
@@ -64,22 +68,31 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.dim_address": 100,
-            "shopify.dim_shop": 190,
-            "shopify.dim_customer": 125,
-            "dim_customer": 9,
-            "shopify.dim_location": 75,
-            "dim_location.shop_id": 25,
-            "dim_shop.shop_id": 105,
-            "shopify.dim_product": 130,
-            "dim_product.shop_id": 80,
-            "shopify.dim_product_variant": 35,
-            "dim_shop": 5,
-            "shopify.dim_staff": 75,
-            "shopify.fact_line_item": 100,
-            "shopify.fact_order": 185,
-            "shopify.dim_api_client": 85,
-            "shopify.fact_sale": 420,
+            "shopify.dim_address": 200,
+            "shopify.shop": 300,
+            "shopify.dim_customer": 250,
+            "dim_customer": 76,
+            "shopify.dim_location": 150,
+            "dim_location.shop_id": 50,
+            "shop": 56,
+            "shop_id": 50,
+            "shopify.dim_staff": 150,
+            "shopify.fact_line_item": 200,
+            "shopify.fact_order": 310,
+            "shopify.product": 10,
+            "shopify.fact_sale": 520,
+            "dim_address": 24,
+            "api": 4,
+            "dim_location": 8,
+            "product": 32,
+            "dim_staff": 10,
+            "fact_line_item": 34,
+            "fact_order": 30,
+            "fact_sale": 54,
+            "fact_session": 62,
+            "raw_customer": 20,
+            "raw_order": 26,
+            "raw_product_catalog": 12,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()

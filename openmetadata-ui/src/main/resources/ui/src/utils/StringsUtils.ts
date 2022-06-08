@@ -83,6 +83,8 @@ export const bytesToSize = (bytes: number) => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   if (bytes === 0) {
     return `${bytes} ${sizes[0]}`;
+  } else if (bytes < 0) {
+    return `N/A`;
   } else {
     const i = parseInt(
       Math.floor(Math.log(bytes) / Math.log(1024)).toString(),
@@ -119,4 +121,22 @@ export const getErrorText = (
 
   // if error text is still empty, return the fallback text
   return errorText || fallbackText;
+};
+
+/**
+ *
+ * @param fqn - Value to be encoded
+ * @returns - Encoded text string as a valid component of a Uniform Resource Identifier (URI).
+ */
+export const getEncodedFqn = (fqn: string) => {
+  return encodeURIComponent(fqn);
+};
+
+/**
+ *
+ * @param url - Url to be check
+ * @returns - True if url is external otherwise false
+ */
+export const isExternalUrl = (url = '') => {
+  return /^https?:\/\//.test(url);
 };

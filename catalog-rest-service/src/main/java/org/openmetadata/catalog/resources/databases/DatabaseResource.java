@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -97,6 +96,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @GET
   @Operation(
+      operationId = "listDatabases",
       summary = "List databases",
       tags = "databases",
       description =
@@ -148,6 +148,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllDatabaseVersion",
       summary = "List database versions",
       tags = "databases",
       description = "Get a list of all the versions of a database identified by `id`",
@@ -168,6 +169,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getDatabaseByID",
       summary = "Get a database",
       tags = "databases",
       description = "Get a database by `id`.",
@@ -200,6 +202,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getDatabaseByFQN",
       summary = "Get a database by name",
       tags = "databases",
       description = "Get a database by fully qualified name.",
@@ -232,6 +235,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificDatabaseVersion",
       summary = "Get a version of the database",
       tags = "databases",
       description = "Get a version of the database by given `id`",
@@ -259,6 +263,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @POST
   @Operation(
+      operationId = "createDatabase",
       summary = "Create a database",
       tags = "databases",
       description = "Create a database under an existing `service`.",
@@ -266,20 +271,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The database",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database, ADMIN | BOT);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchDatabase",
       summary = "Update a database",
       tags = "databases",
       description = "Update an existing database using JsonPatch.",
@@ -304,6 +309,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateDatabase",
       summary = "Create or update database",
       tags = "databases",
       description = "Create a database, if it does not exist or update an existing database.",
@@ -311,18 +317,22 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The updated database ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateDatabase.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Database.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabase create)
       throws IOException {
-    Database database = getDatabase(securityContext, create);
+    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database, ADMIN | BOT | OWNER);
   }
 
   @DELETE
   @Path("/{id}/location")
-  @Operation(summary = "Remove the location", tags = "databases", description = "Remove the location")
+  @Operation(
+      operationId = "deleteLocation",
+      summary = "Remove the location",
+      tags = "databases",
+      description = "Remove the location")
   public Database deleteLocation(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
@@ -336,6 +346,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteDatabase",
       summary = "Delete a database",
       tags = "databases",
       description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
@@ -359,14 +370,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete, ADMIN | BOT);
   }
 
-  private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
-    return new Database()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDescription(create.getDescription())
-        .withService(create.getService())
-        .withOwner(create.getOwner())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
+  private Database getDatabase(CreateDatabase create, String user) {
+    return copy(new Database(), create, user).withService(create.getService());
   }
 }

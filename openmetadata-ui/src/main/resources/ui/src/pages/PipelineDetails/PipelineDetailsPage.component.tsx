@@ -441,6 +441,7 @@ const PipelineDetailsPage = () => {
     saveUpdatedPipelineData(updatedPipeline)
       .then((res: AxiosResponse) => {
         if (res.data) {
+          setPipelineDetails(res.data);
           setTier(getTierTags(res.data.tags));
           setCurrentVersion(res.data.version);
           setTags(getTagsWithoutTier(res.data.tags));
@@ -711,7 +712,6 @@ const PipelineDetailsPage = () => {
           tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
-          users={AppState.users}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

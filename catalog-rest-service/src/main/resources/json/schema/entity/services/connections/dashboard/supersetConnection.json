@@ -44,11 +44,6 @@
       "type": "string",
       "default": "db"
     },
-    "dbServiceName": {
-      "title": "Database Service Name",
-      "description": "Database Service Name to create lineage",
-      "type": "string"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "description": "Additional connection options that can be sent to service during the connection.",

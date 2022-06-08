@@ -14,8 +14,11 @@
 package org.openmetadata.catalog.security;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
@@ -44,7 +48,7 @@ public class DefaultAuthorizer implements Authorizer {
   private String principalDomain;
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
@@ -65,11 +69,12 @@ public class DefaultAuthorizer implements Authorizer {
         }
         addOrUpdateUser(user);
       } catch (EntityNotFoundException | IOException ex) {
+        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
         User user =
             new User()
                 .withId(UUID.randomUUID())
                 .withName(adminUser)
-                .withEmail(adminUser + "@" + principalDomain)
+                .withEmail(adminUser + "@" + domain)
                 .withIsAdmin(true)
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
@@ -89,11 +94,12 @@ public class DefaultAuthorizer implements Authorizer {
         }
         addOrUpdateUser(user);
       } catch (EntityNotFoundException | IOException ex) {
+        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
         User user =
             new User()
                 .withId(UUID.randomUUID())
                 .withName(botUser)
-                .withEmail(botUser + "@" + principalDomain)
+                .withEmail(botUser + "@" + domain)
                 .withIsBot(true)
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());
@@ -119,18 +125,20 @@ public class DefaultAuthorizer implements Authorizer {
       EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
       Fields fieldsRolesAndTeams = userRepository.getFields("roles, teams");
       User user = getUserFromAuthenticationContext(ctx, fieldsRolesAndTeams);
+      List<EntityReference> allRoles = getAllRoles(user);
       if (entityReference == null) {
         // In some cases there is no specific entity being acted upon. Eg: Lineage.
-        return RoleEvaluator.getInstance().hasPermissions(user.getRoles(), null, operation);
+        return RoleEvaluator.getInstance().hasPermissions(allRoles, null, operation);
       }
 
-      Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      EntityInterface entity =
+          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
+      EntityReference owner = entity.getOwner();
 
       if (Entity.shouldHaveOwner(entityReference.getType()) && owner != null && isOwnedByUser(user, owner)) {
         return true; // Entity is owned by the user.
       }
-      return RoleEvaluator.getInstance().hasPermissions(user.getRoles(), entity, operation);
+      return RoleEvaluator.getInstance().hasPermissions(allRoles, entity, operation);
     } catch (IOException | EntityNotFoundException ex) {
       return false;
     }
@@ -149,16 +157,18 @@ public class DefaultAuthorizer implements Authorizer {
       EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
       Fields fieldsRolesAndTeams = userRepository.getFields("roles, teams");
       User user = getUserFromAuthenticationContext(ctx, fieldsRolesAndTeams);
+      List<EntityReference> allRoles = getAllRoles(user);
       if (entityReference == null) {
-        return RoleEvaluator.getInstance().getAllowedOperations(user.getRoles(), null);
+        return RoleEvaluator.getInstance().getAllowedOperations(allRoles, null);
       }
-      Object entity = Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
-      EntityReference owner = Entity.getEntityInterface(entity).getOwner();
+      EntityInterface entity =
+          Entity.getEntity(entityReference, new Fields(List.of("tags", FIELD_OWNER)), Include.NON_DELETED);
+      EntityReference owner = entity.getOwner();
       if (owner == null || isOwnedByUser(user, owner)) {
         // Entity does not have an owner or is owned by the user - allow all operations.
         return Stream.of(MetadataOperation.values()).collect(Collectors.toList());
       }
-      return RoleEvaluator.getInstance().getAllowedOperations(user.getRoles(), entity);
+      return RoleEvaluator.getInstance().getAllowedOperations(allRoles, entity);
     } catch (IOException | EntityNotFoundException ex) {
       return Collections.emptyList();
     }
@@ -227,7 +237,7 @@ public class DefaultAuthorizer implements Authorizer {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     if (ctx.getUser() != null) {
       // If a requested field is not present in the user, then add it
-      for (String field : fields.getList()) {
+      for (String field : fields.getFieldList()) {
         if (!ctx.getUserFields().contains(field)) {
           userRepository.setFields(ctx.getUser(), userRepository.getFields(field));
           ctx.getUserFields().add(fields);
@@ -252,5 +262,11 @@ public class DefaultAuthorizer implements Authorizer {
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);
     }
+  }
+
+  private List<EntityReference> getAllRoles(User user) {
+    List<EntityReference> allRoles = new ArrayList<>(listOrEmpty(user.getRoles()));
+    allRoles.addAll(listOrEmpty(user.getInheritedRoles()));
+    return allRoles.stream().distinct().collect(Collectors.toList()); // Remove duplicates
   }
 }

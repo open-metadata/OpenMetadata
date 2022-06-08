@@ -60,7 +60,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       .then((res: AxiosResponse) => {
         if (res.data) {
           setData(
-            formatDataResponse(res.data.suggest['table-suggest'][0].options)
+            formatDataResponse(res.data.suggest['metadata-suggest'][0].options)
           );
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -81,7 +81,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   return (
     <div>
       <input
-        className="tw-form-inputs tw-px-3 tw-py-1 tw-w-full"
+        className="tw-form-inputs tw-form-inputs-padding tw-w-full"
         placeholder={`Search for ${capitalize(entityType)}s...`}
         type="search"
         value={searchValue}
@@ -114,7 +114,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                 }}>
                 <img
                   alt={entity.serviceType}
-                  className="tw-inline tw-h-4 tw-w-4 tw-mr-2"
+                  className="tw-inline tw-h-4 tw-mr-2"
                   src={serviceTypeLogo(entity.serviceType as string)}
                 />
                 {getSuggestionLabel(

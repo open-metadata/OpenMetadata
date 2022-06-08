@@ -4,6 +4,8 @@
   "title": "Database",
   "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Database",
+  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this database instance.",
@@ -23,7 +25,7 @@
     },
     "description": {
       "description": "Description of the database instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

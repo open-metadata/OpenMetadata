@@ -39,7 +39,7 @@ jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });
 
@@ -53,6 +53,10 @@ jest.mock('../../components/common/non-admin-action/NonAdminAction', () => {
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock('../common/ProfilePicture/ProfilePicture', () => {
+  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 
 const mockProps = {

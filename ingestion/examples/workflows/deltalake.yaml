@@ -1,0 +1,18 @@
+source:
+  type: deltalake
+  serviceName: local_deltalake
+  serviceConnection:
+    config:
+      metastoreHostPort: localhost:9083
+      metastoreFilePath: <path_to_metastore>/metastore_db
+      appName: MyApp
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

@@ -25,6 +25,7 @@ import org.jeasy.rules.api.RulesEngine;
 import org.jeasy.rules.api.RulesEngineParameters;
 import org.jeasy.rules.core.DefaultRulesEngine;
 import org.jeasy.rules.core.RuleBuilder;
+import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.PolicyRepository;
@@ -91,8 +92,8 @@ public class PolicyEvaluator {
     LOG.info("Finished loading Access Control policies");
   }
 
-  /** Checks if the policy has rules that gives permission to perform an operation on the given entity. */
-  public boolean hasPermission(@NonNull UUID policyId, Object entity, @NonNull MetadataOperation operation) {
+  /** Checks if the policy has rules that give permission to perform an operation on the given entity. */
+  public boolean hasPermission(@NonNull UUID policyId, EntityInterface entity, @NonNull MetadataOperation operation) {
     AttributeBasedFacts facts =
         new AttributeBasedFacts.AttributeBasedFactsBuilder()
             .withEntity(entity)
@@ -105,7 +106,7 @@ public class PolicyEvaluator {
   }
 
   /** Returns a list of operations that a user can perform on the given entity. */
-  public List<MetadataOperation> getAllowedOperations(@NonNull UUID policyId, Object entity) {
+  public List<MetadataOperation> getAllowedOperations(@NonNull UUID policyId, EntityInterface entity) {
     AttributeBasedFacts facts = new AttributeBasedFacts.AttributeBasedFactsBuilder().withEntity(entity).build();
     Rules rules = policyToRules.get(policyId);
     allowedOperationsRulesEngine.fire(rules, facts.getFacts());

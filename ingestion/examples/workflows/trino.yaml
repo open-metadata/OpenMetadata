@@ -1,0 +1,26 @@
+source:
+  type: trino
+  serviceName: local_trino
+  serviceConnection:
+    config:
+      type: Trino
+      hostPort: localhost:8080
+      username: user
+      catalog: tpcds
+      databaseSchema: tiny
+      connectionOptions: {}
+      connectionArguments: {}
+  sourceConfig:
+    config:
+      enableDataProfiler: true
+      generateSampleData: false
+      tableFilterPattern:
+        includes:
+        - customer.*
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

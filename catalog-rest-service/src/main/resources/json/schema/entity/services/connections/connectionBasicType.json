@@ -6,7 +6,7 @@
   "definitions": {
     "connectionOptions": {
       "javaType": "org.openmetadata.catalog.services.connections.database.ConnectionOptions",
-      "description": "Additional connection options that can be sent to service during the connection.",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
       "type": "object",
       "additionalProperties": {
         "type": "string"
@@ -17,7 +17,7 @@
       "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        ".{1,}": { "type": "string" }
       }
     },
     "supportsMetadataExtraction": {
@@ -32,6 +32,11 @@
     },
     "supportsProfiler": {
       "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDatabase": {
+      "description": "The source service supports the database concept in its hierarchy",
       "type": "boolean",
       "default": true
     }

@@ -47,7 +47,7 @@ ingestion_config = {
                 "database": "main",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -111,7 +111,7 @@ class ProfilerWorkflowTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test_sqlite"
+                entity=DatabaseService, fqn="test_sqlite"
             ).id.__root__
         )
 
@@ -128,7 +128,7 @@ class ProfilerWorkflowTest(TestCase):
         """
 
         table_entity: Table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.main.users"
+            entity=Table, fqn="test_sqlite.main.main.users"
         )
         assert table_entity.fullyQualifiedName.__root__ == "test_sqlite.main.main.users"
 
@@ -191,7 +191,7 @@ class ProfilerWorkflowTest(TestCase):
 
         # The profileSample should have been updated
         table = self.metadata.get_by_name(
-            entity=Table, fqdn="test_sqlite.main.main.users", fields=["profileSample"]
+            entity=Table, fqn="test_sqlite.main.main.users", fields=["profileSample"]
         )
         assert table.profileSample == 75.0
 

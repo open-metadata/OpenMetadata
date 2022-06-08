@@ -49,7 +49,7 @@ setup(
     description="Airflow REST APIs to create and manage DAGS",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     package_dir={"": "src"},
     zip_safe=False,
     dependency_links=[],

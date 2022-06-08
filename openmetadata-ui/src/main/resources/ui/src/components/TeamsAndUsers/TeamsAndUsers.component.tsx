@@ -28,10 +28,9 @@ import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
 
 const TeamsAndUsers = ({
-  users,
+  usersCount,
   isUsersLoading,
-  admins,
-  bots,
+  adminsCount,
   activeUserTab,
   userSearchTerm,
   selectedUserList,
@@ -46,7 +45,9 @@ const TeamsAndUsers = ({
   currentTeam,
   currentTeamUsers,
   teamUserPagin,
+  userPaging,
   currentTeamUserPage,
+  currentUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
   errorNewTeamData,
@@ -60,6 +61,7 @@ const TeamsAndUsers = ({
   descriptionHandler,
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
+  userPagingHandler,
   changeCurrentTeam,
   isAddingUsers,
   isTeamMemberLoading,
@@ -72,15 +74,11 @@ const TeamsAndUsers = ({
   const usersData = [
     {
       name: UserType.USERS,
-      data: users,
+      count: usersCount,
     },
     {
       name: UserType.ADMINS,
-      data: admins,
-    },
-    {
-      name: UserType.BOTS,
-      data: bots,
+      count: adminsCount,
     },
   ];
 
@@ -92,7 +90,9 @@ const TeamsAndUsers = ({
     return (
       <>
         <div className="tw-mb-8">
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
+          <div
+            className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b"
+            data-testid="add-team-container">
             <p className="tw-heading">Teams</p>
             {hasAccess && (
               <NonAdminAction
@@ -100,7 +100,7 @@ const TeamsAndUsers = ({
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <Button
                   className="tw-h-7 tw-px-2 tw-mb-4"
-                  data-testid="add-teams"
+                  data-testid="add-team-button"
                   size="small"
                   theme="primary"
                   variant="contained"
@@ -115,6 +115,7 @@ const TeamsAndUsers = ({
           {teams.map((team) => (
             <div
               className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+              data-testid={`team-${team.name}`}
               key={team.name}
               onClick={() => {
                 changeCurrentTeam(team.name, false);
@@ -126,6 +127,7 @@ const TeamsAndUsers = ({
                 )}`}>
                 <p
                   className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                  data-testid="team-name"
                   title={team.displayName ?? team.name}>
                   {team.displayName ?? team.name}
                 </p>
@@ -148,7 +150,7 @@ const TeamsAndUsers = ({
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-7 tw-px-2 tw-mb-4"
-                    data-testid="add-teams"
+                    data-testid="add-user-button"
                     size="small"
                     theme="primary"
                     variant="contained"
@@ -158,25 +160,27 @@ const TeamsAndUsers = ({
                 </NonAdminAction>
               )}
             </div>
-            {usersData.map((d) => (
+            {usersData.map((user) => (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-                key={d.name}
+                data-testid={user.name}
+                key={user.name}
                 onClick={() => {
-                  changeCurrentTeam(d.name, true);
+                  changeCurrentTeam(user.name, true);
                 }}>
                 <div
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
-                    d.name,
+                    user.name,
                     activeUserTab
                   )}`}>
                   <p
                     className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                    title={capitalize(d.name)}>
-                    {capitalize(d.name)}
+                    data-testid="user-type"
+                    title={capitalize(user.name)}>
+                    {capitalize(user.name)}
                   </p>
                 </div>
-                {getCountBadge(d.data.length, '', activeUserTab === d.name)}
+                {getCountBadge(user.count, '', activeUserTab === user.name)}
               </div>
             ))}
           </div>
@@ -195,10 +199,13 @@ const TeamsAndUsers = ({
           data-testid="team-and-user-container">
           {!isTeamVisible ? (
             <UserDetails
+              currentUserPage={currentUserPage}
               handleDeleteUser={handleDeleteUser}
               handleUserSearchTerm={handleUserSearchTerm}
               isUsersLoading={isUsersLoading}
               selectedUserList={selectedUserList}
+              userPaging={userPaging}
+              userPagingHandler={userPagingHandler}
               userSearchTerm={userSearchTerm}
             />
           ) : (

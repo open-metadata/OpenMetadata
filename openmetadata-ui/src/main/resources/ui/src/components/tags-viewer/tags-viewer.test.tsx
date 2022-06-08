@@ -28,7 +28,7 @@ const tags = [
 const tagsWithTerm = [
   { tagFQN: `tags.tag 1`, source: 'Tag' },
   { tagFQN: `tags.tag 2`, source: 'Tag' },
-  { tagFQN: `tags.term`, source: 'Glossary' },
+  { tagFQN: `test.tags.term`, source: 'Glossary' },
 ];
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -65,9 +65,24 @@ describe('Test TagsViewer Component', () => {
     expect(TagViewer).toHaveLength(3);
 
     const term = getByText(container, /term/);
-    const termFqn = queryByText(container, /tags.term/);
+    const termFqn = queryByText(container, /test.tags.term/);
+    const glossary = getByText(container, /tags.term/);
 
     expect(term).toBeInTheDocument();
     expect(termFqn).not.toBeInTheDocument();
+    expect(glossary).toBeInTheDocument();
+  });
+
+  it('Should render tags without hash symbol', () => {
+    const { container } = render(
+      <TagsViewer showStartWith={false} sizeCap={-1} tags={tagsWithTerm} />
+    );
+    const TagViewer = getAllByTestId(container, 'tags');
+
+    expect(TagViewer).toHaveLength(3);
+
+    const term = queryByText(container, '#');
+
+    expect(term).not.toBeInTheDocument();
   });
 });

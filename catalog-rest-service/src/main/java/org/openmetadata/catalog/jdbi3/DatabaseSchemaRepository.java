@@ -17,19 +17,14 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.type.Include.ALL;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
-import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
-import org.openmetadata.catalog.resources.databases.DatabaseResource;
-import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
-import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -41,7 +36,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
-        DatabaseResource.COLLECTION_PATH,
+        DatabaseSchemaResource.COLLECTION_PATH,
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
         dao.databaseSchemaDAO(),
@@ -50,16 +45,16 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         DATABASE_SCHEMA_UPDATE_FIELDS);
   }
 
-  public static String getFQN(DatabaseSchema schema) {
-    return schema != null
-        ? FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName())
-        : null;
+  @Override
+  public void setFullyQualifiedName(DatabaseSchema schema) {
+    schema.setFullyQualifiedName(
+        FullyQualifiedName.add(schema.getDatabase().getFullyQualifiedName(), schema.getName()));
   }
 
   @Override
   public void prepare(DatabaseSchema schema) throws IOException {
     populateDatabase(schema);
-    schema.setFullyQualifiedName(getFQN(schema));
+    setFullyQualifiedName(schema);
     populateOwner(schema.getOwner()); // Validate owner
   }
 
@@ -123,140 +118,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withId(original.getId());
   }
 
-  @Override
-  public EntityInterface<DatabaseSchema> getEntityInterface(DatabaseSchema entity) {
-    return new DatabaseSchemaEntityInterface(entity);
-  }
-
   private void populateDatabase(DatabaseSchema schema) throws IOException {
     Database database = Entity.getEntity(schema.getDatabase(), Fields.EMPTY_FIELDS, ALL);
-    schema.setDatabase(new DatabaseEntityInterface(database).getEntityReference());
+    schema.setDatabase(database.getEntityReference());
     schema.setService(database.getService());
     schema.setServiceType(database.getServiceType());
-  }
-
-  public static class DatabaseSchemaEntityInterface extends EntityInterface<DatabaseSchema> {
-    public DatabaseSchemaEntityInterface(DatabaseSchema entity) {
-      super(Entity.DATABASE_SCHEMA, entity);
-    }
-
-    @Override
-    public UUID getId() {
-      return entity.getId();
-    }
-
-    @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
-
-    @Override
-    public String getDisplayName() {
-      return entity.getDisplayName();
-    }
-
-    @Override
-    public String getName() {
-      return entity.getName();
-    }
-
-    @Override
-    public Boolean isDeleted() {
-      return entity.getDeleted();
-    }
-
-    @Override
-    public EntityReference getOwner() {
-      return entity.getOwner();
-    }
-
-    @Override
-    public String getFullyQualifiedName() {
-      return entity.getFullyQualifiedName() != null
-          ? entity.getFullyQualifiedName()
-          : DatabaseSchemaRepository.getFQN(entity);
-    }
-
-    @Override
-    public Double getVersion() {
-      return entity.getVersion();
-    }
-
-    @Override
-    public String getUpdatedBy() {
-      return entity.getUpdatedBy();
-    }
-
-    @Override
-    public long getUpdatedAt() {
-      return entity.getUpdatedAt();
-    }
-
-    @Override
-    public URI getHref() {
-      return entity.getHref();
-    }
-
-    @Override
-    public DatabaseSchema getEntity() {
-      return entity;
-    }
-
-    @Override
-    public EntityReference getContainer() {
-      return entity.getService();
-    }
-
-    @Override
-    public void setId(UUID id) {
-      entity.setId(id);
-    }
-
-    @Override
-    public void setDescription(String description) {
-      entity.setDescription(description);
-    }
-
-    @Override
-    public void setDisplayName(String displayName) {
-      entity.setDisplayName(displayName);
-    }
-
-    @Override
-    public void setName(String name) {
-      entity.setName(name);
-    }
-
-    @Override
-    public void setUpdateDetails(String updatedBy, long updatedAt) {
-      entity.setUpdatedBy(updatedBy);
-      entity.setUpdatedAt(updatedAt);
-    }
-
-    @Override
-    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-      entity.setVersion(newVersion);
-      entity.setChangeDescription(changeDescription);
-    }
-
-    @Override
-    public void setOwner(EntityReference owner) {
-      entity.setOwner(owner);
-    }
-
-    @Override
-    public void setDeleted(boolean flag) {
-      entity.setDeleted(flag);
-    }
-
-    @Override
-    public DatabaseSchema withHref(URI href) {
-      return entity.withHref(href);
-    }
-
-    @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
   }
 }

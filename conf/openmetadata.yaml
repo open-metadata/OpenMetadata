@@ -87,7 +87,7 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: INFO
+  level: ${LOG_LEVEL:-TRACE}
   loggers:
     org.openmetadata.catalog.events: DEBUG
     io.swagger: ERROR
@@ -131,14 +131,24 @@ authorizerConfiguration:
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+
+jwtTokenConfiguration:
+  rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
+  rsaprivateKeyFilePath: ${RSA_PRIVATE_KEY_FILE_PATH:-""}
+  jwtissuer: ${JWT_ISSUER:-"open-metadata.org"}
+  keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
   host: ${ELASTICSEARCH_HOST:-localhost}
@@ -213,9 +223,8 @@ fernetConfiguration:
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
       schedule:
         checkInterval: 2500ms

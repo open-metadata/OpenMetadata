@@ -3,7 +3,8 @@
   "serviceName": "sample_kafka",
   "serviceConnection": {
     "config": {
-      "type": "Kafka"
+      "type": "Kafka",
+      "bootstrapServers": "localhost:9092"
     }
   },
   "sourceConfig": {
