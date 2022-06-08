@@ -1,16 +1,25 @@
 source:
-  type: singlestore
-  serviceName: local_singlestore
+  type: mysql
+  serviceName: local_mysql
   serviceConnection:
     config:
-      type: SingleStore
+      type: Mysql
       username: openmetadata_user
       password: openmetadata_password
       hostPort: localhost:3306
-      databaseSchema: custom_database_name
+      connectionOptions: {}
+      connectionArguments: {}
   sourceConfig:
     config:
-      type: DatabaseMetadata
+      type: Profiler
+      generateSampleData: true
+      fqnFilterPattern:
+        includes:
+        - local_mysql.openmetadata_db*
+
+processor:
+  type: "orm-profiler"
+  config: {}
 sink:
   type: metadata-rest
   config: {}

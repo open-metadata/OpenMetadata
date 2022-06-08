@@ -46,6 +46,11 @@ def _(*_, **__):
     return "ABS(RAND()) * 100"
 
 
+@compiles(RandomNumFn, Dialects.BigQuery)
+def _(*_, **__):
+    return "CAST(100*RAND() AS INT64)"
+
+
 @compiles(RandomNumFn, Dialects.SQLite)
 def _(*_, **__):
     """

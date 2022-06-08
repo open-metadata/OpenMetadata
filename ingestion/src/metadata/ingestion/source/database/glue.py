@@ -231,14 +231,6 @@ class GlueSource(Source[Entity]):
                     tableType=table_type,
                 )
 
-                if (
-                    self.config.sourceConfig.config.generateSampleData
-                    or self.config.sourceConfig.config.enableDataProfiler
-                ):
-                    logger.warning(
-                        "Glue source does not provide querying capabilities. Please ingest sample data with Athena."
-                    )
-
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
                     database=database_entity,
