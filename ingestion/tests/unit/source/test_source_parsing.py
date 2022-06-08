@@ -118,7 +118,7 @@ def test_amundsen():
                 "hostPort": "bolt://192.168.1.8:7687",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -188,7 +188,7 @@ def test_bigquery():
                 },
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -210,7 +210,7 @@ def test_clickhouse():
         },
         "sourceConfig": {
             "config": {
-                "enableDataProfiler": False,
+                "type": "DatabaseMetadata",
                 "schemaFilterPattern": {
                     "excludes": [
                         "system.*",
@@ -239,7 +239,7 @@ def test_databricks():
                 },
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -258,7 +258,7 @@ def test_db2():
                 "hostPort": "localhost:50000",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -276,7 +276,7 @@ def test_deltalake():
                 "appName": "MyApp",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -305,7 +305,7 @@ def test_dynamo_db():
         },
         "sourceConfig": {
             "config": {
-                "enableDataProfiler": False,
+                "type": "DatabaseMetadata",
                 "tableFilterPattern": {"includes": [""]},
             }
         },
@@ -336,7 +336,7 @@ def test_glue():
                 "pipelineServiceName": "pipeline_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -350,7 +350,7 @@ def test_hive():
         "serviceConnection": {
             "config": {"type": "Hive", "hostPort": "localhost:10000"}
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -397,7 +397,7 @@ def test_mariadb():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -416,7 +416,7 @@ def test_mariadb():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -465,12 +465,7 @@ def test_mssql():
                 "hostPort": "localhost:1433",
             }
         },
-        "sourceConfig": {
-            "config": {
-                "enableDataProfiler": False,
-                "sampleDataQuery": "select top 50 * from [{}].[{}]",
-            }
-        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -489,7 +484,7 @@ def test_mysql():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -529,7 +524,7 @@ def test_postgres():
                 "database": "pagila",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -648,7 +643,7 @@ def test_salesforce():
                 "sobjectName": "sobjectName",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -684,7 +679,7 @@ def test_singlestore():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -815,7 +810,7 @@ def test_vertica():
                 "database": "custom_database_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)

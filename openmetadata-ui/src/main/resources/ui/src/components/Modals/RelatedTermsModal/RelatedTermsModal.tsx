@@ -46,9 +46,11 @@ const RelatedTermsModal = ({
   >(relatedTerms ?? []);
 
   const getSearchedTerms = (searchedData: FormattedGlossaryTermData[]) => {
-    const currOptions = selectedOption.map((item) => item.fqdn || item.name);
+    const currOptions = selectedOption.map(
+      (item) => item.fullyQualifiedName || item.name
+    );
     const data = searchedData.filter((item: FormattedGlossaryTermData) => {
-      return !currOptions.includes(item.fqdn);
+      return !currOptions.includes(item.fullyQualifiedName);
     });
 
     return [...selectedOption, ...data];
@@ -62,7 +64,7 @@ const RelatedTermsModal = ({
           formatSearchGlossaryTermResponse(
             res?.data?.hits?.hits || []
           ) as FormattedGlossaryTermData[]
-        ).filter((item) => item.fqdn !== glossaryTermFQN);
+        ).filter((item) => item.fullyQualifiedName !== glossaryTermFQN);
         const data = !searchText ? getSearchedTerms(termResult) : termResult;
         setOptions(data);
       })

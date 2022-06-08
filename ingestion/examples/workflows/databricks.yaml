@@ -9,7 +9,7 @@ source:
         http_path: <http path of databricks cluster>
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

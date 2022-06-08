@@ -16,6 +16,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
 export const LITE_GRAY_COLOR = '#DBE0EB';
+export const TEXT_BODY_COLOR = '#37352F';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
@@ -428,3 +429,6 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+export const TITLE_FOR_UPDATE_OWNER =
+  'You do not have permissions to update the owner.';

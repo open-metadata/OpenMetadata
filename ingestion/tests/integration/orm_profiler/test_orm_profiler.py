@@ -47,7 +47,7 @@ ingestion_config = {
                 "database": "main",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {

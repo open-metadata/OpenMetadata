@@ -47,7 +47,7 @@ class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def process(self, record: Entity) -> Entity:
+    def process(self, *args, **kwargs) -> Entity:
         pass
 
     @abstractmethod
