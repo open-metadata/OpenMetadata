@@ -168,8 +168,7 @@ export const getNameFromEmail = (email: string) => {
   if (email?.match(validEmailRegEx)) {
     return email.split('@')[0];
   } else {
-    // if the string does not conform to email format return the string
-    return email;
+    return '';
   }
 };
 
