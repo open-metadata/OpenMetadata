@@ -42,12 +42,14 @@ import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
+import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
@@ -111,6 +113,7 @@ import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
+import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
@@ -163,6 +166,7 @@ export const Icons = {
   EDIT: 'icon-edit',
   EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
+  EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
@@ -178,6 +182,7 @@ export const Icons = {
   VELLIPSIS: 'icon-v-ellipsis',
   COPY: 'copy',
   DELETE: 'icon-delete',
+  DELETE_GRADIANT: 'delete-gradient',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
   INFO: 'icon-info',
@@ -240,6 +245,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
+  ICON_PLUS_PRIMERY: 'icon-plus-primary',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -391,6 +397,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE:
       IconComponent = IconDelete;
+
+      break;
+    case Icons.DELETE_GRADIANT:
+      IconComponent = IconDeleteGradiant;
 
       break;
     case Icons.COPY:
@@ -625,6 +635,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconPlus;
 
       break;
+    case Icons.ICON_PLUS_PRIMERY:
+      IconComponent = IconPlusPrimery;
+
+      break;
     case Icons.ICON_MINUS:
       IconComponent = IconMinus;
 
@@ -692,6 +706,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
+
+      break;
+    case Icons.EDIT_OUTLINE_PRIMARY:
+      IconComponent = IconEditOutlinePrimary;
 
       break;
 

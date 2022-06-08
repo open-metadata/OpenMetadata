@@ -11,35 +11,45 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, includes, isEqual } from 'lodash';
+import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   TITLE_FOR_NON_ADMIN_ACTION,
   TITLE_FOR_NON_OWNER_ACTION,
+  TITLE_FOR_UPDATE_OWNER,
 } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
+import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import UserCard from '../../pages/teams/UserCard';
 import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getOwnerList } from '../../utils/ManageUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getTagCategories,
   getTaglist,
   getTagOptionsFromFQN,
 } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  isCurrentUserAdmin,
+  searchFormattedUsersAndTeams,
+  suggestFormattedUsersAndTeams,
+} from '../../utils/UserDataUtils';
 import { Button } from '../buttons/Button/Button';
-import Description from '../common/description/Description';
+import Card from '../common/Card/Card';
+import DescriptionV1 from '../common/description/DescriptionV1';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
-import TabsPane from '../common/TabsPane/TabsPane';
-import ManageTabComponent from '../ManageTab/ManageTab.component';
+import DropDownList from '../dropdown/DropDownList';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
@@ -49,39 +59,23 @@ type props = {
   isHasAccess: boolean;
   glossary: Glossary;
   updateGlossary: (value: Glossary) => void;
-  afterDeleteAction?: () => void;
   handleUserRedirection?: (name: string) => void;
 };
 
-const GlossaryDetails = ({
-  isHasAccess,
-  glossary,
-  updateGlossary,
-  afterDeleteAction,
-  handleUserRedirection,
-}: props) => {
-  const [activeTab, setActiveTab] = useState(1);
+const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
+  const { userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<string>>([]);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState<string>('');
+  const [listOwners, setListOwners] = useState(getOwnerList());
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
+  const [listVisible, setListVisible] = useState(false);
 
   const [showRevieweModal, setShowRevieweModal] = useState(false);
   const [reviewer, setReviewer] = useState<Array<FormattedUsersData>>([]);
-
-  const tabs = [
-    {
-      name: 'Manage',
-      icon: {
-        alt: 'manage',
-        name: 'icon-manage',
-        title: 'Manage',
-        selectedName: 'icon-managecolor',
-      },
-      isProtected: false,
-      position: 1,
-    },
-  ];
 
   const onReviewerModalCancel = () => {
     setShowRevieweModal(false);
@@ -137,6 +131,66 @@ const GlossaryDetails = ({
     setIsDescriptionEditable(false);
   };
 
+  const handleSelectOwnerDropdown = () => {
+    setListVisible((visible) => !visible);
+  };
+
+  const getOwnerSearch = useCallback(
+    (searchQuery = WILD_CARD_CHAR, from = 1) => {
+      setIsUserLoading(true);
+      searchFormattedUsersAndTeams(searchQuery, from)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const getOwnerSuggestion = useCallback(
+    (qSearchText = '') => {
+      setIsUserLoading(true);
+      suggestFormattedUsersAndTeams(qSearchText)
+        .then((res) => {
+          const { users, teams } = res;
+          setListOwners(getOwnerList(users, teams));
+        })
+        .catch(() => {
+          setListOwners([]);
+        })
+        .finally(() => {
+          setIsUserLoading(false);
+        });
+    },
+    [setListOwners, setIsUserLoading]
+  );
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      if (text) {
+        getOwnerSuggestion(text);
+      } else {
+        getOwnerSearch();
+      }
+    },
+    [getOwnerSuggestion, getOwnerSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
+
+  const handleOwnerSearch = (text: string) => {
+    setSearchText(text);
+    debounceOnSearch(text);
+  };
+
   const getSelectedTags = () => {
     return (glossary.tags || []).map((tag) => ({
       tagFQN: tag.tagFQN,
@@ -184,22 +238,41 @@ const GlossaryDetails = ({
     updateGlossary(updatedGlossary);
   };
 
-  const setActiveTabHandler = (value: number) => {
-    setActiveTab(value);
+  const prepareOwner = (updatedOwner?: EntityReference) => {
+    return !isEqual(updatedOwner, glossary.owner) ? updatedOwner : undefined;
   };
 
-  const handleUpdateOwner = (owner: Glossary['owner']) => {
-    const updatedData = {
-      ...glossary,
-      owner,
-    };
+  const handleOwnerSelection = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value = ''
+  ) => {
+    const owner = listOwners.find((item) => item.value === value);
 
-    return new Promise<void>((_, reject) => {
-      updateGlossary(updatedData);
-      setTimeout(() => {
-        reject();
-      }, 500);
-    });
+    if (owner) {
+      const newOwner = prepareOwner({ type: owner.type, id: owner.value });
+      if (newOwner) {
+        const updatedData = {
+          ...glossary,
+          owner: newOwner,
+        };
+        updateGlossary(updatedData);
+      }
+    }
+    setListVisible(false);
+  };
+
+  const isOwner = () => {
+    return hasEditAccess(
+      glossary?.owner?.type || '',
+      glossary?.owner?.id || ''
+    );
+  };
+
+  const handleTagContainerClick = () => {
+    if (!isTagEditable) {
+      fetchTags();
+      setIsTagEditable(true);
+    }
   };
 
   useEffect(() => {
@@ -218,52 +291,121 @@ const GlossaryDetails = ({
   const AddReviewerButton = () => {
     return (
       <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-        <Button
-          className={classNames('tw-h-8 tw-mr-1 tw-rounded', {
-            'tw-opacity-40': isHasAccess,
-          })}
+        <button
+          className="tw-text-primary"
           data-testid="add-new-reviewer"
-          size="small"
-          theme="primary"
-          variant="outlined"
+          disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          Add Reviewer
-        </Button>
+          <SVGIcons
+            alt="plus"
+            className="tw-w-3.5 tw-mr-2"
+            icon={Icons.ICON_PLUS_PRIMERY}
+          />
+          <span>Add</span>
+        </button>
       </NonAdminAction>
+    );
+  };
+
+  const ownerAction = () => {
+    return (
+      <span className="tw-relative">
+        <NonAdminAction
+          html={<p>{TITLE_FOR_UPDATE_OWNER}</p>}
+          isOwner={isOwner()}
+          permission={Operation.UpdateOwner}
+          position="left">
+          <Button
+            data-testid="owner-dropdown"
+            disabled={
+              !userPermissions[Operation.UpdateOwner] &&
+              !isAuthDisabled &&
+              !hasEditAccess
+            }
+            size="custom"
+            theme="primary"
+            variant="text"
+            onClick={handleSelectOwnerDropdown}>
+            <span className="tw-mr-2">
+              <SVGIcons
+                alt="edit"
+                icon={Icons.EDIT_OUTLINE_PRIMARY}
+                title="Edit"
+                width="12px"
+              />
+            </span>
+            <span>Edit</span>
+          </Button>
+        </NonAdminAction>
+        {listVisible && (
+          <DropDownList
+            horzPosRight
+            showEmptyList
+            controlledSearchStr={searchText}
+            dropDownList={listOwners}
+            groupType="tab"
+            isLoading={isUserLoading}
+            listGroups={['Teams', 'Users']}
+            showSearchBar={isCurrentUserAdmin()}
+            value={glossary.owner?.id || ''}
+            onSearchTextChange={handleOwnerSearch}
+            onSelect={handleOwnerSelection}
+          />
+        )}
+      </span>
     );
   };
 
   const getReviewerTabData = () => {
     return (
-      <div className="tw-border tw-border-main tw-rounded tw-mt-3 tw-shadow tw-px-5">
-        <div className="tw-flex tw-justify-between tw-items-center tw-py-3">
-          <div className="tw-w-10/12">
-            <p className="tw-text-sm tw-mb-1 tw-font-medium">Reviewers</p>
-            <p className="tw-text-grey-muted tw-text-xs">
-              Add users as reviewer
-            </p>
-          </div>
+      <div className="tw--mx-5">
+        {glossary.reviewers && glossary.reviewers.length > 0 ? (
+          <div className="tw-flex tw-flex-col tw-gap-4">
+            {glossary.reviewers.map((term, i) => (
+              <div
+                className={classNames(
+                  'tw-flex tw-justify-between tw-items-center tw-px-5',
+                  {
+                    'tw-border-b tw-pb-2 tw-border-border-lite':
+                      i !== (glossary.reviewers || []).length - 1,
+                  }
+                )}
+                key={i}>
+                <div className={classNames('tw-flex tw-items-center')}>
+                  <div className="tw-inline-block tw-mr-2">
+                    <ProfilePicture
+                      displayName={getEntityName(term)}
+                      id={term.id}
+                      name={term?.name || ''}
+                      textClass="tw-text-xs"
+                      width="25"
+                    />
+                  </div>
 
-          {AddReviewerButton()}
-        </div>
-        {glossary.reviewers && glossary.reviewers.length > 0 && (
-          <div className="tw-grid xxl:tw-grid-cols-3 md:tw-grid-cols-2 tw-border-t tw-gap-4 tw-py-3">
-            {glossary.reviewers?.map((term) => (
-              <UserCard
-                isActionVisible
-                isIconVisible
-                item={{
-                  fqn: term.fullyQualifiedName || '',
-                  displayName: term.displayName || term.name || '',
-                  id: term.id,
-                  type: term.type,
-                  name: term.name,
-                }}
-                key={term.name}
-                onRemove={handleRemoveReviewer}
-                onTitleClick={handleUserRedirection}
-              />
+                  <span>{getEntityName(term)}</span>
+                </div>
+                <span>
+                  <NonAdminAction
+                    html={<p>{TITLE_FOR_NON_OWNER_ACTION}</p>}
+                    isOwner={isOwner()}
+                    position="bottom">
+                    <span
+                      className={classNames('tw-h-8 tw-rounded tw-mb-3')}
+                      data-testid="remove"
+                      onClick={() => handleRemoveReviewer(term.id)}>
+                      <FontAwesomeIcon
+                        className="tw-cursor-pointer"
+                        icon="remove"
+                      />
+                    </span>
+                  </NonAdminAction>
+                </span>
+              </div>
             ))}
+          </div>
+        ) : (
+          <div className="tw-text-grey-muted tw-mx-5 tw-text-center">
+            No reviewer
           </div>
         )}
       </div>
@@ -274,26 +416,9 @@ const GlossaryDetails = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div className="tw-mb-3 tw-flex tw-items-center">
-        {glossary.owner && getEntityName(glossary.owner) && (
-          <div className="tw-inline-block tw-mr-2">
-            <ProfilePicture
-              displayName={getEntityName(glossary.owner)}
-              id={glossary.owner?.id || ''}
-              name={glossary.owner?.name || ''}
-              textClass="tw-text-xs"
-              width="20"
-            />
-          </div>
-        )}
-        {glossary.owner && getEntityName(glossary.owner) ? (
-          <span>{getEntityName(glossary.owner)}</span>
-        ) : (
-          <span className="tw-text-grey-muted">No owner</span>
-        )}
-      </div>
-
-      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+      <div
+        className="tw-flex tw-flex-wrap tw-group tw--mt-6 tw-mb-5"
+        data-testid="tags">
         {!isTagEditable && (
           <>
             {glossary?.tags && glossary.tags.length > 0 && (
@@ -315,13 +440,10 @@ const GlossaryDetails = ({
           position="bottom"
           title={TITLE_FOR_NON_OWNER_ACTION}
           trigger="click">
-          <div
-            className="tw-inline-block"
-            onClick={() => {
-              fetchTags();
-              setIsTagEditable(true);
-            }}>
+          <div className="tw-inline-block" onClick={handleTagContainerClick}>
             <TagsContainer
+              buttonContainerClass="tw--mt-0"
+              containerClass="tw-flex tw-items-center tw-gap-2"
               dropDownHorzPosRight={false}
               editable={isTagEditable}
               isLoading={isTagLoading}
@@ -359,66 +481,58 @@ const GlossaryDetails = ({
           </div>
         </NonAdminAction>
       </div>
-
-      <div className="tw--ml-5" data-testid="description-container">
-        <Description
-          blurWithBodyBG
-          removeBlur
-          description={glossary?.description}
-          entityName={glossary?.displayName ?? glossary?.name}
-          isEdit={isDescriptionEditable}
-          onCancel={onCancel}
-          onDescriptionEdit={onDescriptionEdit}
-          onDescriptionUpdate={onDescriptionUpdate}
-        />
-      </div>
-
-      <div className="tw-flex tw-flex-col tw-flex-grow">
-        <TabsPane
-          activeTab={activeTab}
-          className="tw-flex-initial"
-          setActiveTab={setActiveTabHandler}
-          tabs={tabs}
-        />
-
-        <div className="tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-          {activeTab === 1 && (
-            <div
-              className="tw-bg-white tw-shadow-md tw-py-6 tw-flex-grow"
-              data-testid="manage-glossary">
-              <div className="tw-max-w-3xl tw-mx-auto">
-                {getReviewerTabData()}
-              </div>
-              <div className="tw-mt-7">
-                <ManageTabComponent
-                  allowDelete
-                  hideTier
-                  isRecursiveDelete
-                  afterDeleteAction={afterDeleteAction}
-                  currentUser={glossary?.owner}
-                  entityId={glossary.id}
-                  entityName={glossary?.name}
-                  entityType={EntityType.GLOSSARY}
-                  hasEditAccess={hasEditAccess(
-                    glossary?.owner?.type || '',
-                    glossary?.owner?.id || ''
-                  )}
-                  onSave={handleUpdateOwner}
-                />
-              </div>
-            </div>
-          )}
+      <div className="tw-flex tw-gap-4">
+        <div className="tw-w-9/12">
+          <div data-testid="description-container">
+            <DescriptionV1
+              removeBlur
+              description={glossary?.description}
+              entityName={glossary?.displayName ?? glossary?.name}
+              isEdit={isDescriptionEditable}
+              onCancel={onCancel}
+              onDescriptionEdit={onDescriptionEdit}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </div>
         </div>
-
-        {showRevieweModal && (
-          <ReviewerModal
-            header="Add Reviewer"
-            reviewer={reviewer}
-            onCancel={onReviewerModalCancel}
-            onSave={handleReviewerSave}
-          />
-        )}
+        <div className="tw-w-3/12">
+          <Card action={ownerAction()} heading="Owner">
+            <div className="tw-flex tw-items-center">
+              {glossary.owner && getEntityName(glossary.owner) && (
+                <div className="tw-inline-block tw-mr-2">
+                  <ProfilePicture
+                    displayName={getEntityName(glossary.owner)}
+                    id={glossary.owner?.id || ''}
+                    name={glossary.owner?.name || ''}
+                    textClass="tw-text-xs"
+                    width="25"
+                  />
+                </div>
+              )}
+              {glossary.owner && getEntityName(glossary.owner) ? (
+                <span>{getEntityName(glossary.owner)}</span>
+              ) : (
+                <span className="tw-text-grey-muted">No owner</span>
+              )}
+            </div>
+          </Card>
+          <Card
+            action={AddReviewerButton()}
+            className="tw-mt-4"
+            heading="Reviewer">
+            <div>{getReviewerTabData()}</div>
+          </Card>
+        </div>
       </div>
+
+      {showRevieweModal && (
+        <ReviewerModal
+          header="Add Reviewer"
+          reviewer={reviewer}
+          onCancel={onReviewerModalCancel}
+          onSave={handleReviewerSave}
+        />
+      )}
     </div>
   );
 };
