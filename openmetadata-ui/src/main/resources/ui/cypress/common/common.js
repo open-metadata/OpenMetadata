@@ -86,7 +86,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-
+  cy.wait(500); 
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -106,13 +106,7 @@ export const testServiceCreationAndIngestion = (
       'be.visible'
     );
 
-    // Set all the sliders to off to disable sample data, data profiler etc.
-    cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-      .should('exist')
-      .click();
-    cy.get('[data-testid="toggle-button-data-profiler"]')
-      .should('exist')
-      .click();
+    // Set mark-deleted slider to off to disable it.
     cy.get('[data-testid="toggle-button-mark-deleted"]')
       .should('exist')
       .click();
@@ -219,7 +213,9 @@ export const visitEntityTab = (id) => {
  */
 export const searchEntity = (term) => {
   cy.get('[data-testid="searchBox"]').should('be.visible');
-  cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
+  cy.get('[data-testid="searchBox"]')
+    .scrollIntoView()
+    .type(`${term}{enter}{enter}`);
   cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
 };
 
@@ -234,8 +230,6 @@ export const testSampleData = (entity) => {
     .should('have.class', 'active');
   cy.wait(500);
   cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
-  cy.contains('No sample data available').should('be.visible');
 
   // go to service details and modify ingestion to enable sample data
   cy.get(':nth-child(1) > .link-title').should('be.visible').click();
@@ -247,14 +241,6 @@ export const testSampleData = (entity) => {
 
   cy.get('[data-testid="Ingestions"]').should('be.visible').click();
   cy.get('[data-testid="edit"]').should('be.visible').click();
-  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .should('have.class', 'open');
   cy.get('[data-testid="next-button"]')
     .scrollIntoView()
     .should('be.visible')

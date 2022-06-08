@@ -17,6 +17,8 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 export const PRIMERY_COLOR = '#7147E8';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 
+export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
+
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
@@ -72,7 +74,7 @@ export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
-const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
+export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -170,8 +172,6 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
-  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
-  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',

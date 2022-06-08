@@ -10,7 +10,7 @@
 #  limitations under the License.
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -24,6 +24,7 @@ from metadata.generated.schema.api.services.createMessagingService import (
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -31,10 +32,34 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+om_chart_type_dict = {
+    "line": ChartType.Line,
+    "big_number": ChartType.Line,
+    "big_number_total": ChartType.Line,
+    "dual_line": ChartType.Line,
+    "line_multi": ChartType.Line,
+    "table": ChartType.Table,
+    "dist_bar": ChartType.Bar,
+    "bar": ChartType.Bar,
+    "box_plot": ChartType.BoxPlot,
+    "boxplot": ChartType.BoxPlot,
+    "histogram": ChartType.Histogram,
+    "treemap": ChartType.Area,
+    "area": ChartType.Area,
+    "pie": ChartType.Pie,
+    "text": ChartType.Text,
+    "scatter": ChartType.Scatter,
+}
 
 
 def get_start_and_end(duration):
@@ -204,3 +229,29 @@ def replace_special_with(raw: str, replacement: str) -> str:
     :return: clean string
     """
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
+
+
+def get_standard_chart_type(raw_chart_type: str) -> str:
+    """
+    Get standard chart type supported by OpenMetadata based on raw chart type input
+    :param raw_chart_type: raw chart type to be standardize
+    :return: standard chart type
+    """
+    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+
+
+def get_chart_entities_from_id(
+    chart_ids: List[str], metadata: OpenMetadata, service_name: str
+) -> List[EntityReferenceList]:
+    entities = []
+    for id in chart_ids:
+        chart: Chart = metadata.get_by_name(
+            entity=Chart,
+            fqn=fqn.build(
+                metadata, Chart, chart_name=str(id), service_name=service_name
+            ),
+        )
+        if chart:
+            entity = EntityReference(id=chart.id, type="chart")
+            entities.append(entity)
+    return entities

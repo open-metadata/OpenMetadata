@@ -188,13 +188,13 @@ export const suggestFormattedUsersAndTeams = (
           const users =
             resUsers.status === SettledStatus.FULFILLED
               ? formatUsersResponse(
-                  resUsers.value.data.suggest['table-suggest'][0].options
+                  resUsers.value.data.suggest['metadata-suggest'][0].options
                 )
               : [];
           const teams =
             resTeams.status === SettledStatus.FULFILLED
               ? formatTeamsResponse(
-                  resTeams.value.data.suggest['table-suggest'][0].options
+                  resTeams.value.data.suggest['metadata-suggest'][0].options
                 )
               : [];
           resolve({ users, teams });

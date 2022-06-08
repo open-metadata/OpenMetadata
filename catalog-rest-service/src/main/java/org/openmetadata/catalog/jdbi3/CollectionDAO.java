@@ -306,8 +306,12 @@ public interface CollectionDAO {
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
-            + "LIKE CONCAT (:extensionPrefix, '.%')")
+            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
+    void delete(@Bind("id") String id, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     void deleteAll(@Bind("id") String id);

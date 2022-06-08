@@ -29,6 +29,9 @@ const AssetsTabs = ({ assetData, onAssetPaginate, currentPage }: Props) => {
       case EntityType.PIPELINE:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
 
+      case EntityType.MLMODEL:
+        return getEntityLink(SearchIndex.MLMODEL, fqn);
+
       case EntityType.TABLE:
       default:
         return getEntityLink(SearchIndex.TABLE, fqn);

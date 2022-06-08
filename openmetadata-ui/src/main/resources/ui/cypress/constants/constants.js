@@ -133,7 +133,7 @@ export const BIG_QUERY_TABLE = {
 export const MY_SQL_TABLE = {
   term: 'user_entity',
   entity: MYDATA_SUMMARY_OPTIONS.tables,
-  db: 'openmetadata_db',
+  db: 'default',
   schema: 'openmetadata_db',
   entityType: 'database',
 };

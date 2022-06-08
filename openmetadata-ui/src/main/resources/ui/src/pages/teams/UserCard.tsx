@@ -133,6 +133,10 @@ const UserCard = ({
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
+      case AssetsType.MLMODEL:
+        link = getEntityLink(SearchIndex.MLMODEL, fqn);
+
+        break;
       case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);

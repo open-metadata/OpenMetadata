@@ -26,3 +26,21 @@ class SQAStruct(types.String):
     """
     Custom Struct type definition
     """
+
+
+class SQAUnion(types.String):
+    """
+    Custom Struct type definition
+    """
+
+
+class SQASet(types.ARRAY):
+    """
+    Custom Set type definition
+    """
+
+
+class SQASGeography(types.String):
+    """
+    Custom Geography type definition
+    """

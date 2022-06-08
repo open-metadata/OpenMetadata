@@ -109,4 +109,5 @@ export interface DatasetDetailsProps {
   ) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
   fetchFeedHandler: (after?: string) => void;
+  handleExtentionUpdate: (updatedTable: Table) => void;
 }
