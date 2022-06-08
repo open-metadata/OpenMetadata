@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { lowerCase } from 'lodash';
 import React from 'react';
 
 interface CardProps {
@@ -27,7 +28,8 @@ const Card = ({ children, heading, action, className }: CardProps) => {
       className={classNames(
         'tw-bg-white tw-border tw-border-border-gray tw-rounded-md tw-shadow-box tw-w-full',
         className
-      )}>
+      )}
+      data-testid={`${lowerCase(heading)}-card-container`}>
       <div className="tw-border-b tw-px-5 tw-py-3 tw-flex tw-justify-between">
         <span className="tw-font-semibold">{heading}</span>
         {action}
