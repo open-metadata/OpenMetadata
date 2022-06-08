@@ -312,7 +312,7 @@ export const addNewTagToEntity = (entity, term) => {
     .contains(term);
 
   cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
-    .contains('+ Tags')
+    .contains('Tags')
     .should('be.visible')
     .click();
 
