@@ -113,6 +113,7 @@ describe('Tags page should work', () => {
       });
     cy.get('@count').click();
 
+    cy.wait(500);
     cy.get('[data-testid="table-data-card"]')
       .first()
       .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
