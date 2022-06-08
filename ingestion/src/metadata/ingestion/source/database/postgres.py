@@ -85,9 +85,6 @@ class PostgresSource(CommonDbSourceService):
             service=EntityReference(id=self.service.id, type="database"),
         )
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def is_partition(self, table_name: str, schema: str, inspector) -> bool:
         cur = self.pgconn.cursor()
         cur.execute(

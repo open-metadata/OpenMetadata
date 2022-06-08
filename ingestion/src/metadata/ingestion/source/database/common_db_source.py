@@ -166,6 +166,12 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemyS
     def get_table_names(
         self, schema_name: str, inspector: Inspector
     ) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views
+        :param schema_name: Schema to retrieve data from
+        :param inspector: inspector used to get data
+        :return: tables or views, depending on config
+        """
         if self.source_config.includeTables:
             for table in inspector.get_table_names(schema_name):
                 yield table, "Regular"
@@ -188,6 +194,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemyS
                 logger.error("View definition not implemented")
                 return ""
 
+    def is_partition(
+            self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> bool:
+        return False
+
     def yield_table(self) -> Iterable[CreateTableRequest]:
         """
         From topology.
@@ -203,6 +214,13 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemyS
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
                         "Table pattern not allowed",
+                    )
+                    continue
+
+                if self.is_partition(table_name=table_name, schema_name=schema_name, inspector=self.inspector):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{table_name}",
+                        "Table is partition",
                     )
                     continue
 
@@ -277,11 +295,6 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemyS
         """
         Method to fetch tags associated with table
         """
-        pass
-
-    def is_partition(
-        self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> bool:
         pass
 
     def standardize_schema_table_names(
