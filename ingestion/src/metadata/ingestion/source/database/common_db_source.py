@@ -13,7 +13,7 @@ Generic source to build SQL connectors.
 """
 
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
@@ -41,10 +41,7 @@ from metadata.ingestion.source.database.database_service import SQLSourceStatus
 from metadata.ingestion.source.database.dbt_source import DBTSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.utils.connections import (
-    get_connection,
-    test_connection,
-)
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -100,12 +97,18 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
             ),
         )
 
+    def get_schema_names(self) -> List[str]:
+        """
+        return schema names
+        """
+        return self.inspector.get_schema_names()
+
     def yield_database_schema(self) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        for schema in self.inspector.get_schema_names():
+        for schema in self.get_schema_names():
 
             if filter_by_schema(
                 self.source_config.schemaFilterPattern, schema_name=schema
@@ -184,6 +187,7 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
                     inspector=self.inspector,
                 )
 
+                # TODO: GET DATA MODEL
                 yield CreateTableRequest(
                     name=table_name,
                     tableType=table_type,

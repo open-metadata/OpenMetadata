@@ -38,6 +38,9 @@ class TopologyNode(BaseModel, Generic[T]):
     consumer: Optional[
         List[str]
     ] = None  # keys in the source context to fetch state from the parent's context
+    post_process: Optional[
+        str
+    ] = None  # Method to be run after the node has been fully processed
 
 
 class ServiceTopology(BaseModel):

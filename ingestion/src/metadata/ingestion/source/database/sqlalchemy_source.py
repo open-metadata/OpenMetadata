@@ -17,6 +17,7 @@ from typing import Iterable, List, Optional, Tuple
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -38,6 +39,12 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
     ) -> Tuple[str, str]:
         """
         Method formats Table & Schema names if required
+        """
+
+    @abstractmethod
+    def get_schema_names(self) -> List[str]:
+        """
+        Method Yields schemas available in database
         """
 
     @abstractmethod
@@ -118,7 +125,7 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
         self.database_source_state.add(table_fqn)
         self.status.scanned(table_fqn)
 
-    def _build_database_state(self, schema_fqn: str) -> List[EntityReference]:
+    def _build_database_state(self, schema_fqn: str) -> List[Table]:
         after = None
         tables = []
         while True:
@@ -131,7 +138,7 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
             after = table_entities.after
         return tables
 
-    def delete_tables(self, schema_fqn: str) -> DeleteTable:
+    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
         """
         Returns Deleted tables
         """
@@ -139,3 +146,22 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
         for table in database_state:
             if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
                 yield DeleteTable(table=table)
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        # TODO: GET THIS RIGHT
+        if self.source_config.markDeletedTables:
+            logger.info("Mark Deleted Tables set to True. Processing...")
+            for schema_name in self.get_schema_names():
+
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+
+                yield from self.delete_schema_tables(schema_fqn)

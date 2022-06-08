@@ -69,6 +69,7 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="yield_database",
         children=["databaseSchema"],
         consumer=["database_service"],
+        post_process="mark_tables_as_deleted",
     )
     databaseSchema = TopologyNode(
         type_=DatabaseSchema,
@@ -83,8 +84,6 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="yield_table",
         consumer=["database_service", "database", "database_schema"],
     )
-
-    # TODO: Handle post_run for DeleteTable
 
 
 @dataclass
