@@ -904,19 +904,32 @@ class MlModelESIndex extends ElasticSearchIndex {
     ParseTags parseTags = new ParseTags(tags);
     String description = mlModel.getDescription() != null ? mlModel.getDescription() : "";
     String displayName = mlModel.getDisplayName() != null ? mlModel.getDisplayName() : "";
-    return internalBuilder()
-        .mlModelId(mlModel.getId().toString())
-        .name(mlModel.getName())
-        .displayName(displayName)
-        .description(description)
-        .fqdn(mlModel.getFullyQualifiedName())
-        .algorithm(mlModel.getAlgorithm())
-        .mlFeatures(mlFeatures)
-        .mlHyperParameters(mlHyperParameters)
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .entityType("glossaryTerm")
-        .suggest(suggest)
-        .deleted(mlModel.getDeleted())
-        .tags(parseTags.tags);
+    MlModelESIndexBuilder mlModelESIndexBuilder =
+        internalBuilder()
+            .mlModelId(mlModel.getId().toString())
+            .name(mlModel.getName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(mlModel.getFullyQualifiedName())
+            .algorithm(mlModel.getAlgorithm())
+            .mlFeatures(mlFeatures)
+            .mlHyperParameters(mlHyperParameters)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .entityType("mlmodel")
+            .suggest(suggest)
+            .deleted(mlModel.getDeleted())
+            .tags(parseTags.tags);
+
+    if (mlModel.getFollowers() != null) {
+      mlModelESIndexBuilder.followers(
+          mlModel.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+    } else if (eventType == EventType.ENTITY_CREATED) {
+      mlModelESIndexBuilder.followers(Collections.emptyList());
+    }
+
+    if (mlModel.getOwner() != null) {
+      mlModelESIndexBuilder.owner(mlModel.getOwner());
+    }
+    return mlModelESIndexBuilder;
   }
 }
