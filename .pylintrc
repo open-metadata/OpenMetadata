@@ -9,14 +9,15 @@
 # R0913: Too many arguments
 # R1705: Unnecessary "else" after "return"
 # C0415: Import outside toplevel
-disable=W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511,R0913,R1705,C0415
+# R1723: Unnecessary "elif" after "break"
+disable=W1203,W1202,R0903,W0707,R0901,W1201,W0703,W0511,R0913,R1705,C0415,R1723
 
 docstring-min-length=20
 max-args=7
 max-attributes=12
 
 # usual typevar naming
-good-names=T,C,fn,s,fp,tx,
+good-names=T,C,fn,s,fp,tx,t,vt,kt,m,c,e,r
 
 [MASTER]
 fail-under=6.0

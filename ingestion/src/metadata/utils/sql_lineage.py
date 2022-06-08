@@ -108,7 +108,7 @@ def get_column_lineage(
     return column_lineage
 
 
-def _create_lineage_by_table_name(
+def _create_lineage_by_table_name(  # pylint: disable=too-many-locals
     metadata: OpenMetadata,
     from_table: str,
     to_table: str,
