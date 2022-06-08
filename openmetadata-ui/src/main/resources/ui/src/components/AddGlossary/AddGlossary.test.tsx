@@ -49,6 +49,7 @@ const mockProps = {
   saveState: 'initial' as LoadingState,
   onCancel: mockOnCancel,
   onSave: mockOnSave,
+  slashedBreadcrumb: [],
 };
 
 describe('Test AddGlossary component', () => {
