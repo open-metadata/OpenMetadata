@@ -113,19 +113,29 @@ class TopologyRunnerMixin(Generic[C]):
 
         If we get the Entity back, update the context with it.
 
+        We only ack nodes that have a context informed. This is to make
+        sure that we have some data to update. For example, for
+        DatabaseServiceTopology, the DataModel node does not have a
+        context, so we send it one shot. However, ideally all nodes
+        should have context
+
         :param node: Topology node being processed
         :param entity_request: Request sent to the sink
         :return: updated entity
         """
-        tries = 3
-        entity = None
 
-        entity_fqn = self.fqn_from_context(node=node, entity_request=entity_request)
+        if node.context:
+            tries = 3
+            entity = None
 
-        while not entity or tries <= 0:
+            entity_fqn = self.fqn_from_context(node=node, entity_request=entity_request)
+
+            while not entity or tries <= 0:
+                yield entity_request
+                entity = self.metadata.get_by_name(entity=node.type_, fqn=entity_fqn)
+                tries -= 1
+
+            self.update_context(key=node.context, value=entity)
+            logger.debug(self.context)
+        else:
             yield entity_request
-            entity = self.metadata.get_by_name(entity=node.type_, fqn=entity_fqn)
-            tries -= 1
-
-        self.update_context(key=node.context, value=entity)
-        logger.debug(self.context)

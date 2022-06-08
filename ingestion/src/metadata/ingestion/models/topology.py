@@ -31,9 +31,9 @@ class TopologyNode(BaseModel, Generic[T]):
         extra = Extra.forbid
 
     type_: Type[T]  # Entity type
-    context: str  # context key storing node state
     producer: str  # method name in the source to use to generate the data
 
+    context: Optional[str] = None  # context key storing node state, if needed
     children: Optional[List[str]] = None  # nodes to call execute next
     consumer: Optional[
         List[str]
@@ -94,7 +94,9 @@ def create_source_context(topology: ServiceTopology) -> TopologyContext:
     :return: TopologyContext
     """
     nodes = get_topology_nodes(topology)
-    ctx_fields = {node.context: (Optional[node.type_], None) for node in nodes}
+    ctx_fields = {
+        node.context: (Optional[node.type_], None) for node in nodes if node.context
+    }
     return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 
 

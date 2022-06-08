@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
@@ -458,11 +458,3 @@ class RedshiftSource(CommonDbSourceService):
         if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
             config.sourceConfig.config.sampleDataQuery = 'select * from "{}"."{}"'
         return cls(config, metadata_config)
-
-    def get_status(self) -> SourceStatus:
-        """
-        Get status
-
-        Returns
-        """
-        return self.status

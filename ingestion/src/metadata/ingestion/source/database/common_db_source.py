@@ -37,11 +37,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_service import SQLSourceStatus, DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    SQLSourceStatus,
+)
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -77,21 +80,47 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemyS
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
         pass
 
+    def set_inspector(self, database_name: str) -> None:
+        """
+        Default case, nothing to do.
+
+        Sources with multiple databases will need to overwrite this.
+        """
+        self.inspector = inspect(self.engine)
+
+    def get_database_names(self) -> List[str]:
+        """
+        Default case with a single database.
+
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this.
+        """
+
+        database_name = self.service_connection.__dict__.get("database", "default")
+        return [database_name]
+
     def yield_database(self) -> Iterable[CreateDatabaseRequest]:
         """
         From topology.
         Prepare a database request and pass it to the sink
-
-        Sources with multiple databases should overwrite this.
         """
-        self.inspector = inspect(self.engine)
-        yield CreateDatabaseRequest(
-            name="default",
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
-        )
+        for database_name in self.get_database_names():
+
+            if filter_by_database(
+                self.source_config.databaseFilterPattern, database_name=database_name
+            ):
+                self.status.filter(database_name, "Database pattern not allowed")
+                continue
+
+            self.set_inspector(database_name=database_name)
+            yield CreateDatabaseRequest(
+                name=database_name,
+                service=EntityReference(
+                    id=self.context.database_service.id,
+                    type="databaseService",
+                ),
+            )
 
     def get_schema_names(self) -> List[str]:
         """

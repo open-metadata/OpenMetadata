@@ -12,26 +12,26 @@
 Generic source to build database connectors.
 """
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Optional, Tuple, Set
+from typing import Iterable, List, Optional, Set, Tuple
 
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
-
-from metadata.ingestion.models.topology import TopologyContext
-
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.ingestion.models.table_metadata import DeleteTable
+from metadata.ingestion.models.topology import TopologyContext
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import SQLSourceStatus
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
 
 logger = ingestion_logger()
 
@@ -57,7 +57,20 @@ class SqlAlchemySource(ABC):
     @abstractmethod
     def get_schema_names(self) -> List[str]:
         """
-        Method Yields schemas available in database
+        Method returns schemas available in database
+        """
+
+    @abstractmethod
+    def get_database_names(self) -> List[str]:
+        """
+        Method returns databases available in the service.
+        """
+
+    @abstractmethod
+    def set_inspector(self, database_name: str) -> None:
+        """
+        Sets the inspector in the Source that will be
+        used to process metadata
         """
 
     @staticmethod

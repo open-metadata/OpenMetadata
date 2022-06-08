@@ -15,7 +15,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, List, Set
 
-from metadata.generated.schema.type import basic
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
@@ -26,7 +25,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, DataModel
+from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -37,6 +36,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.basic import EntityName
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
@@ -55,6 +56,7 @@ class DataModelLink(BaseModel):
     """
     Tmp model to handle data model ingestion
     """
+
     id: basic.Uuid
     datamodel: DataModel
 
@@ -93,11 +95,11 @@ class DatabaseServiceTopology(ServiceTopology):
         type_=Table,
         context="table",
         producer="yield_table",
+        children=["dataModel"],
         consumer=["database_service", "database", "database_schema"],
     )
     dataModel = TopologyNode(
         type_=DataModel,
-        context="datamodel",
         producer="yield_datamodel",
         consumer=["database_service", "database", "database_schema", "table"],
     )
@@ -186,6 +188,7 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         Gets the current table being processed, fetches its data model
         and sends it ot the sink
         """
+        print("COMPUTING DATA MODEL!!")
         table_id = self.context.table.id
         datamodel = self.get_data_model(
             database_name=self.context.database.name.__root__,
@@ -195,5 +198,5 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         if datamodel:
             yield DataModelLink(
                 id=table_id,
-                datamodel=datamodel
+                datamodel=datamodel,
             )

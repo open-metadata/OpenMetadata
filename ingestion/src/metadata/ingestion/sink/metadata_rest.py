@@ -55,6 +55,7 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     _create_lineage_by_table_name,
@@ -143,6 +144,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_table_tests(record)
         elif isinstance(record, OMetaPipelineStatus):
             self.write_pipeline_status(record)
+        elif isinstance(record, DataModelLink):
+            self.write_datamodel(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -164,6 +167,18 @@ class MetadataRestSink(Sink[Entity]):
             self.status.failure(log)
 
         logger.info(f"Successfully ingested {log}")
+
+    def write_datamodel(self, datamodel_link: DataModelLink) -> None:
+        """
+        Send to OM the DataModel based on a table ID
+        :param datamodel_link: Table ID + Data Model
+        """
+
+        table = self.metadata.get_by_id(entity=Table, entity_id=datamodel_link.id)
+
+        self.metadata.ingest_table_data_model(
+            table=table, data_model=datamodel_link.datamodel
+        )
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:

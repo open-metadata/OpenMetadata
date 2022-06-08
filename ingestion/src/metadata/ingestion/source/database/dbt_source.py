@@ -33,12 +33,15 @@ logger = ingestion_logger()
 
 class DBTSource:
     def __init__(self):
+        print("INIT DBT SOURCE")
         dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
         self.dbt_catalog = dbt_details[0] if dbt_details else None
         self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.data_models: dict = {}
 
-    def get_data_model(self, database_name: str, schema_name: str, table_name: str) -> Optional[DataModel]:
+    def get_data_model(
+        self, database_name: str, schema_name: str, table_name: str
+    ) -> Optional[DataModel]:
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
