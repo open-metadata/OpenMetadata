@@ -51,6 +51,9 @@ logger = ingestion_logger()
 
 
 class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemySource):
+    """
+    - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
+    """
     def __init__(
         self,
         config: WorkflowSource,
