@@ -356,7 +356,7 @@ class TableESIndex extends ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
     databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
     schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
+
     if (table.getTags() != null) {
       table.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
@@ -389,7 +389,6 @@ class TableESIndex extends ElasticSearchIndex {
             .columnSuggest(columnSuggest)
             .schemaSuggest(schemaSuggest)
             .databaseSuggest(databaseSuggest)
-            .serviceSuggest(serviceSuggest)
             .entityType("table")
             .columnNames(columnNames)
             .columnDescriptions(columnDescriptions)
@@ -408,6 +407,8 @@ class TableESIndex extends ElasticSearchIndex {
     if (table.getService() != null) {
       tableESIndexBuilder.service(table.getService());
       tableESIndexBuilder.serviceType(table.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
+      tableESIndexBuilder.serviceSuggest(serviceSuggest);
     }
 
     if (table.getUsageSummary() != null) {
@@ -473,7 +474,6 @@ class TopicESIndex extends ElasticSearchIndex {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
 
@@ -494,7 +494,6 @@ class TopicESIndex extends ElasticSearchIndex {
             .fqdn(topic.getFullyQualifiedName())
             .lastUpdatedTimestamp(updatedTimestamp)
             .suggest(suggest)
-            .serviceSuggest(serviceSuggest)
             .serviceCategory("messagingService")
             .entityType("topic")
             .tags(parseTags.tags)
@@ -503,6 +502,8 @@ class TopicESIndex extends ElasticSearchIndex {
     if (topic.getService() != null) {
       topicESIndexBuilder.service(topic.getService());
       topicESIndexBuilder.serviceType(topic.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
+      topicESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
@@ -561,7 +562,7 @@ class DashboardESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> chartSuggest = new ArrayList<>();
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
+
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     Long updatedTimestamp = dashboard.getUpdatedAt();
@@ -594,7 +595,6 @@ class DashboardESIndex extends ElasticSearchIndex {
             .entityType("dashboard")
             .suggest(suggest)
             .chartSuggest(chartSuggest)
-            .serviceSuggest(serviceSuggest)
             .serviceCategory("dashboardService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
@@ -602,6 +602,8 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getService() != null) {
       dashboardESIndexBuilder.service(dashboard.getService());
       dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
+      dashboardESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder
@@ -651,7 +653,6 @@ class PipelineESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> taskSuggest = new ArrayList<>();
-    serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
 
@@ -686,7 +687,6 @@ class PipelineESIndex extends ElasticSearchIndex {
             .entityType("pipeline")
             .suggest(suggest)
             .taskSuggest(taskSuggest)
-            .serviceSuggest(serviceSuggest)
             .serviceCategory("pipelineService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
@@ -694,6 +694,8 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getService() != null) {
       pipelineESIndexBuilder.service(pipeline.getService());
       pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
+      pipelineESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(

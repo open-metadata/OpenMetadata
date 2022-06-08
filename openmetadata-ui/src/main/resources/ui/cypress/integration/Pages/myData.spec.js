@@ -192,8 +192,7 @@ describe('MyData page should work', () => {
     });
   });
 
-  // Todo: include this test once #5369 issue is resolved
-  it.skip('My data and following section, CTA should work properly', () => {
+  it('My data and following section, CTA should work properly', () => {
     const totalCount =
       tables.length + pipelines.length + dashboards.length + topics.length;
 
