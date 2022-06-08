@@ -86,7 +86,9 @@ class SqlColumnHandler:
     ) -> Tuple[List, List]:
         pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
-            unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
+            unique_constraints = inspector.get_unique_constraints(
+                table_name, schema_name
+            )
         except NotImplementedError:
             logger.warning("Cannot obtain unique constraints - NotImplementedError")
             unique_constraints = []
