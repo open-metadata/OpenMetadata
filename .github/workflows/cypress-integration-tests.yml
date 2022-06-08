@@ -62,7 +62,7 @@ jobs:
           parallel: true
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
-          browser: firefox
+          browser: chrome
         env:
           CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.CYPRESS_SNOWFLAKE_USERNAME }}

@@ -163,6 +163,7 @@ export const goToAddNewServicePage = () => {
 
   // Services page
   cy.contains('Services').should('be.visible');
+  cy.wait(500);
   cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
     if ($databaseServiceCount.text() === '0') {
       cy.get('[data-testid="add-service-button"]').should('be.visible').click();
