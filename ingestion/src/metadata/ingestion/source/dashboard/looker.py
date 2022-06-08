@@ -151,7 +151,7 @@ class LookerSource(DashboardSourceService):
                     displayName=dashboard_elements.title or "",
                     description="",
                     chartType=get_standard_chart_type(dashboard_elements.type).value,
-                    url=f"/dashboard_elements/{dashboard_elements.id}",
+                    chartUrl=f"/dashboard_elements/{dashboard_elements.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
