@@ -130,7 +130,7 @@ def _create_lineage_by_table_name(
             metadata=metadata,
             service_name=service_name,
         )
-        to_raw_name = get_formatted_entity_name(str(from_table))
+        to_raw_name = get_formatted_entity_name(str(to_table))
         to_table_obj = split_raw_table_name(database=database, raw_name=to_raw_name)
         to_entities = search_table_entities(
             table=to_table_obj.get("table"),
@@ -154,22 +154,23 @@ def _create_lineage_by_table_name(
                     lineage_details = LineageDetails(
                         sqlQuery=query, columnsLineage=col_lineage
                     )
-                lineage = AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=from_entity.id.__root__,
-                            type="table",
-                        ),
-                        toEntity=EntityReference(
-                            id=to_entity.id.__root__,
-                            type="table",
-                        ),
+                if from_entity and to_entity:
+                    lineage = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_entity.id.__root__,
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id.__root__,
+                                type="table",
+                            ),
+                        )
                     )
-                )
-                if lineage_details:
-                    lineage.edge.lineageDetails = lineage_details
-                created_lineage = metadata.add_lineage(lineage)
-                logger.info(f"Successfully added Lineage {created_lineage}")
+                    if lineage_details:
+                        lineage.edge.lineageDetails = lineage_details
+                    created_lineage = metadata.add_lineage(lineage)
+                    logger.info(f"Successfully added Lineage {created_lineage}")
 
     except Exception as err:
         logger.debug(traceback.format_exc())

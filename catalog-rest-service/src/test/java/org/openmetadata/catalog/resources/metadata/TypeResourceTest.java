@@ -22,6 +22,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
@@ -42,6 +43,8 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.types.TypeResource;
 import org.openmetadata.catalog.resources.types.TypeResource.TypeList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -112,7 +115,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     assertResponse(
         () -> addCustomProperty(INT_TYPE.getId(), field, Status.CREATED, ADMIN_AUTH_HEADERS),
         Status.BAD_REQUEST,
-        "Property types can't be extended");
+        "Only entity types can be extended and field types can't be extended");
   }
 
   @Override
@@ -123,6 +126,17 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
             : getEntity(type.getId(), null, ADMIN_AUTH_HEADERS);
 
     return type;
+  }
+
+  public Type addAndCheckCustomProperty(
+      UUID entityTypeId, CustomProperty customProperty, Status status, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    Type updated = addCustomProperty(entityTypeId, customProperty, status, authHeaders);
+    assertTrue(updated.getCustomProperties().contains(customProperty));
+
+    Type get = getEntity(entityTypeId, "customProperties", authHeaders);
+    assertTrue(get.getCustomProperties().contains(customProperty));
+    return updated;
   }
 
   public Type addCustomProperty(
@@ -159,6 +173,15 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     if (expected == actual) {
       return;
     }
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.equals("customProperties")) {
+      List<CustomProperty> expectedProperties = (List<CustomProperty>) expected;
+      List<CustomProperty> actualProperties = JsonUtils.readObjects(actual.toString(), CustomProperty.class);
+      assertEquals(expectedProperties.size(), actualProperties.size());
+      expectedProperties.sort(EntityUtil.compareCustomProperty);
+      actualProperties.sort(EntityUtil.compareCustomProperty);
+      assertEquals(expectedProperties, actualProperties);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

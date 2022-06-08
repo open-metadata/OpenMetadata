@@ -6,6 +6,7 @@ source:
       hostPort: hostPort
       username: username
       password: password
+      databaseSchema: default
       type: Oracle
       oracleServiceName: TESTDB
   sourceConfig:

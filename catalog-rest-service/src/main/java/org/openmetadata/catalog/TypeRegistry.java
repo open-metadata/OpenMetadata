@@ -21,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.entity.Type;
 import org.openmetadata.catalog.entity.type.CustomProperty;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -48,7 +50,6 @@ public class TypeRegistry {
 
   public void addType(Type type) {
     TYPES.put(type.getName(), type);
-    LOG.info("Updated type {}\n", type.getName());
 
     // Store custom properties added to a type
     for (CustomProperty property : type.getCustomProperties()) {
@@ -58,18 +59,17 @@ public class TypeRegistry {
 
   public void removeType(String typeName) {
     TYPES.remove(typeName);
-    LOG.info("Deleted type {}\n", typeName);
+    LOG.info("Deleted type {}", typeName);
     // TODO cleanup custom properties
   }
 
   private void addCustomProperty(String entityType, String propertyName, CustomProperty customProperty) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
-    LOG.info("Adding custom property {}\n", customPropertyFQN);
 
     JsonSchema jsonSchema = JsonUtils.getJsonSchema(TYPES.get(customProperty.getPropertyType().getName()).getSchema());
     CUSTOM_PROPERTY_SCHEMAS.put(customPropertyFQN, jsonSchema);
-    LOG.info("Adding json schema for {} {}\n", customProperty, jsonSchema);
+    LOG.info("Adding custom property {} with JSON schema {}", customPropertyFQN, jsonSchema);
   }
 
   public JsonSchema getSchema(String entityType, String propertyName) {
@@ -81,9 +81,8 @@ public class TypeRegistry {
     // Validate custom properties added to a type
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       if (TYPES.get(property.getPropertyType().getName()) == null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Type %s not found for custom property %s", property.getPropertyType().getName(), property.getName()));
+        throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityNotFound(Entity.TYPE, property.getPropertyType().getId()));
       }
     }
   }
