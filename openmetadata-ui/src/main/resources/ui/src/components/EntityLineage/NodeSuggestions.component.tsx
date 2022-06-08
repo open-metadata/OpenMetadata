@@ -60,7 +60,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       .then((res: AxiosResponse) => {
         if (res.data) {
           setData(
-            formatDataResponse(res.data.suggest['table-suggest'][0].options)
+            formatDataResponse(res.data.suggest['metadata-suggest'][0].options)
           );
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];

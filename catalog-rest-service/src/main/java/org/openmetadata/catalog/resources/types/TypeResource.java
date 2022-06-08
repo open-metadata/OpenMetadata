@@ -56,6 +56,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.CreateType;
 import org.openmetadata.catalog.entity.Type;
+import org.openmetadata.catalog.entity.type.Category;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -66,6 +67,7 @@ import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -92,7 +94,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Find tag definitions and load tag categories from the json file, if necessary
+    // Load types defined in OpenMetadata schemas
     long now = System.currentTimeMillis();
     List<Type> types = JsonUtils.getTypes();
     types.forEach(
@@ -100,6 +102,17 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           type.withId(UUID.randomUUID()).withUpdatedBy("admin").withUpdatedAt(now);
           LOG.info("Loading type {}", type.getName());
           try {
+            Fields fields = getFields("customProperties");
+            try {
+              Type storedType = dao.getByName(null, type.getName(), fields);
+              type.setId(storedType.getId());
+              // If entity type already exists, then carry forward custom properties
+              if (storedType.getCategory().equals(Category.Entity)) {
+                type.setCustomProperties(storedType.getCustomProperties());
+              }
+            } catch (Exception e) {
+              LOG.debug("Creating entity that does not exist ", e);
+            }
             this.dao.createOrUpdate(null, type);
           } catch (IOException e) {
             LOG.error("Error loading type {}", type.getName(), e);

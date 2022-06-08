@@ -938,6 +938,28 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       });
   };
+
+  const handleExtentionUpdate = (updatedTable: Table) => {
+    saveUpdatedTableData(updatedTable)
+      .then((res) => {
+        if (res.data) {
+          const { version, owner: ownerValue, tags } = res.data;
+          setCurrentVersion(version);
+          setTableDetails(res.data);
+          setOwner(ownerValue);
+          setTier(getTierTags(tags));
+        } else {
+          throw jsonData['api-error-messages']['update-entity-error'];
+        }
+      })
+      .catch((extensionErr: AxiosError) => {
+        showErrorToast(
+          extensionErr,
+          jsonData['api-error-messages']['update-entity-error']
+        );
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -987,6 +1009,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           handleAddColumnTestCase={handleAddColumnTestCase}
           handleAddTableTestCase={handleAddTableTestCase}
+          handleExtentionUpdate={handleExtentionUpdate}
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
           handleSelectedColumn={handleSelectedColumn}
