@@ -25,4 +25,5 @@ export enum SearchIndex {
   USER = 'user_search_index',
   TEAM = 'team_search_index',
   GLOSSARY = 'glossary_search_index',
+  MLMODEL = 'mlmodel_search_index',
 }
