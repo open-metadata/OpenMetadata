@@ -122,7 +122,6 @@ class BigquerySource(CommonDbSourceService):
         return project_id
 
     def prepare(self):
-        self.service_connection.database = self.service_connection.projectId
         #  and "policy_tags" in column and column["policy_tags"]
         try:
             if self.source_config.includeTags:
