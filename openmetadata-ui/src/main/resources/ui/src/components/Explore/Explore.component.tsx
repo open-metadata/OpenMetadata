@@ -36,13 +36,11 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   ROUTES,
-  tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
 import {
@@ -66,10 +64,10 @@ import {
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import AdvanceFields from '../AdvanceSearch/AdvanceFields';
+import AdvanceSearchDropDown from '../AdvanceSearch/AdvanceSearchDropDown';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
-
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
@@ -110,13 +108,11 @@ const Explore: React.FC<ExploreProps> = ({
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
 
-  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
-  const [fieldList, setFieldList] =
-    useState<Array<{ name: string; value: string }>>(tableSortingFields);
+
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
@@ -125,6 +121,19 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
+
+  const [selectedAdvanceFields, setSelectedAdvanceField] = useState<
+    Array<string>
+  >([]);
+
+  const onAdvanceFieldSelect = (value: string) => {
+    if (!selectedAdvanceFields.includes(value)) {
+      setSelectedAdvanceField((pre) => [...pre, value]);
+    }
+  };
+  const onAdvanceFieldRemove = (value: string) => {
+    setSelectedAdvanceField((pre) => pre.filter((field) => field !== value));
+  };
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -335,44 +344,20 @@ const Explore: React.FC<ExploreProps> = ({
     return facetFilters;
   };
 
-  const handleFieldDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setSortField(value || sortField);
-    setFieldListVisible(false);
-  };
   const handleOrder = (value: string) => {
     setSortOrder(value);
   };
 
   const getSortingElements = () => {
     return (
-      <div className="tw-flex tw-gap-2">
-        <div className="tw-mt-4">
-          <span className="tw-mr-2">Sort by:</span>
-          <span className="tw-relative">
-            <Button
-              className="focus:tw-no-underline"
-              data-testid="sortBy"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setFieldListVisible((visible) => !visible)}>
-              {fieldList.find((field) => field.value === sortField)?.name ||
-                'Relevance'}
-              <DropDownIcon />
-            </Button>
-            {fieldListVisible && (
-              <DropDownList
-                dropDownList={fieldList}
-                value={sortField}
-                onSelect={handleFieldDropDown}
-              />
-            )}
-          </span>
-        </div>
-        <div className="tw-mt-2 tw-flex tw-gap-2">
+      <div className="tw-flex">
+        <AdvanceSearchDropDown
+          index={searchIndex}
+          selectedItems={selectedAdvanceFields}
+          onSelect={onAdvanceFieldSelect}
+        />
+        <div className="tw-flex">
+          <span className="tw-mr-1 tw-self-center">Sort:</span>
           {sortOrder === 'asc' ? (
             <button onClick={() => handleOrder('desc')}>
               <FontAwesomeIcon
@@ -492,7 +477,6 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
-    setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(
       searchQuery
         ? tabsInfo[getCurrentTab(tab) - 1].sortField
@@ -593,6 +577,11 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [filters]);
 
+  // on index change clear the filters
+  useEffect(() => {
+    setSelectedAdvanceField([]);
+  }, [searchIndex]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -614,12 +603,21 @@ const Explore: React.FC<ExploreProps> = ({
     );
   };
 
+  const advanceFieldCheck =
+    !connectionError && Boolean(selectedAdvanceFields.length);
+
   return (
     <Fragment>
       {!connectionError && getTabs()}
       <PageLayout
         leftPanel={Boolean(!error) && fetchLeftPanel()}
         rightPanel={Boolean(!error) && <></>}>
+        {advanceFieldCheck && (
+          <AdvanceFields
+            fields={selectedAdvanceFields}
+            onFieldRemove={onAdvanceFieldRemove}
+          />
+        )}
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
