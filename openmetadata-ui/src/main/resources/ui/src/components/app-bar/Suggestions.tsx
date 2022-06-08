@@ -202,9 +202,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.TABLE)}
 
             {tableSuggestions.map((suggestion: TableSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fqdn, name, service_type: serviceType } = suggestion;
 
               return getSuggestionElement(
                 fqdn,
@@ -220,9 +218,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.TOPIC)}
 
             {topicSuggestions.map((suggestion: TopicSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fqdn, name, service_type: serviceType } = suggestion;
 
               return getSuggestionElement(
                 fqdn,
@@ -238,9 +234,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.DASHBOARD)}
 
             {dashboardSuggestions.map((suggestion: DashboardSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fqdn, name, service_type: serviceType } = suggestion;
 
               return getSuggestionElement(
                 fqdn,
@@ -256,9 +250,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.PIPELINE)}
 
             {pipelineSuggestions.map((suggestion: PipelineSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fqdn, name, service_type: serviceType } = suggestion;
 
               return getSuggestionElement(
                 fqdn,
@@ -274,9 +266,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
             {getGroupLabel(SearchIndex.MLMODEL)}
 
             {mlModelSuggestions.map((suggestion: MlModelSource) => {
-              const fqdn = suggestion.fqdn;
-              const name = suggestion.name;
-              const serviceType = suggestion.service_type;
+              const { fqdn, name, service_type: serviceType } = suggestion;
 
               return getSuggestionElement(
                 fqdn,
