@@ -124,7 +124,7 @@ class TableauSource(DashboardSourceService):
         Args:
             owner:
         Returns:
-            List[DashboardOwner]
+            Optional[EntityReference]
         """
         try:
             user_request = CreateUserRequest(

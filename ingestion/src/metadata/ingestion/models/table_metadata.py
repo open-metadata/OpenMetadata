@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -210,39 +210,3 @@ class GlossaryTermESDocument(BaseModel):
     suggest: List[dict]
     last_updated_timestamp: Optional[int]
     doc_as_upsert: bool = True
-
-
-class DashboardOwner(BaseModel):
-    """Dashboard owner"""
-
-    username: str
-    first_name: str
-    last_name: str
-
-
-class Chart(BaseModel):
-    """Chart"""
-
-    name: str
-    displayName: str
-    description: str
-    chart_type: str
-    url: str
-    owners: List[DashboardOwner] = None
-    lastModified: int = None
-    datasource_fqn: str = None
-    service: EntityReference
-    custom_props: Dict[Any, Any] = None
-
-
-class Dashboard(BaseModel):
-    """Dashboard"""
-
-    name: str
-    displayName: str
-    description: str
-    url: str
-    owners: List[DashboardOwner] = None
-    charts: List[str]
-    service: EntityReference
-    lastModified: int = None

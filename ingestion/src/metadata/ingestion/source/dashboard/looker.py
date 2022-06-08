@@ -15,6 +15,8 @@ from typing import Any, Iterable, List, Optional
 
 import looker_sdk
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -28,9 +30,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
-from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -104,17 +106,20 @@ class LookerSource(DashboardSourceService):
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
-    def get_dashboard_entity(self, dashboard_details) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: Any) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        yield Dashboard(
+        yield CreateDashboardRequest(
             name=dashboard_details.id,
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
-            charts=self.chart_names,
-            url=f"/dashboards/{dashboard_details.id}",
+            charts=get_chart_entities_from_id(
+                chart_ids=self.chart_names,
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
+            dashboardUrl=f"/dashboards/{dashboard_details.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
@@ -125,7 +130,9 @@ class LookerSource(DashboardSourceService):
         logger.info("Lineage not implemented for Looker")
         return None
 
-    def fetch_dashboard_charts(self, dashboard_details) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(
+        self, dashboard_details
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -139,11 +146,11 @@ class LookerSource(DashboardSourceService):
                 ):
                     self.status.filter(dashboard_elements.id, "Chart filtered out")
                     continue
-                om_dashboard_elements = Chart(
+                om_dashboard_elements = CreateChartRequest(
                     name=dashboard_elements.id,
                     displayName=dashboard_elements.title or "",
                     description="",
-                    chart_type=dashboard_elements.type,
+                    chartType=get_standard_chart_type(dashboard_elements.type).value,
                     url=f"/dashboard_elements/{dashboard_elements.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
