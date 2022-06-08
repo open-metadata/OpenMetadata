@@ -135,7 +135,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
         break;
       case SearchIndex.MLMODEL:
-        label = 'MlModels';
+        label = 'ML Models';
         // TODO: Change this to mlmodel icon
         icon = Icons.SERVICE;
 
