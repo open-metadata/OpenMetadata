@@ -35,6 +35,7 @@ export interface ExploreProps {
     dashboard: number;
     pipeline: number;
     dbtModel: number;
+    mlModel: number;
   };
   searchText: string;
   initialFilter?: FilterObject;
@@ -55,6 +56,7 @@ export interface ExploreProps {
   updateDashboardCount: (count: number) => void;
   updatePipelineCount: (count: number) => void;
   updateDbtModelCount: (count: number) => void;
+  updateMlModelCount: (count: number) => void;
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
 }

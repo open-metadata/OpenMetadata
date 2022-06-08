@@ -116,6 +116,12 @@
       },
       "suggest": {
         "type": "completion"
+      },
+      "task_suggest": {
+        "type": "completion"
+      },
+      "service_suggest": {
+        "type": "completion"
       }
     }
 }

@@ -123,6 +123,18 @@
       "suggest": {
         "type": "completion"
       },
+      "column_suggest": {
+        "type": "completion"
+      },
+      "schema_suggest": {
+        "type": "completion"
+      },
+      "database_suggest": {
+        "type": "completion"
+      },
+      "service_suggest": {
+        "type": "completion"
+      },
       "monthly_stats":{
         "type": "long"
       },

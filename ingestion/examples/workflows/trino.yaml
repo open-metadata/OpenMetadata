@@ -7,7 +7,7 @@ source:
       hostPort: localhost:8080
       username: user
       catalog: tpcds
-      database: tiny
+      databaseSchema: tiny
       connectionOptions: {}
       connectionArguments: {}
   sourceConfig:

@@ -266,6 +266,7 @@ const CreateUser = ({
           className={classNames('tw-bg-white', {
             'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
           })}
+          dataTestId="roles-dropdown"
           dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
           label="Roles"
           selectedItems={selectedRoles as Array<string>}

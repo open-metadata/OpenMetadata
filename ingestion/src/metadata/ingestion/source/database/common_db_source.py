@@ -13,9 +13,9 @@ Generic source to build SQL connectors.
 """
 
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
@@ -55,11 +55,6 @@ class SQLSourceStatus(SourceStatus):
     """
     Reports the source status after ingestion
     """
-
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
 
     def scanned(self, record: str) -> None:
         self.success.append(record)

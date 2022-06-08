@@ -11,13 +11,13 @@
 """PowerBI source module"""
 
 import traceback
-import uuid
 from typing import Any, Iterable, List, Optional
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import (
-    Dashboard as LineageDashboard,
-)
+from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
@@ -31,10 +31,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import get_chart_entities_from_id
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -94,18 +94,21 @@ class PowerbiSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        yield Dashboard(
+        yield CreateDashboardRequest(
             name=dashboard_details["id"],
             # PBI has no hostPort property. All URL details are present in the webUrl property.
-            url=dashboard_details["webUrl"],
+            dashboardUrl=dashboard_details["webUrl"],
             displayName=dashboard_details["displayName"],
             description="",
-            charts=self.charts,
+            charts=get_chart_entities_from_id(
+                chart_ids=self.charts,
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
@@ -138,12 +141,12 @@ class PowerbiSource(DashboardSourceService):
                         )
                         to_fqn = fqn.build(
                             self.metadata,
-                            entity_type=LineageDashboard,
+                            entity_type=Dashboard,
                             service_name=self.config.serviceName,
                             dashboard_name=dashboard_details["id"],
                         )
                         to_entity = self.metadata.get_by_name(
-                            entity=LineageDashboard,
+                            entity=Dashboard,
                             fqn=to_fqn,
                         )
                         if from_entity and to_entity:
@@ -162,13 +165,9 @@ class PowerbiSource(DashboardSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def process_charts(self) -> Iterable[Chart]:
-        """
-        Method to fetch Charts
-        """
-        logger.info("Fetch Charts Not implemented for PowerBi")
-
-    def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
+    def fetch_dashboard_charts(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateChartRequest]:
         """Get chart method
         Args:
             dashboard_details:
@@ -185,18 +184,15 @@ class PowerbiSource(DashboardSourceService):
                 if filter_by_chart(
                     self.source_config.chartFilterPattern, chart["title"]
                 ):
-                    self.status.filter(
-                        chart["title"], "Filtered out using Chart filter pattern"
-                    )
+                    self.status.filter(chart["title"], "Chart Pattern not Allowed")
                     continue
-                yield Chart(
-                    id=uuid.uuid4(),
+                yield CreateChartRequest(
                     name=chart["id"],
                     displayName=chart["title"],
                     description="",
-                    chart_type="",  # Fix this with https://github.com/open-metadata/OpenMetadata/issues/1673
+                    chartType=ChartType.Other.value,
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
-                    url=chart["embedUrl"],
+                    chartUrl=chart["embedUrl"],
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),

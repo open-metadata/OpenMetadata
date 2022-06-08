@@ -9,14 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
-import requests
+from sql_metadata import Parser
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as Lineage_Dashboard,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
 )
@@ -26,13 +29,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.table_metadata import Chart as ModelChart
-from metadata.ingestion.models.table_metadata import Dashboard
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.utils import fqn
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_lineage import search_table_entities
 
 logger = ingestion_logger()
 
@@ -92,90 +97,100 @@ class RedashSource(DashboardSourceService):
         """
         Get Dashboard Details
         """
-        return dashboard
+        return self.client.get_dashboard(dashboard["slug"])
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        dashboard_id = dashboard_details["id"]
-        if dashboard_id is not None:
-            self.status.item_scanned_status()
-            dashboard_data = self.client.get_dashboard(dashboard_id)
-            dashboard_description = ""
-            for widgets in dashboard_data.get("widgets", []):
-                dashboard_description = widgets.get("text")
-            yield Dashboard(
-                id=uuid.uuid4(),
-                name=dashboard_id,
-                displayName=dashboard_details["name"],
-                description=dashboard_description if dashboard_details else "",
-                charts=self.dashboards_to_charts[dashboard_id],
-                usageSummary=None,
-                service=EntityReference(id=self.service.id, type="dashboardService"),
-                url=f"/dashboard/{dashboard_data.get('slug', '')}",
-            )
+        self.status.item_scanned_status()
+        dashboard_description = ""
+        for widgets in dashboard_details.get("widgets", []):
+            dashboard_description = widgets.get("text")
+        yield CreateDashboardRequest(
+            name=dashboard_details.get("id"),
+            displayName=dashboard_details["name"],
+            description=dashboard_description if dashboard_details else "",
+            charts=get_chart_entities_from_id(
+                chart_ids=self.dashboards_to_charts[dashboard_details.get("id")],
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+            dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
+        )
 
-    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
+    def get_lineage(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
+        In redash we do not get table, database_schema or database name but we do get query
+        the lineage is being generated based on the query
         """
-        logger.info("Lineage not implemented for redash")
-        return None
-
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        """
-        Metod to fetch Charts
-        """
-        query_info = self.client.queries()
-        for query_info in query_info["results"]:
-            query_id = query_info["id"]
-            query_name = query_info["name"]
-            query_data = requests.get(
-                f"{self.service_connection.hostPort}/api/queries/{query_id}"
-            ).json()
-            for visualization in query_data.get("Visualizations", []):
-                chart_type = visualization.get("type", "")
-                chart_description = (
-                    visualization.get("description", "")
-                    if visualization.get("description", "")
-                    else ""
+        for widgets in dashboard_details.get("widgets", []):
+            visualization = widgets.get("visualization")
+            if not visualization.get("query"):
+                continue
+            table_list = []
+            if visualization.get("query", {}).get("query"):
+                table_list = Parser(visualization["query"]["query"])
+            for table in table_list.tables:
+                dataabase_schema = None
+                if "." in table:
+                    dataabase_schema, table = fqn.split(table)[-2:]
+                table_entities = search_table_entities(
+                    metadata=self.metadata,
+                    database=None,
+                    service_name=self.source_config.dbServiceName,
+                    database_schema=dataabase_schema,
+                    table=table,
                 )
-                yield Chart(
-                    id=uuid.uuid4(),
-                    name=query_id,
-                    displayName=query_name,
-                    chartType=chart_type,
-                    service=EntityReference(
-                        id=self.service.id, type="dashboardService"
-                    ),
-                    description=chart_description,
-                )
+                for from_entity in table_entities:
+                    to_entity = self.metadata.get_by_name(
+                        entity=Lineage_Dashboard,
+                        fqn=fqn.build(
+                            self.metadata,
+                            Lineage_Dashboard,
+                            service_name=self.config.serviceName,
+                            dashboard_name=str(dashboard_details.get("id")),
+                        ),
+                    )
+                    if from_entity and to_entity:
+                        lineage = AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(
+                                    id=from_entity.id.__root__, type="table"
+                                ),
+                                toEntity=EntityReference(
+                                    id=to_entity.id.__root__, type="dashboard"
+                                ),
+                            )
+                        )
+                        yield lineage
 
-    def fetch_dashboard_charts(self, dashboard: dict) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
-        dashboard_id = dashboard["id"]
-        if dashboard_id is not None:
-            dashboard_data = self.client.get_dashboard(dashboard_id)
-            self.dashboards_to_charts[dashboard_id] = []
-            for widgets in dashboard_data.get("widgets", []):
-                visualization = widgets.get("visualization")
-                self.dashboards_to_charts[dashboard_id].append(widgets["id"])
-                yield ModelChart(
-                    name=widgets["id"],
-                    displayName=visualization["query"]["name"]
-                    if visualization and visualization["query"]
-                    else "",
-                    chart_type=visualization["type"] if visualization else "",
-                    service=EntityReference(
-                        id=self.service.id, type="dashboardService"
-                    ),
-                    url=f"/dashboard/{dashboard_data.get('slug', '')}",
-                    description=visualization["description"] if visualization else "",
-                )
+        self.dashboards_to_charts[dashboard_details.get("id")] = []
+        for widgets in dashboard_details.get("widgets", []):
+            visualization = widgets.get("visualization")
+            self.dashboards_to_charts[dashboard_details.get("id")].append(widgets["id"])
+            yield CreateChartRequest(
+                name=widgets["id"],
+                displayName=visualization["query"]["name"]
+                if visualization and visualization["query"]
+                else "",
+                chartType=get_standard_chart_type(
+                    visualization["type"] if visualization else ""
+                ),
+                service=EntityReference(id=self.service.id, type="dashboardService"),
+                chartUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
+                description=visualization["description"] if visualization else "",
+            )
 
     def close(self):
         self.client.session.close()

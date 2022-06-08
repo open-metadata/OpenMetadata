@@ -49,6 +49,7 @@ const exploreCount = {
   dashboard: 0,
   pipeline: 0,
   dbtModel: 0,
+  mlModel: 0,
 };
 
 const TourPage = () => {
@@ -172,6 +173,7 @@ const TourPage = () => {
             tabCounts={explorePageCounts}
             updateDashboardCount={handleCountChange}
             updateDbtModelCount={handleCountChange}
+            updateMlModelCount={handleCountChange}
             updatePipelineCount={handleCountChange}
             updateTableCount={handleCountChange}
             updateTopicCount={handleCountChange}
@@ -204,6 +206,7 @@ const TourPage = () => {
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
             handleAddTableTestCase={handleCountChange}
+            handleExtentionUpdate={handleCountChange}
             handleRemoveColumnTest={handleCountChange}
             handleRemoveTableTest={handleCountChange}
             handleSelectedColumn={handleCountChange}
