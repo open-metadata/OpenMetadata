@@ -307,7 +307,7 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 
 
 FETCH_SNOWFLAKE_ALL_TAGS = (
-    "select * from table(information_schema.TAG_REFERENCES_ALL_COLUMNS('{}', 'table'));"
+    "select * from snowflake.account_usage.tag_references where object_database = '{}';"
 )
 
 FETCH_SNOWFLAKE_METADATA = """
