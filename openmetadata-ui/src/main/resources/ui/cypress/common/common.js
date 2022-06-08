@@ -219,58 +219,6 @@ export const searchEntity = (term) => {
   cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
 };
 
-export const testSampleData = (entity) => {
-  cy.goToHomePage();
-
-  // initially sample data should not be present
-  searchEntity(entity.term);
-  cy.get(`[data-testid="${entity.entity}-tab"]`).should('be.visible').click();
-  cy.get(`[data-testid="${entity.entity}-tab"]`)
-    .should('be.visible')
-    .should('have.class', 'active');
-  cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-
-  // go to service details and modify ingestion to enable sample data
-  cy.get(':nth-child(1) > .link-title').should('be.visible').click();
-  cy.wait(500);
-
-  if (entity.entityType === 'database') {
-    cy.get('[data-testid="table-container"]').contains(entity.db);
-  }
-
-  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
-  cy.get('[data-testid="edit"]').should('be.visible').click();
-  cy.get('[data-testid="next-button"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="dbt-source"]').should('be.visible');
-  cy.get('[data-testid="submit-btn"]').should('be.visible').click();
-
-  cy.get('[data-testid="ingestion-type"]').should('be.visible');
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
-
-  cy.contains('has been updated and deployed successfully').should(
-    'be.visible'
-  );
-  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
-  cy.get('[data-testid="Ingestions"]')
-    .should('be.visible')
-    .should('have.class', 'active');
-
-  cy.get('[data-testid="run"]').should('be.visible').click();
-  cy.reload();
-  handleIngestionRetry(entity.entityType, 1);
-
-  searchEntity(entity.term);
-  cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
-  cy.contains('No sample data available').should('not.exist');
-};
-
 // add new tag to entity and its table
 export const addNewTagToEntity = (entity, term) => {
   searchEntity(entity);
