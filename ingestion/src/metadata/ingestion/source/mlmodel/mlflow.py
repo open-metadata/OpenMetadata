@@ -11,9 +11,9 @@
 """ml flow source module"""
 
 import ast
-import logging
+import traceback
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Union, Any
 
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion
@@ -26,8 +26,16 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.ingestion.api.common import ConfigModel
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -65,15 +73,6 @@ class MlFlowStatus(SourceStatus):
         logger.warning("ML Model warning: %s - %s", model_name, reason)
 
 
-class MlFlowConnectionConfig(ConfigModel):
-    """
-    Required information to extract data from MLFlow
-    """
-
-    tracking_uri: str
-    registry_uri: Optional[str]
-
-
 class MlflowSource(Source[CreateMlModelRequest]):
     """
     Source implementation to ingest MLFlow data.
@@ -82,11 +81,14 @@ class MlflowSource(Source[CreateMlModelRequest]):
     and prepare an iterator of CreateMlModelRequest
     """
 
-    def __init__(self, config: MlFlowConnectionConfig):
+    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
+        self.config = config
+        self.service_connection = self.config.serviceConnection.__root__.config
+
         self.client = MlflowClient(
-            tracking_uri=config.tracking_uri,
-            registry_uri=config.registry_uri if config.registry_uri else None,
+            tracking_uri=self.service_connection.trackingUri,
+            registry_uri=self.service_connection.registryUri,
         )
         self.status = MlFlowStatus()
 
@@ -94,9 +96,15 @@ class MlflowSource(Source[CreateMlModelRequest]):
         pass
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict):
-        config = MlFlowConnectionConfig.parse_obj(config_dict)
-        return cls(config)
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        connection: MlflowConnection = config.serviceConnection.__root__.config
+        if not isinstance(connection, MlflowConnection):
+            raise InvalidSourceException(
+                f"Expected MysqlConnection, but got {connection}"
+            )
+
+        return cls(config, metadata_config)
 
     def next_record(self) -> Iterable[CreateMlModelRequest]:
         """
@@ -159,6 +167,20 @@ class MlflowSource(Source[CreateMlModelRequest]):
             return MlStore(storage=version.source)
         return None
 
+    @staticmethod
+    def eval_props(tags: Union[str, Any]) -> List[dict]:
+        """
+        We'll try to literal_eval some props, as in older versions of MlFlow,
+        that data is inside a string. If that fails, we'll just return
+        the element we receive.
+        :param tags: content of data.tags["mlflow.log-model.history"]
+        :return: evaliated list
+        """
+        try:
+            return ast.literal_eval(tags)
+        except ValueError:
+            return tags
+
     def _get_ml_features(
         self, data: RunData, run_id: str, model_name: str
     ) -> Optional[List[MlFeature]]:
@@ -169,13 +191,15 @@ class MlflowSource(Source[CreateMlModelRequest]):
         """
         if data.tags:
             try:
-                props = ast.literal_eval(data.tags["mlflow.log-model.history"])
+                props = self.eval_props(data.tags["mlflow.log-model.history"])
+                print(props)
+                print(props[0])
                 latest_props = next(
                     (prop for prop in props if prop["run_id"] == run_id), None
                 )
                 if not latest_props:
                     reason = f"Cannot find the run ID properties for {run_id}"
-                    logging.warning(reason)
+                    logger.warning(reason)
                     self.status.warned(model_name, reason)
                     return None
 
@@ -198,7 +222,8 @@ class MlflowSource(Source[CreateMlModelRequest]):
             # pylint: disable=broad-except)
             except Exception as exc:
                 reason = f"Cannot extract properties from RunData {exc}"
-                logging.warning(reason)
+                logger.warning(reason)
+                logger.debug(traceback.format_exc())
                 self.status.warned(model_name, reason)
 
         return None

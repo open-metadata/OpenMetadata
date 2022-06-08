@@ -32,6 +32,14 @@ from metadata.generated.schema.entity.services.metadataService import (
     MetadataConnection,
     MetadataServiceType,
 )
+from metadata.generated.schema.entity.services.mlmodelService import (
+    MlModelConnection,
+    MlModelServiceType,
+)
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineConnection,
+    PipelineServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     WorkflowConfig,
@@ -51,6 +59,8 @@ def get_service_type(
     Type[DatabaseConnection],
     Type[MessagingConnection],
     Type[MetadataConnection],
+    Type[PipelineConnection],
+    Type[MlModelConnection],
 ]:
     """
     Return the service type for a source string
@@ -65,6 +75,10 @@ def get_service_type(
         return MessagingConnection
     if source_type in MetadataServiceType.__members__:
         return MetadataConnection
+    if source_type in PipelineServiceType.__members__:
+        return PipelineConnection
+    if source_type in MlModelServiceType.__members__:
+        return MlModelConnection
 
     raise ValueError(f"Cannot find the service type of {source_type}")
 
@@ -76,6 +90,8 @@ def get_connection_class(
         Type[DatabaseConnection],
         Type[MessagingConnection],
         Type[MetadataConnection],
+        Type[PipelineConnection],
+        Type[MlModelConnection],
     ],
 ) -> T:
     """
