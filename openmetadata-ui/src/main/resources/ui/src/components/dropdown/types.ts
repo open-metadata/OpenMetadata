@@ -69,4 +69,5 @@ export type DropDownProp = {
   icon?: React.ReactElement | string;
   isLableVisible?: boolean;
   isDropDownIconVisible?: boolean;
+  dataTestId?: string;
 } & DropDownListProp;
