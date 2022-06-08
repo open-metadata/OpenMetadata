@@ -155,7 +155,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
