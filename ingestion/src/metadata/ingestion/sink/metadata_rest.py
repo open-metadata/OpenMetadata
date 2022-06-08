@@ -33,7 +33,6 @@ from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequ
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
@@ -50,7 +49,7 @@ from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
+from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
@@ -65,20 +64,6 @@ logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
-
-om_chart_type_dict = {
-    "line": ChartType.Line,
-    "table": ChartType.Table,
-    "dist_bar": ChartType.Bar,
-    "bar": ChartType.Bar,
-    "big_number": ChartType.Line,
-    "histogram": ChartType.Histogram,
-    "big_number_total": ChartType.Line,
-    "dual_line": ChartType.Line,
-    "line_multi": ChartType.Line,
-    "treemap": ChartType.Area,
-    "box_plot": ChartType.Bar,
-}
 
 
 class MetadataRestSinkConfig(ConfigModel):
@@ -117,9 +102,9 @@ class MetadataRestSink(Sink[Entity]):
             self.write_tables(record)
         elif isinstance(record, Topic):
             self.write_topics(record)
-        elif isinstance(record, Chart):
+        elif isinstance(record, CreateChartRequest):
             self.write_charts(record)
-        elif isinstance(record, Dashboard):
+        elif isinstance(record, CreateDashboardRequest):
             self.write_dashboards(record)
         elif isinstance(record, Location):
             self.write_locations(record)
@@ -297,27 +282,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Topic: {topic.name}")
 
-    def write_charts(self, chart: Chart):
+    def write_charts(self, chart: CreateChartRequest):
         try:
-            om_chart_type = ChartType.Other
-            if (
-                chart.chart_type is not None
-                and chart.chart_type in om_chart_type_dict.keys()
-            ):
-                om_chart_type = om_chart_type_dict[chart.chart_type]
-
-            chart_request = CreateChartRequest(
-                name=chart.name,
-                displayName=chart.displayName,
-                description=chart.description,
-                chartType=om_chart_type,
-                chartUrl=chart.url,
-                service=chart.service,
-            )
-            created_chart = self.metadata.create_or_update(chart_request)
-            self.charts_dict[chart.name] = EntityReference(
-                id=created_chart.id, type="chart"
-            )
+            created_chart = self.metadata.create_or_update(chart)
             logger.info(f"Successfully ingested chart {created_chart.displayName}")
             self.status.records_written(f"Chart: {created_chart.displayName}")
         except (APIError, ValidationError) as err:
@@ -325,19 +292,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Chart: {chart.displayName}")
 
-    def write_dashboards(self, dashboard: Dashboard):
+    def write_dashboards(self, dashboard: CreateDashboardRequest):
         try:
-            charts = self._get_chart_references(dashboard)
-
-            dashboard_request = CreateDashboardRequest(
-                name=dashboard.name,
-                displayName=dashboard.displayName,
-                description=dashboard.description,
-                dashboardUrl=dashboard.url,
-                charts=charts,
-                service=dashboard.service,
-            )
-            created_dashboard = self.metadata.create_or_update(dashboard_request)
+            created_dashboard = self.metadata.create_or_update(dashboard)
             logger.info(
                 f"Successfully ingested dashboard {created_dashboard.displayName}"
             )
@@ -346,13 +303,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest dashboard {dashboard.name}")
             logger.error(err)
             self.status.failure(f"Dashboard {dashboard.name}")
-
-    def _get_chart_references(self, dashboard: Dashboard) -> []:
-        chart_references = []
-        for chart_id in dashboard.charts:
-            if chart_id in self.charts_dict.keys():
-                chart_references.append(self.charts_dict[chart_id])
-        return chart_references
 
     def write_locations(self, location: Location):
         try:
