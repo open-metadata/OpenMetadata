@@ -37,8 +37,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.database_service import SQLSourceStatus
-from metadata.ingestion.source.database.dbt_source import DBTSource
+from metadata.ingestion.source.database.database_service import SQLSourceStatus, DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils.connections import get_connection, test_connection
@@ -48,7 +47,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
+class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandler, SqlAlchemySource):
     def __init__(
         self,
         config: WorkflowSource,
@@ -73,9 +72,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         self.table_constraints = None
         self.database_source_state = set()
         super().__init__()
-
-    def prepare(self):
-        self._parse_data_model()
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -124,8 +120,9 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
                 database=EntityReference(id=self.context.database.id, type="database"),
             )
 
+    @staticmethod
     def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
+        schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
@@ -187,7 +184,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
                     inspector=self.inspector,
                 )
 
-                # TODO: GET DATA MODEL
                 table_request = CreateTableRequest(
                     name=table_name,
                     tableType=table_type,

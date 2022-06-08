@@ -12,7 +12,11 @@
 Generic source to build database connectors.
 """
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Set
+
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import DatabaseServiceMetadataPipeline
+
+from metadata.ingestion.models.topology import TopologyContext
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from sqlalchemy.engine import Engine
@@ -20,19 +24,27 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import SQLSourceStatus
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 
 logger = ingestion_logger()
 
 
-class SqlAlchemySource(DatabaseServiceSource, ABC):
+class SqlAlchemySource(ABC):
 
     engine: Engine
+    metadata: OpenMetadata
+    context: TopologyContext
+    database_source_state: Set
+    status: SQLSourceStatus
+    source_config: DatabaseServiceMetadataPipeline
+    config: WorkflowSource
 
     @abstractmethod
     def standardize_schema_table_names(
@@ -48,9 +60,10 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
         Method Yields schemas available in database
         """
 
+    @staticmethod
     @abstractmethod
     def get_table_description(
-        self, schema_name: str, table_name: str, inspector: Inspector
+        schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         """
         Method returns the table level comment
@@ -152,7 +165,6 @@ class SqlAlchemySource(DatabaseServiceSource, ABC):
         """
         Use the current inspector to mark tables as deleted
         """
-        # TODO: GET THIS RIGHT
         if self.source_config.markDeletedTables:
             logger.info("Mark Deleted Tables set to True. Processing...")
             for schema_name in self.get_schema_names():

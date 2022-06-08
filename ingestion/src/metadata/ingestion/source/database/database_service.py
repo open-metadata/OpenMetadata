@@ -15,6 +15,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, List, Set
 
+from metadata.generated.schema.type import basic
+from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -24,7 +26,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, DataModel
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -43,9 +45,18 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.dbt_source import DBTSource
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class DataModelLink(BaseModel):
+    """
+    Tmp model to handle data model ingestion
+    """
+    id: basic.Uuid
+    datamodel: DataModel
 
 
 class DatabaseServiceTopology(ServiceTopology):
@@ -84,6 +95,12 @@ class DatabaseServiceTopology(ServiceTopology):
         producer="yield_table",
         consumer=["database_service", "database", "database_schema"],
     )
+    dataModel = TopologyNode(
+        type_=DataModel,
+        context="datamodel",
+        producer="yield_datamodel",
+        consumer=["database_service", "database", "database_schema", "table"],
+    )
 
 
 @dataclass
@@ -106,7 +123,7 @@ class SQLSourceStatus(SourceStatus):
         logger.warning(f"Filtered Table {record} due to {err}")
 
 
-class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):
+class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
     It implements the topology and context.
@@ -125,6 +142,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = DatabaseServiceTopology()
     context = create_source_context(topology)
+
+    def __init__(self):
+        super().__init__()
+
+    def prepare(self):
+        self._parse_data_model()
 
     def yield_database_service(self):
         yield self.metadata.get_create_service_from_source(
@@ -157,3 +180,20 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):
 
         Also, update the self.inspector value to the current db.
         """
+
+    def yield_datamodel(self) -> Iterable[DataModelLink]:
+        """
+        Gets the current table being processed, fetches its data model
+        and sends it ot the sink
+        """
+        table_id = self.context.table.id
+        datamodel = self.get_data_model(
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=self.context.table.name.__root__,
+        )
+        if datamodel:
+            yield DataModelLink(
+                id=table_id,
+                datamodel=datamodel
+            )

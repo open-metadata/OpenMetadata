@@ -12,7 +12,7 @@
 DBT source methods.
 """
 import traceback
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
@@ -38,13 +38,13 @@ class DBTSource:
         self.dbt_manifest = dbt_details[1] if dbt_details else None
         self.data_models: dict = {}
 
-    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
+    def get_data_model(self, database_name: str, schema_name: str, table_name: str) -> Optional[DataModel]:
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
             service_name=self.config.serviceName,
-            database_name=database,
-            schema_name=schema,
+            database_name=database_name,
+            schema_name=schema_name,
             table_name=table_name,
         )
         if table_fqn in self.data_models:
