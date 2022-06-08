@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Iterable, List, Set
 
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
@@ -80,9 +81,14 @@ class DatabaseServiceTopology(ServiceTopology):
         type_=Database,
         context="database",
         producer="yield_database",
-        children=["databaseSchema"],
+        children=["tagAndCategory", "databaseSchema"],
         consumer=["database_service"],
         post_process="mark_tables_as_deleted",
+    )
+    tagAndCategory = TopologyNode(
+        type_=OMetaTagAndCategory,
+        producer="yield_tags",
+        consumer=["database_service", "database"]
     )
     databaseSchema = TopologyNode(
         type_=DatabaseSchema,
@@ -158,6 +164,15 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_database(self) -> Iterable[CreateDatabaseRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink.
+
+        Also, update the self.inspector value to the current db.
+        """
+
+    @abstractmethod
+    def yield_tags(self) -> Iterable[OMetaTagAndCategory]:
         """
         From topology.
         Prepare a database request and pass it to the sink.

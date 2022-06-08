@@ -57,6 +57,40 @@ ischema_names["GEOGRAPHY"] = GEOGRAPHY
 logger = ingestion_logger()
 
 
+def get_table_names(self, connection, schema, **kw):
+    result = connection.execute(FETCH_SNOWFLAKE_METADATA.format(schema))
+    return result.fetchall()
+
+
+@reflection.cache
+def _get_table_comment(self, connection, table_name, schema=None, **kw):
+    """
+    Returns comment of table.
+    """
+    sql_command = "select * FROM information_schema.tables WHERE TABLE_SCHEMA ILIKE '{}' and TABLE_NAME ILIKE '{}'".format(
+        self.normalize_name(schema),
+        table_name,
+    )
+
+    cursor = connection.execute(text(sql_command))
+    return cursor.fetchone()  # pylint: disable=protected-access
+
+
+@reflection.cache
+def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+    return []
+
+
+def normalize_names(self, name):
+    return name
+
+
+SnowflakeDialect.get_table_names = get_table_names
+SnowflakeDialect.normalize_name = normalize_names
+SnowflakeDialect._get_table_comment = _get_table_comment
+SnowflakeDialect.get_unique_constraints = get_unique_constraints
+
+
 class SnowflakeSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
@@ -217,37 +251,3 @@ class SnowflakeSource(CommonDbSourceService):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)
-
-
-def get_table_names(self, connection, schema, **kw):
-    result = connection.execute(FETCH_SNOWFLAKE_METADATA.format(schema))
-    return result.fetchall()
-
-
-@reflection.cache
-def _get_table_comment(self, connection, table_name, schema=None, **kw):
-    """
-    Returns comment of table.
-    """
-    sql_command = "select * FROM information_schema.tables WHERE TABLE_SCHEMA ILIKE '{}' and TABLE_NAME ILIKE '{}'".format(
-        self.normalize_name(schema),
-        table_name,
-    )
-
-    cursor = connection.execute(text(sql_command))
-    return cursor.fetchone()  # pylint: disable=protected-access
-
-
-@reflection.cache
-def get_unique_constraints(self, connection, table_name, schema=None, **kw):
-    return []
-
-
-def normalize_names(self, name):
-    return name
-
-
-SnowflakeDialect.get_table_names = get_table_names
-SnowflakeDialect.normalize_name = normalize_names
-SnowflakeDialect._get_table_comment = _get_table_comment
-SnowflakeDialect.get_unique_constraints = get_unique_constraints
