@@ -16,13 +16,13 @@ from typing import Dict, List, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.models.table_metadata import Dashboard
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()

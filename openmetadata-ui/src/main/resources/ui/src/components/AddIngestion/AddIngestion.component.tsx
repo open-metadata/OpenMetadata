@@ -155,12 +155,6 @@ const AddIngestion = ({
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
-  const [enableDataProfiler, setEnableDataProfiler] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.enableDataProfiler ?? true
-  );
-  const [ingestSampleData, setIngestSampleData] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
-  );
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
   );
@@ -370,8 +364,6 @@ const AddIngestion = ({
         };
 
         return {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
           includeViews: includeView,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
@@ -582,18 +574,13 @@ const AddIngestion = ({
             dashboardFilterPattern={dashboardFilterPattern}
             databaseFilterPattern={databaseFilterPattern}
             description={description}
-            enableDataProfiler={enableDataProfiler}
             enableDebugLog={enableDebugLog}
             fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleDescription={(val) => setDescription(val)}
-            handleEnableDataProfiler={() =>
-              setEnableDataProfiler((pre) => !pre)
-            }
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
-            handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
@@ -601,7 +588,6 @@ const AddIngestion = ({
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeView={includeView}
-            ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
             pipelineType={pipelineType}

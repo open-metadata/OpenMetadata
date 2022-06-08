@@ -197,7 +197,7 @@ public class SearchResource {
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",
-      summary = "Suggest entities",
+      summary = "Suggest Entities",
       tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
@@ -219,13 +219,14 @@ public class SearchResource {
               required = true)
           @javax.ws.rs.QueryParam("q")
           String query,
-      @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index)
+      @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index,
+      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName)
       throws IOException {
     SearchRequest searchRequest = new SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion("suggest").prefix(query);
+    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion(fieldName).prefix(query);
     SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("table-suggest", suggestionBuilder);
+    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
     searchSourceBuilder.suggest(suggestBuilder);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
