@@ -286,8 +286,8 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       getSuggestions(searchText)
         .then((res: AxiosResponse) => {
           if (res.data) {
-            setOptions(res.data.suggest['table-suggest'][0].options);
-            setSuggestions(res.data.suggest['table-suggest'][0].options);
+            setOptions(res.data.suggest['metadata-suggest'][0].options);
+            setSuggestions(res.data.suggest['metadata-suggest'][0].options);
             setIsOpen(true);
           } else {
             throw jsonData['api-error-messages']['unexpected-server-response'];

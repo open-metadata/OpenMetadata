@@ -166,7 +166,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       });
     } else {
       const data = await getUserSuggestions(searchTerm);
-      const hits = data.data.suggest['table-suggest'][0]['options'];
+      const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entity_type;
@@ -202,7 +202,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       });
     } else {
       const data = await getSuggestions(searchTerm);
-      const hits = data.data.suggest['table-suggest'][0]['options'];
+      const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
         const entityType = hit._source.entity_type;
