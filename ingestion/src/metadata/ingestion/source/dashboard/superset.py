@@ -18,6 +18,8 @@ from typing import List, Optional
 
 import dateutil.parser as dateparser
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
@@ -38,9 +40,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils import fqn
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -82,26 +84,6 @@ def get_filter_name(filter_obj):
     operator = filter_obj.get("operator")
     comparator = filter_obj.get("comparator")
     return f"{clause} {column} {operator} {comparator}"
-
-
-def get_owners(owners_obj):
-    """
-    Get owner
-
-    Args:
-        owners_obj:
-    Returns:
-        list
-    """
-    owners = []
-    for owner in owners_obj:
-        dashboard_owner = DashboardOwner(
-            first_name=owner["first_name"],
-            last_name=owner["last_name"],
-            username=owner["username"],
-        )
-        owners.append(dashboard_owner)
-    return owners
 
 
 class SupersetSource(DashboardSourceService):
@@ -186,24 +168,21 @@ class SupersetSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        last_modified = (
-            dateparser.parse(dashboard_details.get("changed_on_utc", "now")).timestamp()
-            * 1000
-        )
-        yield Dashboard(
+        yield CreateDashboardRequest(
             name=dashboard_details["id"],
             displayName=dashboard_details["dashboard_title"],
             description="",
-            url=dashboard_details["url"],
-            owners=get_owners(dashboard_details["owners"]),
-            charts=self.charts,
+            dashboardUrl=dashboard_details["url"],
+            charts=get_chart_entities_from_id(
+                chart_ids=self.charts,
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
             service=EntityReference(id=self.service.id, type="dashboardService"),
-            lastModified=last_modified,
         )
 
     def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:
@@ -296,41 +275,19 @@ class SupersetSource(DashboardSourceService):
             return None
 
     # pylint: disable=too-many-locals
-    def _build_chart(self, chart_json: dict) -> Chart:
+    def _build_chart(self, chart_json: dict) -> CreateChartRequest:
         chart_id = chart_json["id"]
-        last_modified = (
-            dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
-        )
         params = json.loads(chart_json["params"])
-        metrics = [
-            get_metric_name(metric)
-            for metric in (params.get("metrics", []) or [params.get("metric")])
-        ]
-        filters = [
-            get_filter_name(filter_obj)
-            for filter_obj in params.get("adhoc_filters", [])
-        ]
         group_bys = params.get("groupby", []) or []
         if isinstance(group_bys, str):
             group_bys = [group_bys]
-        custom_properties = {
-            "Metrics": ", ".join(metrics),
-            "Filters": ", ".join(filters),
-            "Dimensions": ", ".join(group_bys),
-        }
 
-        chart = Chart(
+        chart = CreateChartRequest(
             name=chart_id,
             displayName=chart_json["slice_name"],
             description="",
-            chart_type=chart_json["viz_type"],
-            url=chart_json["url"],
-            owners=get_owners(chart_json["owners"]),
-            datasource_fqn=self._get_datasource_fqn(chart_json["datasource_id"])
-            if chart_json["datasource_id"]
-            else None,
-            lastModified=last_modified,
+            chartType=get_standard_chart_type(chart_json["viz_type"]),
+            chartUrl=chart_json["url"],
             service=EntityReference(id=self.service.id, type="dashboardService"),
-            custom_props=custom_properties,
         )
         yield chart
