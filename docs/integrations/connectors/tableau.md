@@ -46,7 +46,8 @@ metadata ingest -c ./examples/workflows/tableau.json
         "siteName": "site_name",
         "apiVersion": "api_version",
         "personalAccessTokenName": "personal_access_token_name",
-        "personalAccessTokenSecret": "personal_access_token_secret"
+        "personalAccessTokenSecret": "personal_access_token_secret",
+        "dbServiceName": "local_bigquery"
       }
     },
     "sourceConfig": {
@@ -67,8 +68,9 @@ metadata ingest -c ./examples/workflows/tableau.json
 6. **siteName** - pass the site name.
 7. **siteUrl** - pass the tableau connector url.
 8. **apiVersion** - pass an api version.
-9. **service\_name** - Service Name for this Tableau cluster. If you added Tableau cluster through OpenMetadata UI, make sure the service name matches the same.
-10. **dashboardFilterPattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+9. **dbServiceName -** Database Service Name in order to add data lineage.
+10. **service\_name** - Service Name for this Tableau cluster. If you added Tableau cluster through OpenMetadata UI, make sure the service name matches the same.
+11. **dashboardFilterPattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
@@ -92,7 +94,8 @@ Add `metadata-rest` sink along with `metadata-server` config
         "siteName": "site_name",
         "apiVersion": "api_version",
         "personalAccessTokenName": "personal_access_token_name",
-        "personalAccessTokenSecret": "personal_access_token_secret"
+        "personalAccessTokenSecret": "personal_access_token_secret",
+        "dbServiceName": "local_bigquery"
       }
     },
     "sourceConfig": {
