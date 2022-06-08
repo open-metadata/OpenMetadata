@@ -54,12 +54,12 @@ const createGlossaryTerm = (term) => {
   cy.get('#left-panel').contains(term.name).should('be.visible');
 };
 
-const deleteGlossaryTerm = ({ name }) => {
+const deleteGlossary = ({ name }) => {
   cy.get('#left-panel').contains(name).should('be.visible').click();
   cy.wait(500);
   cy.get('[data-testid="inactive-link"]').contains(name).should('be.visible');
 
-  cy.get('[data-testid="Manage"]').should('be.visible').click();
+  cy.get('[data-testid="manage-button"]').should('be.visible').click();
   cy.get('[data-testid="delete-button"]')
     .scrollIntoView()
     .should('be.visible')
@@ -74,11 +74,13 @@ const deleteGlossaryTerm = ({ name }) => {
     .should('be.visible')
     .should('not.disabled')
     .click();
+
   cy.get('.Toastify__toast-body')
-    .contains('Glossary Term deleted successfully!')
+    .contains('Glossary term deleted successfully!')
     .should('be.visible');
 
   cy.get('.Toastify__close-button > svg > path').should('be.visible').click();
+  cy.get('.tw-modal-container').should('not.exist');
   cy.wait(500);
 };
 
@@ -390,7 +392,7 @@ describe('Glossary page should work properly', () => {
   it('Delete glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
 
-    terms.forEach(deleteGlossaryTerm);
+    terms.forEach(deleteGlossary);
   });
 
   it('Delete glossary should work properly', () => {
@@ -398,7 +400,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .contains(NEW_GLOSSARY.name)
       .should('exist');
-
+    cy.get('[data-testid="manage-button"]').should('be.visible').click();
     cy.get('[data-testid="delete-button"]')
       .scrollIntoView()
       .should('be.visible')

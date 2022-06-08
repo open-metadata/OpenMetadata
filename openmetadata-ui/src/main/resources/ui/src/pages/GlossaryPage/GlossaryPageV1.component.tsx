@@ -57,7 +57,7 @@ import {
   getAddGlossaryTermsPath,
   getGlossaryPath,
 } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export type ModifiedGlossaryData = Glossary & {
   children?: GlossaryTerm[];
@@ -568,6 +568,20 @@ const GlossaryPageV1 = () => {
       });
   };
 
+  const afterDeleteAction = () => {
+    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
   /**
    * To delete glossary by id
    * @param id glossary id
@@ -577,6 +591,10 @@ const GlossaryPageV1 = () => {
     deleteGlossary(id)
       .then(() => {
         setDeleteStatus('success');
+        showSuccessToast(
+          jsonData['api-success-messages']['delete-glossary-success']
+        );
+        afterDeleteAction();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -596,6 +614,10 @@ const GlossaryPageV1 = () => {
     deleteGlossaryTerm(id)
       .then(() => {
         setDeleteStatus('success');
+        showSuccessToast(
+          jsonData['api-success-messages']['delete-glossary-term-success']
+        );
+        afterDeleteAction();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -669,20 +691,6 @@ const GlossaryPageV1 = () => {
     }
   };
 
-  const afterDeleteAction = () => {
-    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
-
-    if (isEmpty(redirectFqn)) {
-      setGlossariesList([]);
-      setIsLoading(true);
-      history.push(getGlossaryPath());
-      fetchGlossaryList();
-    } else {
-      history.push(getGlossaryPath(redirectFqn));
-      fetchGlossaryList(redirectFqn);
-    }
-  };
-
   useEffect(() => {
     fetchGlossaryTermAssets(
       (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
@@ -703,7 +711,6 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
-          afterDeleteAction={afterDeleteAction}
           assetData={assetData}
           currentPage={assetData.currPage}
           deleteStatus={deleteStatus}

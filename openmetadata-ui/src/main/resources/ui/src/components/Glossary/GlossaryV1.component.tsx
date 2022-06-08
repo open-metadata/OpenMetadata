@@ -69,7 +69,6 @@ type Props = {
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
-  afterDeleteAction?: () => void;
   handleUserRedirection?: (name: string) => void;
   isChildLoading: boolean;
 };
@@ -90,7 +89,6 @@ const GlossaryV1 = ({
   isGlossaryActive,
   isChildLoading,
   handleSelectedData,
-  afterDeleteAction,
   handleAddGlossaryClick,
   handleAddGlossaryTermClick,
   handleGlossaryTermUpdate,
@@ -140,7 +138,7 @@ const GlossaryV1 = ({
     } else {
       onGlossaryTermDelete(id);
     }
-    afterDeleteAction?.();
+    setIsDelete(false);
   };
 
   const handleTreeClick = (
@@ -177,7 +175,7 @@ const GlossaryV1 = ({
             icon={Icons.DELETE_GRADIANT}
           />
         </div>
-        <div className="tw-text-left">
+        <div className="tw-text-left" data-testid="delete-button">
           <p className="tw-font-medium">
             Delete Glossary “{selectedData?.displayName || selectedData?.name}”
           </p>

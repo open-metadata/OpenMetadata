@@ -50,9 +50,6 @@ jest.mock('../../components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
-      <button data-testid="afterDeleteAction" onClick={props.afterDeleteAction}>
-        afterDeleteAction
-      </button>
       <button
         data-testid="handleAddGlossaryClick"
         onClick={props.handleAddGlossaryClick}>
@@ -166,7 +163,6 @@ describe('Test GlossaryComponent page', () => {
       const handleRelatedTermClick = await screen.findByTestId(
         'handleRelatedTermClick'
       );
-      const afterDeleteAction = await screen.findByTestId('afterDeleteAction');
       const handleAssetPagination = await screen.findByTestId(
         'handleAssetPagination'
       );
@@ -182,7 +178,6 @@ describe('Test GlossaryComponent page', () => {
       fireEvent.click(handleAssetPagination);
       fireEvent.click(handleUserRedirection);
       fireEvent.click(updateGlossary);
-      fireEvent.click(afterDeleteAction);
     });
   });
 
