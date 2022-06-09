@@ -14,11 +14,8 @@ from typing import Iterable
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
-from sqlalchemy.sql import text
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
