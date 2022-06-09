@@ -106,6 +106,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
         count: countTeams,
         link: getTeamAndUserDetailsPath(),
         dataTestId: 'terms',
+        adminOnly: true,
       },
     };
   };
