@@ -140,8 +140,11 @@ export const generateUserToken: Function = (
   const configOptions = {
     headers: { 'Content-type': 'application/json' },
   };
+  const payload = {
+    JWTTokenExpiry: expiry,
+  };
 
-  return APIClient.put(`/users/generateToken/${id}`, expiry, configOptions);
+  return APIClient.put(`/users/generateToken/${id}`, payload, configOptions);
 };
 
 export const revokeUserToken: Function = (
