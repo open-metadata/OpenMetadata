@@ -639,6 +639,7 @@ const Explore: React.FC<ExploreProps> = ({
         {advanceFieldCheck && (
           <AdvancedFields
             fields={selectedAdvancedFields}
+            index={searchIndex}
             onClear={onAdvancedFieldClear}
             onFieldRemove={onAdvancedFieldRemove}
           />

@@ -11,31 +11,32 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { startCase, uniqueId } from 'lodash';
+import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
-import { getItemLabel } from '../../utils/AdvancedSearchUtils';
+import AdvancedField from './AdvancedField';
 
 interface Props {
+  index: string;
   fields: Array<string>;
   onFieldRemove: (value: string) => void;
   onClear: () => void;
 }
 
-const AdvancedFields: FC<Props> = ({ fields, onFieldRemove, onClear }) => {
+const AdvancedFields: FC<Props> = ({
+  fields,
+  onFieldRemove,
+  onClear,
+  index,
+}) => {
   return (
-    <div className="tw-grid tw-grid-cols-4 tw-gap-2 tw-mb-3">
+    <div className="tw-flex tw-gap-2 tw-mb-3">
       {fields.map((field) => (
-        <div
-          className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-flex tw-justify-between"
-          key={uniqueId()}>
-          {startCase(getItemLabel(field))}
-          <span
-            className="tw-cursor-pointer"
-            onClick={() => onFieldRemove(field)}>
-            <FontAwesomeIcon className="tw-text-primary" icon="times" />
-          </span>
-        </div>
+        <AdvancedField
+          field={field}
+          index={index}
+          key={uniqueId()}
+          onFieldRemove={onFieldRemove}
+        />
       ))}
       <span
         className="tw-text-primary tw-self-center tw-cursor-pointer"
