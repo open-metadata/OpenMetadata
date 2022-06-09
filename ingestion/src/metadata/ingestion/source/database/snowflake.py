@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from copy import deepcopy
-from typing import Iterable, Tuple
+from typing import Iterable
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -23,31 +23,25 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
 from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
-    SNOWFLAKE_FETCH_TABLE_TAGS,
+    SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -144,34 +138,32 @@ class SnowflakeSource(CommonDbSourceService):
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
 
-    def yield_tag(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[OMetaTagAndCategory]:
-
-        table_name, _ = table_name_and_type
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
 
         try:
             result = self.connection.execute(
-                SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                SNOWFLAKE_FETCH_ALL_TAGS.format(
                     database_name=self.context.database.name.__root__,
-                    schema_name=self.context.database_schema.name.__root__,
-                    table_name=table_name,
+                    schema_name=schema_name,
                 )
             )
 
         except Exception as err:
             logger.error(f"Error fetching tags {err}. Trying with quoted names")
             result = self.connection.execute(
-                SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                SNOWFLAKE_FETCH_ALL_TAGS.format(
                     database_name=f'"{self.context.database.name.__root__}"',
                     schema_name=f'"{self.context.database_schema.name.__root__}"',
-                    table_name=f'"{table_name}"',
                 )
             )
 
         for res in result:
             row = list(res)
+            fqn_elements = [name for name in row[2:] if name]
             yield OMetaTagAndCategory(
+                fqn=fqn._build(
+                    self.context.database_service.name.__root__, *fqn_elements
+                ),
                 category_name=CreateTagCategoryRequest(
                     name=row[0],
                     description="SNOWFLAKE TAG NAME",

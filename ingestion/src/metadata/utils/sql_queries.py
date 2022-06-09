@@ -306,13 +306,11 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 """
 
 
-SNOWFLAKE_FETCH_TABLE_TAGS = """
-    select TAG_NAME, TAG_VALUE
+SNOWFLAKE_FETCH_ALL_TAGS = """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from snowflake.account_usage.tag_references
-    where OBJECT_DATABASE = '{database_name}' 
+    where OBJECT_DATABASE = '{database_name}'
       and OBJECT_SCHEMA = '{schema_name}'
-      and OBJECT_NAME = '{table_name}'
-      and DOMAIN = 'TABLE'
 """
 
 

@@ -168,9 +168,3 @@ class TopologyRunnerMixin(Generic[C]):
             if stage.context and stage.cache_all:
                 self.append_context(key=stage.context, value=entity)
             logger.debug(self.context)
-
-        # If yielded value is None and nullable, reset the context
-        # setting the appropriate default value
-        else:
-            if stage.context:
-                self.update_context(key=stage.context, value=get_ctx_default(stage))

@@ -30,7 +30,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SqlColumnHandler:
+class SqlColumnHandlerMixin:
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemeneted for this connector")
@@ -184,6 +184,9 @@ class SqlColumnHandler:
                         constraint=col_constraint,
                         children=children,
                         arrayDataType=arr_data_type,
+                        tags=self.get_column_tag_labels(
+                            table_name=table_name, column_name=column["name"]
+                        ),
                     )
                 else:
                     col_obj = self._process_complex_col_type(
@@ -194,7 +197,6 @@ class SqlColumnHandler:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")
                 continue
-            self.fetch_column_tags(column=column, col_obj=om_column)
             table_columns.append(om_column)
         return table_columns, table_constraints
 

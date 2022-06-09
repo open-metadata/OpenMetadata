@@ -11,15 +11,16 @@
 """
 Custom wrapper for Tag and Tag Category
 """
-
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 
 class OMetaTagAndCategory(BaseModel):
+    fqn: FullyQualifiedEntityName
     category_name: CreateTagCategoryRequest
     category_details: CreateTagRequest

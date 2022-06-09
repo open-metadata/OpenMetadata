@@ -45,7 +45,7 @@ from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
+from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
@@ -56,7 +56,7 @@ logger = ingestion_logger()
 
 
 class CommonDbSourceService(
-    DatabaseServiceSource, SqlColumnHandler, SqlAlchemySource, ABC
+    DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
 ):
     """
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
@@ -234,9 +234,7 @@ class CommonDbSourceService(
     ) -> bool:
         return False
 
-    def yield_tag(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         pass
 
     def yield_table(
@@ -279,7 +277,9 @@ class CommonDbSourceService(
                     id=self.context.database_schema.id,
                     type="databaseSchema",
                 ),
-                tags=self.get_tag_labels(),  # Pick tags from context info, if any
+                tags=self.get_tag_labels(
+                    table_name=table_name
+                ),  # Pick tags from context info, if any
             )
 
             yield table_request

@@ -25,7 +25,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -110,13 +110,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="database_schema",
                 processor="yield_database_schema",
                 consumer=["database_service", "database"],
-            )
-        ],
-        children=["table"],
-    )
-    table = TopologyNode(
-        producer="get_tables_name_and_type",
-        stages=[
+            ),
             NodeStage(
                 type_=OMetaTagAndCategory,
                 context="tags",
@@ -125,6 +119,12 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
                 cache_all=True,
             ),
+        ],
+        children=["table"],
+    )
+    table = TopologyNode(
+        producer="get_tables_name_and_type",
+        stages=[
             NodeStage(
                 type_=Table,
                 context="table",
@@ -242,14 +242,9 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_tag(
-        self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         """
-        From topology.
-        Prepare a database request and pass it to the sink.
-
-        Also, update the self.inspector value to the current db.
+        From topology. To be run for each schema
         """
 
     @abstractmethod
@@ -287,11 +282,15 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 datamodel=datamodel,
             )
 
-    def get_tag_labels(self) -> Optional[List[TagLabel]]:
+    def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:
         """
-        This will only get executed if the tags context
-        is properly informed
+        Pick up the tags registered in the context
+        searching by entity FQN
         """
+        # print("=================")
+        # print(f"GETTING TAG BY FQN: {entity_fqn}")
+        # print(self.context.tags)
+        # print("=================")
         return [
             TagLabel(
                 tagFQN=fqn.build(
@@ -305,7 +304,41 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 source=Source1.Tag,
             )
             for tag_and_category in self.context.tags or []
-        ]
+            if tag_and_category.fqn.__root__ == entity_fqn
+        ] or None
+
+    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_name,
+        )
+        return self.get_tag_by_fqn(entity_fqn=table_fqn)
+
+    def get_column_tag_labels(
+        self, table_name: str, column_name: str
+    ) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        col_fqn = fqn.build(
+            self.metadata,
+            entity_type=Column,
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_name,
+            column_name=column_name,
+        )
+        return self.get_tag_by_fqn(entity_fqn=col_fqn)
 
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
