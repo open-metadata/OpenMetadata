@@ -41,7 +41,6 @@ CONFIG = """
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": false,
         "tableFilterPattern": {
           "includes": [""]
         }

@@ -779,13 +779,12 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 #left-panel {
-  grid-area: leftsidebar;
-  position: sticky;
-  position: -webkit-sticky;
-  top: 0;
-  left: 0;
+  position: fixed;
   overflow-y: scroll;
+  width: 300px;
+  height: calc(100vh - 90px);
 }
+
 #right-panel {
   grid-area: rightsidebar;
   position: sticky;
@@ -969,7 +968,7 @@ code {
 }
 
 .ant-card-body {
-  padding: 18px;
+  padding: 12px;
 }
 
 .ant-card-head-title {
@@ -983,4 +982,13 @@ code {
 
 .custom-entity-schema > .CodeMirror {
   height: 70vh;
+}
+
+.ant-card-head {
+  font-size: 14px;
+  min-height: 20px;
+}
+
+.ant-card-extra {
+  padding: 0px;
 }

@@ -16,6 +16,7 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
 export const LITE_GRAY_COLOR = '#DBE0EB';
+export const TEXT_BODY_COLOR = '#37352F';
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
@@ -172,8 +173,6 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
-  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
-  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -430,3 +429,6 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+export const TITLE_FOR_UPDATE_OWNER =
+  'You do not have permissions to update the owner.';

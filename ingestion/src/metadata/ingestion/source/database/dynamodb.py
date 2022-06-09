@@ -1,6 +1,6 @@
 import traceback
 import uuid
-from typing import Iterable, Optional
+from typing import Iterable
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -109,15 +109,6 @@ class DynamodbSource(Source[Entity]):
                     database=database_entity,
                     database_schema=schema_entity,
                 )
-                try:
-                    if self.source_config.generateSampleData:
-                        table_data = self.fetch_sample_data(schema_entity, table)
-                        if table_data:
-                            table_entity.sampleData = table_data
-                # Catch any errors during the ingestion and continue
-                except Exception as err:  # pylint: disable=broad-except
-                    logger.error(repr(err))
-                    logger.error(err)
 
                 yield table_and_db
 
@@ -125,29 +116,6 @@ class DynamodbSource(Source[Entity]):
                 logger.debug(traceback.format_exc())
                 logger.debug(traceback.format_exc())
                 logger.error(err)
-
-    def fetch_sample_data(self, schema_entity: str, table: str) -> Optional[TableData]:
-        response = table.scan()
-        data = response["Items"]
-        while "LastEvaluatedKey" in response:
-            response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
-            data.extend(response["Items"])
-        try:
-            cols = []
-            table_cols = self.get_columns(table.attribute_definitions)
-
-            for col in table_cols:
-                cols.append(col.name.__root__)
-            rows = []
-            for res in data:
-                row = [res.get(i) for i in cols]
-                rows.append(row)
-            return TableData(columns=cols, rows=rows)
-        # Catch any errors and continue the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to generate sample data for {table} - {err}")
-        return None
 
     def get_columns(self, column_data):
         for column in column_data:

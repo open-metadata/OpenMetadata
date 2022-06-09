@@ -261,9 +261,6 @@ describe('TeamsAndUsers page', () => {
   });
 
   it('Assets tab should work properly', () => {
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
-    ).as('searchApi');
     cy.get('[data-testid="Assets"]').should('be.visible').click();
     cy.get('[data-testid="Assets"]').should('have.class', 'active');
     cy.get('[data-testid="Assets"] > .tw-py-px > [data-testid="filter-count"]')
@@ -275,11 +272,7 @@ describe('TeamsAndUsers page', () => {
     cy.contains('Your team does not have any').should('be.visible');
     cy.get('a > .button-comp').should('be.visible').contains('Explore');
     searchEntity(SEARCH_ENTITY_TABLE.table_1.term);
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=10&sort_order=desc&index=*'
-    ).as('searchApi');
 
-    cy.wait('@searchApi');
     cy.get('[data-testid="table-link"]')
       .first()
       .contains(SEARCH_ENTITY_TABLE.table_1.term)
@@ -406,24 +399,27 @@ describe('TeamsAndUsers page', () => {
       .should('be.visible')
       .type(NEW_USER.description);
 
-    cy.get(
-      ':nth-child(5) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[aria-label="Select teams"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="Cloud_Infra"]').should('be.visible').click();
-    cy.get('[data-testid="close-dropdown"]').click();
+    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
 
-    cy.get(
-      ':nth-child(6) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="roles-dropdown"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="Data Consumer"]').should('be.visible').click();
+    cy.get('[data-testid="Data Consumer"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="close-dropdown"]').click();
 
-    cy.get('[data-testid="save-user"]').should('be.visible').click();
+    cy.get('[data-testid="save-user"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="searchbar"]')
       .scrollIntoView()
