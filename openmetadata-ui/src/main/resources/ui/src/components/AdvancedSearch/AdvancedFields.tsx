@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { startCase, uniqueId } from 'lodash';
 import React, { FC } from 'react';
-import { getItemLabel } from '../../utils/AdvanceSearchUtils';
+import { getItemLabel } from '../../utils/AdvancedSearchUtils';
 
 interface Props {
   fields: Array<string>;
@@ -22,7 +22,7 @@ interface Props {
   onClear: () => void;
 }
 
-const AdvanceFields: FC<Props> = ({ fields, onFieldRemove, onClear }) => {
+const AdvancedFields: FC<Props> = ({ fields, onFieldRemove, onClear }) => {
   return (
     <div className="tw-grid tw-grid-cols-4 tw-gap-2 tw-mb-3">
       {fields.map((field) => (
@@ -46,4 +46,4 @@ const AdvanceFields: FC<Props> = ({ fields, onFieldRemove, onClear }) => {
   );
 };
 
-export default AdvanceFields;
+export default AdvancedFields;
