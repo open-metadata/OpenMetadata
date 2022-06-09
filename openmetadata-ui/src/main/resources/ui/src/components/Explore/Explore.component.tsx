@@ -68,6 +68,7 @@ import AdvanceFields from '../AdvanceSearch/AdvanceFields';
 import AdvanceSearchDropDown from '../AdvanceSearch/AdvanceSearchDropDown';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
+
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
@@ -133,6 +134,10 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const onAdvanceFieldRemove = (value: string) => {
     setSelectedAdvanceField((pre) => pre.filter((field) => field !== value));
+  };
+
+  const onAdvanceFieldClear = () => {
+    setSelectedAdvanceField([]);
   };
 
   const handleSelectedFilter = (
@@ -615,6 +620,7 @@ const Explore: React.FC<ExploreProps> = ({
         {advanceFieldCheck && (
           <AdvanceFields
             fields={selectedAdvanceFields}
+            onClear={onAdvanceFieldClear}
             onFieldRemove={onAdvanceFieldRemove}
           />
         )}
