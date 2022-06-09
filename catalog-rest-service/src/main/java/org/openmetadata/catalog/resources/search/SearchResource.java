@@ -40,9 +40,13 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -242,13 +246,20 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    FieldValueFactorFunctionBuilder boostScoreBuilder =
+        ScoreFunctionBuilders.fieldValueFactorFunction("weekly_stats").missing(1).factor(2);
+    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder[1];
+    functions[0] = new FunctionScoreQueryBuilder.FilterFunctionBuilder(boostScoreBuilder);
+    QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
             .field(NAME, 5.0f)
             .field(FIELD_DESCRIPTION)
             .field("column_names")
             .field("column_descriptions")
-            .lenient(true);
+            .fuzziness(Fuzziness.AUTO);
+
+    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
@@ -262,7 +273,7 @@ public class SearchResource {
     hb.field(highlightTableName);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database"));
     searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("database_schema"));
     return addAggregation(searchSourceBuilder);
