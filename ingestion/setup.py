@@ -163,7 +163,7 @@ test = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.10.2.0",
+    version="0.10.3.0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
