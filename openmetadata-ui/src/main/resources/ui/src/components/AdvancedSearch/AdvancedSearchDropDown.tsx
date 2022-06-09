@@ -13,7 +13,7 @@
 
 import { Dropdown, Menu } from 'antd';
 import React, { FC } from 'react';
-import { getDropDownItems } from '../../utils/AdvanceSearchUtils';
+import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 
@@ -23,7 +23,7 @@ interface Props {
   onSelect: (filter: string) => void;
 }
 
-const AdvanceSearchDropDown: FC<Props> = ({
+const AdvancedSearchDropDown: FC<Props> = ({
   index,
   onSelect,
   selectedItems,
@@ -49,4 +49,4 @@ const AdvanceSearchDropDown: FC<Props> = ({
   );
 };
 
-export default AdvanceSearchDropDown;
+export default AdvancedSearchDropDown;

@@ -65,8 +65,8 @@ import {
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import AdvanceFields from '../AdvanceSearch/AdvanceFields';
-import AdvanceSearchDropDown from '../AdvanceSearch/AdvanceSearchDropDown';
+import AdvancedFields from '../AdvancedSearch/AdvancedFields';
+import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
@@ -127,21 +127,21 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
 
-  const [selectedAdvanceFields, setSelectedAdvanceField] = useState<
+  const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
     Array<string>
   >([]);
 
-  const onAdvanceFieldSelect = (value: string) => {
-    if (!selectedAdvanceFields.includes(value)) {
-      setSelectedAdvanceField((pre) => [...pre, value]);
+  const onAdvancedFieldSelect = (value: string) => {
+    if (!selectedAdvancedFields.includes(value)) {
+      setSelectedAdvancedField((pre) => [...pre, value]);
     }
   };
-  const onAdvanceFieldRemove = (value: string) => {
-    setSelectedAdvanceField((pre) => pre.filter((field) => field !== value));
+  const onAdvancedFieldRemove = (value: string) => {
+    setSelectedAdvancedField((pre) => pre.filter((field) => field !== value));
   };
 
-  const onAdvanceFieldClear = () => {
-    setSelectedAdvanceField([]);
+  const onAdvancedFieldClear = () => {
+    setSelectedAdvancedField([]);
   };
 
   const handleSelectedFilter = (
@@ -364,10 +364,10 @@ const Explore: React.FC<ExploreProps> = ({
   const getSortingElements = () => {
     return (
       <div className="tw-flex">
-        <AdvanceSearchDropDown
+        <AdvancedSearchDropDown
           index={searchIndex}
-          selectedItems={selectedAdvanceFields}
-          onSelect={onAdvanceFieldSelect}
+          selectedItems={selectedAdvancedFields}
+          onSelect={onAdvancedFieldSelect}
         />
 
         <SortingDropDown
@@ -595,7 +595,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   // on index change clear the filters
   useEffect(() => {
-    setSelectedAdvanceField([]);
+    setSelectedAdvancedField([]);
   }, [searchIndex]);
 
   useEffect(() => {
@@ -628,7 +628,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const advanceFieldCheck =
-    !connectionError && Boolean(selectedAdvanceFields.length);
+    !connectionError && Boolean(selectedAdvancedFields.length);
 
   return (
     <Fragment>
@@ -637,10 +637,10 @@ const Explore: React.FC<ExploreProps> = ({
         leftPanel={Boolean(!error) && fetchLeftPanel()}
         rightPanel={Boolean(!error) && <></>}>
         {advanceFieldCheck && (
-          <AdvanceFields
-            fields={selectedAdvanceFields}
-            onClear={onAdvanceFieldClear}
-            onFieldRemove={onAdvanceFieldRemove}
+          <AdvancedFields
+            fields={selectedAdvancedFields}
+            onClear={onAdvancedFieldClear}
+            onFieldRemove={onAdvancedFieldRemove}
           />
         )}
         {error ? (
