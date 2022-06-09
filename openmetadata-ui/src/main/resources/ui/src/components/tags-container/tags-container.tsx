@@ -75,6 +75,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         return updatedTags;
       });
     }
+    setTags([]);
   };
 
   const handleTagRemoval = (removedTag: string, tagIdx: number) => {
