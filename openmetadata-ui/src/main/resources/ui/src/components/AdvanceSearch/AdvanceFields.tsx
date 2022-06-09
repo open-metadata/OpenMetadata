@@ -19,9 +19,10 @@ import { getItemLabel } from '../../utils/AdvanceSearchUtils';
 interface Props {
   fields: Array<string>;
   onFieldRemove: (value: string) => void;
+  onClear: () => void;
 }
 
-const AdvanceFields: FC<Props> = ({ fields, onFieldRemove }) => {
+const AdvanceFields: FC<Props> = ({ fields, onFieldRemove, onClear }) => {
   return (
     <div className="tw-grid tw-grid-cols-4 tw-gap-2 tw-mb-3">
       {fields.map((field) => (
@@ -36,6 +37,11 @@ const AdvanceFields: FC<Props> = ({ fields, onFieldRemove }) => {
           </span>
         </div>
       ))}
+      <span
+        className="tw-text-primary tw-self-center tw-cursor-pointer"
+        onClick={onClear}>
+        Clear All
+      </span>
     </div>
   );
 };
