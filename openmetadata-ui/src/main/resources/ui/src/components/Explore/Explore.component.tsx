@@ -41,6 +41,7 @@ import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   ROUTES,
+  tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
 import {
@@ -49,7 +50,6 @@ import {
   getCurrentIndex,
   getCurrentTab,
   INITIAL_FILTERS,
-  INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
   UPDATABLE_AGGREGATION,
@@ -68,6 +68,7 @@ import AdvanceFields from '../AdvanceSearch/AdvanceFields';
 import AdvanceSearchDropDown from '../AdvanceSearch/AdvanceSearchDropDown';
 import PageLayout from '../containers/PageLayout';
 import { ExploreProps } from './explore.interface';
+import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -104,11 +105,11 @@ const Explore: React.FC<ExploreProps> = ({
     ...filterObject,
     ...searchFilter,
   });
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
-
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
@@ -122,6 +123,8 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
+  const [fieldList, setFieldList] =
+    useState<Array<{ name: string; value: string }>>(tableSortingFields);
 
   const [selectedAdvanceFields, setSelectedAdvanceField] = useState<
     Array<string>
@@ -172,6 +175,10 @@ const Explore: React.FC<ExploreProps> = ({
     }
 
     handleFilterChange(filterData);
+  };
+
+  const handleFieldDropDown = (value: string) => {
+    setSortField(value);
   };
 
   const handleShowDeleted = (checked: boolean) => {
@@ -361,8 +368,14 @@ const Explore: React.FC<ExploreProps> = ({
           selectedItems={selectedAdvanceFields}
           onSelect={onAdvanceFieldSelect}
         />
+
+        <SortingDropDown
+          fieldList={fieldList}
+          handleFieldDropDown={handleFieldDropDown}
+          sortField={sortField}
+        />
+
         <div className="tw-flex">
-          <span className="tw-mr-1 tw-self-center">Sort:</span>
           {sortOrder === 'asc' ? (
             <button onClick={() => handleOrder('desc')}>
               <FontAwesomeIcon
@@ -482,11 +495,8 @@ const Explore: React.FC<ExploreProps> = ({
   }, [searchQuery]);
 
   useEffect(() => {
-    setSortField(
-      searchQuery
-        ? tabsInfo[getCurrentTab(tab) - 1].sortField
-        : INITIAL_SORT_FIELD
-    );
+    setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
+    setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder(INITIAL_SORT_ORDER);
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
