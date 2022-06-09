@@ -25,6 +25,7 @@ import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
+import { useAfterMount } from '../../hooks/useAfterMount';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { generateTreeData } from '../../utils/GlossaryUtils';
@@ -110,6 +111,16 @@ const GlossaryV1 = ({
   >([]);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [addTermButtonWidth, setAddTermButtonWidth] = useState(
+    document.getElementById('add-term-button')?.offsetWidth
+  );
+  const [manageButtonWidth, setManageButtonWidth] = useState(
+    document.getElementById('manage-button')?.offsetWidth
+  );
+  const [leftPanelWidth, setLeftPanelWidth] = useState(
+    document.getElementById('glossary-left-panel')?.offsetWidth
+  );
+  // const [isMounting, setIsMounting] = useState(true);
 
   /**
    * To create breadcrumb from the fqn
@@ -163,10 +174,21 @@ const GlossaryV1 = ({
     handleBreadcrum(selectedKey);
   }, [selectedKey]);
 
+  useAfterMount(() => {
+    setLeftPanelWidth(
+      document.getElementById('glossary-left-panel')?.offsetWidth
+    );
+    setAddTermButtonWidth(
+      document.getElementById('add-term-button')?.offsetWidth
+    );
+    setManageButtonWidth(document.getElementById('manage-button')?.offsetWidth);
+  });
+
   const manageButtonContent = () => {
     return (
       <div
         className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        id="manage-button"
         onClick={() => setIsDelete(true)}>
         <div>
           <SVGIcons
@@ -191,7 +213,7 @@ const GlossaryV1 = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-px-2">
+      <div className="tw-px-2" id="glossary-left-panel">
         <div className="tw-bg-white tw-shadow-box tw-border tw-border-border-gray tw-rounded-md tw-min-h-full tw-h-80vh tw-py-2">
           <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
             <h6 className="tw-heading tw-text-base">Glossary</h6>
@@ -256,9 +278,17 @@ const GlossaryV1 = ({
         <div
           className="tw-heading tw-text-link tw-text-base"
           data-testid="category-name">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
+          <TitleBreadcrumb
+            titleLinks={breadcrumb}
+            widthDeductions={
+              (leftPanelWidth ? leftPanelWidth : 0) +
+              (addTermButtonWidth ? addTermButtonWidth : 0) +
+              (manageButtonWidth ? manageButtonWidth : 0) +
+              20 // Additional deduction for margin on the right of leftPanel
+            }
+          />
         </div>
-        <div className="tw-relative tw-mr-2 tw--mt-2">
+        <div className="tw-relative tw-mr-2 tw--mt-2" id="add-term-button">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className={classNames('tw-h-8 tw-rounded tw-mb-1 tw-mr-2', {
