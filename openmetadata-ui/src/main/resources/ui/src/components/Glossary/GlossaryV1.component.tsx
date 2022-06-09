@@ -112,15 +112,14 @@ const GlossaryV1 = ({
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [addTermButtonWidth, setAddTermButtonWidth] = useState(
-    document.getElementById('add-term-button')?.offsetWidth
+    document.getElementById('add-term-button')?.offsetWidth || 0
   );
   const [manageButtonWidth, setManageButtonWidth] = useState(
-    document.getElementById('manage-button')?.offsetWidth
+    document.getElementById('manage-button')?.offsetWidth || 0
   );
   const [leftPanelWidth, setLeftPanelWidth] = useState(
-    document.getElementById('glossary-left-panel')?.offsetWidth
+    document.getElementById('glossary-left-panel')?.offsetWidth || 0
   );
-  // const [isMounting, setIsMounting] = useState(true);
 
   /**
    * To create breadcrumb from the fqn
@@ -176,12 +175,14 @@ const GlossaryV1 = ({
 
   useAfterMount(() => {
     setLeftPanelWidth(
-      document.getElementById('glossary-left-panel')?.offsetWidth
+      document.getElementById('glossary-left-panel')?.offsetWidth || 0
     );
     setAddTermButtonWidth(
-      document.getElementById('add-term-button')?.offsetWidth
+      document.getElementById('add-term-button')?.offsetWidth || 0
     );
-    setManageButtonWidth(document.getElementById('manage-button')?.offsetWidth);
+    setManageButtonWidth(
+      document.getElementById('manage-button')?.offsetWidth || 0
+    );
   });
 
   const manageButtonContent = () => {
@@ -281,10 +282,7 @@ const GlossaryV1 = ({
           <TitleBreadcrumb
             titleLinks={breadcrumb}
             widthDeductions={
-              (leftPanelWidth ? leftPanelWidth : 0) +
-              (addTermButtonWidth ? addTermButtonWidth : 0) +
-              (manageButtonWidth ? manageButtonWidth : 0) +
-              20 // Additional deduction for margin on the right of leftPanel
+              leftPanelWidth + addTermButtonWidth + manageButtonWidth + 20 // Additional deduction for margin on the right of leftPanel
             }
           />
         </div>
