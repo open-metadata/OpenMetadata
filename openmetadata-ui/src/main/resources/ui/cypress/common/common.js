@@ -15,7 +15,27 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 
-export const handleIngestionRetry = (type, count = 0) => {
+export const goToServicesPage = () => {
+  cy.visit('/');
+  // cy.loginByGoogleApi();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
+  cy.get('[data-testid="closeWhatsNew"]').click();
+  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
+  cy.get('[data-testid="tables"]').should('be.visible');
+
+  cy.get('[data-testid="menu-button"]').should('be.visible');
+  cy.get('[data-testid="menu-button"]').first().click();
+  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
+};
+
+export const goToServicePage = (serviceName) => {
+  goToServicesPage();
+  cy.contains('Services').should('be.visible');
+  cy.wait(500);
+  cy.get(`[data-testid="service-name-${serviceName}"]`).scrollIntoView().should('be.visible').click();
+};
+
+export const handleIngestionRetry = (type, serviceName, count = 0) => {
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
@@ -45,7 +65,7 @@ export const handleIngestionRetry = (type, count = 0) => {
       ) {
         // retry after waiting for 20 seconds
         cy.wait(20000);
-        cy.reload();
+        goToServicePage(serviceName);
         checkSuccessState();
       } else {
         cy.get('.tableBody-row > :nth-child(4)').should('have.text', 'Success');
@@ -146,21 +166,11 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
-  handleIngestionRetry(type);
+  handleIngestionRetry(type, serviceName);
 };
 
 export const goToAddNewServicePage = () => {
-  cy.visit('/');
-  // cy.loginByGoogleApi();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('be.visible');
-  cy.get('[data-testid="closeWhatsNew"]').click();
-  cy.get('[data-testid="WhatsNewModalFeatures"]').should('not.exist');
-  cy.get('[data-testid="tables"]').should('be.visible');
-
-  cy.get('[data-testid="menu-button"]').should('be.visible');
-  cy.get('[data-testid="menu-button"]').first().click();
-  cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-
+  goToServicesPage();
   // Services page
   cy.contains('Services').should('be.visible');
   cy.wait(500);
