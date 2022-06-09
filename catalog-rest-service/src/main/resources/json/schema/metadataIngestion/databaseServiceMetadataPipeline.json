@@ -117,21 +117,6 @@
       "type": "boolean",
       "default": true
     },
-    "generateSampleData": {
-      "description": "Option to turn on/off generating sample data during metadata extraction.",
-      "type": "boolean",
-      "default": true
-    },
-    "sampleDataQuery": {
-      "description": "Sample data extraction query.",
-      "type": "string",
-      "default": "select * from {}.{} limit 50"
-    },
-    "enableDataProfiler": {
-      "description": "Run data profiler as part of this metadata ingestion to get table profile data.",
-      "type": "boolean",
-      "default": false
-    },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern"

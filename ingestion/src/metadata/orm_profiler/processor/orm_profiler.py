@@ -24,8 +24,7 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableProfile
+from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -39,6 +38,7 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
+from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
 
@@ -297,7 +297,7 @@ class OrmProfilerProcessor(Processor[Table]):
         return test_case_result
 
     def validate_config_tests(
-        self, table: Table, orm_table: DeclarativeMeta, profiler_results: TableProfile
+        self, orm: DeclarativeMeta, table: Table, profiler_results: TableProfile
     ) -> Optional[TestDef]:
         """
         Here we take care of new incoming tests in the workflow
@@ -306,7 +306,7 @@ class OrmProfilerProcessor(Processor[Table]):
         update the Table Entity.
 
         :param table: OpenMetadata Table Entity being processed
-        :param orm_table: Declarative Meta
+        :param orm: Declarative Meta
         :param profiler_results: TableProfile with computed metrics
         """
 
@@ -325,7 +325,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for table_test in table_tests:
             test_case_result = self.run_table_test(
                 table=table,
-                orm_table=orm_table,
+                orm_table=orm,
                 test_case=table_test.testCase,
                 profiler_results=profiler_results,
             )
@@ -335,7 +335,7 @@ class OrmProfilerProcessor(Processor[Table]):
         for column_test in column_tests:
             test_case_result = self.run_column_test(
                 table=table,
-                orm_table=orm_table,
+                orm_table=orm,
                 column=column_test.columnName,
                 test_case=column_test.testCase,
                 profiler_results=profiler_results,
@@ -464,32 +464,53 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return record_tests
 
-    def process(self, record: Table) -> ProfilerResponse:
+    def fetch_sample_data(self, orm: DeclarativeMeta) -> TableData:
+        """
+        Fetch the table data from a real sample
+        :param orm: SQA ORM table
+        :return: TableData
+        """
+        try:
+            sampler = Sampler(session=self.session, table=orm)
+            return sampler.fetch_sample_data()
+        except Exception as err:
+            logger.error(
+                f"Could not obtain sample data from {orm.__tablename__} - {err}"
+            )
+
+    def process(
+        self, record: Table, generate_sample_data: bool = True
+    ) -> ProfilerResponse:
         """
         Run the profiling and tests
         """
         # Convert entity to ORM. Fetch the db by ID to make sure we use the proper db name
-        schema = self.metadata.get_by_id(
-            entity=DatabaseSchema, entity_id=record.databaseSchema.id
-        )
-        orm_table = ometa_to_orm(table=record, schema=schema)
 
-        entity_profile = self.profile_entity(orm_table, record)
+        orm_table = ometa_to_orm(table=record, metadata=self.metadata)
+
+        entity_profile = self.profile_entity(orm=orm_table, table=record)
 
         # First, check if we have any tests directly configured in the workflow
         config_tests = None
         if self.config.test_suite:
-            config_tests = self.validate_config_tests(record, orm_table, entity_profile)
+            config_tests = self.validate_config_tests(
+                orm=orm_table, table=record, profiler_results=entity_profile
+            )
 
         # Then, Check if the entity has any tests
         record_tests = self.validate_entity_tests(
             record, orm_table, entity_profile, config_tests
         )
 
+        sample_data = (
+            self.fetch_sample_data(orm=orm_table) if generate_sample_data else None
+        )
+
         res = ProfilerResponse(
             table=record,
             profile=entity_profile,
             record_tests=record_tests,
+            sample_data=sample_data,
         )
 
         return res

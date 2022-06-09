@@ -48,7 +48,7 @@ METADATA_REST_CONFIG = """
     },
       "sourceConfig": {
         "config": {
-        "enableDataProfiler": false,
+        "type": "DatabaseMetadata",
         "schemaFilterPattern":{
           "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
         }
@@ -86,7 +86,7 @@ FILE_SINK_CONFIG = """
     },
       "sourceConfig": {
         "config": {
-        "enableDataProfiler": false,
+        "type": "DatabaseMetadata",
         "schemaFilterPattern":{
           "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
         }

@@ -179,7 +179,11 @@ class ProfilerWorkflow:
         Run the profiling and tests
         """
         for entity in self.list_entities():
-            profile_and_tests: ProfilerResponse = self.processor.process(entity)
+
+            profile_and_tests: ProfilerResponse = self.processor.process(
+                record=entity,
+                generate_sample_data=self.source_config.generateSampleData,
+            )
 
             if hasattr(self, "sink"):
                 self.sink.write_record(profile_and_tests)
