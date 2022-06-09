@@ -12,7 +12,7 @@
 Defines the topology for ingesting sources
 """
 
-from typing import Generic, List, Optional, Type, TypeVar
+from typing import Any, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, Extra, create_model
 
@@ -34,6 +34,10 @@ class NodeStage(BaseModel, Generic[T]):
     processor: str  # has the producer results as an argument. Here is where filters happen
     context: Optional[str] = None  # context key storing stage state, if needed
     ack_sink: bool = True  # Validate that the request is present in OM and update the context with the results
+    nullable: bool = False  # The yielded value can be null
+    cache_all: bool = (
+        False  # If we need to cache all values being yielded in the context
+    )
     consumer: Optional[
         List[str]
     ] = None  # keys in the source context to fetch state from the parent's context
@@ -118,6 +122,15 @@ def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:
     return [node for node in nodes if node_has_no_consumers(node)]
 
 
+def get_ctx_default(stage: NodeStage) -> Optional[List[Any]]:
+    """
+    If we cache all, default value is an empty list
+    :param stage: Node Stage
+    :return: None or []
+    """
+    return [] if stage.cache_all else None
+
+
 def create_source_context(topology: ServiceTopology) -> TopologyContext:
     """
     Dynamically build a context based on the topology nodes.
@@ -129,7 +142,7 @@ def create_source_context(topology: ServiceTopology) -> TopologyContext:
     """
     nodes = get_topology_nodes(topology)
     ctx_fields = {
-        stage.context: (Optional[stage.type_], None)
+        stage.context: (Optional[stage.type_], get_ctx_default(stage))
         for node in nodes
         for stage in node.stages
         if stage.context

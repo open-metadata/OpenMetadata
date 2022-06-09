@@ -22,6 +22,7 @@ from metadata.ingestion.models.topology import (
     ServiceTopology,
     TopologyContext,
     TopologyNode,
+    get_ctx_default,
     get_topology_node,
     get_topology_root,
 )
@@ -71,10 +72,13 @@ class TopologyRunnerMixin(Generic[C]):
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
 
-                        # yield and make sure the data is updated
-                        yield from self.sink_request(
-                            stage=stage, entity_request=entity_request
-                        )
+                        try:
+                            # yield and make sure the data is updated
+                            yield from self.sink_request(
+                                stage=stage, entity_request=entity_request
+                            )
+                        except ValueError:
+                            logger.error("Value unexpectedly None")
 
                 # process all children from the node being run
                 yield from self.process_nodes(child_nodes)
@@ -101,6 +105,14 @@ class TopologyRunnerMixin(Generic[C]):
         :param value: value to use for the update
         """
         self.context.__dict__[key] = value
+
+    def append_context(self, key: str, value: Any) -> None:
+        """
+        Update the key of the context with the given value
+        :param key: element to update from the source context
+        :param value: value to use for the update
+        """
+        self.context.__dict__[key].append(value)
 
     def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
         """
@@ -129,21 +141,36 @@ class TopologyRunnerMixin(Generic[C]):
 
         # Either use the received request or the acknowledged Entity
         entity = entity_request
-        if stage.ack_sink:
-            tries = 3
-            entity = None
 
-            entity_fqn = self.fqn_from_context(
-                stage=stage, entity_request=entity_request
-            )
+        if stage.nullable and entity is None:
+            raise ValueError("Value unexpectedly None")
 
-            while not entity or tries <= 0:
-                yield entity_request
-                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn)
-                tries -= 1
-        else:
-            yield entity
+        if entity is not None:
+            if stage.ack_sink:
+                tries = 3
+                entity = None
 
-        if stage.context:
-            self.update_context(key=stage.context, value=entity)
+                entity_fqn = self.fqn_from_context(
+                    stage=stage, entity_request=entity_request
+                )
+
+                while not entity or tries <= 0:
+                    yield entity_request
+                    entity = self.metadata.get_by_name(
+                        entity=stage.type_, fqn=entity_fqn
+                    )
+                    tries -= 1
+            else:
+                yield entity
+
+            if stage.context and not stage.cache_all:
+                self.update_context(key=stage.context, value=entity)
+            if stage.context and stage.cache_all:
+                self.append_context(key=stage.context, value=entity)
             logger.debug(self.context)
+
+        # If yielded value is None and nullable, reset the context
+        # setting the appropriate default value
+        else:
+            if stage.context:
+                self.update_context(key=stage.context, value=get_ctx_default(stage))

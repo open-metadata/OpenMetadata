@@ -120,6 +120,8 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="tags",
                 processor="yield_tag",
                 ack_sink=False,
+                nullable=True,
+                cache_all=True,
             ),
             NodeStage(
                 type_=Table,
