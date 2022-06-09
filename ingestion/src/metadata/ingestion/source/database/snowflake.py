@@ -8,9 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import traceback
-import uuid
-from typing import Iterable, Union
+from copy import deepcopy
+from typing import Iterable, Tuple
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -19,6 +18,7 @@ from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 from sqlalchemy.sql import text
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
@@ -46,8 +47,10 @@ from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
-    FETCH_SNOWFLAKE_ALL_TAGS,
-    FETCH_SNOWFLAKE_METADATA,
+    SNOWFLAKE_FETCH_TABLE_TAGS,
+    SNOWFLAKE_GET_COMMENTS,
+    SNOWFLAKE_GET_TABLE_NAMES,
+    SNOWFLAKE_GET_VIEW_NAMES,
 )
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -58,22 +61,28 @@ logger = ingestion_logger()
 
 
 def get_table_names(self, connection, schema, **kw):
-    result = connection.execute(FETCH_SNOWFLAKE_METADATA.format(schema))
-    return result.fetchall()
+    cursor = connection.execute(SNOWFLAKE_GET_TABLE_NAMES.format(schema))
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result
+
+
+def get_view_names(self, connection, schema, **kw):
+    cursor = connection.execute(SNOWFLAKE_GET_VIEW_NAMES.format(schema))
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result
 
 
 @reflection.cache
-def _get_table_comment(self, connection, table_name, schema=None, **kw):
+def get_table_comment(self, connection, table_name, schema_name, **kw):
     """
     Returns comment of table.
     """
-    sql_command = "select * FROM information_schema.tables WHERE TABLE_SCHEMA ILIKE '{}' and TABLE_NAME ILIKE '{}'".format(
-        self.normalize_name(schema),
-        table_name,
+    cursor = connection.execute(
+        SNOWFLAKE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)
     )
 
-    cursor = connection.execute(text(sql_command))
-    return cursor.fetchone()  # pylint: disable=protected-access
+    result = cursor.fetchone()
+    return {"text": result[0] if result and result[0] else None}
 
 
 @reflection.cache
@@ -86,68 +95,15 @@ def normalize_names(self, name):
 
 
 SnowflakeDialect.get_table_names = get_table_names
+SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.normalize_name = normalize_names
-SnowflakeDialect._get_table_comment = _get_table_comment
+SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 
 class SnowflakeSource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-
-    def get_databases(self) -> Iterable[Inspector]:
-        if self.config.serviceConnection.__root__.config.database:
-            yield from super().get_databases()
-        else:
-            query = "SHOW DATABASES"
-            results = self.connection.execute(query)
-            for res in results:
-                row = list(res)
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern, database_name=row[1]
-                ):
-                    self.status.filter(row[1], "Database pattern not allowed")
-                    continue
-                use_db_query = f"USE DATABASE {row[1]}"
-                self.connection.execute(use_db_query)
-                logger.info(f"Ingesting from database: {row[1]}")
-                self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_connection(self.service_connection)
-                yield inspect(self.engine)
-
-    def fetch_tags(self, schema, table_name: str, column_name: str = ""):
-        try:
-            result = self.connection.execute(
-                FETCH_SNOWFLAKE_ALL_TAGS.format(table_name)
-            )
-        except Exception as err:
-            logger.warning("Trying tags for tables with quotes")
-            result = self.connection.execute(
-                FETCH_SNOWFLAKE_ALL_TAGS.format(f'"{table_name}"')
-            )
-        tags = []
-        for res in result:
-            row = list(res)
-            tag_category = row[2]
-            primary_tag = row[3]
-            if row[4] == "COLUMN" or column_name and row[9] != column_name:
-                continue
-            tags.append(
-                OMetaTagAndCategory(
-                    category_name=CreateTagCategoryRequest(
-                        name=tag_category,
-                        description="SNOWFLAKE TAG NAME",
-                        categoryType="Descriptive",
-                    ),
-                    category_details=CreateTagRequest(
-                        name=primary_tag, description="SNOWFLAKE TAG VALUE"
-                    ),
-                )
-            )
-            logger.info(
-                f"Tag Category {tag_category}, Primary Tag {primary_tag} Ingested"
-            )
-        return tags
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -159,95 +115,89 @@ class SnowflakeSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def next_record(self) -> Iterable[Entity]:
-        for inspector in self.get_databases():
-            for schema in inspector.get_schema_names():
-                try:
-                    if filter_by_schema(
-                        self.source_config.schemaFilterPattern, schema_name=schema
-                    ):
-                        self.status.filter(
-                            f"{self.config.serviceName}.{self.service_connection.database}.{schema}",
-                            "{} pattern not allowed".format("Schema"),
-                        )
-                        continue
-                    self.connection.execute(
-                        f"USE {self.service_connection.database}.{schema}"
-                    )
-                    yield from self.fetch_tables(inspector=inspector, schema=schema)
-                    if self.source_config.markDeletedTables:
-                        schema_fqn = f"{self.config.serviceName}.{self.service_connection.database}.{schema}"
-                        yield from self.delete_tables(schema_fqn)
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.info(err)
+    def get_database_names(self) -> Iterable[str]:
+        configured_db = self.config.serviceConnection.__root__.config.database
+        if configured_db:
+            return [configured_db]
+        else:
+            results = self.connection.execute("SHOW DATABASES")
+            for res in results:
+                row = list(res)
+                new_database = row[1]
 
-    def add_tags_to_table(self, schema: str, table_name: str, table_entity):
-        tag_category_list = self.fetch_tags(schema=schema, table_name=table_name)
-        table_entity.tags = []
-        for tags in tag_category_list:
-            yield tags
-            table_entity.tags.append(
-                TagLabel(
-                    tagFQN=fqn.build(
-                        self.metadata,
-                        entity_type=Tag,
-                        tag_category_name=tags.category_name.name.__root__,
-                        tag_name=tags.category_details.name.__root__,
-                    ),
-                    labelType="Automated",
-                    state="Suggested",
-                    source="Tag",
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern, database_name=new_database
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{new_database} database pattern not allowed",
+                    )
+                    continue
+
+                yield new_database
+
+    def set_inspector(self, database_name: str) -> None:
+        # self.connection.execute(f"USE DATABASE {database_name}")
+        logger.info(f"Ingesting from database: {database_name}")
+
+        new_service_connection = deepcopy(self.service_connection)
+        new_service_connection.database = database_name
+        self.engine = get_connection(new_service_connection)
+        self.inspector = inspect(self.engine)
+
+    def yield_tag(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[OMetaTagAndCategory]:
+
+        table_name, _ = table_name_and_type
+
+        try:
+            result = self.connection.execute(
+                SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                    table_name=table_name,
                 )
             )
 
-    def fetch_tables(
-        self,
-        inspector: Inspector,
-        schema: str,
-    ) -> Iterable[Union[OMetaDatabaseAndTable, OMetaTagAndCategory]]:
-        entities = inspector.get_table_names(schema)
-        for table_name, entity_type, comment in entities:
-            try:
-                if filter_by_table(
-                    self.source_config.tableFilterPattern, table_name=table_name
-                ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{self.service_connection.database}.{schema}.{table_name}",
-                        "{} pattern not allowed".format(entity_type),
-                    )
-                    continue
-                if entity_type == "VIEW" and not self.source_config.includeViews:
-                    continue
-                table_columns = self.get_columns_and_constraints(
-                    schema, table_name, inspector
+        except Exception as err:
+            logger.error(f"Error fetching tags {err}. Trying with quoted names")
+            result = self.connection.execute(
+                SNOWFLAKE_FETCH_TABLE_TAGS.format(
+                    database_name=f'"{self.context.database.name.__root__}"',
+                    schema_name=f'"{self.context.database_schema.name.__root__}"',
+                    table_name=f'"{table_name}"',
                 )
-                view_definition = inspector.get_view_definition(table_name, schema)
-                view_definition = (
-                    "" if view_definition is None else str(view_definition)
+            )
+
+        for res in result:
+            row = list(res)
+            yield OMetaTagAndCategory(
+                category_name=CreateTagCategoryRequest(
+                    name=row[0],
+                    description="SNOWFLAKE TAG NAME",
+                    categoryType="Descriptive",
+                ),
+                category_details=CreateTagRequest(
+                    name=row[1], description="SNOWFLAKE TAG VALUE"
+                ),
+            )
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        return schema names
+        """
+        for schema_name in self.inspector.get_schema_names():
+
+            if filter_by_schema(
+                self.source_config.schemaFilterPattern, schema_name=schema_name
+            ):
+                self.status.filter(
+                    f"{self.config.serviceName}.{self.context.database.name.__root__}.{schema_name}",
+                    "{} pattern not allowed".format("Schema"),
                 )
-                SNOWFLAKE_TABLE_TYPE = "BASE TABLE"
-                table_entity = Table(
-                    id=uuid.uuid4(),
-                    name=table_name,
-                    tableType="Regular"
-                    if entity_type.lower() == SNOWFLAKE_TABLE_TYPE.lower()
-                    else "View",
-                    description=comment,
-                    columns=table_columns,
-                    viewDefinition=view_definition,
-                )
-                yield from self.add_tags_to_table(
-                    schema=schema, table_name=table_name, table_entity=table_entity
-                )
-                database = self.get_database_entity()
-                table_schema_and_db = OMetaDatabaseAndTable(
-                    table=table_entity,
-                    database=database,
-                    database_schema=self.get_schema_entity(schema, database),
-                )
-                self.register_record(table_schema_and_db)
-                yield table_schema_and_db
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(err)
+                continue
+
+            self.connection.execute(
+                f"USE {self.context.database.name.__root__}.{schema_name}"
+            )
+            yield schema_name

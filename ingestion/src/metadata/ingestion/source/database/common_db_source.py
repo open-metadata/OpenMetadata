@@ -26,9 +26,11 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -36,6 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
@@ -44,6 +47,7 @@ from metadata.ingestion.source.database.database_service import (
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -195,7 +199,7 @@ class CommonDbSourceService(
                     )
                     continue
 
-                yield table_name, "Regular"
+                yield table_name, TableType.Regular
 
         if self.source_config.includeViews:
             for view_name in self.inspector.get_view_names(schema_name):
@@ -208,7 +212,7 @@ class CommonDbSourceService(
                     )
                     continue
 
-                yield view_name, "View"
+                yield view_name, TableType.View
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -275,6 +279,7 @@ class CommonDbSourceService(
                     id=self.context.database_schema.id,
                     type="databaseSchema",
                 ),
+                tags=self.get_tag_labels(),  # Pick tags from context info, if any
             )
 
             yield table_request
@@ -295,8 +300,19 @@ class CommonDbSourceService(
         """
         test_connection(self.engine)
 
+    @property
+    def connection(self) -> Connection:
+        """
+        Return the SQLAlchemy connection
+        """
+        if not self._connection:
+            self._connection = self.engine.connect()
+
+        return self._connection
+
     def close(self):
-        super().close()
+        if self.connection is not None:
+            self.connection.close()
 
     def fetch_table_tags(
         self, table_name: str, schema_name: str, inspector: Inspector

@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -38,6 +39,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
@@ -284,6 +286,26 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 fqn=table_fqn,
                 datamodel=datamodel,
             )
+
+    def get_tag_labels(self) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        return [
+            TagLabel(
+                tagFQN=fqn.build(
+                    self.metadata,
+                    entity_type=Tag,
+                    tag_category_name=tag_and_category.category_name.name.__root__,
+                    tag_name=tag_and_category.category_details.name.__root__,
+                ),
+                labelType=LabelType.Automated,
+                state=State.Suggested,
+                source=Source1.Tag,
+            )
+            for tag_and_category in self.context.tags or []
+        ]
 
     def register_record(self, table_request: CreateTableRequest) -> None:
         """
