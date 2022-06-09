@@ -247,7 +247,7 @@ declare module 'Models' {
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     type: string;
     id: string;
     description?: string;

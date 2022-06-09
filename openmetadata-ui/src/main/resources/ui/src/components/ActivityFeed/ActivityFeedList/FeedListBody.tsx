@@ -137,7 +137,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </Fragment>
                 ) : (
                   <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
+                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-1 tw-mb-1"
                     data-testid="replyInSidePanel"
                     onClick={() => {
                       onThreadSelect(feed.id);

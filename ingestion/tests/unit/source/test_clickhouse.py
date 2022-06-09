@@ -48,7 +48,6 @@ CONFIG = """
       },
       "sourceConfig": {
         "config": {
-        "enableDataProfiler": false,
         "schemaFilterPattern":{
           "excludes": ["system.*","information_schema.*","INFORMATION_SCHEMA.*"]  
         }

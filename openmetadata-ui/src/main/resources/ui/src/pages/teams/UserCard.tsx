@@ -133,6 +133,10 @@ const UserCard = ({
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
+      case AssetsType.MLMODEL:
+        link = getEntityLink(SearchIndex.MLMODEL, fqn);
+
+        break;
       case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
@@ -180,9 +184,9 @@ const UserCard = ({
             <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
             <Fragment>
-              <p
+              <span
                 className={classNames(
-                  'tw-font-normal',
+                  'tw-font-normal tw-my-1',
                   isActionVisible ? 'tw-truncate tw-w-32' : null,
                   {
                     'tw-cursor-pointer hover:tw-underline':
@@ -194,15 +198,15 @@ const UserCard = ({
                   onTitleClick?.(item.fqn);
                 }}>
                 {item.displayName}
-              </p>
+              </span>
               {item.name && item.name !== item.displayName && (
-                <p
+                <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                    isActionVisible ? 'tw-truncate tw-w-32 tw-my-1' : null
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
                   {isIconVisible ? item.name : capitalize(item.name)}
-                </p>
+                </span>
               )}
             </Fragment>
           )}

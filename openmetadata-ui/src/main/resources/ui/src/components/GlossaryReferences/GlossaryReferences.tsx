@@ -58,7 +58,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
   return (
     <div data-testid="references">
       <div className="tw-flex tw-items-center">
-        <p className="w-form-label tw-mr-3">References</p>
+        <p className="w-form-label tw-m-0 tw-mr-3">References</p>
         <Button
           className="tw-h-5 tw-px-2"
           size="x-small"

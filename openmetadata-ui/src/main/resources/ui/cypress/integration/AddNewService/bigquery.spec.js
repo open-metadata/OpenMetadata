@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testSampleData, testServiceCreationAndIngestion } from '../../common/common';
-import { BIG_QUERY_TABLE } from '../../constants/constants';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('BigQuery Ingestion', () => {
   it('add and ingest data', () => {
@@ -62,9 +61,5 @@ describe('BigQuery Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
-  });
-
-  it('Check for Sample data in table entry', () => {
-    testSampleData(BIG_QUERY_TABLE);
   });
 });

@@ -10,7 +10,7 @@
 #  limitations under the License.
 import traceback
 import uuid
-from typing import Iterable, Optional, Union
+from typing import Iterable, Union
 
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
@@ -115,21 +115,6 @@ class SnowflakeSource(CommonDbSourceService):
             )
         return tags
 
-    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
-        resp_sample_data = super().fetch_sample_data(schema, table)
-        if not resp_sample_data:
-            try:
-                logger.info("Using Table Name with quotes to fetch the data")
-                query = self.source_config.sampleDataQuery.format(schema, f'"{table}"')
-                logger.info(query)
-                results = self.connection.execute(query)
-                cols = [col for col in results.keys()]
-                rows = [list(res) for res in results]
-                return TableData(columns=cols, rows=rows)
-            except Exception as err:
-                logger.error(err)
-        return resp_sample_data
-
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
@@ -219,12 +204,6 @@ class SnowflakeSource(CommonDbSourceService):
                 yield from self.add_tags_to_table(
                     schema=schema, table_name=table_name, table_entity=table_entity
                 )
-                if self.source_config.generateSampleData:
-                    table_data = self.fetch_sample_data(schema, table_name)
-                    table_entity.sampleData = table_data
-                if self.source_config.enableDataProfiler:
-                    profile = self.run_profiler(table=table_entity, schema=schema)
-                    table_entity.tableProfile = [profile] if profile else None
                 database = self.get_database_entity()
                 table_schema_and_db = OMetaDatabaseAndTable(
                     table=table_entity,

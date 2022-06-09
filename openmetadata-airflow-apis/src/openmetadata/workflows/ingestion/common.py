@@ -71,12 +71,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
             entity=PipelineService, fqn=ingestion_pipeline.service.name
         )
     elif service_type == "dashboardService":
-        service: MessagingService = metadata.get_by_name(
-            entity=MessagingService, fqn=ingestion_pipeline.service.name
-        )
-    elif service_type == "messagingService":
         service: DashboardService = metadata.get_by_name(
             entity=DashboardService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "messagingService":
+        service: MessagingService = metadata.get_by_name(
+            entity=MessagingService, fqn=ingestion_pipeline.service.name
         )
 
     if not service:

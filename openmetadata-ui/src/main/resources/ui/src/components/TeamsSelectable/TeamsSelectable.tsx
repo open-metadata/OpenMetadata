@@ -42,7 +42,7 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
       if (text) {
         getSuggestedTeams(text).then((res) => {
           const teams: UserTeams[] = formatTeamsResponse(
-            res.data.suggest['table-suggest'][0].options
+            res.data.suggest['metadata-suggest'][0].options
           );
           const options = teams.map((team) => ({
             label: getEntityName(team),

@@ -9,7 +9,7 @@ source:
       hostPort: bolt://192.168.1.8:7687
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

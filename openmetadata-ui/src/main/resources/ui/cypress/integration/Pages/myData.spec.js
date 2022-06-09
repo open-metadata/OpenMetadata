@@ -25,11 +25,6 @@ describe('MyData page should work', () => {
   });
 
   const checkRecentlyViewElement = () => {
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
-    ).as('searchApi');
-    cy.wait('@searchApi');
-
     cy.get('[data-testid="table-data-card"]')
       .first()
       .should('be.visible')
@@ -73,9 +68,6 @@ describe('MyData page should work', () => {
   };
 
   const followAndOwnTheEntity = (termObj) => {
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=10&sort_order=desc&index=*'
-    ).as('searchApi');
     // search for the term and redirect to the respective entity tab
     searchEntity(termObj.term);
 
@@ -87,10 +79,10 @@ describe('MyData page should work', () => {
       .should('be.visible')
       .should('have.class', 'active');
 
-    cy.wait('@searchApi');
     // click on the 1st result and go to entity details page and follow the entity
     cy.wait(500);
     cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
+    cy.wait(500);
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
     // go to manage tab and search for logged in user and set the owner
@@ -109,6 +101,7 @@ describe('MyData page should work', () => {
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
         cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
+        cy.wait(500);
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')
           .then((text) => {
@@ -203,12 +196,14 @@ describe('MyData page should work', () => {
     const totalCount =
       tables.length + pipelines.length + dashboards.length + topics.length;
 
-    cy.get('[data-testid="my-data-container"]')
+    cy.get('[data-testid="my-data-container"] > .ant-card > .ant-card-body')
       .children()
-      .should('have.length', 9);
-    cy.get('[data-testid="following-data-container"]')
+      .should('have.length', 8);
+    cy.get(
+      '[data-testid="following-data-container"] > .ant-card > .ant-card-body'
+    )
       .children()
-      .should('have.length', 9);
+      .should('have.length', 8);
 
     cy.get('[data-testid="my-data-total-count"]')
       .invoke('text')

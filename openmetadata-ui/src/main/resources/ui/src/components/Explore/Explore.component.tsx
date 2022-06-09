@@ -92,6 +92,7 @@ const Explore: React.FC<ExploreProps> = ({
   updateDashboardCount,
   updatePipelineCount,
   isFilterSelected,
+  updateMlModelCount,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -240,6 +241,10 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
+
+        break;
+      case SearchIndex.MLMODEL:
+        updateMlModelCount(count);
 
         break;
       default:
@@ -408,6 +413,8 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
+      case SearchIndex.MLMODEL:
+        return getCountBadge(tabCounts.mlModel, className, isActive);
       default:
         return getCountBadge();
     }
