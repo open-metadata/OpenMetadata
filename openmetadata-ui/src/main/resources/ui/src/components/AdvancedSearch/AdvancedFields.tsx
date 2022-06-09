@@ -13,13 +13,15 @@
 
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
+import { AdvanceField } from '../Explore/explore.interface';
 import AdvancedField from './AdvancedField';
 
 interface Props {
   index: string;
-  fields: Array<string>;
+  fields: Array<AdvanceField>;
   onFieldRemove: (value: string) => void;
   onClear: () => void;
+  onFieldValueSelect: (field: AdvanceField) => void;
 }
 
 const AdvancedFields: FC<Props> = ({
@@ -27,6 +29,7 @@ const AdvancedFields: FC<Props> = ({
   onFieldRemove,
   onClear,
   index,
+  onFieldValueSelect,
 }) => {
   return (
     <div className="tw-flex tw-gap-2 tw-mb-3">
@@ -36,6 +39,7 @@ const AdvancedFields: FC<Props> = ({
           index={index}
           key={uniqueId()}
           onFieldRemove={onFieldRemove}
+          onFieldValueSelect={onFieldValueSelect}
         />
       ))}
       <span

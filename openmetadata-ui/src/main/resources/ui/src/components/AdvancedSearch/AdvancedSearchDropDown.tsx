@@ -16,10 +16,11 @@ import React, { FC } from 'react';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
+import { AdvanceField } from '../Explore/explore.interface';
 
 interface Props {
   index: string;
-  selectedItems: Array<string>;
+  selectedItems: Array<AdvanceField>;
   onSelect: (filter: string) => void;
 }
 
@@ -31,7 +32,7 @@ const AdvancedSearchDropDown: FC<Props> = ({
   const items = getDropDownItems(index).map((item) => ({
     ...item,
     onClick: () => onSelect(item.key),
-    disabled: selectedItems.includes(item.key),
+    disabled: selectedItems.some((i) => item.key === i.key),
   }));
 
   const menu = <Menu items={items} />;
