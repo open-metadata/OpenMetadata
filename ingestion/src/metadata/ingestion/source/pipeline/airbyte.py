@@ -91,6 +91,14 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         self.service: PipelineService = self.metadata.get_service_or_create(
             entity=PipelineService, config=config
         )
+        self.standard_status = {
+            "cancelled": StatusType.Failed,
+            "succeeded": StatusType.Successful,
+            "failed": StatusType.Failed,
+            "running": StatusType.Pending,
+            "incomplete": StatusType.Failed,
+            "pending": StatusType.Pending,
+        }
         self.client = AirbyteClient(self.service_connection)
 
     @classmethod
@@ -141,15 +149,23 @@ class AirbyteSource(Source[CreatePipelineRequest]):
             service=EntityReference(id=self.service.id, type="pipelineService"),
         )
 
-    def fetch_pipeline_status(self, connection: dict) -> OMetaPipelineStatus:
-        [
+    def fetch_pipeline_status(
+        self, connection: dict, pipeline_fqn: str
+    ) -> OMetaPipelineStatus:
+        task_status = [
             TaskStatus(
                 name=job["job"]["id"],
-                sttatus=self.map_standard_status(job["job"]["status"]),
+                executionStatus=self.standard_status.get(
+                    job["job"]["status"].lower()
+                ).value,
             )
             for job in self.client.list_jobs(connection.get("connectionId"))
             if job
         ]
+        pipeline_status = PipelineStatus(taskStatus=task_status)
+        yield OMetaPipelineStatus(
+            pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
+        )
 
     def fetch_lineage(
         self, connection: dict, pipeline_entity: Pipeline
@@ -232,7 +248,7 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                         service_name=self.service.name.__root__,
                         pipeline_name=connection.get("connectionId"),
                     )
-                    yield from self.fetch_pipeline_status(connection)
+                    yield from self.fetch_pipeline_status(connection, pipeline_fqn)
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,
