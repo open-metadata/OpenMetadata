@@ -42,7 +42,7 @@ const AdvanceSearchDropDown: FC<Props> = ({
       overlay={menu}
       trigger={['click']}>
       <div className="tw-text-primary">
-        <span className="tw-mr-2">Advance Search</span>
+        <span className="tw-mr-2">Advanced Search</span>
         <DropdownIcon style={{ color: normalLink, margin: '0px' }} />
       </div>
     </Dropdown>
