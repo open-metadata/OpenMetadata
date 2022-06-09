@@ -13,16 +13,25 @@ Airbyte source to extract metadata
 """
 import traceback
 from dataclasses import dataclass, field
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline import (
     PipelineServiceMetadataPipeline,
@@ -30,10 +39,13 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.airbyte_client import AirbyteClient
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
@@ -129,6 +141,76 @@ class AirbyteSource(Source[CreatePipelineRequest]):
             service=EntityReference(id=self.service.id, type="pipelineService"),
         )
 
+    def fetch_pipeline_status(self, connection: dict) -> OMetaPipelineStatus:
+        [
+            TaskStatus(
+                name=job["job"]["id"],
+                sttatus=self.map_standard_status(job["job"]["status"]),
+            )
+            for job in self.client.list_jobs(connection.get("connectionId"))
+            if job
+        ]
+
+    def fetch_lineage(
+        self, connection: dict, pipeline_entity: Pipeline
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        Parse all the stream available in the connection and create a lineage between them
+        :param connection: connection object from airbyte
+        :param pipeline_entity: Pipeline we just ingested
+        :return: Lineage from inlets and outlets
+        """
+        source_connection = self.client.get_source(connection.get("sourceId"))
+        destination_connection = self.client.get_destination(
+            connection.get("destinationId")
+        )
+        source_service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=source_connection.get("name")
+        )
+        destination_service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=destination_connection.get("name")
+        )
+        if not source_service or not destination_service:
+            return
+
+        for task in connection.get("syncCatalog", {}).get("streams") or []:
+            stream = task.get("stream")
+            from_fqn = fqn.build(
+                self.metadata,
+                Table,
+                table_name=stream.get("name"),
+                database_name=None,
+                schema_name=stream.get("namespace"),
+                service_name=source_connection.get("name"),
+            )
+
+            to_fqn = fqn.build(
+                self.metadata,
+                Table,
+                table_name=stream.get("name"),
+                database_name=None,
+                schema_name=stream.get("namespace"),
+                service_name=destination_connection.get("name"),
+            )
+
+            if not from_fqn and not to_fqn:
+                continue
+
+            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+            to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+            yield AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=from_entity.id, type="table"),
+                    toEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
+                )
+            )
+            yield AddLineageRequest(
+                edge=EntitiesEdge(
+                    toEntity=EntityReference(id=to_entity.id, type="table"),
+                    fromEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
+                )
+            )
+
     def next_record(self) -> Iterable[Entity]:
         """
         Extract metadata information to create Pipelines with Tasks
@@ -144,6 +226,19 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                     ):
                         continue
                     yield from self.fetch_pipeline(connection, workspace)
+                    pipeline_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.service.name.__root__,
+                        pipeline_name=connection.get("connectionId"),
+                    )
+                    yield from self.fetch_pipeline_status(connection)
+                    if self.source_config.includeLineage:
+                        pipeline_entity: Pipeline = self.metadata.get_by_name(
+                            entity=Pipeline,
+                            fqn=pipeline_fqn,
+                        )
+                        yield from self.fetch_lineage(connection, pipeline_entity) or []
 
                 except Exception as err:
                     logger.error(repr(err))

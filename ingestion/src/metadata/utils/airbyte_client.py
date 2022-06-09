@@ -29,12 +29,6 @@ class AirbyteClient:
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
         )
-        self.base_url = config.hostPort + "/api/v1"
-        self.headers = {
-            "Authorization": "Bearer no_token",
-            "Content-Type": "application/json",
-        }
-
         self.client = REST(client_config)
 
     def list_workspaces(self) -> List[dict]:
@@ -47,7 +41,7 @@ class AirbyteClient:
             raise APIError(response["message"])
         return response.get("workspaces")
 
-    def list_connections(self, workflow_id: str) -> dict:
+    def list_connections(self, workflow_id: str) -> List[dict]:
         """
         Method returns the list all of connections of workflow
         """
@@ -57,7 +51,7 @@ class AirbyteClient:
             raise APIError(response["message"])
         return response.get("connections")
 
-    def list_jobs(self, connection_id: str) -> dict:
+    def list_jobs(self, connection_id: str) -> List[dict]:
         """
         Method returns the list all of jobs of a connection
         """
@@ -66,3 +60,23 @@ class AirbyteClient:
         if response.get("exceptionStack"):
             raise APIError(response["message"])
         return response.get("jobs")
+
+    def get_source(self, source_id: str) -> dict:
+        """
+        Method returns source details
+        """
+        data = {"sourceId": source_id}
+        response = self.client.post(f"/sources/get", data=json.dumps(data))
+        if response.get("exceptionStack"):
+            raise APIError(response["message"])
+        return response
+
+    def get_destination(self, destination_id: str) -> dict:
+        """
+        Method returns destination details
+        """
+        data = {"destinationId": destination_id}
+        response = self.client.post(f"/destinations/get", data=json.dumps(data))
+        if response.get("exceptionStack"):
+            raise APIError(response["message"])
+        return response
