@@ -16,7 +16,7 @@ import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
-import { tableSortingFields, tiers, topicSortingFields } from './constants';
+import { entitySortingFields, tableSortingFields, tiers } from './constants';
 
 export const INITIAL_SORT_FIELD = 'last_updated_timestamp';
 export const INITIAL_SORT_ORDER = 'desc';
@@ -241,7 +241,7 @@ export const tabsInfo = [
   {
     label: 'Topics',
     index: SearchIndex.TOPIC,
-    sortingFields: topicSortingFields,
+    sortingFields: entitySortingFields,
     sortField: '',
     tab: 2,
     path: 'topics',
@@ -251,7 +251,7 @@ export const tabsInfo = [
   {
     label: 'Dashboards',
     index: SearchIndex.DASHBOARD,
-    sortingFields: topicSortingFields,
+    sortingFields: entitySortingFields,
     sortField: '',
     tab: 3,
     path: 'dashboards',
@@ -261,7 +261,7 @@ export const tabsInfo = [
   {
     label: 'Pipelines',
     index: SearchIndex.PIPELINE,
-    sortingFields: topicSortingFields,
+    sortingFields: entitySortingFields,
     sortField: '',
     tab: 4,
     path: 'pipelines',
@@ -271,7 +271,7 @@ export const tabsInfo = [
   {
     label: 'ML Models',
     index: SearchIndex.MLMODEL,
-    sortingFields: topicSortingFields,
+    sortingFields: entitySortingFields,
     sortField: '',
     tab: 5,
     path: 'mlmodels',
