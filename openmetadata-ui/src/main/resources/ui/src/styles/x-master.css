@@ -992,3 +992,7 @@ code {
 .ant-card-extra {
   padding: 0px;
 }
+
+.ant-text-primary {
+  color: rgb(113, 71, 232);
+}
