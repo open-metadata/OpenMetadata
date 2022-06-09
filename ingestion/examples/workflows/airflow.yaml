@@ -9,7 +9,7 @@ source:
         type: Mysql
         username: airflow_user
         password: airflow_pass
-        database: airflow_db
+        databaseSchema: airflow_db
         hostPort: localhost:3306
   sourceConfig:
     config:
