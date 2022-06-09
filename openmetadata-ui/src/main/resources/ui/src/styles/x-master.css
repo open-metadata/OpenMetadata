@@ -993,6 +993,13 @@ code {
   padding: 0px;
 }
 
-.ant-text-primary {
-  color: rgb(113, 71, 232);
+.ant-advaced-field-select {
+  color: #7147e8;
+  min-width: 130px;
+}
+.ant-suggestion-dropdown {
+  min-width: 200px !important;
+}
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbd1f9;
 }
