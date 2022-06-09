@@ -18,7 +18,7 @@ and run the validations.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -41,6 +41,9 @@ from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.orm_profiler.profiler.handle_partition import is_partitioned, get_partition_cols
+from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger("ORM Profiler Workflow")
 
@@ -126,6 +129,36 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return table.profileSample
 
+
+    def get_partition_details(self, table: Table) -> Optional[Dict]:
+        """Get partition details for the profiler if working with
+        bigquery table
+
+        Args:
+            table: table entity
+        Returns:
+            None or Dict
+        """
+
+        if table.serviceType == DatabaseServiceType.BigQuery:
+            if is_partitioned(self.session, self.orm):
+                bq_connection_config = self.config.serviceConnection.__root__.config
+                start, end = get_start_and_end(
+                     bq_connection_config.partitionQueryDuration
+                 )
+                partition_details = {
+                    "partition_field": get_partition_cols(self.session, self.orm) or bq_connection_config.partitionField,
+                    "partition_start": start,
+                    "partition_end": end,
+                    "partition_values": bq_connection_config.partitionValues,
+                }
+
+                return partition_details
+
+        return None
+
+
+
     def build_profiler(self, orm: DeclarativeMeta, table: Table) -> Profiler:
         """
         Given a column from the entity, build the profiler.
@@ -158,6 +191,7 @@ class OrmProfilerProcessor(Processor[Table]):
             profile_date=self.execution_date,
             profile_sample=profile_sample,
             timeout_seconds=self.config.profiler.timeout_seconds,
+            partition_details=self.get_partition_details(table),
         )
 
     def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:

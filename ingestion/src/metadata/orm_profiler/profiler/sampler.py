@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
@@ -21,6 +21,7 @@ from sqlalchemy.orm.util import AliasedClass
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+from metadata.orm_profiler.profiler.handle_partition import bigquery_required_partition_filter_handler
 
 RANDOM_LABEL = "random"
 
@@ -36,13 +37,16 @@ class Sampler:
         session: Session,
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
+        partition_details: Optional[Dict] = None,
     ):
         self.profile_sample = profile_sample
         self.session = session
         self.table = table
+        self._partition_details = partition_details
 
         self.sample_limit = 100
 
+    @bigquery_required_partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
         return self.session.query(
             self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
