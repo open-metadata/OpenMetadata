@@ -26,11 +26,13 @@ import {
   getItemLabel,
 } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { AdvanceField } from '../Explore/explore.interface';
 
 interface Props {
   index: string;
-  field: string;
+  field: AdvanceField;
   onFieldRemove: (value: string) => void;
+  onFieldValueSelect: (field: AdvanceField) => void;
 }
 
 interface Option {
@@ -43,6 +45,8 @@ interface InputProps {
   value: string | undefined;
   handleChange: (value: string) => void;
   handleSearch: (value: string) => void;
+  handleSelect: (value: string) => void;
+  handleClear: () => void;
 }
 
 const SearchInput = ({
@@ -50,6 +54,8 @@ const SearchInput = ({
   value,
   handleChange,
   handleSearch,
+  handleSelect,
+  handleClear,
 }: InputProps) => {
   const { Option } = Select;
 
@@ -70,20 +76,27 @@ const SearchInput = ({
       showArrow={false}
       value={value}
       onChange={handleChange}
-      onSearch={handleSearch}>
+      onClear={handleClear}
+      onSearch={handleSearch}
+      onSelect={handleSelect}>
       {optionsElement}
     </Select>
   );
 };
 
-const AdvancedField: FC<Props> = ({ field, onFieldRemove, index }) => {
-  const advancedField = getAdvancedField(field);
+const AdvancedField: FC<Props> = ({
+  field,
+  onFieldRemove,
+  index,
+  onFieldValueSelect,
+}) => {
+  const advancedField = getAdvancedField(field.key);
 
   const [options, setOptions] = useState<Option[]>([]);
-  const [value, setValue] = useState<string>();
+  const [value, setValue] = useState<string | undefined>(field.value);
 
   const fetchOptions = (query: string) => {
-    if (!MISC_FIELDS.includes(field)) {
+    if (!MISC_FIELDS.includes(field.key)) {
       getAdvancedFieldOptions(query, index, advancedField)
         .then((res: AxiosResponse) => {
           const suggestOptions =
@@ -132,18 +145,30 @@ const AdvancedField: FC<Props> = ({ field, onFieldRemove, index }) => {
     setValue(newValue);
   };
 
+  const handleOnSelect = (value: string) => {
+    onFieldValueSelect({ ...field, value });
+  };
+
+  const handleOnClear = () => {
+    onFieldValueSelect({ ...field, value: undefined });
+  };
+
   return (
     <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-flex tw-justify-between">
-      <span className="tw-self-center">{startCase(getItemLabel(field))}:</span>
+      <span className="tw-self-center">
+        {startCase(getItemLabel(field.key))}:
+      </span>
       <SearchInput
         handleChange={handleChange}
+        handleClear={handleOnClear}
         handleSearch={handleSearch}
+        handleSelect={handleOnSelect}
         options={options}
         value={value}
       />
       <span
         className="tw-cursor-pointer tw-self-center"
-        onClick={() => onFieldRemove(field)}>
+        onClick={() => onFieldRemove(field.key)}>
         <FontAwesomeIcon className="tw-text-primary" icon="times" />
       </span>
     </div>

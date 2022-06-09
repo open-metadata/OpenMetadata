@@ -68,7 +68,7 @@ import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout from '../containers/PageLayout';
-import { ExploreProps } from './explore.interface';
+import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
@@ -128,20 +128,38 @@ const Explore: React.FC<ExploreProps> = ({
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
 
   const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
-    Array<string>
+    Array<AdvanceField>
   >([]);
 
   const onAdvancedFieldSelect = (value: string) => {
-    if (!selectedAdvancedFields.includes(value)) {
-      setSelectedAdvancedField((pre) => [...pre, value]);
+    const flag = selectedAdvancedFields.some((field) => field.key === value);
+    if (!flag) {
+      setSelectedAdvancedField((pre) => [
+        ...pre,
+        { key: value, value: undefined },
+      ]);
     }
   };
   const onAdvancedFieldRemove = (value: string) => {
-    setSelectedAdvancedField((pre) => pre.filter((field) => field !== value));
+    setSelectedAdvancedField((pre) =>
+      pre.filter((field) => field.key !== value)
+    );
   };
 
   const onAdvancedFieldClear = () => {
     setSelectedAdvancedField([]);
+  };
+
+  const onAdvancedFieldValueSelect = (field: AdvanceField) => {
+    setSelectedAdvancedField((pre) => {
+      return pre.map((preField) => {
+        if (preField.key === field.key) {
+          return field;
+        } else {
+          return preField;
+        }
+      });
+    });
   };
 
   const handleSelectedFilter = (
@@ -642,6 +660,7 @@ const Explore: React.FC<ExploreProps> = ({
             index={searchIndex}
             onClear={onAdvancedFieldClear}
             onFieldRemove={onAdvancedFieldRemove}
+            onFieldValueSelect={onAdvancedFieldValueSelect}
           />
         )}
         {error ? (
