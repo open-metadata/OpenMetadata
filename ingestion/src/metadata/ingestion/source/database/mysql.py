@@ -37,7 +37,7 @@ class MysqlSource(CommonDbSourceService):
 
         return cls(config, metadata_config)
 
-    def get_schema_names(self) -> str:
+    def get_database_schema_names(self) -> str:
         return (
             self.inspector.get_schema_names()
             if not self.service_connection.databaseSchema

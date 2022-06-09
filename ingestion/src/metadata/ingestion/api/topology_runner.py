@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.models.topology import (
+    NodeStage,
     ServiceTopology,
     TopologyContext,
     TopologyNode,
@@ -62,15 +63,24 @@ class TopologyRunnerMixin(Generic[C]):
                 else []
             )
 
-            for entity_request in node_producer():
-                # yield and make sure the data is updated
-                yield from self.acknowledge_sink(
-                    node=node, entity_request=entity_request
-                )
+            for element in node_producer() or []:
+
+                for stage in node.stages:
+                    logger.info(f"Processing stage {stage}")
+
+                    stage_fn = getattr(self, stage.processor)
+                    for entity_request in stage_fn(element) or []:
+
+                        # yield and make sure the data is updated
+                        yield from self.sink_request(
+                            stage=stage, entity_request=entity_request
+                        )
+
                 # process all children from the node being run
                 yield from self.process_nodes(child_nodes)
 
             if node.post_process:
+                logger.info(f"Post processing node {node}")
                 node_post_process = getattr(self, node.post_process)
                 for entity_request in node_post_process():
                     yield entity_request
@@ -92,50 +102,48 @@ class TopologyRunnerMixin(Generic[C]):
         """
         self.context.__dict__[key] = value
 
-    def fqn_from_context(self, node: TopologyNode, entity_request: C) -> str:
+    def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
         """
         Read the context
-        :param node: Topology node being processed
+        :param stage: Topology node being processed
         :param entity_request: Request sent to the sink
         :return: Entity FQN derived from context
         """
         context_names = [
             self.context.__dict__[dependency].name.__root__
-            for dependency in node.consumer or []  # root nodes do not have consumers
+            for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
         return fqn._build(*context_names, entity_request.name.__root__)
 
-    def acknowledge_sink(
-        self, node: TopologyNode, entity_request: C
-    ) -> Iterable[Entity]:
+    def sink_request(self, stage: NodeStage, entity_request: C) -> Iterable[Entity]:
         """
-        Validate that the entity was properly updated or retry.
+        Validate that the entity was properly updated or retry if
+        ack_sink is flagged.
 
         If we get the Entity back, update the context with it.
 
-        We only ack nodes that have a context informed. This is to make
-        sure that we have some data to update. For example, for
-        DatabaseServiceTopology, the DataModel node does not have a
-        context, so we send it one shot. However, ideally all nodes
-        should have context
-
-        :param node: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: updated entity
+        :param stage: Node stage being processed
+        :param entity_request: Request to pass
+        :return: Entity generator
         """
 
-        if node.context:
+        # Either use the received request or the acknowledged Entity
+        entity = entity_request
+        if stage.ack_sink:
             tries = 3
             entity = None
 
-            entity_fqn = self.fqn_from_context(node=node, entity_request=entity_request)
+            entity_fqn = self.fqn_from_context(
+                stage=stage, entity_request=entity_request
+            )
 
             while not entity or tries <= 0:
                 yield entity_request
-                entity = self.metadata.get_by_name(entity=node.type_, fqn=entity_fqn)
+                entity = self.metadata.get_by_name(entity=stage.type_, fqn=entity_fqn)
                 tries -= 1
-
-            self.update_context(key=node.context, value=entity)
-            logger.debug(self.context)
         else:
-            yield entity_request
+            yield entity
+
+        if stage.context:
+            self.update_context(key=stage.context, value=entity)
+            logger.debug(self.context)

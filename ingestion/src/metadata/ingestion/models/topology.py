@@ -19,7 +19,27 @@ from pydantic import BaseModel, Extra, create_model
 T = TypeVar("T", bound=BaseModel)
 
 
-class TopologyNode(BaseModel, Generic[T]):
+class NodeStage(BaseModel, Generic[T]):
+    """
+    Handles the processing stages of each node.
+    Each stage is equipped with a processing function
+    and a context key, which will be updated at the
+    source.
+    """
+
+    class Config:
+        extra = Extra.forbid
+
+    type_: Type[T]  # Entity type
+    processor: str  # has the producer results as an argument. Here is where filters happen
+    context: Optional[str] = None  # context key storing stage state, if needed
+    ack_sink: bool = True  # Validate that the request is present in OM and update the context with the results
+    consumer: Optional[
+        List[str]
+    ] = None  # keys in the source context to fetch state from the parent's context
+
+
+class TopologyNode(BaseModel):
     """
     Each node has a producer function, which will
     yield an Entity to be passed to the Sink. Afterwards,
@@ -30,14 +50,15 @@ class TopologyNode(BaseModel, Generic[T]):
     class Config:
         extra = Extra.forbid
 
-    type_: Type[T]  # Entity type
-    producer: str  # method name in the source to use to generate the data
+    # method name in the source to use to generate the data to process
+    # does not accept input parameters
+    producer: str
 
-    context: Optional[str] = None  # context key storing node state, if needed
+    # list of functions to execute - in order - for each element produced by the producer
+    # each stage accepts the producer results as an argument
+    stages: List[NodeStage]
+
     children: Optional[List[str]] = None  # nodes to call execute next
-    consumer: Optional[
-        List[str]
-    ] = None  # keys in the source context to fetch state from the parent's context
     post_process: Optional[
         str
     ] = None  # Method to be run after the node has been fully processed
@@ -74,6 +95,16 @@ def get_topology_nodes(topology: ServiceTopology) -> List[TopologyNode]:
     return [value for key, value in topology.__dict__.items()]
 
 
+def node_has_no_consumers(node: TopologyNode) -> bool:
+    """
+    Validate if a node has no consumers
+    :param node:
+    :return:
+    """
+    stage_consumers = [stage.consumer for stage in node.stages]
+    return all(consumer is None for consumer in stage_consumers)
+
+
 def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:
     """
     Fetch the roots from a ServiceTopology.
@@ -84,18 +115,24 @@ def get_topology_root(topology: ServiceTopology) -> List[TopologyNode]:
     :return: List of nodes that can be roots
     """
     nodes = get_topology_nodes(topology)
-    return [node for node in nodes if node.consumer is None]
+    return [node for node in nodes if node_has_no_consumers(node)]
 
 
 def create_source_context(topology: ServiceTopology) -> TopologyContext:
     """
-    Dynamically build a context based on the topology nodes
+    Dynamically build a context based on the topology nodes.
+
+    Builds a Pydantic BaseModel class.
+
     :param topology: ServiceTopology
     :return: TopologyContext
     """
     nodes = get_topology_nodes(topology)
     ctx_fields = {
-        node.context: (Optional[node.type_], None) for node in nodes if node.context
+        stage.context: (Optional[stage.type_], None)
+        for node in nodes
+        for stage in node.stages
+        if stage.context
     }
     return create_model("GeneratedContext", **ctx_fields, __base__=TopologyContext)()
 

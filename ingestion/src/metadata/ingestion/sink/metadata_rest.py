@@ -159,7 +159,7 @@ class MetadataRestSink(Sink[Entity]):
         :param datamodel_link: Table ID + Data Model
         """
 
-        table = self.metadata.get_by_id(entity=Table, entity_id=datamodel_link.id)
+        table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
 
         self.metadata.ingest_table_data_model(
             table=table, data_model=datamodel_link.datamodel

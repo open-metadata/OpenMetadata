@@ -13,9 +13,8 @@ Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Iterable, List, Set
+from typing import Iterable, List, Optional, Set, Tuple
 
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
 
@@ -38,16 +37,21 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.models.topology import (
+    NodeStage,
     ServiceTopology,
     TopologyNode,
     create_source_context,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.dbt_source import DBTSource
+from metadata.ingestion.source.database.dbt_source import DBTMixin
+from metadata.utils import fqn
+from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -58,7 +62,7 @@ class DataModelLink(BaseModel):
     Tmp model to handle data model ingestion
     """
 
-    id: basic.Uuid
+    fqn: FullyQualifiedEntityName
     datamodel: DataModel
 
 
@@ -72,42 +76,63 @@ class DatabaseServiceTopology(ServiceTopology):
     """
 
     root = TopologyNode(
-        type_=DatabaseService,
-        context="database_service",
-        producer="yield_database_service",
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=DatabaseService,
+                context="database_service",
+                processor="yield_database_service",
+            )
+        ],
         children=["database"],
+        post_process="create_dbt_lineage",
     )
     database = TopologyNode(
-        type_=Database,
-        context="database",
-        producer="yield_database",
-        children=["tagAndCategory", "databaseSchema"],
-        consumer=["database_service"],
+        producer="get_database_names",
+        stages=[
+            NodeStage(
+                type_=Database,
+                context="database",
+                processor="yield_database",
+                consumer=["database_service"],
+            )
+        ],
+        children=["databaseSchema"],
         post_process="mark_tables_as_deleted",
     )
-    tagAndCategory = TopologyNode(
-        type_=OMetaTagAndCategory,
-        producer="yield_tags",
-        consumer=["database_service", "database"]
-    )
     databaseSchema = TopologyNode(
-        type_=DatabaseSchema,
-        context="database_schema",
-        producer="yield_database_schema",
+        producer="get_database_schema_names",
+        stages=[
+            NodeStage(
+                type_=DatabaseSchema,
+                context="database_schema",
+                processor="yield_database_schema",
+                consumer=["database_service", "database"],
+            )
+        ],
         children=["table"],
-        consumer=["database_service", "database"],
     )
     table = TopologyNode(
-        type_=Table,
-        context="table",
-        producer="yield_table",
-        children=["dataModel"],
-        consumer=["database_service", "database", "database_schema"],
-    )
-    dataModel = TopologyNode(
-        type_=DataModel,
-        producer="yield_datamodel",
-        consumer=["database_service", "database", "database_schema", "table"],
+        producer="get_tables_name_and_type",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndCategory,
+                context="tags",
+                processor="yield_tag",
+                ack_sink=False,
+            ),
+            NodeStage(
+                type_=Table,
+                context="table",
+                processor="yield_table",
+                consumer=["database_service", "database", "database_schema"],
+            ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="yield_datamodel",
+                ack_sink=False,
+            ),
+        ],
     )
 
 
@@ -131,7 +156,7 @@ class SQLSourceStatus(SourceStatus):
         logger.warning(f"Filtered Table {record} due to {err}")
 
 
-class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
+class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     """
     Base class for Database Services.
     It implements the topology and context.
@@ -152,18 +177,48 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
     context = create_source_context(topology)
 
     def __init__(self):
-        super().__init__()
+        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
+        self.dbt_catalog = dbt_details[0] if dbt_details else None
+        self.dbt_manifest = dbt_details[1] if dbt_details else None
+        self.data_models = {}
 
     def prepare(self):
         self._parse_data_model()
 
-    def yield_database_service(self):
+    def get_status(self) -> SourceStatus:
+        return self.status
+
+    def get_services(self) -> Iterable[WorkflowSource]:
+        yield self.config
+
+    def yield_database_service(self, config: WorkflowSource):
         yield self.metadata.get_create_service_from_source(
-            entity=DatabaseService, config=self.config
+            entity=DatabaseService, config=config
         )
 
     @abstractmethod
-    def yield_database(self) -> Iterable[CreateDatabaseRequest]:
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Prepares the database name to be sent to stage.
+        Filtering happens here.
+        """
+
+    @abstractmethod
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        Prepares the database schema name to be sent to stage.
+        Filtering happens here.
+        """
+
+    @abstractmethod
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Prepares the table name to be sent to stage.
+        Filtering happens here.
+        """
+
+    @abstractmethod
+    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -172,7 +227,9 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_tags(self) -> Iterable[OMetaTagAndCategory]:
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -181,7 +238,9 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_database_schema(self) -> Iterable[CreateDatabaseSchemaRequest]:
+    def yield_tag(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[OMetaTagAndCategory]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -190,7 +249,9 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_table(self) -> Iterable[CreateTableRequest]:
+    def yield_table(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[CreateTableRequest]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -198,20 +259,70 @@ class DatabaseServiceSource(DBTSource, TopologyRunnerMixin, Source, ABC):
         Also, update the self.inspector value to the current db.
         """
 
-    def yield_datamodel(self) -> Iterable[DataModelLink]:
+    def yield_datamodel(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[DataModelLink]:
         """
         Gets the current table being processed, fetches its data model
         and sends it ot the sink
         """
-        print("COMPUTING DATA MODEL!!")
-        table_id = self.context.table.id
-        datamodel = self.get_data_model(
+
+        table_name, _ = table_name_and_type
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service.name.__root__,
             database_name=self.context.database.name.__root__,
             schema_name=self.context.database_schema.name.__root__,
-            table_name=self.context.table.name.__root__,
+            table_name=table_name,
         )
+        datamodel = self.get_data_model(table_fqn)
         if datamodel:
             yield DataModelLink(
-                id=table_id,
+                fqn=table_fqn,
                 datamodel=datamodel,
             )
+
+    def register_record(self, table_request: CreateTableRequest) -> None:
+        """
+        Mark the table record as scanned and update the database_source_state
+        """
+        table_fqn = fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.context.database_service.name.__root__,
+            database_name=self.context.database.name.__root__,
+            schema_name=self.context.database_schema.name.__root__,
+            table_name=table_request.name.__root__,
+        )
+
+        self.database_source_state.add(table_fqn)
+        self.status.scanned(table_fqn)
+
+    def delete_schema_tables(self, schema_fqn: str) -> Iterable[DeleteTable]:
+        """
+        Returns Deleted tables
+        """
+        database_state = self.metadata.list_all_entities(
+            entity=Table, params={"database": schema_fqn}
+        )
+        for table in database_state:
+            if str(table.fullyQualifiedName.__root__) not in self.database_source_state:
+                yield DeleteTable(table=table)
+
+    def mark_tables_as_deleted(self):
+        """
+        Use the current inspector to mark tables as deleted
+        """
+        if self.source_config.markDeletedTables:
+            logger.info("Mark Deleted Tables set to True. Processing...")
+            for schema_name in self.get_database_schema_names():
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.serviceName,
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                )
+
+                yield from self.delete_schema_tables(schema_fqn)
