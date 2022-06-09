@@ -390,7 +390,7 @@ describe('TeamsAndUsers page', () => {
       });
   });
 
-  it.only('Create new user should work properly', () => {
+  it('Create new user should work properly', () => {
     cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
       .should('be.visible')
       .click();
@@ -452,7 +452,7 @@ describe('TeamsAndUsers page', () => {
     cy.contains(NEW_USER.email).should('exist');
   });
 
-  it.only('Delete user should work properly', () => {
+  it('Delete user should work properly', () => {
     cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
       .should('be.visible')
       .click();

@@ -43,6 +43,8 @@ export const handleIngestionRetry = (type, serviceName, count = 0) => {
   const retryTimes = 25;
   let retryCount = count;
   const testIngestionsTab = () => {
+    cy.intercept('GET', '/api/v1/services/*').as('getService');
+    cy.wait('@getService');
     cy.get('[data-testid="Ingestions"]').should('be.visible').click();
     cy.get('[data-testid="Ingestions"]').should('have.class', 'active');
 
