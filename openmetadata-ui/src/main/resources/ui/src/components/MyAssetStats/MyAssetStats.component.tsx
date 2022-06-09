@@ -126,7 +126,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
       }}>
       {Object.values(dataSummary).map((data, index) => (
         <div
-          className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+          className="tw-flex tw-items-center tw-justify-between"
           data-testid={`${data.dataTestId}-summary`}
           key={index}>
           <div className="tw-flex">

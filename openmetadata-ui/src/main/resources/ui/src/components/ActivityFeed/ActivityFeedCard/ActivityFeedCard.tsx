@@ -63,7 +63,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         threadId={threadId as string}
         onConfirmation={onConfirmation}
       />
-      <div className="tw-filter-seperator" />
+      <div className="tw-mx-8 tw-filter-seperator" />
       <FeedCardFooter
         isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
