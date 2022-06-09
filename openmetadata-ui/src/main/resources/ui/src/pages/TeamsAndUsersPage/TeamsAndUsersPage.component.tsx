@@ -697,11 +697,7 @@ const TeamsAndUsersPage = () => {
   useEffect(() => {
     if (!isDataLoading) {
       if (teamAndUser) {
-        const isHasAccess = isAuthDisabled || isAdminUser;
-        if (
-          Object.values(UserType).includes(teamAndUser as UserType) &&
-          isHasAccess
-        ) {
+        if (Object.values(UserType).includes(teamAndUser as UserType)) {
           setIsTeamVisible(false);
           setactiveUserTab(teamAndUser as UserType);
           setCurrentTeam({} as Team);
