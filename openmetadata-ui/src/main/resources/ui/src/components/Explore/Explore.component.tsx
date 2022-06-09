@@ -50,6 +50,7 @@ import {
   getCurrentIndex,
   getCurrentTab,
   INITIAL_FILTERS,
+  INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
   UPDATABLE_AGGREGATION,
@@ -596,6 +597,14 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     setSelectedAdvanceField([]);
   }, [searchIndex]);
+
+  useEffect(() => {
+    if (searchQuery) {
+      setSortField('');
+    } else {
+      setSortField(INITIAL_SORT_FIELD);
+    }
+  }, [searchQuery]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
