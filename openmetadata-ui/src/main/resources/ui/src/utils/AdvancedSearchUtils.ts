@@ -19,6 +19,7 @@ import {
   PIPELINE_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
 } from '../constants/advanceSearch.constants';
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 
 export const getDropDownItems = (index: string) => {
@@ -49,4 +50,26 @@ export const getItemLabel = (key: string) => {
   const item = ALL_DROPDOWN_ITEMS.find((dItem) => dItem.key === key);
 
   return !isUndefined(item) ? item.label : 'label';
+};
+
+export const getAdvancedField = (field: string) => {
+  switch (field) {
+    case 'column_names':
+      return AdvancedFields.COLUMN;
+
+    case 'database_schema':
+      return AdvancedFields.SCHEMA;
+
+    case 'database':
+      return AdvancedFields.DATABASE;
+
+    case 'chart_names':
+      return AdvancedFields.CHART;
+
+    case 'task_names':
+      return AdvancedFields.TASK;
+
+    default:
+      return;
+  }
 };

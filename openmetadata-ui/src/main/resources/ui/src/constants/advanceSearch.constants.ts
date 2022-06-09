@@ -14,7 +14,7 @@
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
-    key: 'owner',
+    key: 'owner.name',
   },
   {
     label: 'Tag',
@@ -62,3 +62,5 @@ export const ALL_DROPDOWN_ITEMS = [
   ...DASHBOARD_DROPDOWN_ITEMS,
   ...PIPELINE_DROPDOWN_ITEMS,
 ];
+
+export const MISC_FIELDS = ['owner.name', 'tags'];
