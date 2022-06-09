@@ -74,6 +74,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
         return updatedTags;
       });
+    } else {
+      setTags([]);
     }
   };
 
