@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/* eslint-disable */
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
@@ -28,7 +30,6 @@ import React, {
 } from 'react';
 import ReactFlow, {
   addEdge,
-  ArrowHeadType,
   Background,
   BackgroundVariant,
   Connection,
@@ -38,9 +39,12 @@ import ReactFlow, {
   getConnectedEdges,
   isEdge,
   isNode,
+  MarkerType,
   Node,
-  OnLoadParams,
+  ReactFlowInstance,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
@@ -59,11 +63,12 @@ import {
   getDataLabel,
   getDeletedLineagePlaceholder,
   getLayoutedElements,
+  getLayoutedElementsV1,
   getLineageData,
+  getLineageDataV1,
   getModalBodyText,
   getNodeRemoveButton,
   getUniqueFlowElements,
-  onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
   onNodeMouseLeave,
@@ -105,7 +110,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
-  const [reactFlowInstance, setReactFlowInstance] = useState<OnLoadParams>();
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
@@ -341,9 +347,64 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     return uniqueElements;
   };
 
+  const setElementsHandleV1 = () => {
+    let uniqueElements: { node: Elements[]; edge: Edge[] } = {
+      node: [],
+      edge: [],
+    };
+    if (!isEmpty(updatedLineageData)) {
+      const graphElements = getLineageDataV1(
+        updatedLineageData,
+        selectNodeHandler,
+        loadNodeHandler,
+        lineageLeafNodes,
+        isNodeLoading,
+        getNodeLabel,
+        isEditMode,
+        'buttonedge',
+        onEdgeClick,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        removeNodeHandler
+      ) as Elements;
+
+      //   uniqueElements = getUniqueFlowElements(graphElements);
+      uniqueElements = graphElements;
+    }
+
+    return uniqueElements;
+  };
+  const { node: initialNode, edge: initialEdge } = getLayoutedElementsV1(
+    setElementsHandleV1()
+  ) || { node: [], edge: [] };
+  console.log({ node: initialNode, edge: initialEdge });
   const [elements, setElements] = useState<Elements>(
-    getLayoutedElements(setElementsHandle())
+    getLayoutedElements(setElementsHandle()) || []
   );
+
+  //   const [nodes, setNodes] = useState([
+  //     {
+  //       id: '1',
+  //       type: 'input',
+  //       data: { label: 'Input Node' },
+  //       position: { x: 250, y: 25 },
+  //     },
+
+  //     {
+  //       id: '2',
+  //       // you can also pass a React component as a label
+  //       data: { label: <div>Default Node</div> },
+  //       position: { x: 100, y: 125 },
+  //     },
+  //     {
+  //       id: '3',
+  //       type: 'output',
+  //       data: { label: 'Output Node' },
+  //       position: { x: 250, y: 250 },
+  //     },
+  //   ]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNode);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdge);
 
   /**
    * take boolean value as input and reset selected node
@@ -431,7 +492,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           source: `${params.source}`,
           target: `${params.target}`,
           type: isEditMode ? 'buttonedge' : 'custom',
-          arrowHeadType: ArrowHeadType.ArrowClosed,
+          arrowHeadType: MarkerType.ArrowClosed,
           data: {
             id: `edge-${params.source}-${params.target}`,
             source: `${params.source}`,
@@ -998,10 +1059,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             <ReactFlow
               data-testid="react-flow-component"
               edgeTypes={{ buttonedge: CustomEdge }}
-              elements={elements as Elements}
+              edges={edges}
+              //   elements={elements as Elements}
               maxZoom={2}
               minZoom={0.5}
               nodeTypes={nodeTypes}
+              nodes={nodes}
               nodesConnectable={isEditMode}
               selectNodesOnDrag={false}
               zoomOnDoubleClick={false}
@@ -1009,18 +1072,20 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onConnect={onConnect}
               onDragOver={onDragOver}
               onDrop={onDrop}
-              onElementClick={(_e, el) => onElementClick(el)}
-              onLoad={(reactFlowInstance: OnLoadParams) => {
-                onLoad(reactFlowInstance);
-                setReactFlowInstance(reactFlowInstance);
-              }}
+              onEdgesChange={onEdgesChange}
+              //   onElementClick={(_e, el) => onElementClick(el)}
+              //   onInit={(reactFlowInstance: ReactFlowInstance) => {
+              //     onLoad(reactFlowInstance);
+              //     setReactFlowInstance(reactFlowInstance);
+              //   }}
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}
               onNodeDragStop={dragHandle}
               onNodeMouseEnter={onNodeMouseEnter}
               onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}>
+              onNodeMouseMove={onNodeMouseMove}
+              onNodesChange={onNodesChange}>
               {getCustomControlElements()}
               {getGraphBackGround()}
             </ReactFlow>

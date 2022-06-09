@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { FC, HTMLAttributes, memo, useCallback, useState } from 'react';
-import { FitViewParams, useZoomPanHelper } from 'react-flow-renderer';
+import { FitViewOptions, useReactFlow } from 'react-flow-renderer';
 import SVGIcons from '../../utils/SvgUtils';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -22,7 +22,7 @@ export interface ControlButtonProps extends HTMLAttributes<HTMLButtonElement> {}
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
   showZoom?: boolean;
   showFitView?: boolean;
-  fitViewParams?: FitViewParams;
+  fitViewParams?: FitViewOptions;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onFitView?: () => void;
@@ -50,7 +50,7 @@ const CustomControls: FC<ControlProps> = ({
   className,
   children,
 }: ControlProps) => {
-  const { fitView, zoomIn, zoomOut, zoomTo } = useZoomPanHelper();
+  const { fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
   const [zoom, setZoom] = useState<number>(1.5);
 
   const onZoomInHandler = useCallback(() => {
