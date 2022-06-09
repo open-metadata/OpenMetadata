@@ -20,12 +20,9 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    DataModel,
-    Table,
-    TableData,
-    TableProfile,
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
@@ -33,8 +30,6 @@ from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.table_metadata import DeleteTable
-from metadata.orm_profiler.orm.converter import ometa_to_orm
-from metadata.orm_profiler.profiler.default import DefaultProfiler
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -43,6 +38,9 @@ logger = ingestion_logger()
 
 
 class SqlAlchemySource(Source, ABC):
+
+    source_config: DatabaseServiceMetadataPipeline
+
     @abstractmethod
     def get_databases(self) -> Iterable[Inspector]:
         """
@@ -81,12 +79,6 @@ class SqlAlchemySource(Source, ABC):
     def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
         """
         Method to fetch data models
-        """
-
-    @abstractmethod
-    def fetch_sample_data(self, schema: str, table_name: str) -> Optional[TableData]:
-        """
-        Method to fetch sample data form table
         """
 
     @abstractmethod
@@ -208,23 +200,7 @@ class SqlAlchemySource(Source, ABC):
         )
         if self.table_constraints:
             table_entity.tableConstraints = self.table_constraints
-        try:
-            if self.source_config.generateSampleData:
-                table_data = self.fetch_sample_data(schema, table_name)
-                if table_data:
-                    table_entity.sampleData = table_data
-        # Catch any errors during the ingestion and continue
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(repr(err))
-            logger.error(err)
 
-        try:
-            if self.source_config.enableDataProfiler:
-                profile = self.run_profiler(table=table_entity, schema=schema)
-                table_entity.tableProfile = [profile] if profile else None
-        # Catch any errors during the profile runner and continue
-        except Exception as err:
-            logger.error(err)
         return table_entity
 
     def fetch_tables(
@@ -277,36 +253,6 @@ class SqlAlchemySource(Source, ABC):
                 self.status.failures.append(
                     "{}.{}".format(self.config.serviceName, table_name)
                 )
-
-    def run_profiler(self, table: Table, schema: str) -> Optional[TableProfile]:
-        """
-        Convert the table to an ORM object and run the ORM
-        profiler.
-
-        :param table: Table Entity to be ingested
-        :param schema: Table schema
-        :return: TableProfile
-        """
-        try:
-            orm = ometa_to_orm(table=table, schema=schema)
-            profiler = DefaultProfiler(
-                session=self.session, table=orm, profile_date=self.profile_date
-            )
-            profiler.execute()
-            return profiler.get_profile()
-
-        # Catch any errors during profiling init and continue ingestion
-        except ModuleNotFoundError as err:
-            logger.error(
-                f"Profiling not available for this databaseService: {str(err)}"
-            )
-            self.source_config.enableDataProfiler = False
-
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Error running ingestion profiler {repr(exc)}")
-
-        return None
 
     def register_record(self, table_schema_and_db: OMetaDatabaseAndTable) -> None:
         """

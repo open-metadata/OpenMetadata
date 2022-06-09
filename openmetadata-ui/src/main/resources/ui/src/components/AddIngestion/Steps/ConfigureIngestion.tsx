@@ -38,8 +38,6 @@ const ConfigureIngestion = ({
   includeView,
   markDeletedTables,
   serviceCategory,
-  enableDataProfiler,
-  ingestSampleData,
   pipelineType,
   showDatabaseFilter,
   showDashboardFilter,
@@ -58,10 +56,8 @@ const ConfigureIngestion = ({
   handleIngestionName,
   handleDescription,
   handleShowFilter,
-  handleEnableDataProfiler,
   handleIncludeView,
   handleMarkDeletedTables,
-  handleIngestSampleData,
   handleQueryLogDuration,
   handleStageFileLocation,
   handleResultLimit,
@@ -102,35 +98,6 @@ const ConfigureIngestion = ({
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
               Enable extracting views from the data source
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Enable Data Profiler</label>
-              <ToggleSwitchV1
-                checked={enableDataProfiler}
-                handleCheck={handleEnableDataProfiler}
-                testId="data-profiler"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Enable Data Profiler to collect metrics and distribution of data
-              in the table. This will however slowdown the metadata extraction.
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Ingest Sample Data</label>
-              <ToggleSwitchV1
-                checked={ingestSampleData}
-                handleCheck={handleIngestSampleData}
-                testId="ingest-sample-data"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Extract sample data from each table
             </p>
             {getSeparator('')}
           </Field>

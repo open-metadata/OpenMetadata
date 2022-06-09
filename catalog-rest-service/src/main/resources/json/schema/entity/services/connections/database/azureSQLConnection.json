@@ -74,6 +74,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     }
   },
   "additionalProperties": false,

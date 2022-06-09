@@ -63,7 +63,7 @@ class OMetaServiceTest(TestCase):
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     # TODO update to "snowflake-usage" after https://github.com/open-metadata/OpenMetadata/issues/4469

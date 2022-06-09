@@ -104,24 +104,6 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         yield from self.salesforce_client()
 
-    def fetch_sample_data(self, sobjectName):
-        md = self.sf.restful("sobjects/{}/describe/".format(sobjectName), params=None)
-        columns = []
-        rows = []
-        for column in md["fields"]:
-            columns.append(column["name"])
-        query = "select {} from {}".format(
-            str(columns)[1:-1].replace("'", ""), sobjectName
-        )
-        logger.info("Ingesting data using {}".format(query))
-        resp = self.sf.query(query)
-        for record in resp["records"]:
-            row = []
-            for column in columns:
-                row.append(record[f"{column}"])
-            rows.append(row)
-        return TableData(columns=columns, rows=rows)
-
     def salesforce_client(self) -> Iterable[OMetaDatabaseAndTable]:
         try:
 
@@ -152,7 +134,6 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                     )
                 )
                 row_order += 1
-            table_data = self.fetch_sample_data(self.service_connection.sobjectName)
             logger.info("Successfully Ingested the sample data")
             table_entity = Table(
                 id=uuid.uuid4(),
@@ -160,7 +141,6 @@ class SalesforceSource(Source[OMetaDatabaseAndTable]):
                 tableType="Regular",
                 description=" ",
                 columns=table_columns,
-                sampleData=table_data,
             )
             self.status.scanned(
                 f"{self.service_connection.scheme}.{self.service_connection.sobjectName}"

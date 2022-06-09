@@ -26,6 +26,7 @@ import {
 } from '../../utils/CommonUtils';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import ReviewerModal from '../Modals/ReviewerModal/ReviewerModal.component';
@@ -40,6 +41,7 @@ const AddGlossary = ({
   header,
   allowAccess = true,
   saveState = 'initial',
+  slashedBreadcrumb,
   onCancel,
   onSave,
 }: AddGlossaryProps) => {
@@ -185,7 +187,8 @@ const AddGlossary = ({
 
   return (
     <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
+      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
       <h6 className="tw-heading tw-text-base">{header}</h6>

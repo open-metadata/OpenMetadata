@@ -13,7 +13,7 @@ source:
       workgroup: workgroup name
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}
