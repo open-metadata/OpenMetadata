@@ -29,10 +29,13 @@ export const goToServicesPage = () => {
 };
 
 export const goToServicePage = (serviceName) => {
-  goToServicesPage();
-  cy.contains('Services').should('be.visible');
+  cy.get(':nth-child(1) > .link-title').should('be.visible').click();
   cy.wait(500);
-  cy.get(`[data-testid="service-name-${serviceName}"]`).scrollIntoView().should('be.visible').click();
+  cy.get('[data-testid="data-container"]').should('be.visible');
+  cy.get(`[data-testid="service-name-${serviceName}"]`)
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
 };
 
 export const handleIngestionRetry = (type, serviceName, count = 0) => {
@@ -40,11 +43,9 @@ export const handleIngestionRetry = (type, serviceName, count = 0) => {
   const retryTimes = 25;
   let retryCount = count;
   const testIngestionsTab = () => {
-    cy.get('[data-testid="Ingestions"]').should('be.visible');
-    cy.get('[data-testid="Ingestions"] >> [data-testid="filter-count"]').should(
-      'have.text',
-      1
-    );
+    cy.get('[data-testid="Ingestions"]').should('be.visible').click();
+    cy.get('[data-testid="Ingestions"]').should('have.class', 'active');
+
     // click on the tab only for the first time
     if (retryCount === 0) {
       cy.get('[data-testid="Ingestions"]').click();
@@ -106,7 +107,7 @@ export const testServiceCreationAndIngestion = (
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-  cy.wait(500); 
+  cy.wait(500);
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 

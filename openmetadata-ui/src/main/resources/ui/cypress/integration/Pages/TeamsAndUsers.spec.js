@@ -20,6 +20,12 @@ describe('TeamsAndUsers page', () => {
     cy.get('[data-testid="terms"]').should('be.visible').click();
   });
 
+  const goToUsersPage = () => {
+    cy.clickOnLogo();
+    cy.wait(500);
+    cy.get('[data-testid="user"]').should('be.visible').click();
+  };
+
   const seletctTeam = (name) => {
     cy.get(`[data-testid="team-${name}"]`).should('be.visible').click();
     cy.get(`[data-testid="team-${name}"] > .tw-group`).should(
@@ -63,15 +69,18 @@ describe('TeamsAndUsers page', () => {
       .as('hardDeleteContainer');
 
     cy.get('@hardDeleteContainer')
+      .scrollIntoView()
       .find('[data-testid="delete-button"]')
       .should('be.visible')
       .click();
 
     cy.get('[data-testid="confirmation-text-input"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(DELETE_TERM);
 
     cy.get('[data-testid="confirm-button"]')
+      .scrollIntoView()
       .should('be.visible')
       .should('not.be.disabled')
       .click();
@@ -261,6 +270,7 @@ describe('TeamsAndUsers page', () => {
   });
 
   it('Assets tab should work properly', () => {
+    seletctTeam(TEAMS.Cloud_Infra.name);
     cy.get('[data-testid="Assets"]').should('be.visible').click();
     cy.get('[data-testid="Assets"]').should('have.class', 'active');
     cy.get('[data-testid="Assets"] > .tw-py-px > [data-testid="filter-count"]')
@@ -378,7 +388,7 @@ describe('TeamsAndUsers page', () => {
       });
   });
 
-  it('Create new user should work properly', () => {
+  it.only('Create new user should work properly', () => {
     cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
       .should('be.visible')
       .click();
@@ -440,7 +450,7 @@ describe('TeamsAndUsers page', () => {
     cy.contains(NEW_USER.email).should('exist');
   });
 
-  it('Delete user should work properly', () => {
+  it.only('Delete user should work properly', () => {
     cy.get('[data-testid="users"] > .tw-group > [data-testid="user-type"]')
       .should('be.visible')
       .click();
@@ -470,7 +480,7 @@ describe('TeamsAndUsers page', () => {
     cy.get('[data-testid="save-button"]').should('be.visible').click();
     cy.get('.tw-modal-container').should('not.exist');
 
-    cy.reload();
+    goToUsersPage();
     cy.get('[data-testid="searchbar"]')
       .scrollIntoView()
       .should('be.visible')
