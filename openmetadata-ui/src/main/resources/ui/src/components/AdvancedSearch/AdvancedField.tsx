@@ -62,6 +62,7 @@ const SearchInput = ({
       allowClear
       showSearch
       bordered={false}
+      className="ant-text-primary"
       defaultActiveFirstOption={false}
       filterOption={false}
       placeholder="Search to Select"
@@ -132,7 +133,7 @@ const AdvancedField: FC<Props> = ({ field, onFieldRemove, index }) => {
 
   return (
     <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-flex tw-justify-between">
-      <span className="tw-self-center">{startCase(getItemLabel(field))}</span>
+      <span className="tw-self-center">{startCase(getItemLabel(field))}:</span>
       <SearchInput
         handleChange={handleChange}
         handleSearch={handleSearch}
