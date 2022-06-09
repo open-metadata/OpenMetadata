@@ -62,8 +62,9 @@ const SearchInput = ({
       allowClear
       showSearch
       bordered={false}
-      className="ant-text-primary"
+      className="ant-advaced-field-select"
       defaultActiveFirstOption={false}
+      dropdownClassName="ant-suggestion-dropdown"
       filterOption={false}
       placeholder="Search to Select"
       showArrow={false}
@@ -106,7 +107,7 @@ const AdvancedField: FC<Props> = ({ field, onFieldRemove, index }) => {
             res.data.suggest['metadata-suggest'][0].options ?? [];
           const uniqueOptions = [
             // eslint-disable-next-line
-            ...new Set(suggestOptions.map((op: any) => op.text)),
+            ...new Set(suggestOptions.map((op: any) => op._source.name)),
           ];
           setOptions(
             uniqueOptions.map((op: unknown) => ({
