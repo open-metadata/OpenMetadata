@@ -614,9 +614,8 @@ const Explore: React.FC<ExploreProps> = ({
         <Fragment>
           <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
             <Button
-              className={classNames('tw-underline tw-pb-4', {
-                'tw-invisible': !getFilterCount(filters),
-              })}
+              className={classNames('tw-underline tw-pb-4')}
+              disabled={!getFilterCount(filters)}
               size="custom"
               theme="primary"
               variant="link"
