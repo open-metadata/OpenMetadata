@@ -27,7 +27,9 @@ describe('TeamsAndUsers page', () => {
   };
 
   const seletctTeam = (name) => {
-    cy.get(`[data-testid="team-${name}"]`).should('be.visible').click();
+    cy.wait(500);
+    cy.get(`[data-testid="team-${name}"]`).should('be.visible');
+    cy.get(`[data-testid="team-${name}"]`).click();
     cy.get(`[data-testid="team-${name}"] > .tw-group`).should(
       'have.class',
       'activeCategory'
