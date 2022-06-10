@@ -44,6 +44,7 @@ const AdvancedFields: FC<Props> = ({
       ))}
       <span
         className="tw-text-primary tw-self-center tw-cursor-pointer"
+        data-testid="clear-all-button"
         onClick={onClear}>
         Clear All
       </span>
