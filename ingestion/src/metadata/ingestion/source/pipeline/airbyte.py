@@ -65,6 +65,16 @@ class AirbyteSourceStatus(SourceStatus):
         self.filtered.append(topic)
 
 
+STATUS_MAP = {
+    "cancelled": StatusType.Failed,
+    "succeeded": StatusType.Successful,
+    "failed": StatusType.Failed,
+    "running": StatusType.Pending,
+    "incomplete": StatusType.Failed,
+    "pending": StatusType.Pending,
+}
+
+
 class AirbyteSource(Source[CreatePipelineRequest]):
     """
     Implements the necessary methods ot extract
@@ -91,14 +101,7 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         self.service: PipelineService = self.metadata.get_service_or_create(
             entity=PipelineService, config=config
         )
-        self.standard_status = {
-            "cancelled": StatusType.Failed,
-            "succeeded": StatusType.Successful,
-            "failed": StatusType.Failed,
-            "running": StatusType.Pending,
-            "incomplete": StatusType.Failed,
-            "pending": StatusType.Pending,
-        }
+
         self.client = AirbyteClient(self.service_connection)
 
     @classmethod
@@ -152,15 +155,17 @@ class AirbyteSource(Source[CreatePipelineRequest]):
     def fetch_pipeline_status(
         self, connection: dict, pipeline_fqn: str
     ) -> OMetaPipelineStatus:
+        """
+        Method to get task & pipeline status
+        """
         task_status = [
             TaskStatus(
                 name=job["job"]["id"],
-                executionStatus=self.standard_status.get(
-                    job["job"]["status"].lower()
+                executionStatus=STATUS_MAP.get(
+                    job["job"]["status"].lower(), StatusType.Pending
                 ).value,
             )
             for job in self.client.list_jobs(connection.get("connectionId"))
-            if job
         ]
         pipeline_status = PipelineStatus(taskStatus=task_status)
         yield OMetaPipelineStatus(
