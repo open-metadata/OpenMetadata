@@ -6,11 +6,10 @@ source:
       type: Datalake
       ConfigSource:
         awsConfig:
-          awsAccessKeyId: AKIARXAQXIPUHAEWAHXH
-          awsSecretAccessKey: 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
-          awsRegion: us-east-2
-      # base_path: awsdatalake-testing
-      base_path: test-om-bucket
+          awsAccessKeyId: aws access key id
+          awsSecretAccessKey: aws secret access key
+          awsRegion: region
+      base_path: bucket
       
   sourceConfig:
     config:
