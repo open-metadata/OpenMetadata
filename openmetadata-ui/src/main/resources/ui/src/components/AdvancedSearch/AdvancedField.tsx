@@ -60,7 +60,9 @@ const SearchInput = ({
   const { Option } = Select;
 
   const optionsElement = options.map((d) => (
-    <Option key={d.value}>{d.label}</Option>
+    <Option data-testid="field-option" key={d.value}>
+      {d.label}
+    </Option>
   ));
 
   return (
@@ -69,6 +71,7 @@ const SearchInput = ({
       showSearch
       bordered={false}
       className="ant-advaced-field-select"
+      data-testid="field-select"
       defaultActiveFirstOption={false}
       dropdownClassName="ant-suggestion-dropdown"
       filterOption={false}
@@ -155,7 +158,7 @@ const AdvancedField: FC<Props> = ({
 
   return (
     <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-flex tw-justify-between">
-      <span className="tw-self-center">
+      <span className="tw-self-center" data-testid="field-label">
         {startCase(getItemLabel(field.key))}:
       </span>
       <SearchInput
@@ -168,6 +171,7 @@ const AdvancedField: FC<Props> = ({
       />
       <span
         className="tw-cursor-pointer tw-self-center"
+        data-testid="field-remove-button"
         onClick={() => onFieldRemove(field.key)}>
         <FontAwesomeIcon className="tw-text-primary" icon="times" />
       </span>
