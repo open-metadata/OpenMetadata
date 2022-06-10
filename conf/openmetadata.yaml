@@ -115,7 +115,7 @@ logging:
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: ${DB_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${MYSQL_USER:-openmetadata_user}
   password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
@@ -141,7 +141,7 @@ authenticationConfiguration:
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
-  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  callbackUrl: ${AUTHENTICATION_CALBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 
 jwtTokenConfiguration:
