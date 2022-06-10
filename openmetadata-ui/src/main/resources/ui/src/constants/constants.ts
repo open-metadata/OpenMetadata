@@ -420,7 +420,12 @@ export const navLinkSettings = [
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Tags', to: '/tags', disabled: false },
-  { name: 'Teams & Users', to: ROUTES.TEAMS_AND_USERS, disabled: false },
+  {
+    name: 'Teams & Users',
+    to: ROUTES.TEAMS_AND_USERS,
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
 ];
 
