@@ -623,11 +623,17 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [filters]);
 
-  // on index change clear the filters
+  /**
+   * on index change clear the filters
+   */
   useEffect(() => {
     setSelectedAdvancedField([]);
   }, [searchIndex]);
 
+  /**
+   * if search query is there then make sortfield as empty (Relevance)
+   * otherwise change it to INITIAL_SORT_FIELD (last_updated)
+   */
   useEffect(() => {
     if (searchQuery) {
       setSortField('');
@@ -636,6 +642,9 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [searchQuery]);
 
+  /**
+   * on advance field change call handleAdvancedSearch methdod
+   */
   useEffect(() => {
     handleAdvancedSearch(selectedAdvancedFields);
   }, [selectedAdvancedFields]);
