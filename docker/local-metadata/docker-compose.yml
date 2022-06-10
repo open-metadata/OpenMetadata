@@ -57,6 +57,11 @@ services:
       dockerfile: docker/local-metadata/Dockerfile
     container_name: openmetadata_server
     environment:
+      # OpenMetadata Server MySQL Configuration
+      DB_DRIVER_CLASS: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
+      DB_SCHEME: ${DB_SCHEME:-mysql}
+      DB_USE_SSL: ${DB_USE_SSL:-false}
+      # OpenMetadata Server ElasticSearch Configuration
       ELASTICSEARCH_HOST: elasticsearch
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.catalog.security.NoopAuthorizer}
@@ -73,8 +78,8 @@ services:
       # OpenMetadata Server Airflow Configuration
       AIRFLOW_HOST: ${AIRFLOW_HOST:-http://ingestion:8080}
       SERVER_HOST_API_URL: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-      # OpenMetadata Airflow Azure SSO Configuration
       AIRFLOW_AUTH_PROVIDER: ${AIRFLOW_AUTH_PROVIDER:-no-auth}
+      # OpenMetadata Airflow Azure SSO Configuration
       OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
       OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
       OM_AUTH_AIRFLOW_AZURE_SCOPES: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
@@ -96,6 +101,8 @@ services:
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
       OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+      # OpenMetadata Airflow OpenMetadata JSON Web Token Configuration
+      OM_AUTH_JWT_TOKEN: ${OM_AUTH_JWT_TOKEN:-""}
     expose:
       - 8585
       - 9200
