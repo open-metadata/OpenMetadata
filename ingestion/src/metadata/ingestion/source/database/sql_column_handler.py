@@ -174,7 +174,6 @@ class SqlColumnHandlerMixin:
                         data_type_display, col_type, col_data_length, arr_data_type
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
-
                     om_column = Column(
                         name=column["name"],
                         description=column.get("comment", None),
@@ -184,15 +183,15 @@ class SqlColumnHandlerMixin:
                         constraint=col_constraint,
                         children=children,
                         arrayDataType=arr_data_type,
-                        tags=self.get_column_tag_labels(
-                            table_name=table_name, column_name=column["name"]
-                        ),
                     )
                 else:
                     col_obj = self._process_complex_col_type(
                         column=column, parsed_string=parsed_string
                     )
                     om_column = col_obj
+                om_column.tags = self.get_column_tag_labels(
+                    table_name=table_name, column=column
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")

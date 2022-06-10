@@ -199,7 +199,7 @@ class CommonDbSourceService(
                         "Table is partition",
                     )
                     continue
-
+                table_name = self.standardize_table_name(schema_name, table_name)
                 yield table_name, TableType.Regular
 
         if self.source_config.includeViews:
@@ -213,6 +213,7 @@ class CommonDbSourceService(
                     )
                     continue
 
+                view_name = self.standardize_table_name(schema_name, view_name)
                 yield view_name, TableType.View
 
     def get_view_definition(
@@ -248,7 +249,6 @@ class CommonDbSourceService(
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         db_name = self.context.database.name.__root__
-
         try:
 
             columns, table_constraints = self.get_columns_and_constraints(
@@ -323,10 +323,8 @@ class CommonDbSourceService(
         """
         pass
 
-    def standardize_schema_table_names(
-        self, schema_name: str, table: str
-    ) -> Tuple[str, str]:
-        pass
+    def standardize_table_name(self, schema: str, table: str) -> str:
+        return table
 
     def yield_table_tag(self) -> Iterable[OMetaTagAndCategory]:
         pass

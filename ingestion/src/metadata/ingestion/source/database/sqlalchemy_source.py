@@ -44,11 +44,9 @@ class SqlAlchemySource(ABC):
     config: WorkflowSource
 
     @abstractmethod
-    def standardize_schema_table_names(
-        self, schema_name: str, table: str
-    ) -> Tuple[str, str]:
+    def standardize_table_name(self, schema_name: str, table: str) -> Tuple[str, str]:
         """
-        Method formats Table & Schema names if required
+        Method formats Table names if required
         """
 
     @abstractmethod

@@ -12,28 +12,22 @@
 We require Taxonomy Admin permissions to fetch all Policy Tags
 """
 import os
-import traceback
-from typing import Optional, Tuple, Iterable
+from typing import Iterable, List, Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_bigquery import _types
+from sqlalchemy_bigquery import BigQueryDialect, _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
     _get_transitive_schema_fields,
 )
 
-from sqlalchemy_bigquery import BigQueryDialect
-
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -44,14 +38,12 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -60,8 +52,6 @@ _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
 def get_columns(bq_schema):
-    print("BQ SCHEMA")
-    print(bq_schema)
     fields = _get_transitive_schema_fields(bq_schema)
     col_list = []
     for field in fields:
@@ -96,7 +86,6 @@ _types.get_columns = get_columns
 
 
 def dialect_get_columns(self, connection, table_name, schema=None, **kw):
-    print("NEW COLUMNS")
     clean_table = fqn.split(table_name)[-1]
     table = self._get_table(connection, clean_table, schema)
     return _types.get_columns(table.schema)
@@ -108,9 +97,6 @@ def dialect_get_columns(self, connection, table_name, schema=None, **kw):
 class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-        self.connection_config: BigQueryConnection = (
-            self.config.serviceConnection.__root__.config
-        )
         self.temp_credentials = None
         self.project_id = self.set_project_id()
 
@@ -125,87 +111,83 @@ class BigquerySource(CommonDbSourceService):
 
         return cls(config, metadata_config)
 
-    def standardize_schema_table_names(
-        self, schema: str, table: str
-    ) -> Tuple[str, str]:
+    def standardize_table_name(self, schema: str, table: str) -> str:
         segments = fqn.split(table)
         if len(segments) != 2:
             raise ValueError(f"expected table to contain schema name already {table}")
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
-        return segments[0], segments[1]
+        return segments[1]
 
     def set_project_id(self):
         _, project_id = auth.default()
         return project_id
 
-    def prepare(self):
-        #  and "policy_tags" in column and column["policy_tags"]
-        try:
-            if self.source_config.includeTags:
-                self.metadata.create_tag_category(
-                    CreateTagCategoryRequest(
-                        name=self.connection_config.tagCategoryName,
-                        description="",
-                        categoryType="Classification",
-                    )
-                )
-        except Exception as err:
-            logger.error(err)
-        return super().prepare()
-
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+    def yield_tag(self, _: str) -> Iterable[OMetaTagAndCategory]:
         """
         Build tag context
-        :param schema_name:
+        :param _:
         :return:
         """
-        pass
-
-    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
-        try:
-            if (
-                self.source_config.includeTags
-                and "policy_tags" in column
-                and column["policy_tags"]
-            ):
-                self.metadata.create_primary_tag(
-                    category_name=self.service_connection.tagCategoryName,
-                    primary_tag_body=CreateTagRequest(
-                        name=column["policy_tags"],
-                        description="Bigquery Policy Tag",
+        taxonomies = PolicyTagManagerClient().list_taxonomies(
+            parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
+        )
+        for taxonomy in taxonomies:
+            policiy_tags = PolicyTagManagerClient().list_policy_tags(
+                parent=taxonomy.name
+            )
+            for tag in policiy_tags:
+                yield OMetaTagAndCategory(
+                    category_name=CreateTagCategoryRequest(
+                        name=self.service_connection.tagCategoryName,
+                        description="",
+                        categoryType="Classification",
+                    ),
+                    category_details=CreateTagRequest(
+                        name=tag.display_name, description="Bigquery Policy Tag"
                     ),
                 )
-        except APIError:
-            if column["policy_tags"] and self.source_config.includeTags:
-                col_obj.tags = [
-                    TagLabel(
-                        tagFQN=fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            tag_category_name=self.service_connection.tagCategoryName,
-                            tag_name=column["policy_tags"],
-                        ),
-                        labelType="Automated",
-                        state="Suggested",
-                        source="Tag",
-                    )
-                ]
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(err)
+
+    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        return []
+
+    def get_column_tag_labels(
+        self, table_name: str, column: dict
+    ) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        if column.get("policy_tags"):
+            return [
+                TagLabel(
+                    tagFQN=fqn.build(
+                        self.metadata,
+                        entity_type=Tag,
+                        tag_category_name=self.service_connection.tagCategoryName,
+                        tag_name=column["policy_tags"],
+                    ),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
+            ]
 
     def get_database_names(self) -> Iterable[str]:
         yield self.project_id
 
     def get_view_definition(
-        self, table_type: str, table_name: str, schema: str, inspector: Inspector
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == "View":
             view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.project_id}.{schema}.{table_name}"
+                    f"{self.project_id}.{schema_name}.{table_name}"
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
