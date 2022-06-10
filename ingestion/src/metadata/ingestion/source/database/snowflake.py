@@ -125,7 +125,6 @@ class SnowflakeSource(CommonDbSourceService):
                 yield new_database
 
     def set_inspector(self, database_name: str) -> None:
-        # self.connection.execute(f"USE DATABASE {database_name}")
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
@@ -168,23 +167,3 @@ class SnowflakeSource(CommonDbSourceService):
                     name=row[1], description="SNOWFLAKE TAG VALUE"
                 ),
             )
-
-    def get_database_schema_names(self) -> Iterable[str]:
-        """
-        return schema names
-        """
-        for schema_name in self.inspector.get_schema_names():
-
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_name=schema_name
-            ):
-                self.status.filter(
-                    f"{self.config.serviceName}.{self.context.database.name.__root__}.{schema_name}",
-                    "{} pattern not allowed".format("Schema"),
-                )
-                continue
-
-            self.connection.execute(
-                f"USE {self.context.database.name.__root__}.{schema_name}"
-            )
-            yield schema_name

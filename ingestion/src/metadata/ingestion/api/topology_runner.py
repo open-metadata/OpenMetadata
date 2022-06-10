@@ -56,7 +56,7 @@ class TopologyRunnerMixin(Generic[C]):
         :return: recursively build the execution tree
         """
         for node in nodes:
-            logger.info(f"Processing node {node}")
+            logger.debug(f"Processing node {node}")
             node_producer = getattr(self, node.producer)
             child_nodes = (
                 [get_topology_node(child, self.topology) for child in node.children]
@@ -67,7 +67,7 @@ class TopologyRunnerMixin(Generic[C]):
             for element in node_producer() or []:
 
                 for stage in node.stages:
-                    logger.info(f"Processing stage {stage}")
+                    logger.debug(f"Processing stage {stage}")
 
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
@@ -84,7 +84,7 @@ class TopologyRunnerMixin(Generic[C]):
                 yield from self.process_nodes(child_nodes)
 
             if node.post_process:
-                logger.info(f"Post processing node {node}")
+                logger.debug(f"Post processing node {node}")
                 node_post_process = getattr(self, node.post_process)
                 for entity_request in node_post_process():
                     yield entity_request

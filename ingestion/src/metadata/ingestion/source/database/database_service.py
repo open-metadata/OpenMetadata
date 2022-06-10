@@ -153,11 +153,11 @@ class SQLSourceStatus(SourceStatus):
 
     def scanned(self, record: str) -> None:
         self.success.append(record)
-        logger.info(f"Table Scanned: {record}")
+        logger.info(f"Scanned [{record}]")
 
     def filter(self, record: str, err: str) -> None:
         self.filtered.append(record)
-        logger.warning(f"Filtered Table {record} due to {err}")
+        logger.warning(f"Filtered [{record}] due to {err}")
 
 
 class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
@@ -372,7 +372,9 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         Use the current inspector to mark tables as deleted
         """
         if self.source_config.markDeletedTables:
-            logger.info("Mark Deleted Tables set to True. Processing...")
+            logger.info(
+                f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
+            )
             for schema_name in self.get_database_schema_names():
                 schema_fqn = fqn.build(
                     self.metadata,

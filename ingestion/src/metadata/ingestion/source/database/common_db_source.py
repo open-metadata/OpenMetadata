@@ -136,10 +136,7 @@ class CommonDbSourceService(
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern, schema_name=schema_name
                 ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{self.service_connection.database}.{schema_name}",
-                        "{} pattern not allowed".format("Schema"),
-                    )
+                    self.status.filter(schema_name, "Schema pattern not allowed")
                     continue
 
                 yield schema_name
