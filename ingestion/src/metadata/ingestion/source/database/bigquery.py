@@ -8,12 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+We require Taxonomy Admin permissions to fetch all Policy Tags
+"""
 import os
 import traceback
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
@@ -21,6 +25,8 @@ from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
     _get_transitive_schema_fields,
 )
+
+from sqlalchemy_bigquery import BigQueryDialect
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
@@ -45,7 +51,7 @@ from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -54,6 +60,8 @@ _types._type_map["GEOGRAPHY"] = GEOGRAPHY
 
 
 def get_columns(bq_schema):
+    print("BQ SCHEMA")
+    print(bq_schema)
     fields = _get_transitive_schema_fields(bq_schema)
     col_list = []
     for field in fields:
@@ -87,6 +95,16 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
+def dialect_get_columns(self, connection, table_name, schema=None, **kw):
+    print("NEW COLUMNS")
+    clean_table = fqn.split(table_name)[-1]
+    table = self._get_table(connection, clean_table, schema)
+    return _types.get_columns(table.schema)
+
+
+# BigQueryDialect.get_columns = dialect_get_columns
+
+
 class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
@@ -110,7 +128,7 @@ class BigquerySource(CommonDbSourceService):
     def standardize_schema_table_names(
         self, schema: str, table: str
     ) -> Tuple[str, str]:
-        segments = table.split(".")
+        segments = fqn.split(table)
         if len(segments) != 2:
             raise ValueError(f"expected table to contain schema name already {table}")
         if segments[0] != schema:
@@ -135,6 +153,14 @@ class BigquerySource(CommonDbSourceService):
         except Exception as err:
             logger.error(err)
         return super().prepare()
+
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        """
+        Build tag context
+        :param schema_name:
+        :return:
+        """
+        pass
 
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         try:
@@ -169,16 +195,8 @@ class BigquerySource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def _get_database_name(self) -> str:
-        return self.project_id or self.connection_config.credentials.gcsConfig.projectId
-
-    def get_database_entity(self) -> Database:
-        return Database(
-            name=self._get_database_name(),
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-        )
+    def get_database_names(self) -> Iterable[str]:
+        yield self.project_id
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema: str, inspector: Inspector

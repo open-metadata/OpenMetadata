@@ -156,6 +156,7 @@ class TopologyRunnerMixin(Generic[C]):
 
                 while not entity or tries <= 0:
                     yield entity_request
+                    # Improve validation logic
                     entity = self.metadata.get_by_name(
                         entity=stage.type_, fqn=entity_fqn
                     )

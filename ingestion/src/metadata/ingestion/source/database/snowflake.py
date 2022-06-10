@@ -109,7 +109,7 @@ class SnowflakeSource(CommonDbSourceService):
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
-            return [configured_db]
+            yield configured_db
         else:
             results = self.connection.execute("SHOW DATABASES")
             for res in results:
