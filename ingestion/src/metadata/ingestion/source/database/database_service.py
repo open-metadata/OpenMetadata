@@ -287,10 +287,6 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
         Pick up the tags registered in the context
         searching by entity FQN
         """
-        # print("=================")
-        # print(f"GETTING TAG BY FQN: {entity_fqn}")
-        # print(self.context.tags)
-        # print("=================")
         return [
             TagLabel(
                 tagFQN=fqn.build(
