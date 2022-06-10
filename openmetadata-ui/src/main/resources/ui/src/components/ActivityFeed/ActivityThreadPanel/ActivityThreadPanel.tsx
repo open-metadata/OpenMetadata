@@ -184,6 +184,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+  }, []);
+
   return ReactDOM.createPortal(
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
