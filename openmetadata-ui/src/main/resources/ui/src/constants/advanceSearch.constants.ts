@@ -22,7 +22,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: 'Service',
-    key: 'service_type',
+    key: 'servicename',
   },
 ];
 
@@ -34,7 +34,7 @@ export const TABLE_DROPDOWN_ITEMS = [
 
   {
     label: 'Schema',
-    key: 'database_schema',
+    key: 'databaseschema',
   },
   {
     label: 'Database',

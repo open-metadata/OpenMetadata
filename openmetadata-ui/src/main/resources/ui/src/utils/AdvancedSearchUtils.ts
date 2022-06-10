@@ -57,7 +57,7 @@ export const getAdvancedField = (field: string) => {
     case 'column_names':
       return AdvancedFields.COLUMN;
 
-    case 'database_schema':
+    case 'databaseschema':
       return AdvancedFields.SCHEMA;
 
     case 'database':
@@ -68,6 +68,9 @@ export const getAdvancedField = (field: string) => {
 
     case 'task_names':
       return AdvancedFields.TASK;
+
+    case 'servicename':
+      return AdvancedFields.SERVICE;
 
     default:
       return;

@@ -205,6 +205,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const onClearFilterHandler = (type: string[], isForceClear = false) => {
+    setSelectedAdvancedField([]);
     const updatedFilter = type.reduce((filterObj, type) => {
       return { ...filterObj, [type]: [] };
     }, {});
@@ -508,6 +509,17 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  const handleAdvancedSearch = (advancedFields: AdvanceField[]) => {
+    const advancedFilterObject: FilterObject = {};
+    advancedFields.forEach((field) => {
+      if (field.value) {
+        advancedFilterObject[field.key] = [field.value];
+      }
+    });
+
+    handleFilterChange(advancedFilterObject);
+  };
+
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
@@ -623,6 +635,10 @@ const Explore: React.FC<ExploreProps> = ({
       setSortField(INITIAL_SORT_FIELD);
     }
   }, [searchQuery]);
+
+  useEffect(() => {
+    handleAdvancedSearch(selectedAdvancedFields);
+  }, [selectedAdvancedFields]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
