@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL source module"""
-
+from copy import deepcopy
 from typing import Iterable
 
 from sqlalchemy.engine.reflection import Inspector
@@ -53,30 +53,31 @@ class MssqlSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_databases(self) -> Iterable[Inspector]:
-        if self.service_connection.database:
-            yield from super().get_databases()
+    def get_database_names(self) -> Iterable[str]:
+        configured_db = self.config.serviceConnection.__root__.config.database
+        if configured_db:
+            yield configured_db
         else:
-            query = "SELECT name FROM master.sys.databases order by name;"
-            results = self.connection.execute(query)
-            db_list = []
-
+            results = self.connection.execute(
+                "SELECT name FROM master.sys.databases order by name"
+            )
             for res in results:
-                db_list.append(list(res))
+                row = list(res)
+                new_database = row[0]
 
-            for row in db_list:
-                try:
-                    if filter_by_database(
-                        self.source_config.databaseFilterPattern, database_name=row[0]
-                    ):
-                        self.status.filter(row[0], "Database pattern not allowed")
-                        continue
-                    logger.info(f"Ingesting from database: {row[0]}")
-                    self.service_connection.database = row[0]
-                    self.engine = get_connection(
-                        self.config.serviceConnection.__root__.config
-                    )
-                    self.engine.connect()
-                    yield inspect(self.engine)
-                except Exception as err:
-                    logger.error(f"Failed to Connect: {row[0]} due to error {err}")
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern, database_name=row[0]
+                ):
+                    self.status.filter(new_database, "Database pattern not allowed")
+                    continue
+
+                yield new_database
+
+    def set_inspector(self, database_name: str) -> None:
+        # self.connection.execute(f"USE DATABASE {database_name}")
+        logger.info(f"Ingesting from database: {database_name}")
+
+        new_service_connection = deepcopy(self.service_connection)
+        new_service_connection.database = database_name
+        self.engine = get_connection(new_service_connection)
+        self.inspector = inspect(self.engine)
