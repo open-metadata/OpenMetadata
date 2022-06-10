@@ -11,6 +11,7 @@
 
 import logging
 import sys
+from typing import Iterable
 
 import click
 from sqlalchemy.engine.reflection import Inspector
@@ -26,7 +27,6 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
@@ -35,6 +35,10 @@ logger = ingestion_logger()
 
 
 class TrinoSource(CommonDbSourceService):
+    """
+    Trino does not support querying by table type: Getting views is not supported.
+    """
+
     def __init__(self, config, metadata_config):
         self.trino_connection: TrinoConnection = (
             config.serviceConnection.__root__.config
@@ -64,16 +68,11 @@ class TrinoSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_database_entity(self) -> Database:
-        return Database(
-            name=self.trino_connection.catalog,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-        )
+    def get_database_names(self) -> Iterable[str]:
+        yield self.trino_connection.catalog
 
-    def get_schema_names(self) -> str:
-        return (
+    def get_database_schema_names(self) -> Iterable[str]:
+        yield from (
             self.inspector.get_schema_names()
             if not self.service_connection.databaseSchema
             else [self.service_connection.databaseSchema]
