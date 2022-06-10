@@ -424,7 +424,7 @@ export const getPastHourDate = () => {
   const minusMlSeconds = 60 * 60 * 1000;
   const dateObj = new Date(numberOfMlSeconds - minusMlSeconds);
 
-  return utc(dateObj).format('YYYY-MM-DDTHH:mm:ss[Z]');
+  return utc(dateObj).format('YYYY-MM-DDTHH:mm:ssZ');
 };
 
 export const getSvgArrow = (isActive: boolean) => {
