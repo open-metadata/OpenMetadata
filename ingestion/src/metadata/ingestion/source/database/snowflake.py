@@ -119,9 +119,7 @@ class SnowflakeSource(CommonDbSourceService):
                 if filter_by_database(
                     self.source_config.databaseFilterPattern, database_name=new_database
                 ):
-                    self.status.filter(
-                        f"{self.config.serviceName}.{new_database} database pattern not allowed",
-                    )
+                    self.status.filter(new_database, "Database pattern not allowed")
                     continue
 
                 yield new_database
