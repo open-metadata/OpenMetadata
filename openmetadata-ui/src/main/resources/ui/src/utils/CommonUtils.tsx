@@ -419,8 +419,12 @@ export const getServiceLogo = (
   return null;
 };
 
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
+export const getPastHourDate = () => {
+  const numberOfMlSeconds = Date.now();
+  const minusMlSeconds = 60 * 60 * 1000;
+  const dateObj = new Date(numberOfMlSeconds - minusMlSeconds);
+
+  return utc(dateObj).format('YYYY-MM-DDTHH:mm:ss[Z]');
 };
 
 export const getSvgArrow = (isActive: boolean) => {
