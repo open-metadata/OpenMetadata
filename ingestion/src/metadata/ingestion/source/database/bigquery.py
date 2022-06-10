@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy_bigquery import BigQueryDialect, _types
+from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
 from sqlalchemy_bigquery._types import (
     _get_sqla_column_type,
