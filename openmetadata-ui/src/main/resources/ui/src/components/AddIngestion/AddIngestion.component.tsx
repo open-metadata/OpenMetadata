@@ -37,7 +37,7 @@ import {
   DatabaseServiceMetadataPipelineClass,
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getCurrentUserId, getPastHourDate } from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
@@ -94,7 +94,7 @@ const AddIngestion = ({
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
   const [startDate] = useState(
-    data?.airflowConfig.startDate ?? getCurrentDate()
+    data?.airflowConfig.startDate ?? getPastHourDate()
   );
   const [endDate] = useState(data?.airflowConfig?.endDate ?? '');
 
