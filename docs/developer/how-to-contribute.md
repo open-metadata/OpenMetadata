@@ -36,7 +36,7 @@ git remote -v
 git checkout -b ISSUE-200
 ```
 
-Make changes. Follow the [Build the code & run tests](https://docs.open-metadata.org/developer/build-code-and-run-tests)) on how to set up IntelliJ, Maven.
+Make changes. Follow the [Build the code & run tests](https://docs.open-metadata.org/developer/build-code-and-run-tests) on how to set up IntelliJ, Maven.
 
 ## Push your changes to Github
 
