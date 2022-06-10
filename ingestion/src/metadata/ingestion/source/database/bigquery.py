@@ -136,7 +136,9 @@ class BigquerySource(CommonDbSourceService):
             logger.error(err)
         return super().prepare()
 
-    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
+    def fetch_column_tags(
+        self, column: dict, col_obj: Column, schema: str, table: str
+    ) -> None:
         try:
             if (
                 self.source_config.includeTags

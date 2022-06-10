@@ -328,15 +328,13 @@ export const getOwnerIds = (
   if (filter === Ownership.OWNER) {
     if (!isEmpty(userDetails)) {
       return [
-        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        ...(userDetails.teams?.map((team) => team.id) || []),
         userDetails.id,
       ];
     } else {
       if (!isEmpty(nonSecureUserDetails)) {
         return [
-          ...(nonSecureUserDetails.teams?.map(
-            (team) => team.id
-          ) as Array<string>),
+          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
           nonSecureUserDetails.id,
         ];
       } else {
