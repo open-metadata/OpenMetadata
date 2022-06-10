@@ -33,16 +33,18 @@ const AdvancedSearchDropDown: FC<Props> = ({
     ...item,
     onClick: () => onSelect(item.key),
     disabled: selectedItems.some((i) => item.key === i.key),
+    'data-testid': 'dropdown-menu-item',
   }));
 
-  const menu = <Menu items={items} />;
+  const menu = <Menu data-testid="dropdown-menu" items={items} />;
 
   return (
     <Dropdown
       className="tw-self-center tw-mr-2 tw-cursor-pointer"
+      data-testid="dropdown"
       overlay={menu}
       trigger={['click']}>
-      <div className="tw-text-primary">
+      <div className="tw-text-primary" data-testid="dropdown-label">
         <span className="tw-mr-2">Advanced Search</span>
         <DropdownIcon style={{ color: normalLink, margin: '0px' }} />
       </div>
