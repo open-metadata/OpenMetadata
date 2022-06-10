@@ -145,8 +145,8 @@ const AdvancedField: FC<Props> = ({
     setValue(newValue);
   };
 
-  const handleOnSelect = (value: string) => {
-    onFieldValueSelect({ ...field, value });
+  const handleOnSelect = (newValue: string) => {
+    onFieldValueSelect({ ...field, value: newValue });
   };
 
   const handleOnClear = () => {
