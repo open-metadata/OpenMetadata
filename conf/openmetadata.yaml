@@ -141,7 +141,7 @@ authenticationConfiguration:
   publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
-  callbackUrl: ${AUTHENTICATION_CALBACK_URL:-""}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 
 jwtTokenConfiguration:
