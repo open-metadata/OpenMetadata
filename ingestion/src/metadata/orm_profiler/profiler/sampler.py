@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import profile
 from typing import Optional, Union, Dict
 
 from sqlalchemy import inspect
@@ -57,13 +58,15 @@ class Sampler:
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
-
-        if not self.profile_sample:
-            # Use the full table
-            return self.table
+        # if not self.profile_sample:
+        #     # Use the full table
+        #     return self.table
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
+
+        if not self.profile_sample:
+            return self.session.query(rnd).cte(f"{self.table.__tablename__}_sample")
 
         # Prepare sampled CTE
         sampled = (

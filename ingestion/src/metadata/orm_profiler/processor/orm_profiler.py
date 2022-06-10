@@ -130,7 +130,7 @@ class OrmProfilerProcessor(Processor[Table]):
         return table.profileSample
 
 
-    def get_partition_details(self, table: Table) -> Optional[Dict]:
+    def get_partition_details(self, orm: DeclarativeMeta, table: Table) -> Optional[Dict]:
         """Get partition details for the profiler if working with
         bigquery table
 
@@ -141,16 +141,16 @@ class OrmProfilerProcessor(Processor[Table]):
         """
 
         if table.serviceType == DatabaseServiceType.BigQuery:
-            if is_partitioned(self.session, self.orm):
-                bq_connection_config = self.config.serviceConnection.__root__.config
+            if is_partitioned(self.session, orm):
+                # bq_connection_config = self.config.serviceConnection.__root__.config
                 start, end = get_start_and_end(
-                     bq_connection_config.partitionQueryDuration
+                    90 #  bq_connection_config.partitionQueryDuration
                  )
                 partition_details = {
-                    "partition_field": get_partition_cols(self.session, self.orm) or bq_connection_config.partitionField,
+                    "partition_field": get_partition_cols(self.session, orm), #or bq_connection_config.partitionField,
                     "partition_start": start,
                     "partition_end": end,
-                    "partition_values": bq_connection_config.partitionValues,
+                    "partition_values": None #bq_connection_config.partitionValues,
                 }
 
                 return partition_details
@@ -175,6 +175,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 session=self.session,
                 table=orm,
                 profile_sample=profile_sample,
+                partition_details=self.get_partition_details(orm, table),
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
@@ -191,7 +192,7 @@ class OrmProfilerProcessor(Processor[Table]):
             profile_date=self.execution_date,
             profile_sample=profile_sample,
             timeout_seconds=self.config.profiler.timeout_seconds,
-            partition_details=self.get_partition_details(table),
+            partition_details=self.get_partition_details(orm, table),
         )
 
     def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
@@ -498,14 +499,14 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return record_tests
 
-    def fetch_sample_data(self, orm: DeclarativeMeta) -> TableData:
+    def fetch_sample_data(self, orm: DeclarativeMeta, table: Table) -> TableData:
         """
         Fetch the table data from a real sample
         :param orm: SQA ORM table
         :return: TableData
         """
         try:
-            sampler = Sampler(session=self.session, table=orm)
+            sampler = Sampler(session=self.session, table=orm, partition_details=self.get_partition_details(orm=orm, table=table))
             return sampler.fetch_sample_data()
         except Exception as err:
             logger.error(
@@ -537,7 +538,7 @@ class OrmProfilerProcessor(Processor[Table]):
         )
 
         sample_data = (
-            self.fetch_sample_data(orm=orm_table) if generate_sample_data else None
+            self.fetch_sample_data(orm=orm_table, table=record) if generate_sample_data else None
         )
 
         res = ProfilerResponse(

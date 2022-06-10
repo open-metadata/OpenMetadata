@@ -44,7 +44,7 @@ class QueryRunner:
         partition_details: Optional[Dict] = None,
     ):
         self._session = session
-        self._table = table
+        self.table = table
         self._sample = sample
         self._partition_details = partition_details
 
@@ -56,11 +56,11 @@ class QueryRunner:
 
     @bigquery_required_partition_filter_handler()
     def select_first_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).first()
+        return self._build_query(*entities, **kwargs).select_from(self.table).first()
 
     @bigquery_required_partition_filter_handler(first=False)
     def select_all_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).all()
+        return self._build_query(*entities, **kwargs).select_from(self.table).all()
 
     @bigquery_required_partition_filter_handler(sampled=True)
     def select_first_from_sample(self, *entities, **kwargs):

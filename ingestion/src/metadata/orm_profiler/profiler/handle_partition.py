@@ -13,22 +13,19 @@ Helper submodule for partitioned tables
 """
 
 from __future__ import annotations
-from typing import Union, Optional, Callable
+import logging
+from typing import Optional, Callable
 
-from inflect import engine
-import sql_metadata
-import sqlalchemy
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine import Connection
 from sqlalchemy import text
 
 from metadata.utils.logger import profiler_logger
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
-from metadata.orm_profiler.profiler.sampler import RANDOM_LABEL
+
+RANDOM_LABEL = "random"
 
 logger = profiler_logger()
 
@@ -40,7 +37,7 @@ def get_partition_cols(session: Session, table: DeclarativeMeta) -> list:
         session: sqlalchemy session
         table: orm table object
     """
-    return get_partition_details().get("column_names")[0]
+    return get_partition_details(session, table).get("column_names")[0]
 
 
 def get_partition_details(session: Session, table: DeclarativeMeta) -> Optional[dict]:
@@ -65,7 +62,7 @@ def get_table_indexes(session: Session, table: DeclarativeMeta) -> list[dict]:
     Returns:
         list[dict]
     """
-    return  inspect(session.get_bind()).get_indexex(
+    return  inspect(session.get_bind()).get_indexes(
         table.__tablename__,
         table.__table_args__.get("schema"),
     )
@@ -93,13 +90,13 @@ def format_partition_values(partition_values: list, col_type) -> str:
 
 
 def build_partition_predicate(partition_details, col_type):
-    if partition_details.partition_values:
+    if partition_details["partition_values"]:
         return text(
-            f"{partition_details.partition_field} in ({format_partition_values(partition_details.partition_values, col_type)})"
+            f"{partition_details['partition_field']} in ({format_partition_values(partition_details['partition_values'], col_type)})"
             )
 
     return text(
-        f"{partition_details.partition_field} BETWEEN '{partition_details.start}' AND '{partition_details.end}'"
+        f"{partition_details['partition_field']} BETWEEN '{partition_details['partition_start'].strftime('%Y-%m-%d')}' AND '{partition_details['partition_end'].strftime('%Y-%m-%d')}'"
         )
 
 
@@ -107,14 +104,13 @@ def bigquery_required_partition_filter_handler(first: bool = True, sampled: bool
     def decorate(fn: Callable):
         def handle_and_execute(self, *args, **kwargs):
             if self._partition_details:
-                partition_filter = build_partition_predicate(self._partition_details, self.table.__table__.c.get(self._partition_details.partition_field).type)
-
+                partition_filter = build_partition_predicate(self._partition_details, self.table.__table__.c.get(self._partition_details['partition_field']).type)
                 if build_sample:
                     return self.session.query(
                         self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
                     ).filter(partition_filter).cte(f"{self.table.__tablename__}_rnd")
 
-                query_results = self._build_query(*args, **kwargs).select_from(self._sample if sampled else self._table).filter(partition_filter)
+                query_results = self._build_query(*args, **kwargs).select_from(self._sample if sampled else self.table).filter(partition_filter)
                 if first:
                     return query_results.first()
                 return query_results.all()
