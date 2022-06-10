@@ -62,7 +62,7 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityDeleteMessage,
@@ -76,7 +76,6 @@ import { getInfoElements } from '../../utils/EntityUtils';
 import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
-  getIsIngestionEnable,
   getServiceCategoryFromType,
   servicePageTabs,
   serviceTypeLogo,
@@ -94,9 +93,6 @@ const ServicePage: FunctionComponent = () => {
   const { isAuthDisabled } = useAuthContext();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
-  );
-  const [isIngestionEnable] = useState(
-    getIsIngestionEnable(serviceName as ServiceCategory)
   );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -154,7 +150,6 @@ const ServicePage: FunctionComponent = () => {
         title: 'Sample Data',
         selectedName: 'sample-data-color',
       },
-      isHidden: !isIngestionEnable,
       isProtected: false,
       position: 2,
       count: ingestions.length,
@@ -339,32 +334,16 @@ const ServicePage: FunctionComponent = () => {
     }).finally(() => setIsloading(false));
   };
 
-  const handleConfigUpdate = (
-    updatedData: ServicesData,
-    serviceCategory: ServiceCategory
-  ) => {
-    const configData =
-      serviceCategory === ServiceCategory.PIPELINE_SERVICES
-        ? {
-            databaseConnection: updatedData.databaseConnection,
-            name: updatedData.name,
-            serviceType: updatedData.serviceType,
-            brokers: updatedData.brokers,
-            schemaRegistry: updatedData.schemaRegistry,
-            dashboardUrl: updatedData.dashboardUrl,
-            username: updatedData.username,
-            password: updatedData.password,
-            pipelineUrl: updatedData.pipelineUrl,
-          }
-        : {
-            name: serviceDetails?.name,
-            serviceType: serviceDetails?.serviceType,
-            description: serviceDetails?.description,
-            owner: serviceDetails?.owner,
-            connection: {
-              config: updatedData,
-            },
-          };
+  const handleConfigUpdate = (updatedData: ConfigData) => {
+    const configData = {
+      name: serviceDetails?.name,
+      serviceType: serviceDetails?.serviceType,
+      description: serviceDetails?.description,
+      owner: serviceDetails?.owner,
+      connection: {
+        config: updatedData,
+      },
+    };
 
     return new Promise<void>((resolve, reject) => {
       updateService(serviceName, serviceDetails?.id, configData)
@@ -734,16 +713,14 @@ const ServicePage: FunctionComponent = () => {
       activeTabHandler(1);
     }
 
-    if (isIngestionEnable) {
-      getAirflowStatus()
-        .then(() => {
-          setIsAirflowRunning(true);
-          getAllIngestionWorkflows();
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        });
-    }
+    getAirflowStatus()
+      .then(() => {
+        setIsAirflowRunning(true);
+        getAllIngestionWorkflows();
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
   }, []);
 
   const onCancel = () => {

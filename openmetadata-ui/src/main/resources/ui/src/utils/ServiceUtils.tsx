@@ -339,23 +339,6 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   return entityCounts;
 };
 
-export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-    case ServiceCategory.MESSAGING_SERVICES:
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return true;
-
-    case ServiceCategory.PIPELINE_SERVICES:
-    default:
-      return false;
-  }
-};
-
-export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
-  return getIsIngestionEnable(serviceCategory);
-};
-
 export const getKeyValuePair = (obj: DynamicObj) => {
   return Object.entries(obj).map((v) => {
     return {
@@ -558,14 +541,8 @@ export const getIngestionName = (
   }
 };
 
-export const shouldTestConnection = (
-  serviceType: string,
-  serviceCategory: ServiceCategory
-) => {
-  return (
-    serviceType !== DatabaseServiceType.SampleData &&
-    serviceCategory !== ServiceCategory.PIPELINE_SERVICES
-  );
+export const shouldTestConnection = (serviceType: string) => {
+  return serviceType !== DatabaseServiceType.SampleData;
 };
 
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
@@ -574,6 +551,8 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
       return ConnectionType.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
       return ConnectionType.Dashboard;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return ConnectionType.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return ConnectionType.Database;
