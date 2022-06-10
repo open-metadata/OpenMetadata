@@ -13,7 +13,6 @@ import re
 
 from pyhive.sqlalchemy_hive import HiveDialect, _type_map
 from sqlalchemy import types, util
-from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
@@ -130,17 +129,10 @@ class HiveSource(CommonDbSourceService):
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: HiveConnection = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
         connection: HiveConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(
                 f"Expected HiveConnection, but got {connection}"
             )
         return cls(config, metadata_config)
-
-    def get_schema_names(self) -> str:
-        return (
-            self.inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )

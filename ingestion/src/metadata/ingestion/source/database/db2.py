@@ -47,10 +47,3 @@ class Db2Source(CommonDbSourceService):
                 f"Expected Db2Connection, but got {connection}"
             )
         return cls(config, metadata_config)
-
-    def get_schema_names(self) -> str:
-        return (
-            self.inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )

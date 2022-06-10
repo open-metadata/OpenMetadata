@@ -70,10 +70,3 @@ class TrinoSource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         yield self.trino_connection.catalog
-
-    def get_database_schema_names(self) -> Iterable[str]:
-        yield from (
-            self.inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )
