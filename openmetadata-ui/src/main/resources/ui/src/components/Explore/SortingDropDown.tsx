@@ -31,18 +31,20 @@ const SortingDropDown: FC<Props> = ({
     label: field.name,
     key: field.value,
     onClick: () => handleFieldDropDown(field.value),
+    'data-testid': 'dropdown-menu-item',
   }));
 
-  const menu = <Menu items={items} />;
+  const menu = <Menu data-testid="dropdown-menu" items={items} />;
 
   const label = fieldList.find((field) => field.value === sortField)?.name;
 
   return (
     <Dropdown
       className="tw-self-center tw-mr-2 tw-cursor-pointer"
+      data-testid="dropdown"
       overlay={menu}
       trigger={['click']}>
-      <div className="tw-text-primary">
+      <div className="tw-text-primary" data-testid="dropdown-label">
         <span className="tw-mr-2">{label}</span>
         <DropDownIcon style={{ color: normalLink, margin: '0px' }} />
       </div>
