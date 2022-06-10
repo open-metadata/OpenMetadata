@@ -109,8 +109,7 @@
           "$ref": "../../../type/basic.json#/definitions/email"
         }
       },
-      "additionalProperties": false,
-      "required": ["startDate"]
+      "additionalProperties": false
     }
   },
   "properties": {

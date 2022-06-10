@@ -19,7 +19,6 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -417,14 +416,6 @@ export const getServiceLogo = (
   }
 
   return null;
-};
-
-export const getPastHourDate = () => {
-  const numberOfMlSeconds = Date.now();
-  const minusMlSeconds = 60 * 60 * 1000;
-  const dateObj = new Date(numberOfMlSeconds - minusMlSeconds);
-
-  return utc(dateObj).format('YYYY-MM-DDTHH:mm:ssZ');
 };
 
 export const getSvgArrow = (isActive: boolean) => {

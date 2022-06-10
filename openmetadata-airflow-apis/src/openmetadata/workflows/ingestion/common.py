@@ -15,6 +15,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Callable, Optional, Union
 
+import airflow
 from airflow import DAG
 
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -166,7 +167,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return {
         "dag_id": ingestion_pipeline.name.__root__,
         "description": ingestion_pipeline.description,
-        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__,
+        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
+        if ingestion_pipeline.airflowConfig.startDate
+        else airflow.utils.dates.days_ago(1),
         "end_date": ingestion_pipeline.airflowConfig.endDate.__root__
         if ingestion_pipeline.airflowConfig.endDate
         else None,

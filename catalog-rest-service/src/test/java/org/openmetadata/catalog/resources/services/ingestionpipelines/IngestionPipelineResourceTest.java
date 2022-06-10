@@ -123,7 +123,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         .withPipelineType(PipelineType.METADATA)
         .withService(getContainer())
         .withSourceConfig(DATABASE_METADATA_CONFIG)
-        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+        .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
   }
 
   @Override
