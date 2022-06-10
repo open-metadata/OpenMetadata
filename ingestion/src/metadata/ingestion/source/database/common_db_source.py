@@ -14,6 +14,7 @@ Generic source to build SQL connectors.
 
 import traceback
 from abc import ABC
+from copy import deepcopy
 from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.engine import Connection
@@ -89,10 +90,15 @@ class CommonDbSourceService(
 
     def set_inspector(self, database_name: str) -> None:
         """
-        Default case, nothing to do.
-
-        Sources with multiple databases will need to overwrite this.
+        When sources override `get_database_names`, they will need
+        to setup multiple inspectors. They can use this function.
+        :param database_name: new database to set
         """
+        logger.info(f"Ingesting from database: {database_name}")
+
+        new_service_connection = deepcopy(self.service_connection)
+        new_service_connection.database = database_name
+        self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
 
     def get_database_names(self) -> Iterable[str]:
@@ -106,6 +112,8 @@ class CommonDbSourceService(
         """
 
         database_name = self.service_connection.__dict__.get("database", "default")
+        # By default, set the inspector on the created engine
+        self.inspector = inspect(self.engine)
         yield database_name
 
     def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
@@ -114,7 +122,6 @@ class CommonDbSourceService(
         Prepare a database request and pass it to the sink
         """
 
-        self.set_inspector(database_name=database_name)
         yield CreateDatabaseRequest(
             name=database_name,
             service=EntityReference(

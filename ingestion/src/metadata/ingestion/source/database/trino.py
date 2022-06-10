@@ -14,6 +14,7 @@ import sys
 from typing import Iterable
 
 import click
+from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
@@ -69,4 +70,5 @@ class TrinoSource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
+        self.inspector = inspect(self.engine)
         yield self.trino_connection.catalog

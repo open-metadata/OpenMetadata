@@ -16,6 +16,7 @@ from typing import Iterable, List, Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
@@ -178,6 +179,7 @@ class BigquerySource(CommonDbSourceService):
             ]
 
     def get_database_names(self) -> Iterable[str]:
+        self.inspector = inspect(self.engine)
         yield self.project_id
 
     def get_view_definition(

@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 from collections import namedtuple
-from copy import deepcopy
 from typing import Iterable
 
 from sqlalchemy.engine.reflection import Inspector
@@ -74,16 +73,13 @@ class PostgresSource(CommonDbSourceService):
                     self.status.filter(new_database, "Database pattern not allowed")
                     continue
 
-                yield new_database
-
-    def set_inspector(self, database_name: str) -> None:
-        # self.connection.execute(f"USE DATABASE {database_name}")
-        logger.info(f"Ingesting from database: {database_name}")
-
-        new_service_connection = deepcopy(self.service_connection)
-        new_service_connection.database = database_name
-        self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
+                try:
+                    self.set_inspector(database_name=new_database)
+                    yield new_database
+                except Exception as err:
+                    logger.error(
+                        f"Error trying to connect to database {new_database} - {err}"
+                    )
 
     def is_partition(self, table_name: str, schema: str, inspector) -> bool:
         cur = self.pgconn.cursor()

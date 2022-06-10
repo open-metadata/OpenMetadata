@@ -13,7 +13,7 @@ import re
 from typing import Iterable
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
-from sqlalchemy import types, util
+from sqlalchemy import inspect, types, util
 from sqlalchemy.engine import reflection
 
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
@@ -102,4 +102,5 @@ class PrestoSource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     def get_database_names(self) -> Iterable[str]:
+        self.inspector = inspect(self.engine)
         yield self.presto_connection.catalog
