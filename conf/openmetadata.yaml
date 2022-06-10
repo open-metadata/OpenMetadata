@@ -115,7 +115,7 @@ logging:
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: ${DB_DRIVER_CLASS:com.mysql.cj.jdbc.Driver}
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${MYSQL_USER:-openmetadata_user}
   password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
@@ -170,7 +170,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc"
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openMetadataJWT"
   authConfig:
     azure:
       clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
