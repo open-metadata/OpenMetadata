@@ -10,16 +10,14 @@
 #  limitations under the License.
 from typing import Iterable, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import TableType
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
-from sqlalchemy.engine import Inspector
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
 
-# This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -123,7 +121,7 @@ class AthenaSource(CommonDbSourceService):
         if self.source_config.includeTables:
             for table_name in self.inspector.get_table_names(schema_name):
                 if filter_by_table(
-                        self.source_config.tableFilterPattern, table_name=table_name
+                    self.source_config.tableFilterPattern, table_name=table_name
                 ):
                     self.status.filter(
                         f"{self.config.serviceName}.{table_name}",
@@ -136,7 +134,7 @@ class AthenaSource(CommonDbSourceService):
         if self.source_config.includeViews:
             for view_name in self.inspector.get_view_names(schema_name):
                 if filter_by_table(
-                        self.source_config.tableFilterPattern, table_name=view_name
+                    self.source_config.tableFilterPattern, table_name=view_name
                 ):
                     self.status.filter(
                         f"{self.config.serviceName}.{view_name}",
