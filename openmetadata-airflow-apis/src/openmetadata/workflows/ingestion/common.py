@@ -132,10 +132,10 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
 
 def date_to_datetime(
-    date: Optional[basic.Date], date_format: str = "%Y-%m-%d"
+    date: Optional[basic.DateTime], date_format: str = "%Y-%m-%dT%H:%M:%S%z"
 ) -> Optional[datetime]:
     """
-    Format a basic.Date to datetime
+    Format a basic.DateTime to datetime. ISO 8601 format by default.
     """
     if date is None:
         return
@@ -166,8 +166,10 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     return {
         "dag_id": ingestion_pipeline.name.__root__,
         "description": ingestion_pipeline.description,
-        "start_date": date_to_datetime(ingestion_pipeline.airflowConfig.startDate),
-        "end_date": date_to_datetime(ingestion_pipeline.airflowConfig.endDate),
+        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__,
+        "end_date": ingestion_pipeline.airflowConfig.endDate.__root__
+        if ingestion_pipeline.airflowConfig.endDate
+        else None,
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
         "default_view": ingestion_pipeline.airflowConfig.workflowDefaultView,

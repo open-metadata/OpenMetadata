@@ -54,11 +54,11 @@
         },
         "startDate": {
           "description": "Start date of the pipeline.",
-          "$ref": "../../../type/basic.json#/definitions/date"
+          "$ref": "../../../type/basic.json#/definitions/dateTime"
         },
         "endDate": {
           "description": "End Date of the pipeline.",
-          "$ref": "../../../type/basic.json#/definitions/date"
+          "$ref": "../../../type/basic.json#/definitions/dateTime"
         },
         "pipelineTimezone": {
           "description": "Timezone in which pipeline going to be scheduled.",
