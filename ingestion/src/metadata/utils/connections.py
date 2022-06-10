@@ -610,5 +610,12 @@ def _(connection: S3Client) -> None:
 def _(connection: DatalakeConnection, verbose: bool = False) -> S3Client:
     from metadata.utils.aws_client import AWSClient
 
-    s3_connection = AWSClient(connection.awsConfig).get_s3_client()
-    return s3_connection
+    if hasattr(connection.ConfigSource, "awsConfig"):
+        s3_connection = AWSClient(connection.ConfigSource.awsConfig).get_s3_client()
+        return s3_connection
+    if hasattr(connection.ConfigSource, "gcsConfig"):
+        from google.cloud import storage
+
+        set_google_credentials(gcs_credentials=connection.ConfigSource.gcsConfig)
+        client = storage.Client()
+        return client

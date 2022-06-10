@@ -1,9 +1,17 @@
+import json
 import traceback
 import uuid
 from io import StringIO
 from typing import Iterable, Optional
+from unicodedata import name
 
+# import s3fs
+# import awswrangler as wr
+import dask.dataframe as dd
 import pandas as pd
+import pyarrow.dataset as ds
+import pyarrow.parquet as pq
+from google.cloud import storage
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -31,6 +39,9 @@ from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+# from pyspark.sql import SparkSession
+
 
 logger = ingestion_logger()
 
@@ -70,22 +81,130 @@ class DatalakeSource(Source[Entity]):
         try:
 
             bucket_name = self.service_connection.base_path
+            print(bucket_name)
+            yield from self.get_gcs_files(bucket_name)
+            # yield from self.get_s3_files(bucket_name)
 
-            yield from self.get_s3_data(bucket_name)
         except Exception as err:
-            logger.debug(traceback.format_exc())
+            logger.error(traceback.format_exc())
             logger.error(err)
 
-    def get_s3_data(self, bucket_name):
+    # def get_hdfs_files(self, bucket_name):
+    #     #csv files
+    #     sparkSession = SparkSession.builder.appName("example-pyspark-read-and-write").getOrCreate()
+    #     df = sparkSession.read.csv('hdfs://cluster/user/hdfs/test/example.csv')
+
+    #     #json files
+    #     df = sparkSession.read.json("resources/zipcodes.json")
+
+    #     #tsv files
+    #     df = sparkSession.read.csv("path", sep=r'\t', header=True)
+
+    def get_gcs_files(self, bucket_name):
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+
+        for key in bucket.list_blobs():
+            print(key.name)
+            if key.name.endswith("csv"):
+                df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
+                print(df)
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern, key.name
+                ):
+                    self.status.filter(
+                        "{}".format(key["Key"]),
+                        "Table pattern not allowed",
+                    )
+                    continue
+                yield from self.ingest_tables(key.name, df, bucket_name)
+
+            if key.name.endswith("tsv"):
+                df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
+
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern, key.name
+                ):
+                    self.status.filter(
+                        "{}".format(key["Key"]),
+                        "Table pattern not allowed",
+                    )
+                    continue
+                yield from self.ingest_tables(key.name, df, bucket_name)
+
+            if key.name.endswith("json"):
+                data = key.download_as_string().decode()
+                df = pd.DataFrame.from_dict(data)
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern, key.name
+                ):
+                    self.status.filter(
+                        "{}".format(key["Key"]),
+                        "Table pattern not allowed",
+                    )
+                    continue
+                yield from self.ingest_tables(key.name, df, bucket_name)
+
+    def get_s3_files(self, bucket_name):
         for key in self.s3.list_objects(Bucket=bucket_name)["Contents"]:
             try:
                 if key["Key"].endswith("csv"):
-                    print("##" * 100)
-                    print(key["Key"])
+
                     csv_obj = self.s3.get_object(Bucket=bucket_name, Key=key["Key"])
                     body = csv_obj["Body"]
                     csv_string = body.read().decode("utf-8")
                     df = pd.read_csv(StringIO(csv_string))
+
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                    ):
+                        self.status.filter(
+                            "{}".format(key["Key"]),
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    yield from self.ingest_tables(key["Key"], df, bucket_name)
+
+                if key["Key"].endswith("tsv"):
+
+                    body = csv_obj["Body"]
+                    df = pd.read_csv(StringIO(csv_string), sep="\t")
+
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                    ):
+                        self.status.filter(
+                            "{}".format(key["Key"]),
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    yield from self.ingest_tables(key["Key"], df, bucket_name)
+
+                if key["Key"].endswith("json"):
+
+                    obj = self.s3.get_object(Bucket=bucket_name, Key=key["Key"])
+                    json_text = obj["Body"].read().decode("utf-8")
+                    data = json.loads(json_text)
+                    df = pd.DataFrame.from_dict(data)
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                    ):
+                        self.status.filter(
+                            "{}".format(key["Key"]),
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    yield from self.ingest_tables(key["Key"], df, bucket_name)
+
+                if key["Key"].endswith("parquet"):
+
+                    s3 = s3fs.S3FileSystem()
+                    df = (
+                        pq.ParquetDataset(f"s3://{bucket_name}/", filesystem=s3)
+                        .read_pandas()
+                        .to_pandas()
+                    )
+
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern, key["Key"]
                     ):
@@ -96,7 +215,7 @@ class DatalakeSource(Source[Entity]):
                         continue
                     yield from self.ingest_tables(key["Key"], df, bucket_name)
             except Exception as err:
-                logger.debug(traceback.format_exc())
+                logger.error(traceback.format_exc())
                 logger.error(err)
 
     def ingest_tables(self, key, df, bucket_name) -> Iterable[OMetaDatabaseAndTable]:
@@ -129,7 +248,6 @@ class DatalakeSource(Source[Entity]):
                     table_data = self.fetch_sample_data(df, bucket_name)
                     if table_data:
                         table_entity.sampleData = table_data
-                        print("table_data", table_entity.sampleData)
             # Catch any errors during the ingestion and continue
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))

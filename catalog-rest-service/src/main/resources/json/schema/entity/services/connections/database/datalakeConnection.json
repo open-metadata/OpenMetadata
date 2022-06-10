@@ -11,6 +11,26 @@
       "type": "string",
       "enum": ["Datalake"],
       "default": "Datalake"
+    },
+    "S3Config": {
+      "title": "DATALAKE S3 Config Source",
+      "description": "DATALAKE Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "awsConfig": {
+          "title": "DATALAKE S3 Security Config",
+          "$ref": "../../../../security/credentials/awsCredentials.json"
+        }
+      }
+    },
+    "GCSConfig": {
+      "title": "DATALAKE GCS Config Source",
+      "description": "DATALAKE Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "gcsConfig": {
+          "title": "DATALAKE GCS Security Config",
+          "$ref": "../../../../security/credentials/gcsCredentials.json"
+        }
+      }
     }
   },
   "properties": {
@@ -20,9 +40,17 @@
       "$ref": "#/definitions/datalakeType",
       "default": "Datalake"
     },
-    "awsConfig": {
-      "title": "AWS Credentials Configuration",
-      "$ref": "../../../../security/credentials/awsCredentials.json"
+    "ConfigSource": {
+      "title": "DataLake Configuration Source",
+      "description": "Available sources to fetch files.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/S3Config"
+        },
+        {
+          "$ref": "#/definitions/GCSConfig"
+        }
+      ]
     },
     "base_path": {
       "title": "Base Path",
@@ -48,5 +76,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["awsConfig"]
+  "required": ["ConfigSource"]
 }
