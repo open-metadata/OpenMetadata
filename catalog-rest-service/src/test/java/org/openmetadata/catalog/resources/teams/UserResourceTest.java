@@ -87,6 +87,7 @@ import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -695,7 +696,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
-        JWTTokenExpiry.Seven,
+        new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
         OK,
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
