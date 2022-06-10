@@ -10,6 +10,7 @@
 #  limitations under the License.
 from typing import Iterable, Optional, Tuple
 
+from metadata.generated.schema.entity.data.table import TableType
 from pyathena.sqlalchemy_athena import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import Inspector
@@ -28,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -108,12 +110,38 @@ class AthenaSource(CommonDbSourceService):
 
         return cls(config, metadata_config)
 
-    def get_table_names(
-        self, schema: str, inspector: Inspector
-    ) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
-            for table in inspector.get_table_names(schema):
-                yield table, "External"  # All tables in Athena are External
+            for table_name in self.inspector.get_table_names(schema_name):
+                if filter_by_table(
+                        self.source_config.tableFilterPattern, table_name=table_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{table_name}",
+                        "Table pattern not allowed",
+                    )
+                    continue
+
+                yield table_name, TableType.External  # All tables in Athena are external
+
         if self.source_config.includeViews:
-            for view in inspector.get_view_names(schema):
-                yield view, "View"
+            for view_name in self.inspector.get_view_names(schema_name):
+                if filter_by_table(
+                        self.source_config.tableFilterPattern, table_name=view_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{view_name}",
+                        "Table pattern not allowed for view",
+                    )
+                    continue
+
+                yield view_name, TableType.View
