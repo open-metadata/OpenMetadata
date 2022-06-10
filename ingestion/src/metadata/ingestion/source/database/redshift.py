@@ -14,6 +14,7 @@ Redshift source ingestion
 
 import re
 from collections import defaultdict
+from typing import Iterable
 
 import sqlalchemy as sa
 from packaging.version import Version
@@ -36,6 +37,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils.connections import get_connection
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -456,3 +459,26 @@ class RedshiftSource(CommonDbSourceService):
                 f"Expected RedshiftConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_database_names(self) -> Iterable[str]:
+        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+            yield self.config.serviceConnection.__root__.config.database
+        else:
+            results = self.connection.execute("SELECT datname FROM pg_database")
+            for res in results:
+                row = list(res)
+                new_database = row[0]
+
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern, database_name=new_database
+                ):
+                    self.status.filter(new_database, "Database pattern not allowed")
+                    continue
+
+                try:
+                    self.set_inspector(database_name=new_database)
+                    yield new_database
+                except Exception as err:
+                    logger.error(
+                        f"Error trying to connect to database {new_database} - {err}"
+                    )
