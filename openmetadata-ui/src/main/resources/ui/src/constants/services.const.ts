@@ -135,5 +135,6 @@ export const COMMON_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
 };

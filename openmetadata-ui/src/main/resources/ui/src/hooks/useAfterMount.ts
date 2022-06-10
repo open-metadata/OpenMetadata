@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-export type TitleBreadcrumbProps = {
-  titleLinks: Array<{
-    name: string;
-    url: string;
-    imgSrc?: string;
-    activeTitle?: boolean;
-  }>;
-  className?: string;
-  noLink?: boolean;
-  widthDeductions?: number;
+import { useEffect, useState } from 'react';
+
+export const useAfterMount = (fnCallback: () => void) => {
+  const [isMounting, setIsMounting] = useState(true);
+
+  useEffect(() => {
+    if (!isMounting) {
+      fnCallback();
+    }
+  }, [isMounting]);
+
+  useEffect(() => {
+    setIsMounting(false);
+  }, []);
 };
