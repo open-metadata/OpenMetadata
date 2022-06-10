@@ -127,18 +127,22 @@ class CommonDbSourceService(
         """
         return schema names
         """
-        for schema_name in self.inspector.get_schema_names():
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
 
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern, schema_name=schema_name
-            ):
-                self.status.filter(
-                    f"{self.config.serviceName}.{self.service_connection.database}.{schema_name}",
-                    "{} pattern not allowed".format("Schema"),
-                )
-                continue
+        else:
+            for schema_name in self.inspector.get_schema_names():
 
-            yield schema_name
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema_name=schema_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{self.service_connection.database}.{schema_name}",
+                        "{} pattern not allowed".format("Schema"),
+                    )
+                    continue
+
+                yield schema_name
 
     def yield_database_schema(
         self, schema_name: str
