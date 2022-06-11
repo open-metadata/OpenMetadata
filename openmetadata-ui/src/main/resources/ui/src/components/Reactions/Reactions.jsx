@@ -14,32 +14,48 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
+import { observer } from 'mobx-react';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useMemo } from 'react';
+import AppState from '../../AppState';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
 } from '../../constants/reactions.constant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
+import Reaction from './Reaction';
 
 const Reactions = ({ reactions }) => {
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  /**
+   *
+   * @param reactionType
+   * @returns true if current user has reacted with {reactionType}
+   */
+  const isReacted = (reactionType) => {
+    return reactions.some(
+      (reactionItem) =>
+        reactionItem.user.id === currentUser.id &&
+        reactionType === reactionItem.reactionType
+    );
+  };
+
   // prepare reaction list for reaction popover
-  const reactionList = REACTION_LIST.map((reaction) => (
-    <Button
-      aria-label={reaction.reaction}
-      key={uniqueId()}
-      size="small"
-      title={reaction.reaction}
-      type="text">
-      <g-emoji
-        alias={reaction.alias}
-        className="d-flex"
-        fallback-src={`../../assets/img/emojis/${reaction.reaction}.png`}>
-        {reaction.emoji}
-      </g-emoji>
-    </Button>
-  ));
+  const reactionList = REACTION_LIST.map((reaction) => {
+    return (
+      <Reaction
+        isReacted={isReacted(reaction.reaction)}
+        key={uniqueId()}
+        reaction={reaction}
+      />
+    );
+  });
 
   // prepare dictionary for each emojis and corresponding users list
   const modifiedReactionObject = groupBy(reactions, 'reactionType');
@@ -90,4 +106,4 @@ Reactions.propTypes = {
   ).isRequired,
 };
 
-export default Reactions;
+export default observer(Reactions);
