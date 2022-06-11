@@ -30,10 +30,10 @@ export const getBrokers = (config: MessagingConnection['config']) => {
   return !isUndefined(retVal) ? retVal : '--';
 };
 
-export const getMessagingConfig = (config: MessagingConnection['config']) => {
+export const getMessagingConfig = (type: MessagingServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  if (config?.type === MessagingServiceType.Kafka) {
+  if (type === MessagingServiceType.Kafka) {
     schema = kafkaConnection;
   }
 
