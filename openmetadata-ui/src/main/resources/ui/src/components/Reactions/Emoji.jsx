@@ -19,12 +19,17 @@ import PropTypes from 'prop-types';
 import React, { useMemo } from 'react';
 import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
+import useImage from '../../hooks/useImage';
 
 const Emoji = ({ reaction, reactionList }) => {
   // get reaction object based on cureent reaction
   const reactionObject = useMemo(
     () => REACTION_LIST.find((value) => value.reaction === reaction),
     [reaction]
+  );
+
+  const { image } = useImage(
+    `../../assets/img/emojis/${reactionObject.reaction}.png`
   );
 
   // get current user details
@@ -45,7 +50,7 @@ const Emoji = ({ reaction, reactionList }) => {
       <g-emoji
         alias={reactionObject.alias}
         className="d-flex"
-        fallback-src={`../../assets/img/emojis/${reactionObject.reaction}.png`}>
+        fallback-src={image}>
         {reactionObject.emoji}
       </g-emoji>
       <span>{reactionList.length}</span>
