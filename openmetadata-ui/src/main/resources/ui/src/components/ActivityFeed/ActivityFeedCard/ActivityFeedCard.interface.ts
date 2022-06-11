@@ -28,6 +28,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   threadId?: string;
   lastReplyTimeStamp?: number;
   isFooterVisible?: boolean;
+  isThread?: boolean;
   onThreadSelect?: (id: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
 }
@@ -42,7 +43,7 @@ export interface FeedHeaderProp
 }
 export interface FeedBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'onConfirmation'> {
+    Pick<ActivityFeedCardProp, 'onConfirmation' | 'isThread'> {
   message: string;
   postId?: string;
   threadId?: string;

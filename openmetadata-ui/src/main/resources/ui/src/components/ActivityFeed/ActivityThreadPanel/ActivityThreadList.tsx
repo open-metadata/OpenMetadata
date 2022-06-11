@@ -75,6 +75,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
+                          isThread
                           className="tw-mb-6"
                           entityLink={thread.about}
                           feed={mainFeed}

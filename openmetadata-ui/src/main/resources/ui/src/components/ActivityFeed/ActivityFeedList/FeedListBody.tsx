@@ -103,6 +103,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               }}>
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
+                  isThread
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}

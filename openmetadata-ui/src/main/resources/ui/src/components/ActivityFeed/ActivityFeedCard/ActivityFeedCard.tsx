@@ -38,6 +38,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   lastReplyTimeStamp,
   onThreadSelect,
   isFooterVisible = false,
+  isThread,
   onConfirmation,
 }) => {
   const entityType = getEntityType(entityLink as string);
@@ -66,6 +67,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
       <FeedCardBody
         className="tw-ml-8 tw-bg-white tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
         isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
+        isThread={isThread}
         message={feed.message}
         postId={feed.id}
         reactions={reactions}

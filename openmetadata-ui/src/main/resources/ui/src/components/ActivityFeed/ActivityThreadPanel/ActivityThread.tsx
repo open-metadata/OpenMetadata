@@ -54,6 +54,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           <div data-testid="main-message">
             <ActivityFeedCard
               isEntityFeed
+              isThread
               className="tw-mb-3"
               feed={mainThread as Post}
             />
