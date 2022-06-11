@@ -64,7 +64,9 @@ export interface ConfigureIngestionProps {
   tableFilterPattern: FilterPattern;
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
+  pipelineFilterPattern: FilterPattern;
   fqnFilterPattern: FilterPattern;
+  includeLineage: boolean;
   includeView: boolean;
   markDeletedTables?: boolean;
   enableDebugLog: boolean;
@@ -75,12 +77,14 @@ export interface ConfigureIngestionProps {
   showTableFilter: boolean;
   showTopicFilter: boolean;
   showChartFilter: boolean;
+  showPipelineFilter: boolean;
   showFqnFilter: boolean;
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
   handleIngestionName: (value: string) => void;
   handleDescription?: (value: string) => void;
+  handleIncludeLineage: () => void;
   handleIncludeView: () => void;
   handleMarkDeletedTables?: () => void;
   handleEnableDebugLog: () => void;
