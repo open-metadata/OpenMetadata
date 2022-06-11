@@ -993,6 +993,15 @@ code {
   padding: 0px;
 }
 
+/* Reaction CSS Start */
 .ant-btn-text:hover {
   background: #6b728026;
 }
+
+.ant-btn-isReacted {
+  background: #6b728026;
+}
+.ant-btn-isReacted:hover {
+  background: #6b728026;
+}
+/* Reaction CSS End */

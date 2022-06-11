@@ -13,37 +13,59 @@
 
 import '@github/g-emoji-element';
 import { Button } from 'antd';
+import classNames from 'classnames';
+import { observer } from 'mobx-react';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useMemo } from 'react';
+import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 
-const Emoji = ({ reaction }) => {
-  const reactionValue = REACTION_LIST.find(
-    (value) => value.reaction === reaction.reactionType
+const Emoji = ({ reaction, reactionList }) => {
+  // get reaction object based on cureent reaction
+  const reactionObject = useMemo(
+    () => REACTION_LIST.find((value) => value.reaction === reaction),
+    [reaction]
+  );
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  // check if current user has reacted with emoji
+  const isReacted = reactionList.some(
+    (reactionItem) => reactionItem.user.id === currentUser.id
   );
 
   return (
-    <Button className="tw-mr-1" shape="round">
+    <Button
+      className={classNames('tw-mr-1', { 'ant-btn-isReacted': isReacted })}
+      shape="round">
       <g-emoji
-        alias={reactionValue.alias}
+        alias={reactionObject.alias}
         className="d-flex"
-        fallback-src={`../../assets/img/emojis/${reactionValue.reaction}.png`}>
-        {reactionValue.emoji}
+        fallback-src={`../../assets/img/emojis/${reactionObject.reaction}.png`}>
+        {reactionObject.emoji}
       </g-emoji>
+      <span>{reactionList.length}</span>
     </Button>
   );
 };
 
 Emoji.propTypes = {
-  reaction: PropTypes.shape({
-    reactionType: PropTypes.string.isRequired,
-    user: PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string,
-      displayName: PropTypes.string,
-      type: PropTypes.string,
-    }).isRequired,
-  }).isRequired,
+  reactionList: PropTypes.arrayOf(
+    PropTypes.shape({
+      reactionType: PropTypes.string.isRequired,
+      user: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        name: PropTypes.string,
+        displayName: PropTypes.string,
+        type: PropTypes.string,
+      }).isRequired,
+    }).isRequired
+  ).isRequired,
+  reaction: PropTypes.string.isRequired,
 };
 
-export default Emoji;
+export default observer(Emoji);

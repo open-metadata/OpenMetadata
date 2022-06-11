@@ -13,7 +13,7 @@
 
 import { ReactionType } from '../generated/type/reaction';
 
-export const REACTION_TYPE_LIST = Object.keys(ReactionType);
+export const REACTION_TYPE_LIST = Object.values(ReactionType);
 export const REACTION_LIST = [
   { emoji: '👍', reaction: ReactionType.ThumbsUp, alias: '+1' },
   { emoji: '👎', reaction: ReactionType.ThumbsDown, alias: '-1' },

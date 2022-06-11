@@ -13,14 +13,18 @@
 
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
-import { uniqueId } from 'lodash';
+import { groupBy, uniqueId } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { REACTION_LIST } from '../../constants/reactions.constant';
+import {
+  REACTION_LIST,
+  REACTION_TYPE_LIST,
+} from '../../constants/reactions.constant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
 
 const Reactions = ({ reactions }) => {
+  // prepare reaction list for reaction popover
   const reactionList = REACTION_LIST.map((reaction) => (
     <Button
       aria-label={reaction.reaction}
@@ -37,12 +41,27 @@ const Reactions = ({ reactions }) => {
     </Button>
   ));
 
+  // prepare dictionary for each emojis and corresponding users list
+  const modifiedReactionObject = groupBy(reactions, 'reactionType');
+
+  const emojis = REACTION_TYPE_LIST.map((reaction) => {
+    const reactionList = modifiedReactionObject[reaction];
+
+    return (
+      reactionList && (
+        <Emoji
+          key={uniqueId()}
+          reaction={reaction}
+          reactionList={reactionList}
+        />
+      )
+    );
+  });
+
   return (
     <div className="tw-ml-8 tw-mb-4">
       <div className="tw-flex">
-        {reactions.map((reaction) => (
-          <Emoji key={uniqueId()} reaction={reaction} />
-        ))}
+        {emojis}
         <Popover content={reactionList} trigger="click">
           <Button shape="round">
             <SVGIcons
