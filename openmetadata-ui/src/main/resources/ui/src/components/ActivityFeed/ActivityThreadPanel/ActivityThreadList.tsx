@@ -12,6 +12,7 @@
  */
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -52,13 +53,14 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   postTs: thread.threadTs,
                   from: thread.createdBy,
                   id: thread.id,
-                };
-                const postLength = thread.posts.length;
-                const replies = thread.postsCount - 1;
-                const repliedUsers = thread.posts
+                  reations: thread.reactions,
+                } as Post;
+                const postLength = thread?.posts?.length || 0;
+                const replies = thread.postsCount ? thread.postsCount - 1 : 0;
+                const repliedUsers = (thread.posts || [])
                   .map((f) => f.from)
                   .slice(0, postLength >= 3 ? 2 : 1);
-                const lastPost = thread.posts[postLength - 1];
+                const lastPost = thread?.posts?.[postLength - 1];
 
                 return (
                   <Fragment key={index}>
@@ -104,7 +106,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                             <ActivityFeedCard
                               isEntityFeed
                               className="tw-mb-6 tw-ml-9"
-                              feed={lastPost}
+                              feed={lastPost as Post}
                               threadId={thread.id}
                               onConfirmation={onConfirmation}
                             />

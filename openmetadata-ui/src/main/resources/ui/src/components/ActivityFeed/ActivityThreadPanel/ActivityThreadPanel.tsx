@@ -14,13 +14,13 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread } from 'Models';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
@@ -45,8 +45,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   createThread,
   deletePostHandler,
 }) => {
-  const [threads, setThreads] = useState<EntityThread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<EntityThread>();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);

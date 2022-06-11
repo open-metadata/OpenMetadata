@@ -12,9 +12,9 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -28,7 +28,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   postFeed,
   onConfirmation,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,

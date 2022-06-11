@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
-  feedList: EntityThread[];
+  feedList: Thread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
   entityName?: string;
@@ -35,7 +35,7 @@ export interface FeedListBodyProp
       ActivityFeedListProp,
       'isEntityFeed' | 'withSidePanel' | 'deletePostHandler'
     > {
-  updatedFeedList: Array<EntityThread & { relativeDay: string }>;
+  updatedFeedList: Array<Thread & { relativeDay: string }>;
   selectedThreadId: string;
   onThreadIdSelect: (value: string) => void;
   onThreadIdDeselect: () => void;
