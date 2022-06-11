@@ -12,9 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Post } from 'Models';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
+import { Post } from '../generated/entity/feed/thread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (

@@ -12,8 +12,8 @@
  */
 
 import { Card } from 'antd';
-import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';

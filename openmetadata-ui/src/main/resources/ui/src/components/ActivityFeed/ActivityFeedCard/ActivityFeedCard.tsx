@@ -12,6 +12,7 @@
  */
 
 import classNames from 'classnames';
+import { observer } from 'mobx-react';
 import React, { FC } from 'react';
 import AppState from '../../../AppState';
 import { useAuth } from '../../../hooks/authHooks';
@@ -43,7 +44,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityField = getEntityField(entityLink as string);
 
   const { isAdminUser } = useAuth();
-  const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+  const currentUser = AppState.getCurrentUserDetails()?.name;
 
   return (
     <div className={classNames(className)}>
@@ -76,4 +77,4 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   );
 };
 
-export default ActivityFeedCard;
+export default observer(ActivityFeedCard);

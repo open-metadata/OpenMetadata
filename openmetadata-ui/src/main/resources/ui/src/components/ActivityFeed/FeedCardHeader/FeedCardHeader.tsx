@@ -289,7 +289,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         <span
           className="tw-text-grey-muted tw-pl-2 tw-text-xs tw--mb-0.5"
           data-testid="timestamp">
-          {' - ' + getDayTimeByTimeStamp(timeStamp)}
+          {timeStamp && ' - ' + getDayTimeByTimeStamp(timeStamp)}
         </span>
       </h6>
     </div>

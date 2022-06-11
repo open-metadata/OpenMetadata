@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Post } from 'Models';
 import { HTMLAttributes } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 
 export interface ConfirmState {
   state: boolean;
@@ -35,7 +35,7 @@ export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityFeedCardProp, 'isEntityFeed'> {
   createdBy: string;
-  timeStamp: number;
+  timeStamp?: number;
   entityType: string;
   entityFQN: string;
   entityField: string;

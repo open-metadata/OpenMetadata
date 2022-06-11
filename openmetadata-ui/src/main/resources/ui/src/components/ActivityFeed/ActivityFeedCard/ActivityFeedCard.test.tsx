@@ -12,9 +12,9 @@
  */
 
 import { findByText, render } from '@testing-library/react';
-import { Post } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
 jest.mock('../../../AppState', () => ({
