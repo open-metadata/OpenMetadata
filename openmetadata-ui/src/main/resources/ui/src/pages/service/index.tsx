@@ -60,6 +60,7 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { ServiceDataObj } from '../../interface/service.interface';
@@ -950,11 +951,9 @@ const ServicePage: FunctionComponent = () => {
                                     to={getLinkForFqn(
                                       dataObj.fullyQualifiedName || ''
                                     )}>
-                                    {serviceName ===
-                                      ServiceCategory.DASHBOARD_SERVICES &&
-                                    (dataObj as Dashboard).displayName
-                                      ? (dataObj as Dashboard).displayName
-                                      : dataObj.name}
+                                    {getEntityName(
+                                      dataObj as unknown as EntityReference
+                                    )}
                                   </Link>
                                 </td>
                                 <td className="tableBody-cell">
