@@ -13,8 +13,9 @@
 
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
-import React, { FC } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
+import { Post } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import {
   getEntityField,
@@ -46,6 +47,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const { isAdminUser } = useAuth();
   const currentUser = AppState.getCurrentUserDetails()?.name;
 
+  const [reactions, setReactions] = useState<Post['reactions']>([]);
+
+  useEffect(() => {
+    setReactions(feed.reactions);
+  }, []);
+
   return (
     <div className={classNames(className)}>
       <FeedCardHeader
@@ -61,6 +68,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
         message={feed.message}
         postId={feed.id}
+        reactions={reactions}
         threadId={threadId as string}
         onConfirmation={onConfirmation}
       />

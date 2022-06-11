@@ -47,6 +47,7 @@ export interface FeedBodyProp
   postId?: string;
   threadId?: string;
   isAuthor: boolean;
+  reactions: Post['reactions'];
 }
 export interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,

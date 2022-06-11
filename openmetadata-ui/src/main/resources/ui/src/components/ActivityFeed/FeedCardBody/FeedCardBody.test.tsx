@@ -36,6 +36,7 @@ const mockFeedCardBodyProps = {
   postId: 'id2',
   deletePostHandler: jest.fn(),
   onConfirmation: jest.fn(),
+  reactions: [],
 };
 
 describe('Test FeedCardBody component', () => {

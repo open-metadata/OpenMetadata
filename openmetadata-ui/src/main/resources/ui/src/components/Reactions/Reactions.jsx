@@ -14,23 +14,13 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import { uniqueId } from 'lodash';
+import PropTypes from 'prop-types';
 import React from 'react';
-import { ReactionType } from '../../generated/type/reaction';
+import { REACTION_LIST } from '../../constants/reactions.constant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import Emoji from './Emoji';
 
-const Reactions = () => {
-  const REACTION_TYPE_LIST = Object.keys(ReactionType);
-  const REACTION_LIST = [
-    { emoji: '👍', reaction: ReactionType.ThumbsUp, alias: '+1' },
-    { emoji: '👎', reaction: ReactionType.ThumbsDown, alias: '-1' },
-    { emoji: '😄', reaction: ReactionType.Laugh, alias: 'smile' },
-    { emoji: '🎉', reaction: ReactionType.Hooray, alias: 'tada' },
-    { emoji: '😕', reaction: ReactionType.Confused, alias: 'thinking_face' },
-    { emoji: '❤️', reaction: ReactionType.Heart, alias: 'heart' },
-    { emoji: '👀', reaction: ReactionType.Eyes, alias: 'rocket' },
-    { emoji: '🚀', reaction: ReactionType.Rocket, alias: 'eyes' },
-  ];
-
+const Reactions = ({ reactions }) => {
   const reactionList = REACTION_LIST.map((reaction) => (
     <Button
       aria-label={reaction.reaction}
@@ -49,17 +39,36 @@ const Reactions = () => {
 
   return (
     <div className="tw-ml-8 tw-mb-4">
-      <Popover content={reactionList} trigger="click">
-        <Button shape="round">
-          <SVGIcons
-            alt="add-reaction"
-            icon={Icons.ADD_REACTION}
-            title="Add reactions"
-          />
-        </Button>
-      </Popover>
+      <div className="tw-flex">
+        {reactions.map((reaction) => (
+          <Emoji key={uniqueId()} reaction={reaction} />
+        ))}
+        <Popover content={reactionList} trigger="click">
+          <Button shape="round">
+            <SVGIcons
+              alt="add-reaction"
+              icon={Icons.ADD_REACTION}
+              title="Add reactions"
+            />
+          </Button>
+        </Popover>
+      </div>
     </div>
   );
+};
+
+Reactions.propTypes = {
+  reactions: PropTypes.arrayOf(
+    PropTypes.shape({
+      reactionType: PropTypes.string.isRequired,
+      user: PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        name: PropTypes.string,
+        displayName: PropTypes.string,
+        type: PropTypes.string,
+      }).isRequired,
+    })
+  ).isRequired,
 };
 
 export default Reactions;
