@@ -51,7 +51,9 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
 
   return (
     <Button
-      className={classNames('tw-mr-1', { 'ant-btn-isReacted': isReacted })}
+      className={classNames('ant-btn-reaction tw-mr-1', {
+        'ant-btn-isReacted': isReacted,
+      })}
       shape="round"
       onClick={handleOnClick}>
       <g-emoji

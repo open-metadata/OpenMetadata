@@ -994,6 +994,13 @@ code {
 }
 
 /* Reaction CSS Start */
+.ant-btn-reaction {
+  height: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  background-color: transparent;
+}
+
 .ant-btn-text:hover {
   background: #6b728026;
 }
