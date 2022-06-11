@@ -53,7 +53,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   postTs: thread.threadTs,
                   from: thread.createdBy,
                   id: thread.id,
-                  reations: thread.reactions,
+                  reactions: thread.reactions,
                 } as Post;
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;

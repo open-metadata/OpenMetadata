@@ -35,6 +35,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   useEffect(() => {

@@ -30,6 +30,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   return (

@@ -81,7 +81,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
     <div className="tw-ml-8 tw-mb-4">
       <div className="tw-flex">
         {emojis}
-        <Popover content={reactionList} trigger="click">
+        <Popover content={reactionList} trigger="click" zIndex={9999}>
           <Button className="ant-btn-reaction" shape="round">
             <SVGIcons
               alt="add-reaction"
