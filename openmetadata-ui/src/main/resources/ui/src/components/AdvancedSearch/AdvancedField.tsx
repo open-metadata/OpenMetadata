@@ -157,7 +157,7 @@ const AdvancedField: FC<Props> = ({
   };
 
   return (
-    <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-flex tw-justify-between">
+    <div className="tw-bg-white tw-border tw-border-main tw-rounded tw-p-1 tw-px-2 tw-flex tw-justify-between">
       <span className="tw-self-center" data-testid="field-label">
         {startCase(getItemLabel(field.key))}:
       </span>
