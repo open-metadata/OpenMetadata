@@ -22,7 +22,7 @@
     "connectionType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "type": "string",
-      "enum": ["Database", "Dashboard", "Messaging"],
+      "enum": ["Database", "Dashboard", "Messaging", "Pipeline"],
       "javaEnums": [
         {
           "name": "Database"
@@ -32,6 +32,9 @@
         },
         {
           "name": "Messaging"
+        },
+        {
+          "name": "Pipeline"
         }
       ]
     }
