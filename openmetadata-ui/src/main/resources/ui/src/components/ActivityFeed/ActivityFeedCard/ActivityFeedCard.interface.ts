@@ -12,7 +12,9 @@
  */
 
 import { HTMLAttributes } from 'react';
+import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
+import { ReactionType } from '../../../generated/type/reaction';
 
 export interface ConfirmState {
   state: boolean;
@@ -49,6 +51,10 @@ export interface FeedBodyProp
   threadId?: string;
   isAuthor: boolean;
   reactions: Post['reactions'];
+  onReactionSelect: (
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => void;
 }
 export interface FeedFooterProp
   extends HTMLAttributes<HTMLDivElement>,

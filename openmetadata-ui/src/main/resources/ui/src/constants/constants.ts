@@ -437,3 +437,7 @@ export const TITLE_FOR_NON_ADMIN_ACTION =
 
 export const TITLE_FOR_UPDATE_OWNER =
   'You do not have permissions to update the owner.';
+
+export const configOptions = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};

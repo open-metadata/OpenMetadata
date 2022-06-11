@@ -26,7 +26,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 
-const Reactions = ({ reactions }) => {
+const Reactions = ({ reactions, onReactionSelect }) => {
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -53,6 +53,7 @@ const Reactions = ({ reactions }) => {
         isReacted={isReacted(reaction.reaction)}
         key={uniqueId()}
         reaction={reaction}
+        onReactionSelect={onReactionSelect}
       />
     );
   });
@@ -60,6 +61,7 @@ const Reactions = ({ reactions }) => {
   // prepare dictionary for each emojis and corresponding users list
   const modifiedReactionObject = groupBy(reactions, 'reactionType');
 
+  // prepare reacted emoji list
   const emojis = REACTION_TYPE_LIST.map((reaction) => {
     const reactionList = modifiedReactionObject[reaction];
 
@@ -69,6 +71,7 @@ const Reactions = ({ reactions }) => {
           key={uniqueId()}
           reaction={reaction}
           reactionList={reactionList}
+          onReactionSelect={onReactionSelect}
         />
       )
     );
@@ -104,6 +107,7 @@ Reactions.propTypes = {
       }).isRequired,
     })
   ).isRequired,
+  onReactionSelect: PropTypes.func.isRequired,
 };
 
 export default observer(Reactions);

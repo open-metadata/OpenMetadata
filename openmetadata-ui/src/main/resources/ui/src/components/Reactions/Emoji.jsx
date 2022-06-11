@@ -19,9 +19,10 @@ import PropTypes from 'prop-types';
 import React, { useMemo } from 'react';
 import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
+import { ReactionOperation } from '../../enums/reactions.enum';
 import useImage from '../../hooks/useImage';
 
-const Emoji = ({ reaction, reactionList }) => {
+const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   // get reaction object based on cureent reaction
   const reactionObject = useMemo(
     () => REACTION_LIST.find((value) => value.reaction === reaction),
@@ -41,10 +42,18 @@ const Emoji = ({ reaction, reactionList }) => {
     (reactionItem) => reactionItem.user.id === currentUser.id
   );
 
+  const handleOnClick = () => {
+    const operation = isReacted
+      ? ReactionOperation.REMOVE
+      : ReactionOperation.ADD;
+    onReactionSelect(reactionObject.reaction, operation);
+  };
+
   return (
     <Button
       className={classNames('tw-mr-1', { 'ant-btn-isReacted': isReacted })}
-      shape="round">
+      shape="round"
+      onClick={handleOnClick}>
       <g-emoji
         alias={reactionObject.alias}
         className="d-flex"
@@ -69,6 +78,7 @@ Emoji.propTypes = {
     }).isRequired
   ).isRequired,
   reaction: PropTypes.string.isRequired,
+  onReactionSelect: PropTypes.func.isRequired,
 };
 
 export default observer(Emoji);

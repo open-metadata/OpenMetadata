@@ -17,10 +17,18 @@ import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { ReactionOperation } from '../../enums/reactions.enum';
 import useImage from '../../hooks/useImage';
 
-const Reaction = ({ reaction, isReacted }) => {
+const Reaction = ({ reaction, isReacted, onReactionSelect }) => {
   const { image } = useImage(`emojis/${reaction.reaction}.png`);
+
+  const handleOnClick = () => {
+    const operation = isReacted
+      ? ReactionOperation.REMOVE
+      : ReactionOperation.ADD;
+    onReactionSelect(reaction.reaction, operation);
+  };
 
   return (
     <Button
@@ -31,7 +39,8 @@ const Reaction = ({ reaction, isReacted }) => {
       key={uniqueId()}
       size="small"
       title={reaction.reaction}
-      type="text">
+      type="text"
+      onClick={handleOnClick}>
       <g-emoji alias={reaction.alias} className="d-flex" fallback-src={image}>
         {reaction.emoji}
       </g-emoji>
@@ -46,6 +55,7 @@ Reaction.propTypes = {
     alias: PropTypes.string.isRequired,
   }).isRequired,
   isReacted: PropTypes.bool.isRequired,
+  onReactionSelect: PropTypes.func.isRequired,
 };
 
 export default Reaction;

@@ -27,6 +27,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   postId,
   onConfirmation,
   reactions,
+  onReactionSelect,
 }) => {
   return (
     <Fragment>
@@ -45,7 +46,10 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           </span>
         ) : null}
       </div>
-      <Reactions reactions={reactions || []} />
+      <Reactions
+        reactions={reactions || []}
+        onReactionSelect={onReactionSelect}
+      />
     </Fragment>
   );
 };
