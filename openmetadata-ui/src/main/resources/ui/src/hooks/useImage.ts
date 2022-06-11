@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 
 const useImage = (fileName: string) => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [error, setError] = useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,7 +23,7 @@ const useImage = (fileName: string) => {
   useEffect(() => {
     const fetchImage = async () => {
       try {
-        const response = await import(`${fileName}`);
+        const response = await import(`../assets/img/${fileName}`);
         setImage(response.default);
       } catch (err) {
         setError(err);

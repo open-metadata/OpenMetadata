@@ -20,9 +20,7 @@ import React from 'react';
 import useImage from '../../hooks/useImage';
 
 const Reaction = ({ reaction, isReacted }) => {
-  const { image } = useImage(
-    `../../assets/img/emojis/${reaction.reaction}.png`
-  );
+  const { image } = useImage(`emojis/${reaction.reaction}.png`);
 
   return (
     <Button

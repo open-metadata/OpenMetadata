@@ -28,9 +28,7 @@ const Emoji = ({ reaction, reactionList }) => {
     [reaction]
   );
 
-  const { image } = useImage(
-    `../../assets/img/emojis/${reactionObject.reaction}.png`
-  );
+  const { image } = useImage(`emojis/${reactionObject.reaction}.png`);
 
   // get current user details
   const currentUser = useMemo(
