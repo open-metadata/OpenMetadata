@@ -54,23 +54,27 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const { isAdminUser } = useAuth();
   const currentUser = AppState.getCurrentUserDetails();
 
-  const [reactions, setReactions] = useState<Post['reactions']>(
-    feed.reactions || []
-  );
+  const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
   const onFeedUpdate = (data: Operation[]) => {
     if (isThread) {
-      updateThread(feed.id, data)
+      updateThread(feedDetail.id, data)
         .then((res: AxiosResponse) => {
-          setReactions(res.data.reactions || []);
+          setFeedDetail((pre) => ({
+            ...pre,
+            reactions: res.data.reactions || [],
+          }));
         })
         .catch((err: AxiosError) => {
           showErrorToast(err);
         });
     } else {
-      updatePost(threadId, feed.id, data)
+      updatePost(threadId, feedDetail.id, data)
         .then((res: AxiosResponse) => {
-          setReactions(res.data.reactions || []);
+          setFeedDetail((prevDetail) => ({
+            ...prevDetail,
+            reactions: res.data.reactions || [],
+          }));
         })
         .catch((err: AxiosError) => {
           showErrorToast(err);
@@ -82,7 +86,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
   ) => {
-    let updatedReactions = reactions || [];
+    let updatedReactions = feedDetail.reactions || [];
     if (reactionOperation === ReactionOperation.ADD) {
       const reactionObject = {
         reactionType,
@@ -101,32 +105,35 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           )
       );
     }
-    const patch = compare(feed, { ...feed, reactions: updatedReactions });
+    const patch = compare(feedDetail, {
+      ...feedDetail,
+      reactions: updatedReactions,
+    });
 
     onFeedUpdate(patch);
   };
 
   useEffect(() => {
-    setReactions(feed.reactions || []);
-  }, []);
+    setFeedDetail(feed);
+  }, [feed]);
 
   return (
     <div className={classNames(className)}>
       <FeedCardHeader
-        createdBy={feed.from}
+        createdBy={feedDetail.from}
         entityFQN={entityFQN as string}
         entityField={entityField as string}
         entityType={entityType as string}
         isEntityFeed={isEntityFeed}
-        timeStamp={feed.postTs}
+        timeStamp={feedDetail.postTs}
       />
       <FeedCardBody
         className="tw-ml-8 tw-bg-white tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
-        isAuthor={Boolean(feed.from === currentUser?.name || isAdminUser)}
+        isAuthor={Boolean(feedDetail.from === currentUser?.name || isAdminUser)}
         isThread={isThread}
-        message={feed.message}
-        postId={feed.id}
-        reactions={reactions}
+        message={feedDetail.message}
+        postId={feedDetail.id}
+        reactions={feedDetail.reactions || []}
         threadId={threadId as string}
         onConfirmation={onConfirmation}
         onReactionSelect={onReactionSelect}
