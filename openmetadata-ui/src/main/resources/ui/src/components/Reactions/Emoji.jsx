@@ -12,7 +12,7 @@
  */
 
 import '@github/g-emoji-element';
-import { Button } from 'antd';
+import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import PropTypes from 'prop-types';
@@ -42,6 +42,8 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     (reactionItem) => reactionItem.user.id === currentUser.id
   );
 
+  const userList = reactionList.map((reactionItem) => reactionItem.user.name);
+
   const handleOnClick = () => {
     const operation = isReacted
       ? ReactionOperation.REMOVE
@@ -49,21 +51,30 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     onReactionSelect(reactionObject.reaction, operation);
   };
 
+  const popoverContent = (
+    <p className="tw-w-44 tw-break-normal tw-m-0 tw-p-0">
+      {`${userList.join(', ')}`}{' '}
+      <span className="tw-font-semibold">{`reacted with ${reaction} emoji`}</span>
+    </p>
+  );
+
   return (
-    <Button
-      className={classNames('ant-btn-reaction tw-mr-1', {
-        'ant-btn-isReacted': isReacted,
-      })}
-      shape="round"
-      onClick={handleOnClick}>
-      <g-emoji
-        alias={reactionObject.alias}
-        className="d-flex"
-        fallback-src={image}>
-        {reactionObject.emoji}
-      </g-emoji>
-      <span>{reactionList.length}</span>
-    </Button>
+    <Popover content={popoverContent} trigger="hover" zIndex={9999}>
+      <Button
+        className={classNames('ant-btn-reaction tw-mr-1', {
+          'ant-btn-isReacted': isReacted,
+        })}
+        shape="round"
+        onClick={handleOnClick}>
+        <g-emoji
+          alias={reactionObject.alias}
+          className="d-flex"
+          fallback-src={image}>
+          {reactionObject.emoji}
+        </g-emoji>
+        <span>{reactionList.length}</span>
+      </Button>
+    </Popover>
   );
 };
 

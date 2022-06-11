@@ -1011,4 +1011,7 @@ code {
 .ant-btn-isReacted:hover {
   background: #6b728026;
 }
+.ant-popover-inner-content {
+  padding: 8px;
+}
 /* Reaction CSS End */
