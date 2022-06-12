@@ -13,10 +13,7 @@
 
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/services.const';
-import {
-  DatabaseConnection,
-  DatabaseServiceType,
-} from '../generated/entity/services/databaseService';
+import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import athenaConnection from '../jsons/connectionSchemas/connections/database/athenaConnection.json';
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
@@ -43,10 +40,10 @@ import sqliteConnection from '../jsons/connectionSchemas/connections/database/sq
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
 
-export const getDatabaseConfig = (config?: DatabaseConnection['config']) => {
+export const getDatabaseConfig = (type: DatabaseServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (config?.type as unknown as DatabaseServiceType) {
+  switch (type as unknown as DatabaseServiceType) {
     case DatabaseServiceType.Athena: {
       schema = athenaConnection;
 
