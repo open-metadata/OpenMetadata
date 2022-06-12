@@ -86,7 +86,7 @@ plugins: Dict[str, Set[str]] = {
         "gcsfs",
         "dask",
         "pyarrow",
-        "boto3~=1.24.3",
+        "boto3~=1.19.12",
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
