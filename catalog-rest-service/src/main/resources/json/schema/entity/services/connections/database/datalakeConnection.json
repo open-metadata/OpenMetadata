@@ -12,23 +12,24 @@
       "enum": ["Datalake"],
       "default": "Datalake"
     },
-    "S3Config": {
-      "title": "DATALAKE S3 Config Source",
-      "description": "DATALAKE Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
+
+    "GCSConfig": {
+      "title": "DataLake GCS Config Source",
+      "description": "DataLake Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
       "properties": {
-        "awsConfig": {
-          "title": "DATALAKE S3 Security Config",
-          "$ref": "../../../../security/credentials/awsCredentials.json"
+        "gcsConfig": {
+          "title": "DataLake GCS Security Config",
+          "$ref": "../../../../security/credentials/gcsCredentials.json"
         }
       }
     },
-    "GCSConfig": {
-      "title": "DATALAKE GCS Config Source",
-      "description": "DATALAKE Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
+    "S3Config": {
+      "title": "DataLake S3 Config Source",
+      "description": "DataLake Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
       "properties": {
-        "gcsConfig": {
-          "title": "DATALAKE GCS Security Config",
-          "$ref": "../../../../security/credentials/gcsCredentials.json"
+        "awsConfig": {
+          "title": "DataLake S3 Security Config",
+          "$ref": "../../../../security/credentials/awsCredentials.json"
         }
       }
     }
@@ -40,7 +41,7 @@
       "$ref": "#/definitions/datalakeType",
       "default": "Datalake"
     },
-    "ConfigSource": {
+    "configSource": {
       "title": "DataLake Configuration Source",
       "description": "Available sources to fetch files.",
       "oneOf": [
@@ -52,7 +53,7 @@
         }
       ]
     },
-    "base_path": {
+    "bucketName": {
       "title": "Base Path",
       "description": "Base Path of the data source.",
       "type": "string",
@@ -69,12 +70,8 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsProfiler": {
-      "title": "Supports Profiler",
-      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": ["ConfigSource"]
+  "required": ["configSource"]
 }
