@@ -20,7 +20,7 @@ import React from 'react';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import useImage from '../../hooks/useImage';
 
-const Reaction = ({ reaction, isReacted, onReactionSelect }) => {
+const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
   const { image } = useImage(`emojis/${reaction.reaction}.png`);
 
   const handleOnClick = () => {
@@ -28,6 +28,7 @@ const Reaction = ({ reaction, isReacted, onReactionSelect }) => {
       ? ReactionOperation.REMOVE
       : ReactionOperation.ADD;
     onReactionSelect(reaction.reaction, operation);
+    onHide();
   };
 
   return (
@@ -56,6 +57,7 @@ Reaction.propTypes = {
   }).isRequired,
   isReacted: PropTypes.bool.isRequired,
   onReactionSelect: PropTypes.func.isRequired,
+  onHide: PropTypes.func.isRequired,
 };
 
 export default Reaction;

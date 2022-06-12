@@ -16,7 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import PropTypes from 'prop-types';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import AppState from '../../AppState';
 import {
   REACTION_LIST,
@@ -27,6 +27,16 @@ import Emoji from './Emoji';
 import Reaction from './Reaction';
 
 const Reactions = ({ reactions, onReactionSelect }) => {
+  const [visible, setVisible] = useState(false);
+
+  const hide = () => {
+    setVisible(false);
+  };
+
+  const handleVisibleChange = (newVisible) => {
+    setVisible(newVisible);
+  };
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -53,6 +63,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
         isReacted={isReacted(reaction.reaction)}
         key={uniqueId()}
         reaction={reaction}
+        onHide={hide}
         onReactionSelect={onReactionSelect}
       />
     );
@@ -81,7 +92,12 @@ const Reactions = ({ reactions, onReactionSelect }) => {
     <div className="tw-ml-8 tw-mb-4">
       <div className="tw-flex">
         {emojis}
-        <Popover content={reactionList} trigger="click" zIndex={9999}>
+        <Popover
+          content={reactionList}
+          trigger="click"
+          visible={visible}
+          zIndex={9999}
+          onVisibleChange={handleVisibleChange}>
           <Button className="ant-btn-reaction" shape="round">
             <SVGIcons
               alt="add-reaction"
