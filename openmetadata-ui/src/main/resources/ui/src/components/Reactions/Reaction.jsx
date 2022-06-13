@@ -37,12 +37,17 @@ const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
       className={classNames('tw-mr-1 ant-btn-popover-reaction', {
         'ant-btn-popover-isReacted': isReacted,
       })}
+      data-testid="reaction-button"
       key={uniqueId()}
       size="small"
       title={reaction.reaction}
       type="text"
       onClick={handleOnClick}>
-      <g-emoji alias={reaction.alias} className="d-flex" fallback-src={image}>
+      <g-emoji
+        alias={reaction.alias}
+        className="d-flex"
+        data-testid="emoji"
+        fallback-src={image}>
         {reaction.emoji}
       </g-emoji>
     </Button>
