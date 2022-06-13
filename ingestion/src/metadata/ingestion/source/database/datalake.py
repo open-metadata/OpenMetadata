@@ -23,13 +23,14 @@ import dask.dataframe as dd
 import gcsfs
 import pandas as pd
 import pyarrow.parquet as pq
-from google.cloud import storage
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
+    GCSConfig,
+    S3Config,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -47,7 +48,6 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.utils.column_type_parser import ColumnTypeParser
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -70,8 +70,9 @@ class DatalakeSource(Source[Entity]):
         self.service = self.metadata.get_service_or_create(
             entity=DatabaseService, config=config
         )
+
         self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client
+        self.client = self.connection.client if self.connection else None
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -90,10 +91,10 @@ class DatalakeSource(Source[Entity]):
         try:
 
             bucket_name = self.service_connection.bucketName
-            if hasattr(self.service_connection.configSource, "gcsConfig"):
+            if isinstance(self.service_connection.configSource, GCSConfig):
                 yield from self.get_gcs_files(bucket_name)
 
-            if hasattr(self.service_connection.configSource, "awsConfig"):
+            if isinstance(self.service_connection.configSource, S3Config):
                 yield from self.get_s3_files(bucket_name)
 
         except Exception as err:
@@ -108,7 +109,7 @@ class DatalakeSource(Source[Entity]):
 
     def read_tsv_from_gcs(self, key, bucket_name):
 
-        df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
+        df = dd.read_csv(f"gs://{bucket_name}/{key.name}", sep="\t")
 
         return df
 
@@ -132,8 +133,7 @@ class DatalakeSource(Source[Entity]):
         return df
 
     def get_gcs_files(self, bucket_name):
-        storage_client = storage.Client()
-        bucket = storage_client.get_bucket(bucket_name)
+        bucket = self.client.get_bucket(bucket_name)
 
         for key in bucket.list_blobs():
             try:
@@ -166,12 +166,12 @@ class DatalakeSource(Source[Entity]):
 
                 if key.name.endswith(".parquet"):
 
-                    df = self.read_csv_from_gcs(key, bucket_name)
+                    df = self.read_parquet_from_gcs(key, bucket_name)
 
                     yield from self.ingest_tables(key.name, df, bucket_name)
 
             except Exception as err:
-                logger.error(traceback.format_exc())
+                logger.debug(traceback.format_exc())
                 logger.error(err)
 
     def read_csv_from_s3(self, key, bucket_name):

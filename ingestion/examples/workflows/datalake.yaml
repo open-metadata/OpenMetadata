@@ -1,16 +1,15 @@
 source:
   type: datalake
-  serviceName: local_datalake
+  serviceName: local_datalake4
   serviceConnection:
     config:
       type: Datalake
-      configSource:
-        awsConfig:        #gcsConfig and awsConfig here
+      configSource:      
+        securityConfig: 
           awsAccessKeyId: aws access key id
           awsSecretAccessKey: aws secret access key
-          awsRegion: region
+          awsRegion: aws region
       bucketName: bucket name
-      
   sourceConfig:
     config:
       tableFilterPattern:

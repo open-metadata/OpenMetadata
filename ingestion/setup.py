@@ -81,9 +81,10 @@ plugins: Dict[str, Set[str]] = {
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
     "datalake": {
-        "google-cloud-storage~=2.4.0",
+        "google-cloud-storage==1.43.0",
         "pandas",
         "gcsfs",
+        "s3fs",
         "dask",
         "pyarrow",
         "boto3~=1.19.12",

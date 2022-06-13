@@ -55,6 +55,8 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
+    GCSConfig,
+    S3Config,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
@@ -607,16 +609,31 @@ def _(connection: S3Client) -> None:
     
 
 
+@singledispatch
+def get_datalake_client(config):
+    if config:
+        raise NotImplementedError(
+            f"Config not implemented for type {type(config)}: {config}"
+        )
+
+
 @get_connection.register
 def _(connection: DatalakeConnection, verbose: bool = False) -> S3Client:
+    return get_datalake_client(connection.configSource)
+
+
+@get_datalake_client.register
+def _(config: S3Config):
     from metadata.utils.aws_client import AWSClient
 
-    if connection.configSource.awsConfig:
-        s3_connection = AWSClient(connection.configSource.awsConfig).get_s3_client()
-        return s3_connection
-    if hasattr(connection.configSource, "gcsConfig"):
-        from google.cloud import storage
+    s3_client = AWSClient(config.securityConfig).get_s3_client()
+    return s3_client
 
-        set_google_credentials(gcs_credentials=connection.configSource.gcsConfig)
-        client = GCSClient(storage.Client())
-        return client
+
+@get_datalake_client.register
+def _(config: GCSConfig):
+    from google.cloud import storage
+
+    set_google_credentials(gcs_credentials=config.securityConfig)
+    gcs_client = GCSClient(storage.Client())
+    return gcs_client
