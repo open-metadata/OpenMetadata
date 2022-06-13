@@ -12,7 +12,6 @@
 Generic source to build SQL connectors.
 """
 
-import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Iterable, Optional, Tuple
