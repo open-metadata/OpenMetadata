@@ -10,6 +10,7 @@
 #  limitations under the License.
 """ml flow source module"""
 
+import json
 import ast
 import traceback
 from dataclasses import dataclass, field
@@ -167,20 +168,6 @@ class MlflowSource(Source[CreateMlModelRequest]):
             return MlStore(storage=version.source)
         return None
 
-    @staticmethod
-    def eval_props(tags: Union[str, Any]) -> List[dict]:
-        """
-        We'll try to literal_eval some props, as in older versions of MlFlow,
-        that data is inside a string. If that fails, we'll just return
-        the element we receive.
-        :param tags: content of data.tags["mlflow.log-model.history"]
-        :return: evaliated list
-        """
-        try:
-            return ast.literal_eval(tags)
-        except ValueError:
-            return tags
-
     def _get_ml_features(
         self, data: RunData, run_id: str, model_name: str
     ) -> Optional[List[MlFeature]]:
@@ -191,9 +178,7 @@ class MlflowSource(Source[CreateMlModelRequest]):
         """
         if data.tags:
             try:
-                props = self.eval_props(data.tags["mlflow.log-model.history"])
-                print(props)
-                print(props[0])
+                props = json.loads(data.tags["mlflow.log-model.history"])
                 latest_props = next(
                     (prop for prop in props if prop["run_id"] == run_id), None
                 )
