@@ -18,7 +18,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -94,6 +94,8 @@ class DashboardSourceService(Source, ABC):
             self.config.sourceConfig.config
         )
         self.connection = get_connection(self.service_connection)
+        self.test_connection()
+
         self.client = self.connection.client
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
@@ -135,7 +137,7 @@ class DashboardSourceService(Source, ABC):
         pass
 
     def test_connection(self) -> None:
-        pass
+        test_connection(self.connection)
 
     def prepare(self):
         pass

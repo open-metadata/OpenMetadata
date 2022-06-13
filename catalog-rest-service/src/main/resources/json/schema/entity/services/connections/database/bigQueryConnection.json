@@ -67,6 +67,12 @@
       "type": "string",
       "default": "_PARTITIONTIME"
     },
+    "taxonomyLocation": {
+      "title": "Taxonomy Location",
+      "description": "Taxonomy location used to fetch policy tags",
+      "type": "string",
+      "default": "us"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

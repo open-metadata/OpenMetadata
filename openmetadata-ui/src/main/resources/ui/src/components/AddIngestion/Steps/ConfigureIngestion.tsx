@@ -34,7 +34,9 @@ const ConfigureIngestion = ({
   tableFilterPattern,
   topicFilterPattern,
   chartFilterPattern,
+  pipelineFilterPattern,
   fqnFilterPattern,
+  includeLineage,
   includeView,
   markDeletedTables,
   serviceCategory,
@@ -45,6 +47,7 @@ const ConfigureIngestion = ({
   showTableFilter,
   showTopicFilter,
   showChartFilter,
+  showPipelineFilter,
   showFqnFilter,
   queryLogDuration,
   stageFileLocation,
@@ -56,6 +59,7 @@ const ConfigureIngestion = ({
   handleIngestionName,
   handleDescription,
   handleShowFilter,
+  handleIncludeLineage,
   handleIncludeView,
   handleMarkDeletedTables,
   handleQueryLogDuration,
@@ -125,6 +129,28 @@ const ConfigureIngestion = ({
           )}
         </div>
       </>
+    );
+  };
+
+  const getPipelineFieldToggles = () => {
+    return (
+      <div>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>Include lineage</label>
+            <ToggleSwitchV1
+              checked={includeLineage}
+              handleCheck={handleIncludeLineage}
+              testId="include-lineage"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            Configuration to turn off fetching lineage from pipelines.
+          </p>
+          {getSeparator('')}
+        </Field>
+        {getDebugLogToggle()}
+      </div>
     );
   };
 
@@ -219,6 +245,25 @@ const ConfigureIngestion = ({
             />
             {getSeparator('')}
             {getDebugLogToggle()}
+          </Fragment>
+        );
+      case ServiceCategory.PIPELINE_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showPipelineFilter}
+              excludePattern={pipelineFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.PIPELINE)
+              }
+              includePattern={pipelineFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.PIPELINE}
+            />
+            {getSeparator('')}
+            {getPipelineFieldToggles()}
           </Fragment>
         );
       default:

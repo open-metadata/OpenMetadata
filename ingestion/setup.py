@@ -99,7 +99,7 @@ plugins: Dict[str, Set[str]] = {
         "confluent_avro",
     },
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk==21.12.2"},
+    "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "pymssql": {"pymssql~=2.2.5"},
     "mssql-odbc": {"pyodbc"},

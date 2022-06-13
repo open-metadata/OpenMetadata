@@ -14,6 +14,7 @@
 package org.openmetadata.client.security.factory;
 
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
+import org.openmetadata.client.security.AzureAuthenticationProvider;
 import org.openmetadata.client.security.GoogleAuthenticationProvider;
 import org.openmetadata.client.security.NoOpAuthenticationProvider;
 import org.openmetadata.client.security.OktaAuthenticationProvider;
@@ -31,6 +32,7 @@ public class AuthenticationProviderFactory {
       case AUTH_0:
       case CUSTOM_OIDC:
       case AZURE:
+        return new AzureAuthenticationProvider(serverConfig);
       case OPENMETADATA:
         return null;
     }
