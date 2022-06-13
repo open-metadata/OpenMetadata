@@ -13,7 +13,6 @@ from typing import Iterable
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
-from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
@@ -33,14 +32,14 @@ from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_TABLE_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
+    SNOWFLAKE_SESSION_TAG_QUERY,
 )
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -105,9 +104,21 @@ class SnowflakeSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
+    def set_session_query_tag(self) -> None:
+        """
+        Method to set query tag for current session
+        """
+        self.engine.execute(
+            SNOWFLAKE_SESSION_TAG_QUERY.format(
+                query_tag=self.service_connection.queryTag
+            )
+        )
+
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
+            self.set_inspector(configured_db)
+            self.set_session_query_tag()
             yield configured_db
         else:
             results = self.connection.execute("SHOW DATABASES")
@@ -123,6 +134,7 @@ class SnowflakeSource(CommonDbSourceService):
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_session_query_tag()
                     yield new_database
                 except Exception as err:
                     logger.error(
