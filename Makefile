@@ -71,7 +71,7 @@ run_ometa_integration_tests:  ## Run Python integration tests
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
+	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=intestion/tests/unit/source ingestion/tests/unit
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage report
