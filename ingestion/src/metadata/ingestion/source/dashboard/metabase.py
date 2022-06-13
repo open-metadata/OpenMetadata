@@ -157,6 +157,7 @@ class MetabaseSource(DashboardSourceService):
         Returns:
             Iterable[CreateChartRequest]
         """
+        self.charts = []
         charts = dashboard_details["ordered_cards"]
         for chart in charts:
             try:
