@@ -104,7 +104,10 @@ class Profiler(Generic[TMetric]):
 
         # We will compute the sample from the property
         self._sampler = Sampler(
-            session=session, table=table, profile_sample=profile_sample, partition_details=self._partition_details
+            session=session,
+            table=table,
+            profile_sample=profile_sample,
+            partition_details=self._partition_details,
         )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
@@ -114,7 +117,7 @@ class Profiler(Generic[TMetric]):
                 session=session,
                 table=table,
                 sample=self.sample,
-                partition_details=self._partition_details
+                partition_details=self._partition_details,
             )
         )
 

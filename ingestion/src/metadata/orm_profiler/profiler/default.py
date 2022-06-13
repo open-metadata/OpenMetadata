@@ -76,5 +76,5 @@ class DefaultProfiler(Profiler):
             profile_date=profile_date,
             profile_sample=profile_sample,
             timeout_seconds=timeout_seconds,
-            partition_details = partition_details,
+            partition_details=partition_details,
         )

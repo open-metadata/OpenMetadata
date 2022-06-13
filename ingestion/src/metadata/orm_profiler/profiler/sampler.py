@@ -12,7 +12,6 @@
 Helper module to handle data sampling
 for the profiler
 """
-import profile
 from typing import Optional, Union, Dict
 
 from sqlalchemy import inspect
@@ -22,7 +21,7 @@ from sqlalchemy.orm.util import AliasedClass
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
-from metadata.orm_profiler.profiler.handle_partition import bigquery_required_partition_filter_handler
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
 
 RANDOM_LABEL = "random"
 
@@ -47,7 +46,7 @@ class Sampler:
 
         self.sample_limit = 100
 
-    @bigquery_required_partition_filter_handler(build_sample=True)
+    @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
         return self.session.query(
             self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
@@ -58,15 +57,8 @@ class Sampler:
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
-        # if not self.profile_sample:
-        #     # Use the full table
-        #     return self.table
-
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-
-        if not self.profile_sample:
-            return self.session.query(rnd).cte(f"{self.table.__tablename__}_sample")
 
         # Prepare sampled CTE
         sampled = (

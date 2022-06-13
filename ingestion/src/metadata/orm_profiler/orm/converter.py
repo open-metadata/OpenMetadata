@@ -145,16 +145,4 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
         entity=DatabaseSchema, entity_id=table.databaseSchema.id
     )
 
-    service: DatabaseService = metadata.get_by_id(
-        entity=DatabaseService, entity_id=table.service.id
-    )
-
-    connection = service.connection.config
-
-    if hasattr(connection, "supportsDatabase"):
-        database: Database = metadata.get_by_id(
-            entity=Database, entity_id=table.database.id
-        )
-        return fqn._build(str(database.name.__root__), str(schema.name.__root__))
-
     return str(schema.name.__root__)

@@ -21,7 +21,7 @@ from typing import Union, Dict, Optional
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.orm_profiler.profiler.handle_partition import bigquery_required_partition_filter_handler
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
 
 
 class QueryRunner:
@@ -54,19 +54,19 @@ class QueryRunner:
     def _select_from_sample(self, *entities, **kwargs):
         return self._build_query(*entities, **kwargs).select_from(self._sample)
 
-    @bigquery_required_partition_filter_handler()
+    @partition_filter_handler()
     def select_first_from_table(self, *entities, **kwargs):
         return self._build_query(*entities, **kwargs).select_from(self.table).first()
 
-    @bigquery_required_partition_filter_handler(first=False)
+    @partition_filter_handler(first=False)
     def select_all_from_table(self, *entities, **kwargs):
         return self._build_query(*entities, **kwargs).select_from(self.table).all()
 
-    @bigquery_required_partition_filter_handler(sampled=True)
+    @partition_filter_handler(sampled=True)
     def select_first_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).first()
 
-    @bigquery_required_partition_filter_handler(first=False, sampled=True)
+    @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).all()
 
