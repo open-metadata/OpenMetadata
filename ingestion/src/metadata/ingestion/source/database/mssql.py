@@ -55,6 +55,7 @@ class MssqlSource(CommonDbSourceService):
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database
         if configured_db:
+            self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
             results = self.connection.execute(
