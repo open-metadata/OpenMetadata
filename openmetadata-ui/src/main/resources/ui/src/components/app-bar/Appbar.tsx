@@ -229,15 +229,16 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push(
-      getExplorePathWithSearch(
+    history.push({
+      pathname: getExplorePathWithSearch(
         value,
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
           : 'tables'
-      )
-    );
+      ),
+      search: location.search,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
