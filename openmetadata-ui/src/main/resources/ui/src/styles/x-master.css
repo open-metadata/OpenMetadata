@@ -992,3 +992,22 @@ code {
 .ant-card-extra {
   padding: 0px;
 }
+
+.ant-advaced-field-select {
+  color: #7147e8;
+  min-width: 130px;
+}
+.ant-suggestion-dropdown {
+  min-width: 200px !important;
+}
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbd1f9;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 0px 4px;
+}
+
+.ant-select-single .ant-select-selector .ant-select-selection-search {
+  left: 4px;
+}

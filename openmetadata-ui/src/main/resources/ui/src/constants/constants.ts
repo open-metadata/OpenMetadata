@@ -116,15 +116,15 @@ export const tableSortingFields = [
     value: 'last_updated_timestamp',
   },
   { name: 'Weekly Usage', value: 'weekly_stats' },
-  // { name: 'Daily Usage', value: 'daily_stats' },
-  // { name: 'Monthly Usage', value: 'monthly_stats' },
+  { name: 'Relevance', value: '' },
 ];
 
-export const topicSortingFields = [
+export const entitySortingFields = [
   {
     name: 'Last Updated',
     value: 'last_updated_timestamp',
   },
+  { name: 'Relevance', value: '' },
 ];
 
 export const sortingOrder = [
