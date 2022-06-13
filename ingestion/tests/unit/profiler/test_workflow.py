@@ -180,7 +180,6 @@ def test_default_profile_def():
         profile_workflow.config.source.serviceConnection.__root__.config
     )
 
-
     assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
     assert profile_workflow.processor.config.profiler is None
 
