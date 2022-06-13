@@ -14,6 +14,7 @@ Build and document all supported Engines
 """
 import json
 import logging
+import os
 import traceback
 from functools import singledispatch
 from typing import Union
@@ -28,6 +29,9 @@ from sqlalchemy.orm.session import Session
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
     ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
@@ -74,6 +78,7 @@ from metadata.utils.connection_clients import (
     DynamoClient,
     GlueClient,
     KafkaClient,
+    LookerClient,
     MetabaseClient,
     RedashClient,
     SalesforceClient,
@@ -524,6 +529,30 @@ def _(connection: TableauClient) -> None:
     try:
         connection.client.server_info()
 
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: LookerConnection, verbose: bool = False):
+    import looker_sdk
+
+    if not os.environ.get("LOOKERSDK_CLIENT_ID"):
+        os.environ["LOOKERSDK_CLIENT_ID"] = connection.username
+    if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
+        os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
+    if not os.environ.get("LOOKERSDK_BASE_URL"):
+        os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
+    client = looker_sdk.init31()
+    return LookerClient(client=client)
+
+
+@test_connection.register
+def _(connection: LookerClient) -> None:
+    try:
+        connection.client.me()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

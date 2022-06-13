@@ -8,12 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import os
 import traceback
 from typing import Iterable
-
-import looker_sdk
 
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -30,6 +26,7 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_chart, filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
@@ -52,32 +49,13 @@ class LookerSource(Source[Entity]):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
 
-        self.client = self.looker_client()
+        self.connection = get_connection(self.service_connection)
+        self.client = self.connection.client
+
         self.status = SourceStatus()
         self.service = self.metadata.get_service_or_create(
             entity=DashboardService, config=config
         )
-
-    def check_env(self, env_key):
-        if os.environ.get(env_key):
-            return True
-        return None
-
-    def looker_client(self):
-        try:
-            if not self.check_env("LOOKERSDK_CLIENT_ID"):
-                os.environ["LOOKERSDK_CLIENT_ID"] = self.service_connection.username
-            if not self.check_env("LOOKERSDK_CLIENT_SECRET"):
-                os.environ[
-                    "LOOKERSDK_CLIENT_SECRET"
-                ] = self.service_connection.password.get_secret_value()
-            if not self.check_env("LOOKERSDK_BASE_URL"):
-                os.environ["LOOKERSDK_BASE_URL"] = self.service_connection.hostPort
-            client = looker_sdk.init31()
-            client.me()
-            return client
-        except Exception as err:
-            logger.error(f"ERROR: {repr(err)}")
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -104,7 +82,7 @@ class LookerSource(Source[Entity]):
             return None
         om_dashboard_elements = Chart(
             name=dashboard_elements.id,
-            displayName=dashboard_elements.title or "",
+            displayName=dashboard_elements.title or dashboard_elements.id,
             description="",
             chart_type=dashboard_elements.type,
             url=f"{self.service_connection.hostPort}/dashboard_elements/{dashboard_elements.id}",
