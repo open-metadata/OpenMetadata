@@ -132,9 +132,7 @@ class MetadataRestSink(Sink[Entity]):
         elif isinstance(record, DataModelLink):
             self.write_datamodel(record)
         else:
-            logging.debug(
-                f"Processing Create request {type(record)}"
-            )
+            logging.debug(f"Processing Create request {type(record)}")
             self.write_create_request(record)
 
     def write_create_request(self, entity_request) -> None:
