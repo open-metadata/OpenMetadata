@@ -6,7 +6,7 @@
   "type": "object",
   "properties": {
     "connection": {
-      "description": "Database Connection.",
+      "description": "Connection object.",
       "oneOf": [
         {
           "$ref": "../../../entity/services/databaseService.json#/definitions/databaseConnection"
