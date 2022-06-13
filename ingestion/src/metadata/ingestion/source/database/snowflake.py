@@ -48,6 +48,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     FETCH_SNOWFLAKE_ALL_TAGS,
     FETCH_SNOWFLAKE_METADATA,
+    SNOWFLAKE_SESSION_TAG_QUERY,
 )
 
 GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
@@ -108,6 +109,7 @@ class SnowflakeSource(CommonDbSourceService):
 
     def get_databases(self) -> Iterable[Inspector]:
         if self.config.serviceConnection.__root__.config.database:
+            self.set_session_query_tag()
             yield from super().get_databases()
         else:
             query = "SHOW DATABASES"
@@ -124,6 +126,7 @@ class SnowflakeSource(CommonDbSourceService):
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.service_connection)
+                self.set_session_query_tag()
                 yield inspect(self.engine)
 
     def add_tags_to_table(self, schema: str, table_name: str, table_entity):
@@ -192,6 +195,16 @@ class SnowflakeSource(CommonDbSourceService):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def set_session_query_tag(self) -> None:
+        """
+        Method to set query tag for current session
+        """
+        self.engine.execute(
+            SNOWFLAKE_SESSION_TAG_QUERY.format(
+                query_tag=self.service_connection.queryTag
+            )
+        )
 
     def next_record(self) -> Iterable[Entity]:
         yield from self.get_all_table_tags() or []

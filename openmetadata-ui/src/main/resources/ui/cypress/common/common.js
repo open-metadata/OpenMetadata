@@ -213,11 +213,9 @@ export const visitEntityTab = (id) => {
  * @param {string} term Entity name
  */
 export const searchEntity = (term) => {
-  cy.get('[data-testid="searchBox"]').should('be.visible');
-  cy.get('[data-testid="searchBox"]')
-    .scrollIntoView()
-    .type(`${term}{enter}{enter}`);
-  cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
+  cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
+  cy.get('[data-testid="suggestion-overlay"]').click(1,1);
 };
 
 // add new tag to entity and its table

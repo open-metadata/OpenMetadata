@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React, { useState } from 'react';
+import { debounce } from 'lodash';
+import React, { useCallback, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
@@ -46,11 +47,23 @@ const NavBar = ({
   handleOnClick,
 }: NavBarProps) => {
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
     return { color: normalLink };
   };
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      setSuggestionSearch(text);
+    },
+    [setSuggestionSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
 
   return (
     <>
@@ -100,7 +113,9 @@ const NavBar = ({
               value={searchValue}
               onBlur={() => setSearchIcon('icon-searchv1')}
               onChange={(e) => {
-                handleSearchChange(e.target.value);
+                const { value } = e.target;
+                debounceOnSearch(value);
+                handleSearchChange(value);
               }}
               onFocus={() => setSearchIcon('icon-searchv1color')}
               onKeyDown={handleKeyDown}
@@ -120,7 +135,7 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
-                  searchText={searchValue}
+                  searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />
               ))}
