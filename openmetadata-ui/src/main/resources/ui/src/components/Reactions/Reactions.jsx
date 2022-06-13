@@ -94,6 +94,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
         {emojis}
         <Popover
           content={reactionList}
+          placement="topLeft"
           trigger="click"
           visible={visible}
           zIndex={9999}
