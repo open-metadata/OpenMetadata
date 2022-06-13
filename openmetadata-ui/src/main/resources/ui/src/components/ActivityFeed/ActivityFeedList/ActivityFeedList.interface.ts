@@ -15,6 +15,8 @@ import { HTMLAttributes } from 'react';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
+export type UpdatedFeedList = Array<Thread & { relativeDay: string }>;
+
 export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   feedList: Thread[];
   withSidePanel?: boolean;
@@ -35,7 +37,7 @@ export interface FeedListBodyProp
       ActivityFeedListProp,
       'isEntityFeed' | 'withSidePanel' | 'deletePostHandler'
     > {
-  updatedFeedList: Array<Thread & { relativeDay: string }>;
+  updatedFeedList: UpdatedFeedList;
   selectedThreadId: string;
   onThreadIdSelect: (value: string) => void;
   onThreadIdDeselect: () => void;
