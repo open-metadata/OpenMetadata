@@ -527,7 +527,8 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
-    setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
+    // if search text is there then set sortfield as ''(Relevance)
+    setSortField(searchText ? '' : tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder(INITIAL_SORT_ORDER);
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
