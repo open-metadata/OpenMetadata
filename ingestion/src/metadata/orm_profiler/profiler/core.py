@@ -68,7 +68,7 @@ class Profiler(Generic[TMetric]):
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = None,
+        profile_sample: Optional[float] = 100.0,
         timeout_seconds: Optional[int] = TEN_MIN,
         partition_details: Optional[Dict] = None,
     ):

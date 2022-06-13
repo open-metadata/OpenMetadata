@@ -69,6 +69,8 @@ def test_init_workflow():
     assert isinstance(workflow.source_config, DatabaseServiceProfilerPipeline)
     assert isinstance(workflow.metadata_config, OpenMetadataConnection)
 
+    workflow.create_processor(workflow.config.source.serviceConnection.__root__.config)
+
     assert isinstance(workflow.processor, OrmProfilerProcessor)
     assert workflow.processor.config.profiler is None
     assert workflow.processor.config.test_suite is None
@@ -152,6 +154,9 @@ def test_profile_def():
     }
 
     profile_workflow = ProfilerWorkflow.create(profile_config)
+    profile_workflow.create_processor(
+        profile_workflow.config.source.serviceConnection.__root__.config
+    )
 
     profile_definition = ProfilerDef(
         name="my_profiler",
@@ -171,6 +176,10 @@ def test_default_profile_def():
     """
 
     profile_workflow = ProfilerWorkflow.create(config)
+    profile_workflow.create_processor(
+        profile_workflow.config.source.serviceConnection.__root__.config
+    )
+
 
     assert isinstance(profile_workflow.processor, OrmProfilerProcessor)
     assert profile_workflow.processor.config.profiler is None
@@ -243,6 +252,9 @@ def test_tests_def():
     }
 
     test_workflow = ProfilerWorkflow.create(test_config)
+    test_workflow.create_processor(
+        test_workflow.config.source.serviceConnection.__root__.config
+    )
 
     assert isinstance(test_workflow.processor, OrmProfilerProcessor)
     suite = test_workflow.processor.config.test_suite
