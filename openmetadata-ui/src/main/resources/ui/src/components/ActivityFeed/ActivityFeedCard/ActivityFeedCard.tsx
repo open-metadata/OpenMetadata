@@ -105,10 +105,14 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
           )
       );
     }
-    const patch = compare(feedDetail, {
-      ...feedDetail,
-      reactions: updatedReactions,
-    });
+
+    const patch = compare(
+      { ...feedDetail, reactions: [...(feedDetail.reactions || [])] },
+      {
+        ...feedDetail,
+        reactions: updatedReactions,
+      }
+    );
 
     onFeedUpdate(patch);
   };
