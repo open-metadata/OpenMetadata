@@ -15,8 +15,6 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.engine import Connection

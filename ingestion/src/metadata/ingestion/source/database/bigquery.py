@@ -86,15 +86,6 @@ def get_columns(bq_schema):
 _types.get_columns = get_columns
 
 
-def dialect_get_columns(self, connection, table_name, schema=None, **kw):
-    clean_table = fqn.split(table_name)[-1]
-    table = self._get_table(connection, clean_table, schema)
-    return _types.get_columns(table.schema)
-
-
-# BigQueryDialect.get_columns = dialect_get_columns
-
-
 class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
