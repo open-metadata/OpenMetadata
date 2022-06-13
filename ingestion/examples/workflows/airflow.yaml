@@ -5,6 +5,7 @@ source:
     config:
       type: Airflow
       hostPort: http://localhost:8080
+      numberOfStatus: 10
       connection:
         type: Mysql
         username: airflow_user

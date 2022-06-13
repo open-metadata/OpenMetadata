@@ -25,6 +25,10 @@
       "type": "string",
       "format": "uri"
     },
+    "numberOfStatus": {
+      "description": "Pipeline Service Number Of Status",
+      "type": "integer"
+    },
     "connection": {
       "title": "Metadata Database Connection",
       "description": "Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.",
