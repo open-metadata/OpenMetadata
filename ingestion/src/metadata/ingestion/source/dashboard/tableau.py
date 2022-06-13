@@ -83,6 +83,7 @@ class TableauSource(DashboardSourceService):
     ):
 
         super().__init__(config, metadata_config)
+        self.charts = []
         self.dashboards = get_workbooks_dataframe(self.client).to_dict()
         self.all_dashboard_details = get_views_dataframe(self.client).to_dict()
 
