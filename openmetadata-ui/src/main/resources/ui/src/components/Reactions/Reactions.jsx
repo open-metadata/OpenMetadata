@@ -101,6 +101,7 @@ const Reactions = ({ reactions, onReactionSelect }) => {
           onVisibleChange={handleVisibleChange}>
           <Button
             className="ant-btn-reaction ant-btn-add-reactions"
+            data-testid="add-reactions"
             shape="round">
             <SVGIcons
               alt="add-reaction"
