@@ -52,7 +52,9 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   };
 
   const popoverContent = (
-    <p className="tw-w-44 tw-break-normal tw-m-0 tw-p-0">
+    <p
+      className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
+      data-testid="popover-content">
       {`${userList.join(', ')}`}{' '}
       <span className="tw-font-semibold">{`reacted with ${reaction} emoji`}</span>
     </p>
@@ -64,15 +66,17 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
         className={classNames('ant-btn-reaction tw-mr-1', {
           'ant-btn-isReacted': isReacted,
         })}
+        data-testid="emoji-button"
         shape="round"
         onClick={handleOnClick}>
         <g-emoji
           alias={reactionObject.alias}
           className="d-flex"
+          data-testid="emoji"
           fallback-src={image}>
           {reactionObject.emoji}
         </g-emoji>
-        <span>{reactionList.length}</span>
+        <span data-testid="emoji-count">{reactionList.length}</span>
       </Button>
     </Popover>
   );
