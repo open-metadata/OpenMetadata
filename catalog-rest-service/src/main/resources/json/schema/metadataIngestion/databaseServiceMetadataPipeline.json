@@ -34,11 +34,13 @@
       "type": "object",
       "properties": {
         "dbtCloudAuthToken": {
+          "title": "DBT Cloud Authentication Token",
           "description": "DBT cloud account authentication token",
           "type": "string",
           "format": "password"
         },
         "dbtCloudAccountId": {
+          "title": "DBT Cloud Account Id",
           "description": "DBT cloud account Id",
           "type": "string"
         }
@@ -52,10 +54,12 @@
       "type": "object",
       "properties": {
         "dbtCatalogFilePath": {
+          "title": "DBT Catalog File Path",
           "description": "DBT catalog file path to extract dbt models with their column schemas.",
           "type": "string"
         },
         "dbtManifestFilePath": {
+          "title": "DBT Manifest File Path",
           "description": "DBT manifest file path to extract dbt models and associate with tables.",
           "type": "string"
         }
@@ -69,10 +73,12 @@
       "type": "object",
       "properties": {
         "dbtCatalogHttpPath": {
+          "title": "DBT Catalog HTTP File Path",
           "description": "DBT catalog http file path to extract dbt models with their column schemas.",
           "type": "string"
         },
         "dbtManifestHttpPath": {
+          "title": "DBT Manifest HTTP File Path",
           "description": "DBT manifest http file path to extract dbt models and associate with tables.",
           "type": "string"
         }
