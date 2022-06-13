@@ -14,7 +14,7 @@ import json
 import ast
 import traceback
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Union, Any
+from typing import Iterable, List, Optional
 
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion
