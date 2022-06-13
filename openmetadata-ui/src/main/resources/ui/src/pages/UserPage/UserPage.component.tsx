@@ -15,7 +15,6 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -31,6 +30,7 @@ import {
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
@@ -46,7 +46,7 @@ const UserPage = () => {
   const [userData, setUserData] = useState<User>({} as User);
   const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -142,7 +142,7 @@ const UserPage = () => {
                 if (thread.id === data.id) {
                   return {
                     ...thread,
-                    posts: data.posts.slice(-3),
+                    posts: data.posts && data.posts.slice(-3),
                     postsCount: data.postsCount,
                   };
                 } else {

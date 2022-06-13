@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
-  selectedThread: EntityThread;
+  selectedThread: Thread;
   open?: boolean;
   onCancel: () => void;
   postFeed: (value: string) => void;
@@ -36,7 +36,7 @@ export interface FeedPanelOverlayProp
 export interface FeedPanelBodyProp
   extends HTMLAttributes<HTMLDivElement>,
     Pick<ActivityFeedPanelProp, 'deletePostHandler'> {
-  threadData: EntityThread;
+  threadData: Thread;
   isLoading: boolean;
   onConfirmation?: (data: ConfirmState) => void;
 }

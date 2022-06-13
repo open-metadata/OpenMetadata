@@ -13,8 +13,8 @@
 
 import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
-import { getReplyText } from '../../../utils/FeedUtils';
-import { FeedFooterProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import { getReplyText } from '../../../../utils/FeedUtils';
+import { FeedFooterProp } from '../ActivityFeedCard.interface';
 
 const FeedCardFooter: FC<FeedFooterProp> = ({
   repliedUsers,

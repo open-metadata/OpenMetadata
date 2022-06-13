@@ -33,7 +33,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
 
