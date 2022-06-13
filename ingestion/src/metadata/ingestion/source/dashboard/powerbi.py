@@ -57,6 +57,7 @@ class PowerbiSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
+        self.charts = []
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
