@@ -13,6 +13,7 @@ Airflow source to extract metadata from OM UI
 """
 import sys
 import traceback
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional, cast
 
@@ -109,7 +110,7 @@ class AirflowSource(Source[CreatePipelineRequest]):
         self.service: PipelineService = self.metadata.get_service_or_create(
             entity=PipelineService, config=config
         )
-        self.numberOfStatus = int(
+        self.numberOfStatus = (
             self.config.serviceConnection.__root__.config.numberOfStatus
         )
         # Create the connection to the database
@@ -139,39 +140,43 @@ class AirflowSource(Source[CreatePipelineRequest]):
     def prepare(self):
         pass
 
-    def get_pipeline_status(self, dag_id: str, numberOfStatus=0) -> DagRun:
-        dag_run: DagRun = (
-            self.session.query(DagRun).filter(DagRun.dag_id == dag_id).first()
+    def get_pipeline_status(self, dag_id: str) -> DagRun:
+        dag_run_list: DagRun = (
+            self.session.query(DagRun)
+            .filter(DagRun.dag_id == dag_id)
+            .order_by(DagRun.execution_date.desc())
+            .limit(self.numberOfStatus)
         )
-        return dag_run
-
-    def get_task_status(self, dag_id: str, numberOfStatus=0) -> List[TaskInstance]:
-        list_of_task_status: List[TaskInstance] = (
-            self.session.query(TaskInstance).filter(TaskInstance.dag_id == dag_id).all()
-        )
-        return list_of_task_status
+        return dag_run_list
 
     def fetch_pipeline_status(
-        self, serialized_dag: SerializedDAG, pipeline_fqn: str, numberOfStatus=0
+        self, serialized_dag: SerializedDAG, pipeline_fqn: str
     ) -> OMetaPipelineStatus:
-        dag_run = self.get_pipeline_status(serialized_dag.dag_id)
-        task_status = self.get_task_status(serialized_dag.dag_id)
-        task_statuses = [
-            TaskStatus(
-                name=task.task_id,
-                executionStatus=STATUS_MAP.get(task.state, StatusType.Pending.value),
-            )
-            for task in task_status
-        ]
+        dag_run_list = self.get_pipeline_status(serialized_dag.dag_id)
+        for dag in dag_run_list:
+            tasks = []
+            if isinstance(dag.task_instances, Iterable):
+                tasks = dag.task_instances
+            else:
+                tasks = [dag.task_instances]
 
-        pipeline_status = PipelineStatus(
-            taskStatus=task_statuses,
-            executionStatus=STATUS_MAP.get(dag_run._state, StatusType.Pending.value),
-            executionDate=dag_run.start_date.timestamp(),
-        )
-        yield OMetaPipelineStatus(
-            pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
-        )
+            task_statuses = [
+                TaskStatus(
+                    name=task.task_id,
+                    executionStatus=STATUS_MAP.get(
+                        task.state, StatusType.Pending.value
+                    ),
+                )
+                for task in tasks
+            ]
+            pipeline_status = PipelineStatus(
+                taskStatus=task_statuses,
+                executionStatus=STATUS_MAP.get(dag._state, StatusType.Pending.value),
+                executionDate=dag.start_date.timestamp(),
+            )
+            yield OMetaPipelineStatus(
+                pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
+            )
 
     def list_dags(self) -> Iterable[SerializedDagModel]:
         """

@@ -27,7 +27,8 @@
     },
     "numberOfStatus": {
       "description": "Pipeline Service Number Of Status",
-      "type": "integer"
+      "type": "integer",
+      "default": "10"
     },
     "connection": {
       "title": "Metadata Database Connection",
