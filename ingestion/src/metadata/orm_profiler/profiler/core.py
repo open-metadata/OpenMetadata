@@ -15,7 +15,6 @@ Main Profile definition and queries to execute
 import traceback
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
-from numpy import partition
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect

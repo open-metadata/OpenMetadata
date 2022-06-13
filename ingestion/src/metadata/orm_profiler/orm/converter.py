@@ -17,14 +17,11 @@ to an SQLAlchemy ORM class.
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.registry import CustomTypes
-from metadata.utils import fqn
 
 Base = declarative_base()
 

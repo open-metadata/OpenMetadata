@@ -13,17 +13,17 @@ Helper submodule for partitioned tables
 """
 
 from __future__ import annotations
-import logging
-from typing import Optional, Callable
 
+from typing import Optional
+
+from sqlalchemy import text
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
-from sqlalchemy import text
 
-from metadata.utils.logger import profiler_logger
 from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+from metadata.utils.logger import profiler_logger
 
 RANDOM_LABEL = "random"
 
@@ -140,8 +140,9 @@ def build_partition_predicate(partition_details: dict, col):
     )
 
 
+# pylint: disable=invalid-name,protected-access
 class partition_filter_handler:
-    """Decorator to handle partioned queries
+    """Decorator to handle partioned queries (hence lowercase class name)
 
     Attributes:
         first (bool): whether to return just the first row

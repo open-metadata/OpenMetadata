@@ -13,7 +13,7 @@
 Default simple profiler to use
 """
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session

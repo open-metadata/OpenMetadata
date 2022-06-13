@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Optional, Union, Dict
+from typing import Dict, Optional, Union
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
