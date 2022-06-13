@@ -75,6 +75,7 @@ const SearchInput = ({
       defaultActiveFirstOption={false}
       dropdownClassName="ant-suggestion-dropdown"
       filterOption={false}
+      notFoundContent={null}
       placeholder="Search to Select"
       showArrow={false}
       value={value}
