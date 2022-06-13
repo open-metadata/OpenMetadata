@@ -555,7 +555,6 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
-      resetFilters();
       fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
@@ -635,12 +634,12 @@ const Explore: React.FC<ExploreProps> = ({
    * otherwise change it to INITIAL_SORT_FIELD (last_updated)
    */
   useEffect(() => {
-    if (searchQuery) {
+    if (searchText) {
       setSortField('');
     } else {
       setSortField(INITIAL_SORT_FIELD);
     }
-  }, [searchQuery]);
+  }, [searchText]);
 
   /**
    * on advance field change call handleAdvancedSearch methdod
