@@ -160,14 +160,14 @@ const mockGlossaryList = [
   {
     name: 'Tag1',
     displayName: 'Tag1',
-    fqdn: 'Glossary.Tag1',
+    fullyQualifiedName: 'Glossary.Tag1',
     type: 'glossaryTerm',
     id: 'glossaryTagId1',
   },
   {
     name: 'Tag2',
     displayName: 'Tag2',
-    fqdn: 'Glossary.Tag2',
+    fullyQualifiedName: 'Glossary.Tag2',
     type: 'glossaryTerm',
     id: 'glossaryTagId2',
   },
@@ -250,7 +250,9 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+    return terms.map(
+      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
+    );
   }),
 }));
 

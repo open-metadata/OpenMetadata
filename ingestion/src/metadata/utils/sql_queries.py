@@ -142,6 +142,7 @@ SNOWFLAKE_SQL_STATEMENT = """
         end_time_range_end=>to_timestamp_ltz('{end_date}'),RESULT_LIMIT=>{result_limit}))
         WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES');
         """
+SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
     """
@@ -306,10 +307,25 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 """
 
 
-FETCH_SNOWFLAKE_ALL_TAGS = (
-    "select * from table(information_schema.TAG_REFERENCES_ALL_COLUMNS('{}', 'table'));"
-)
+SNOWFLAKE_FETCH_ALL_TAGS = """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
+    from snowflake.account_usage.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA = '{schema_name}'
+"""
 
-FETCH_SNOWFLAKE_METADATA = """
-select TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables where TABLE_SCHEMA = '{}' 
+
+SNOWFLAKE_GET_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+"""
+
+SNOWFLAKE_GET_VIEW_NAMES = """
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+"""
+
+SNOWFLAKE_GET_COMMENTS = """
+    select COMMENT 
+    from SHOP_DB.information_schema.TABLES 
+    WHERE TABLE_SCHEMA = '{schema_name}'
+      AND TABLE_NAME = '{table_name}'
 """

@@ -9,8 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from sqlalchemy.engine.reflection import Inspector
-
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -38,10 +36,3 @@ class MysqlSource(CommonDbSourceService):
             )
 
         return cls(config, metadata_config)
-
-    def get_schemas(self, inspector: Inspector) -> str:
-        return (
-            inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )

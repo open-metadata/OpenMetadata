@@ -42,7 +42,7 @@ jest.mock('../../components/tags-container/tags-container', () => {
   return jest.fn().mockReturnValue(<>Tags-container component</>);
 });
 
-jest.mock('../../components/common/description/Description', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<>Description component</>);
 });
 

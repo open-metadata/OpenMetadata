@@ -183,6 +183,10 @@ export const getCurrentIndex = (tab: string) => {
       currentIndex = SearchIndex.PIPELINE;
 
       break;
+    case 'mlmodels':
+      currentIndex = SearchIndex.MLMODEL;
+
+      break;
     case 'tables':
     default:
       currentIndex = SearchIndex.TABLE;
@@ -206,6 +210,10 @@ export const getCurrentTab = (tab: string) => {
       break;
     case 'pipelines':
       currentTab = 4;
+
+      break;
+    case 'mlmodels':
+      currentTab = 5;
 
       break;
 
@@ -259,5 +267,15 @@ export const tabsInfo = [
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
     selectedIcon: Icons.PIPELINE,
+  },
+  {
+    label: 'ML Models',
+    index: SearchIndex.MLMODEL,
+    sortingFields: topicSortingFields,
+    sortField: '',
+    tab: 5,
+    path: 'mlmodels',
+    icon: '',
+    selectedIcon: '',
   },
 ];

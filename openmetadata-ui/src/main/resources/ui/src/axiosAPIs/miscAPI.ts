@@ -72,13 +72,14 @@ export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${
+  const params = {
+    q: queryString,
+    index:
       searchIndex ??
-      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
-    }
-    `
-  );
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
 };
 
 export const getVersion: Function = () => {

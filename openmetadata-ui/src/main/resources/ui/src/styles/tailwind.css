@@ -144,8 +144,13 @@
   .link-title {
     @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
+
+  .link-text-info {
+    @apply tw-text-info hover:tw-text-info focus:tw-text-info hover:tw-underline focus:tw-underline tw-cursor-pointer;
+  }
+
   .show-more,
-  a[href]:not(.button-comp):not(.tw-no-underline),
+  a[href]:not(.button-comp):not(.tw-no-underline):not(.link-text-info),
   .link-text {
     @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }

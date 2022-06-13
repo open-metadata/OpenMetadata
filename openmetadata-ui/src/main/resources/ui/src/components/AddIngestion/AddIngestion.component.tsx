@@ -122,6 +122,11 @@ const AddIngestion = ({
   const [showChartFilter, setShowChartFilter] = useState(
     !isUndefined((data?.sourceConfig.config as ConfigClass)?.chartFilterPattern)
   );
+  const [showPipelineFilter, setShowPipelineFilter] = useState(
+    !isUndefined(
+      (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern
+    )
+  );
   const [showFqnFilter, setShowFqnFilter] = useState(
     !isUndefined((data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern)
   );
@@ -155,11 +160,8 @@ const AddIngestion = ({
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
-  const [enableDataProfiler, setEnableDataProfiler] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.enableDataProfiler ?? true
-  );
-  const [ingestSampleData, setIngestSampleData] = useState(
-    (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
+  const [includeLineage, setIncludeLineage] = useState(
+    Boolean((data?.sourceConfig.config as ConfigClass)?.includeLineage ?? true)
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
@@ -190,6 +192,11 @@ const AddIngestion = ({
     (data?.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
+  const [pipelineFilterPattern, setPipelineFilterPattern] =
+    useState<FilterPattern>(
+      (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern ??
+        INITIAL_FILTER_PATTERN
+    );
   const [fqnFilterPattern, setFqnFilterPattern] = useState<FilterPattern>(
     (data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
       INITIAL_FILTER_PATTERN
@@ -243,11 +250,15 @@ const AddIngestion = ({
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, includes: value });
+        setChartFilterPattern({ ...chartFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.FQN:
         setFqnFilterPattern({ ...fqnFilterPattern, includes: value });
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setPipelineFilterPattern({ ...pipelineFilterPattern, includes: value });
 
         break;
     }
@@ -278,11 +289,15 @@ const AddIngestion = ({
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, excludes: value });
+        setChartFilterPattern({ ...chartFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.FQN:
         setFqnFilterPattern({ ...fqnFilterPattern, excludes: value });
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setPipelineFilterPattern({ ...pipelineFilterPattern, excludes: value });
 
         break;
     }
@@ -316,6 +331,10 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.FQN:
         setShowFqnFilter(value);
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setShowPipelineFilter(value);
 
         break;
     }
@@ -370,8 +389,6 @@ const AddIngestion = ({
         };
 
         return {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
           includeViews: includeView,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
@@ -410,6 +427,16 @@ const AddIngestion = ({
             showDashboardFilter
           ),
           type: ConfigType.DashboardMetadata,
+        };
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        return {
+          includeLineage: includeLineage,
+          pipelineFilterPattern: getFilterPatternData(
+            pipelineFilterPattern,
+            showPipelineFilter
+          ),
+          type: ConfigType.PipelineMetadata,
         };
       }
       default: {
@@ -582,28 +609,25 @@ const AddIngestion = ({
             dashboardFilterPattern={dashboardFilterPattern}
             databaseFilterPattern={databaseFilterPattern}
             description={description}
-            enableDataProfiler={enableDataProfiler}
             enableDebugLog={enableDebugLog}
             fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleDescription={(val) => setDescription(val)}
-            handleEnableDataProfiler={() =>
-              setEnableDataProfiler((pre) => !pre)
-            }
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
+            handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
-            handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
+            includeLineage={includeLineage}
             includeView={includeView}
-            ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
+            pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
@@ -613,6 +637,7 @@ const AddIngestion = ({
             showDashboardFilter={showDashboardFilter}
             showDatabaseFilter={showDatabaseFilter}
             showFqnFilter={showFqnFilter}
+            showPipelineFilter={showPipelineFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
             showTopicFilter={showTopicFilter}

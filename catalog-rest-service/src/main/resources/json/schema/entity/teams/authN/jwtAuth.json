@@ -5,11 +5,7 @@
   "description": "User/Bot JWTAuthMechanism.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.teams.authn.JWTAuthMechanism",
-  "properties": {
-    "JWTToken": {
-      "description": "JWT Auth Token.",
-      "type": "string"
-    },
+  "definitions": {
     "JWTTokenExpiry": {
       "javaType": "org.openmetadata.catalog.teams.authn.JWTTokenExpiry",
       "description": "JWT Auth Token expiration in days",
@@ -32,6 +28,15 @@
           "name": "Unlimited"
         }
       ]
+    }
+  },
+  "properties": {
+    "JWTToken": {
+      "description": "JWT Auth Token.",
+      "type": "string"
+    },
+    "JWTTokenExpiry": {
+      "$ref": "#/definitions/JWTTokenExpiry"
     },
     "JWTTokenExpiresAt": {
       "description": "JWT Auth Token expiration time.",

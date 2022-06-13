@@ -32,10 +32,6 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import entityReference
@@ -306,6 +302,10 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [table_fqn], "weight": 5},
             {"input": [table_name], "weight": 10},
         ]
+        column_suggest = []
+        schema_suggest = []
+        database_suggest = []
+        service_suggest = []
         column_names = []
         column_descriptions = []
         tags = set()
@@ -341,6 +341,14 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=database_entity.service.deleted,
             href=database_entity.service.href.__root__,
         )
+        service_suggest.append({"input": [service_entity.name], "weight": 5})
+        database_suggest.append({"input": [database_entity.name.__root__], "weight": 5})
+        schema_suggest.append(
+            {"input": [database_schema_entity.name.__root__], "weight": 5}
+        )
+        for column_name in column_names:
+            column_suggest.append({"input": [column_name], "weight": 5})
+
         table_followers = []
         if table.followers:
             for follower in table.followers.__root__:
@@ -356,6 +364,10 @@ class ElasticsearchSink(Sink[Entity]):
             service_type=str(table.serviceType.name),
             name=table.name.__root__,
             suggest=suggest,
+            service_suggest=service_suggest,
+            database_suggest=database_suggest,
+            schema_suggest=schema_suggest,
+            column_suggest=column_suggest,
             database_schema=str(database_schema_entity.name.__root__),
             description=table.description.__root__ if table.description else "",
             table_type=table_type,
@@ -379,6 +391,7 @@ class ElasticsearchSink(Sink[Entity]):
     def _create_topic_es_doc(self, topic: Topic):
         topic_fqn = topic.fullyQualifiedName.__root__
         topic_name = topic.name
+        service_suggest = []
         suggest = [
             {"input": [topic_fqn], "weight": 5},
             {"input": [topic_name], "weight": 10},
@@ -407,6 +420,7 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=topic.service.deleted,
             href=topic.service.href.__root__,
         )
+        service_suggest.append({"input": [service_entity.name], "weight": 5})
         topic_doc = TopicESDocument(
             topic_id=str(topic.id.__root__),
             deleted=topic.deleted,
@@ -414,6 +428,7 @@ class ElasticsearchSink(Sink[Entity]):
             service_type=str(topic.serviceType.name),
             name=topic.name.__root__,
             suggest=suggest,
+            service_suggest=service_suggest,
             description=topic.description.__root__ if topic.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,
@@ -427,6 +442,8 @@ class ElasticsearchSink(Sink[Entity]):
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
         dashboard_fqn = dashboard.fullyQualifiedName.__root__
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
+        service_suggest = []
+        chart_suggest = []
         tags = set()
         timestamp = dashboard.updatedAt.__root__
         dashboard_followers = []
@@ -444,6 +461,7 @@ class ElasticsearchSink(Sink[Entity]):
         chart_descriptions = []
         for chart in charts:
             chart_names.append(chart.displayName)
+            chart_suggest.append({"input": [chart.displayName], "weight": 5})
             if chart.description is not None:
                 chart_descriptions.append(chart.description.__root__)
             if len(chart.tags) > 0:
@@ -464,6 +482,8 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=dashboard.service.deleted,
             href=dashboard.service.href.__root__,
         )
+        service_suggest.append({"input": [service_entity.name], "weight": 5})
+
         dashboard_doc = DashboardESDocument(
             dashboard_id=str(dashboard.id.__root__),
             deleted=dashboard.deleted,
@@ -473,6 +493,8 @@ class ElasticsearchSink(Sink[Entity]):
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
             suggest=suggest,
+            chart_suggest=chart_suggest,
+            service_suggest=service_suggest,
             description=dashboard.description.__root__ if dashboard.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,
@@ -493,6 +515,8 @@ class ElasticsearchSink(Sink[Entity]):
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
         pipeline_fqn = pipeline.fullyQualifiedName.__root__
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
+        service_suggest = []
+        task_suggest = []
         tags = set()
         timestamp = pipeline.updatedAt.__root__
         service_entity = ESEntityReference(
@@ -509,6 +533,7 @@ class ElasticsearchSink(Sink[Entity]):
             deleted=pipeline.service.deleted,
             href=pipeline.service.href.__root__,
         )
+        service_suggest.append({"input": [service_entity.name], "weight": 5})
 
         pipeline_followers = []
         if pipeline.followers:
@@ -525,6 +550,7 @@ class ElasticsearchSink(Sink[Entity]):
         task_descriptions = []
         for task in tasks:
             task_names.append(task.displayName)
+            task_suggest.append({"input": [task.displayName], "weight": 5})
             if task.description:
                 task_descriptions.append(task.description.__root__)
             if tags in task and len(task.tags) > 0:
@@ -540,6 +566,8 @@ class ElasticsearchSink(Sink[Entity]):
             task_names=task_names,
             task_descriptions=task_descriptions,
             suggest=suggest,
+            task_suggest=task_suggest,
+            service_suggest=service_suggest,
             description=pipeline.description.__root__ if pipeline.description else "",
             last_updated_timestamp=timestamp,
             tier=tier,

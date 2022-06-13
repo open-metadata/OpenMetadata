@@ -17,6 +17,8 @@ from typing import Iterable, List, Optional
 from pydantic import SecretStr
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
@@ -49,13 +51,16 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.utils.helpers import (
+    get_chart_entities_from_id,
+    get_dashboard_service_or_create,
+    get_standard_chart_type,
+)
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.neo4j_helper import Neo4JConfig, Neo4jHelper
 from metadata.utils.sql_queries import (
@@ -307,12 +312,16 @@ class AmundsenSource(Source[Entity]):
                 self.metadata_config,
             )
             self.status.scanned(dashboard["name"])
-            yield Dashboard(
+            yield CreateDashboardRequest(
                 name=dashboard["name"],
                 displayName=dashboard["name"],
                 description="",
-                url=dashboard["url"],
-                charts=dashboard["chart_ids"],
+                dashboardUrl=dashboard["url"],
+                charts=get_chart_entities_from_id(
+                    chart_ids=dashboard["chart_ids"],
+                    metadata=self.metadata,
+                    service_name=service_entity.name.__root__,
+                ),
                 service=EntityReference(id=service_entity.id, type="dashboardService"),
             )
         except Exception as e:
@@ -329,19 +338,18 @@ class AmundsenSource(Source[Entity]):
             {"username": "test", "hostPort": "http://localhost:8088"},
             self.metadata_config,
         )
-
         for (name, chart_id, chart_type, url) in zip(
             dashboard["chart_names"],
             dashboard["chart_ids"],
             dashboard["chart_types"],
             dashboard["chart_urls"],
         ):
-            chart = Chart(
+            chart = CreateChartRequest(
                 name=chart_id,
                 displayName=name,
                 description="",
-                chart_url=url,
-                chart_type=chart_type,
+                chartUrl=url,
+                chartType=get_standard_chart_type(chart_type).value,
                 service=EntityReference(id=service_entity.id, type="dashboardService"),
             )
             self.status.scanned(name)

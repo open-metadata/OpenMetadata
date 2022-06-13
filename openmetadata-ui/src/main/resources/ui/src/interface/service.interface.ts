@@ -75,6 +75,5 @@ export interface ServiceResponse {
 
 export type ConfigData = Partial<DatabaseService['connection']> &
   Partial<MessagingService['connection']> &
-  Partial<DashboardService['connection']> & {
-    pipelineUrl: string;
-  };
+  Partial<DashboardService['connection']> &
+  Partial<PipelineService['connection']>;

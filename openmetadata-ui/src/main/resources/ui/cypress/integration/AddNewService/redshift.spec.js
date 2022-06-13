@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { goToAddNewServicePage, testSampleData, testServiceCreationAndIngestion } from '../../common/common';
-import { RED_SHIFT_TABLE } from '../../constants/constants';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('RedShift Ingestion', () => {
   it('add and ingest data', () => {
@@ -43,9 +42,5 @@ describe('RedShift Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
-  });
-
-  it('Check for Sample data in table entry', () => {
-    testSampleData(RED_SHIFT_TABLE);
   });
 });

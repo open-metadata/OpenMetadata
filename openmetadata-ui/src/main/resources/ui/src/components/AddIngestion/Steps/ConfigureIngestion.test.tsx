@@ -54,17 +54,20 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
     includes: [],
     excludes: [],
   },
+  pipelineFilterPattern: {
+    includes: [],
+    excludes: [],
+  },
   fqnFilterPattern: {
     includes: [],
     excludes: [],
   },
+  includeLineage: false,
   includeView: false,
   pipelineType: PipelineType.Metadata,
   queryLogDuration: 1,
   resultLimit: 100,
   stageFileLocation: '',
-  enableDataProfiler: false,
-  ingestSampleData: false,
   markDeletedTables: false,
   showDashboardFilter: false,
   showDatabaseFilter: false,
@@ -72,11 +75,11 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showTableFilter: false,
   showTopicFilter: false,
   showChartFilter: false,
+  showPipelineFilter: false,
   showFqnFilter: false,
+  handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
   handleIngestionName: jest.fn(),
-  handleEnableDataProfiler: jest.fn(),
-  handleIngestSampleData: jest.fn(),
   handleMarkDeletedTables: jest.fn(),
   handleQueryLogDuration: jest.fn(),
   handleResultLimit: jest.fn(),
@@ -117,6 +120,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(5);
+    expect(toggleSwitchs.length).toBe(3);
   });
 });

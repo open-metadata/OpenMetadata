@@ -59,8 +59,6 @@ def get_service_type(
     Type[DatabaseConnection],
     Type[MessagingConnection],
     Type[MetadataConnection],
-    Type[PipelineConnection],
-    Type[MlModelConnection],
 ]:
     """
     Return the service type for a source string

@@ -17,29 +17,32 @@ import { isEmpty } from 'lodash';
 import { GlossaryTermAssets, LoadingState } from 'Models';
 import RcTree from 'rc-tree';
 import { DataNode, EventDataNode } from 'rc-tree/lib/interface';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
+import { Tooltip } from 'react-tippy';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { useAuth } from '../../hooks/authHooks';
+import { useAfterMount } from '../../hooks/useAfterMount';
 import { ModifiedGlossaryData } from '../../pages/GlossaryPage/GlossaryPageV1.component';
-import { generateTreeData, getActionsList } from '../../utils/GlossaryUtils';
+import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { generateTreeData } from '../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import SearchInput from '../common/SearchInput/SearchInput.component';
+import Searchbar from '../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import TreeView from '../common/TreeView/TreeView.component';
 import PageLayout from '../containers/PageLayout';
-import DropDownList from '../dropdown/DropDownList';
 import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import Loader from '../Loader/Loader';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
+import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 
 type Props = {
   assetData: GlossaryTermAssets;
@@ -67,7 +70,6 @@ type Props = {
   onGlossaryTermDelete: (id: string) => void;
   onAssetPaginate: (num: string | number, activePage?: number) => void;
   onRelatedTermClick?: (fqn: string) => void;
-  afterDeleteAction?: () => void;
   handleUserRedirection?: (name: string) => void;
   isChildLoading: boolean;
 };
@@ -88,7 +90,6 @@ const GlossaryV1 = ({
   isGlossaryActive,
   isChildLoading,
   handleSelectedData,
-  afterDeleteAction,
   handleAddGlossaryClick,
   handleAddGlossaryTermClick,
   handleGlossaryTermUpdate,
@@ -110,6 +111,15 @@ const GlossaryV1 = ({
   >([]);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [addTermButtonWidth, setAddTermButtonWidth] = useState(
+    document.getElementById('add-term-button')?.offsetWidth || 0
+  );
+  const [manageButtonWidth, setManageButtonWidth] = useState(
+    document.getElementById('manage-button')?.offsetWidth || 0
+  );
+  const [leftPanelWidth, setLeftPanelWidth] = useState(
+    document.getElementById('glossary-left-panel')?.offsetWidth || 0
+  );
 
   /**
    * To create breadcrumb from the fqn
@@ -131,29 +141,6 @@ const GlossaryV1 = ({
     setBreadcrumb(newData);
   };
 
-  const handleSelectedAction = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    switch (value) {
-      case 'add_term': {
-        handleAddGlossaryTermClick();
-
-        break;
-      }
-
-      case 'delete': {
-        setIsDelete(true);
-
-        break;
-      }
-
-      default:
-        break;
-    }
-    setShowActions(false);
-  };
-
   const handleDelete = () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
@@ -161,6 +148,7 @@ const GlossaryV1 = ({
     } else {
       onGlossaryTermDelete(id);
     }
+    setIsDelete(false);
   };
 
   const handleTreeClick = (
@@ -185,60 +173,101 @@ const GlossaryV1 = ({
     handleBreadcrum(selectedKey);
   }, [selectedKey]);
 
+  useAfterMount(() => {
+    setLeftPanelWidth(
+      document.getElementById('glossary-left-panel')?.offsetWidth || 0
+    );
+    setAddTermButtonWidth(
+      document.getElementById('add-term-button')?.offsetWidth || 0
+    );
+    setManageButtonWidth(
+      document.getElementById('manage-button')?.offsetWidth || 0
+    );
+  });
+
+  const manageButtonContent = () => {
+    return (
+      <div
+        className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+        id="manage-button"
+        onClick={() => setIsDelete(true)}>
+        <div>
+          <SVGIcons
+            alt="Delete"
+            className="tw-w-12"
+            icon={Icons.DELETE_GRADIANT}
+          />
+        </div>
+        <div className="tw-text-left" data-testid="delete-button">
+          <p className="tw-font-medium">
+            Delete Glossary “{selectedData?.displayName || selectedData?.name}”
+          </p>
+          <p className="tw-text-grey-muted tw-text-xs">
+            Deleting this Glossary{' '}
+            {(selectedData as GlossaryTerm)?.glossary && 'Term'} will
+            permanently remove its metadata from OpenMetadata.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-1">
-          <h6 className="tw-heading tw-text-base">Glossary</h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': isHasAccess,
-              })}
-              data-testid="add-category"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={handleAddGlossaryClick}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </NonAdminAction>
+      <div className="tw-px-2" id="glossary-left-panel">
+        <div className="tw-bg-white tw-shadow-box tw-border tw-border-border-gray tw-rounded-md tw-min-h-full tw-h-80vh tw-py-2">
+          <div className="tw-flex tw-justify-between tw-items-center tw-px-3">
+            <h6 className="tw-heading tw-text-base">Glossary</h6>
+          </div>
+          <div>
+            {treeData.length ? (
+              <Fragment>
+                <div className="tw-px-3 tw-mb-3">
+                  <Searchbar
+                    showLoadingStatus
+                    placeholder="Search term..."
+                    searchValue={searchText}
+                    typingInterval={500}
+                    onSearch={handleSearchText}
+                  />
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <button
+                      className="tw--mt-1 tw-w-full tw-flex-center tw-gap-2 tw-py-1 tw-text-primary tw-border tw-rounded-md"
+                      onClick={handleAddGlossaryClick}>
+                      <SVGIcons alt="plus" icon={Icons.ICON_PLUS_PRIMERY} />{' '}
+                      <span>Add Glossary</span>
+                    </button>
+                  </NonAdminAction>
+                </div>
+                {isSearchResultEmpty ? (
+                  <p className="tw-text-grey-muted tw-text-center">
+                    {searchText ? (
+                      <span>{`No Glossary found for "${searchText}"`}</span>
+                    ) : (
+                      <span>No Glossary found</span>
+                    )}
+                  </p>
+                ) : (
+                  <TreeView
+                    className="tw-px-2"
+                    expandedKeys={expandedKey}
+                    handleClick={handleTreeClick}
+                    handleExpand={(key) => handleExpandedKey(key as string[])}
+                    loadingKey={loadingKey}
+                    ref={treeRef}
+                    selectedKeys={[selectedKey]}
+                    treeData={treeData}
+                  />
+                )}
+              </Fragment>
+            ) : (
+              <Loader />
+            )}
+          </div>
         </div>
-        <div>
-          {treeData.length ? (
-            <>
-              <SearchInput
-                showLoadingStatus
-                placeholder="Search term..."
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchText}
-              />
-              {isSearchResultEmpty ? (
-                <p className="tw-text-grey-muted tw-text-center">
-                  {searchText ? (
-                    <span>{`No Glossary found for "${searchText}"`}</span>
-                  ) : (
-                    <span>No Glossary found</span>
-                  )}
-                </p>
-              ) : (
-                <TreeView
-                  expandedKeys={expandedKey}
-                  handleClick={handleTreeClick}
-                  handleExpand={(key) => handleExpandedKey(key as string[])}
-                  loadingKey={loadingKey}
-                  ref={treeRef}
-                  selectedKeys={[selectedKey]}
-                  treeData={treeData}
-                />
-              )}
-            </>
-          ) : (
-            <Loader />
-          )}
-        </div>
-      </>
+      </div>
     );
   };
 
@@ -248,14 +277,19 @@ const GlossaryV1 = ({
         className="tw-flex tw-justify-between tw-items-center"
         data-testid="header">
         <div
-          className="tw-heading tw-text-link tw-text-base tw--mt-2"
+          className="tw-heading tw-text-link tw-text-base"
           data-testid="category-name">
-          <TitleBreadcrumb titleLinks={breadcrumb} />
+          <TitleBreadcrumb
+            titleLinks={breadcrumb}
+            widthDeductions={
+              leftPanelWidth + addTermButtonWidth + manageButtonWidth + 20 // Additional deduction for margin on the right of leftPanel
+            }
+          />
         </div>
-        <div className="tw-relative tw-mr-2">
+        <div className="tw-relative tw-mr-2 tw--mt-2" id="add-term-button">
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className={classNames('tw-h-8 tw-rounded tw-mb-1 tw--mt-2', {
+              className={classNames('tw-h-8 tw-rounded tw-mb-1 tw-mr-2', {
                 'tw-opacity-40': isHasAccess,
               })}
               data-testid="add-new-tag-button"
@@ -266,13 +300,31 @@ const GlossaryV1 = ({
               Add term
             </Button>
           </NonAdminAction>
-          {showActions && (
-            <DropDownList
-              horzPosRight
-              dropDownList={getActionsList()}
-              onSelect={handleSelectedAction}
-            />
-          )}
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
+            <Button
+              className="tw-h-8 tw-rounded tw-mb-1 tw-flex"
+              data-testid="manage-button"
+              disabled={isHasAccess}
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={() => setShowActions(true)}>
+              <span className="tw-mr-2">Manage</span>
+              <Tooltip
+                arrow
+                arrowSize="big"
+                disabled={!isAuthDisabled && !isAdminUser}
+                html={manageButtonContent()}
+                open={showActions}
+                position="bottom-end"
+                theme="light"
+                onRequestClose={() => setShowActions(false)}>
+                <span>
+                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                </span>
+              </Tooltip>
+            </Button>
+          </NonAdminAction>
         </div>
       </div>
       {isChildLoading ? (
@@ -281,7 +333,6 @@ const GlossaryV1 = ({
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
-            afterDeleteAction={afterDeleteAction}
             glossary={selectedData as Glossary}
             handleUserRedirection={handleUserRedirection}
             isHasAccess={isHasAccess}
@@ -289,7 +340,6 @@ const GlossaryV1 = ({
           />
         ) : (
           <GlossaryTermsV1
-            afterDeleteAction={afterDeleteAction}
             assetData={assetData}
             currentPage={currentPage}
             glossaryTerm={selectedData as GlossaryTerm}
@@ -302,12 +352,10 @@ const GlossaryV1 = ({
         ))
       )}
       {selectedData && isDelete && (
-        <ConfirmationModal
-          bodyText={`You want to delete ${selectedData.name} permanently? This action cannot be reverted.`}
-          cancelText="Cancel"
-          confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-          confirmText="Delete"
-          header="Are you sure?"
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(selectedData.name, '')}
+          entityName={selectedData.name}
+          entityType="Glossary"
           loadingState={deleteStatus}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}

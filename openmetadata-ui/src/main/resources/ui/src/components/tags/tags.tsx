@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
@@ -42,6 +43,16 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getTag = (tag: string, startWith = '') => {
+    const startIcon =
+      startWith === '+ ' ? (
+        <SVGIcons
+          alt="plus"
+          className="tw-w-3.5 tw-mr-1"
+          icon={Icons.ICON_PLUS_PRIMERY}
+        />
+      ) : (
+        startWith
+      );
     const tagName = showOnlyName
       ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
       : tag;
@@ -54,10 +65,12 @@ const Tags: FunctionComponent<TagProps> = ({
           className={classNames(
             textBaseStyle,
             textLayoutStyles,
-            textEditStyles
+            textEditStyles,
+            'tw-flex tw-items-center'
           )}
           title={tag}>
-          {`${startWith}${tagName}`}
+          {startIcon}
+          <span>{tagName}</span>
         </span>
         {editable && isRemovable && (
           <span

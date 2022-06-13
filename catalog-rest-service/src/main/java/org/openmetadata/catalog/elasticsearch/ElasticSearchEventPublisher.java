@@ -44,6 +44,7 @@ import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.Elast
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
+import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -109,6 +110,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.GLOSSARY_TERM:
             updateGlossaryTerm(event);
+            break;
+          case Entity.GLOSSARY:
+            updateGlossary(event);
             break;
           case Entity.DATABASE:
             updateDatabase(event);
@@ -447,6 +451,17 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             new DeleteRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName, event.getEntityId().toString());
         deleteEntityFromElasticSearch(deleteRequest);
         break;
+    }
+  }
+
+  private void updateGlossary(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      Glossary glossary = (Glossary) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("glossary_name", glossary.getName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
     }
   }
 

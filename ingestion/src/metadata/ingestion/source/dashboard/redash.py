@@ -9,14 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
 from sql_metadata import Parser
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as Lineage_Dashboard,
 )
@@ -33,10 +33,9 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.models.table_metadata import Chart as ModelChart
-from metadata.ingestion.models.table_metadata import Dashboard
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
 from metadata.utils import fqn
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import search_table_entities
 
@@ -100,24 +99,25 @@ class RedashSource(DashboardSourceService):
         """
         return self.client.get_dashboard(dashboard["slug"])
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
         self.status.item_scanned_status()
         dashboard_description = ""
         for widgets in dashboard_details.get("widgets", []):
             dashboard_description = widgets.get("text")
-        yield Dashboard(
-            id=uuid.uuid4(),
+        yield CreateDashboardRequest(
             name=dashboard_details.get("id"),
             displayName=dashboard_details["name"],
             description=dashboard_description if dashboard_details else "",
-            charts=self.dashboards_to_charts[dashboard_details.get("id")],
-            usageSummary=None,
+            charts=get_chart_entities_from_id(
+                chart_ids=self.dashboards_to_charts[dashboard_details.get("id")],
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
             service=EntityReference(id=self.service.id, type="dashboardService"),
-            url=f"/dashboard/{dashboard_details.get('slug', '')}",
+            dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
         )
 
     def get_lineage(
@@ -137,7 +137,6 @@ class RedashSource(DashboardSourceService):
                 table_list = Parser(visualization["query"]["query"])
             for table in table_list.tables:
                 dataabase_schema = None
-                print(table)
                 if "." in table:
                     dataabase_schema, table = fqn.split(table)[-2:]
                 table_entities = search_table_entities(
@@ -172,7 +171,7 @@ class RedashSource(DashboardSourceService):
 
     def fetch_dashboard_charts(
         self, dashboard_details: dict
-    ) -> Optional[Iterable[Chart]]:
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
@@ -180,14 +179,16 @@ class RedashSource(DashboardSourceService):
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
             self.dashboards_to_charts[dashboard_details.get("id")].append(widgets["id"])
-            yield ModelChart(
+            yield CreateChartRequest(
                 name=widgets["id"],
                 displayName=visualization["query"]["name"]
                 if visualization and visualization["query"]
                 else "",
-                chart_type=visualization["type"] if visualization else "",
+                chartType=get_standard_chart_type(
+                    visualization["type"] if visualization else ""
+                ),
                 service=EntityReference(id=self.service.id, type="dashboardService"),
-                url=f"/dashboard/{dashboard_details.get('slug', '')}",
+                chartUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
                 description=visualization["description"] if visualization else "",
             )
 

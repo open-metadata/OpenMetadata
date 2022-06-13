@@ -9,12 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import os
 import traceback
 from typing import Any, Iterable, List, Optional
 
-import looker_sdk
-
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
@@ -26,11 +25,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
-from metadata.utils.filters import filter_by_chart, filter_by_dashboard
+from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -46,28 +44,7 @@ class LookerSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.client = self.looker_client()
-
-    def check_env(self, env_key):
-        if os.environ.get(env_key):
-            return True
-        return None
-
-    def looker_client(self):
-        try:
-            if not self.check_env("LOOKERSDK_CLIENT_ID"):
-                os.environ["LOOKERSDK_CLIENT_ID"] = self.service_connection.username
-            if not self.check_env("LOOKERSDK_CLIENT_SECRET"):
-                os.environ[
-                    "LOOKERSDK_CLIENT_SECRET"
-                ] = self.service_connection.password.get_secret_value()
-            if not self.check_env("LOOKERSDK_BASE_URL"):
-                os.environ["LOOKERSDK_BASE_URL"] = self.service_connection.hostPort
-            client = looker_sdk.init31()
-            client.me()
-            return client
-        except Exception as err:
-            logger.error(f"ERROR: {repr(err)}")
+        self.charts = []
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -104,17 +81,20 @@ class LookerSource(DashboardSourceService):
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
-    def get_dashboard_entity(self, dashboard_details) -> Dashboard:
+    def get_dashboard_entity(self, dashboard_details: Any) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        yield Dashboard(
+        yield CreateDashboardRequest(
             name=dashboard_details.id,
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
-            charts=self.chart_names,
-            url=f"/dashboards/{dashboard_details.id}",
+            charts=get_chart_entities_from_id(
+                chart_ids=self.charts,
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+            ),
+            dashboardUrl=f"/dashboards/{dashboard_details.id}",
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
@@ -125,26 +105,27 @@ class LookerSource(DashboardSourceService):
         logger.info("Lineage not implemented for Looker")
         return None
 
-    def fetch_dashboard_charts(self, dashboard_details) -> Optional[Iterable[Chart]]:
+    def fetch_dashboard_charts(
+        self, dashboard_details
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
         self.charts = []
-        self.chart_names = []
         for dashboard_elements in dashboard_details.dashboard_elements:
             try:
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
                     chart_name=dashboard_elements.id,
                 ):
-                    self.status.failure(dashboard_elements.id, "Chart filtered out")
+                    self.status.filter(dashboard_elements.id, "Chart filtered out")
                     continue
-                om_dashboard_elements = Chart(
+                om_dashboard_elements = CreateChartRequest(
                     name=dashboard_elements.id,
-                    displayName=dashboard_elements.title or "",
+                    displayName=dashboard_elements.title or dashboard_elements.id,
                     description="",
-                    chart_type=dashboard_elements.type,
-                    url=f"/dashboard_elements/{dashboard_elements.id}",
+                    chartType=get_standard_chart_type(dashboard_elements.type).value,
+                    chartUrl=f"/dashboard_elements/{dashboard_elements.id}",
                     service=EntityReference(
                         id=self.service.id, type="dashboardService"
                     ),
@@ -153,8 +134,7 @@ class LookerSource(DashboardSourceService):
                     raise ValueError("Chart(Dashboard Element) without ID")
                 self.status.scanned(dashboard_elements.id)
                 yield om_dashboard_elements
-                self.charts.append(om_dashboard_elements)
-                self.chart_names.append(dashboard_elements.id)
+                self.charts.append(dashboard_elements.id)
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)
