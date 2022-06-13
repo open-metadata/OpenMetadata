@@ -64,22 +64,15 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) py_antlr
 	$(MAKE) install
 
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
-
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
-
 .PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage report
-	coverage erase
-	$(MAKE) unit_ingestion
-	$(MAKE) run_ometa_integration_tests
-	coverage xml -o ingestion/coverage.xml
-	cat ingestion/coverage.xml
+coverage:  ## Run all Python tests from ingestion/ and generate the coverage report
+	cd ingestion; \
+		coverage erase; \
+		coverage run -a --branch -m pytest --junitxml=junit/test-results-unit.xml tests/unit; \
+		coverage run -a --branch -m pytest --junitxml=junit/test-results-integration.xml tests/integration/ometa tests/integration/stage; \
+		coverage xml -o coverage.xml; \
+		sed -e "s/\<source\>\<\/source\>/\<source\>ingestion\/src\/\<\/source\>/g" -e "s/\/home\/runner\/work\/OpenMetadata\/OpenMetadata\/env\/lib\/python3.9\/site-packages/github\/workspace/g" coverage.xml >> ci-coverage.xml; \
+		cat ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
