@@ -10,15 +10,12 @@
 #  limitations under the License.
 """Clickhouse source module"""
 import enum
-from typing import Iterable
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
 from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.inspection import inspect
 from sqlalchemy.util import warn
 
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -32,8 +29,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -179,28 +174,3 @@ class ClickhouseSource(CommonDbSourceService):
             )
 
         return cls(config, metadata_config)
-
-    def get_databases(self) -> Iterable[Inspector]:
-        if self.service_connection.database:
-            yield from super().get_databases()
-        else:
-            query = "show databases"
-            results = self.connection.execute(query)
-            db_list = [list(res) for res in results]
-
-            for row in db_list:
-                try:
-                    if filter_by_database(
-                        self.source_config.databaseFilterPattern, database_name=row[0]
-                    ):
-                        self.status.filter(row[0], "Database pattern not allowed")
-                        continue
-                    logger.info(f"Ingesting from database: {row[0]}")
-                    self.service_connection.database = row[0]
-                    self.engine = get_connection(
-                        self.config.serviceConnection.__root__.config
-                    )
-                    self.engine.connect()
-                    yield inspect(self.engine)
-                except Exception as err:
-                    logger.error(f"Failed to Connect: {row[0]} due to error {err}")
