@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.socket;
 
-import io.socket.engineio.server.Emitter;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
@@ -30,16 +29,16 @@ public class WebSocketManager {
     // On Connection
     ns.on(
         "connection",
-            args -> {
-              SocketIoSocket socket = (SocketIoSocket) args[0];
-              LOG.info(
-                  "Client :"
-                      + socket.getId()
-                      + "with Remote Address :"
-                      + socket.getInitialHeaders().get("RemoteAddress")
-                      + "connected.");
-              activityFeedEndpoints.put(socket.getId(), socket);
-            });
+        args -> {
+          SocketIoSocket socket = (SocketIoSocket) args[0];
+          LOG.info(
+              "Client :"
+                  + socket.getId()
+                  + "with Remote Address :"
+                  + socket.getInitialHeaders().get("RemoteAddress")
+                  + "connected.");
+          activityFeedEndpoints.put(socket.getId(), socket);
+        });
   }
 
   public static WebSocketManager getInstance() {
