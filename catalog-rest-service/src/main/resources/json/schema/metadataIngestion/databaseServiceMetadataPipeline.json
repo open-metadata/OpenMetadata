@@ -28,6 +28,24 @@
       },
       "additionalProperties": false
     },
+    "dbtCloudConfig": {
+      "title": "DBT Cloud Config Source",
+      "description": "DBT Catalog and Manifest HTTP path configuration.",
+      "type": "object",
+      "properties": {
+        "dbtCloudAuthToken": {
+          "description": "DBT cloud account authentication token",
+          "type": "string",
+          "format": "password"
+        },
+        "dbtCloudAccountId": {
+          "description": "DBT cloud account Id",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["dbtCloudAuthToken", "dbtCloudAccountId"]
+    },
     "dbtLocalConfig": {
       "title": "DBT Local Config Source",
       "description": "DBT Catalog and Manifest file path config.",
@@ -133,6 +151,9 @@
       "title": "DBT Configuration Source",
       "description": "Available sources to fetch DBT catalog and manifest files.",
       "oneOf": [
+        {
+          "$ref": "#/definitions/dbtCloudConfig"
+        },
         {
           "$ref": "#/definitions/dbtLocalConfig"
         },
