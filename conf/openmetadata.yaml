@@ -133,6 +133,7 @@ authorizerConfiguration:
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}

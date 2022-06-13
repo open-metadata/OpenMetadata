@@ -32,6 +32,8 @@ import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
+import io.socket.engineio.server.EngineIoServerOptions;
+import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.time.temporal.ChronoUnit;
@@ -39,13 +41,18 @@ import java.util.EnumSet;
 import java.util.Optional;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
+import javax.servlet.ServletException;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
@@ -74,11 +81,16 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
+import org.openmetadata.catalog.socket.FeedServlet;
+import org.openmetadata.catalog.socket.SocketAddressFilter;
+import org.openmetadata.catalog.socket.WebSocketManager;
 
 /** Main catalog application */
 @Slf4j
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   private Authorizer authorizer;
+
+  private SocketAddressFilter socketAddressFilter = null;
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
@@ -151,6 +163,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    intializeWebsockets(environment);
   }
 
   @SneakyThrows
@@ -201,7 +214,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
+      if (authorizerConf.getEnableSecureSocketConnection()) {
+        socketAddressFilter = new SocketAddressFilter(authenticationConfiguration, authorizerConf);
+      }
       authorizer =
           Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
@@ -259,6 +276,29 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
     environment.getApplicationContext().setErrorHandler(eph);
+  }
+
+  private void intializeWebsockets(Environment environment) {
+    EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
+    eioOptions.setAllowedCorsOrigins(null);
+    WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    environment.getApplicationContext().setContextPath("/");
+    if (socketAddressFilter != null)
+      environment
+          .getApplicationContext()
+          .addFilter(new FilterHolder(socketAddressFilter), "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/socket.io/*");
+    // Upgrade connection to websocket from Http
+    try {
+      WebSocketUpgradeFilter webSocketUpgradeFilter =
+          WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
+      webSocketUpgradeFilter.addMapping(
+          new ServletPathSpec("/socket.io/*"),
+          (servletUpgradeRequest, servletUpgradeResponse) ->
+              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+    } catch (ServletException ex) {
+      ex.printStackTrace();
+    }
   }
 
   public static void main(String[] args) throws Exception {
