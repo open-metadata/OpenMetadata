@@ -67,11 +67,6 @@
       "type": "string",
       "default": "_PARTITIONTIME"
     },
-    "partitionValues": {
-      "title": "Partition Values",
-      "description": "Explicit values to partition by",
-      "type": "array"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
