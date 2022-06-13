@@ -16,32 +16,32 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { getUserByName } from '../../../axiosAPIs/userAPI';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
+import AppState from '../../../../AppState';
+import { getUserByName } from '../../../../axiosAPIs/userAPI';
+import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import { getUserPath, TERM_ADMIN } from '../../../../constants/constants';
 import {
   EntityType,
   FqnPart,
   TabSpecificField,
-} from '../../../enums/entity.enum';
-import { User } from '../../../generated/entity/teams/user';
-import { EntityReference } from '../../../generated/type/entityReference';
+} from '../../../../enums/entity.enum';
+import { User } from '../../../../generated/entity/teams/user';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import {
   getEntityName,
   getNonDeletedTeams,
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
-} from '../../../utils/CommonUtils';
-import { getEntityFieldDisplay } from '../../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
-import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
-import { Button } from '../../buttons/Button/Button';
-import PopOver from '../../common/popover/PopOver';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import Loader from '../../Loader/Loader';
-import { FeedHeaderProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+} from '../../../../utils/CommonUtils';
+import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
+import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
+import { getEntityLink } from '../../../../utils/TableUtils';
+import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
+import { Button } from '../../../buttons/Button/Button';
+import PopOver from '../../../common/popover/PopOver';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import Loader from '../../../Loader/Loader';
+import { FeedHeaderProp } from '../ActivityFeedCard.interface';
 import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({

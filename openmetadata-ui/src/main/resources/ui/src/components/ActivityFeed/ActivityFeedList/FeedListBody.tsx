@@ -15,8 +15,8 @@ import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
 const FeedListBody: FC<FeedListBodyProp> = ({

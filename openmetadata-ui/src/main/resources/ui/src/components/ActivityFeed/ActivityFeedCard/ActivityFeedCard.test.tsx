@@ -35,13 +35,13 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getEntityType: jest.fn(),
 }));
 
-jest.mock('../FeedCardBody/FeedCardBody', () => {
+jest.mock('./FeedCardBody/FeedCardBody', () => {
   return jest.fn().mockReturnValue(<p>FeedCardBody</p>);
 });
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('./FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
-jest.mock('../FeedCardHeader/FeedCardHeader', () => {
+jest.mock('./FeedCardHeader/FeedCardHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
 });
 

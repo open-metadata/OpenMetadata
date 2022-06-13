@@ -28,10 +28,10 @@ import {
   getEntityType,
 } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import FeedCardBody from '../FeedCardBody/FeedCardBody';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
-import FeedCardHeader from '../FeedCardHeader/FeedCardHeader';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
+import FeedCardBody from './FeedCardBody/FeedCardBody';
+import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
+import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,

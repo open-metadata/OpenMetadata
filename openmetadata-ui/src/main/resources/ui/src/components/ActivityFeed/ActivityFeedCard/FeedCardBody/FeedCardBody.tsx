@@ -13,11 +13,11 @@
 
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import Reactions from '../../Reactions/Reactions';
-import { FeedBodyProp } from '../ActivityFeedCard/ActivityFeedCard.interface';
+import { getFrontEndFormat } from '../../../../utils/FeedUtils';
+import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
+import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
+import Reactions from '../../../Reactions/Reactions';
+import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   isAuthor,

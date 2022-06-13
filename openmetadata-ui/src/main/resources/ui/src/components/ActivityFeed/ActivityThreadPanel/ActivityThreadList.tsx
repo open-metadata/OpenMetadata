@@ -15,9 +15,9 @@ import React, { FC, Fragment } from 'react';
 import { Post } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({

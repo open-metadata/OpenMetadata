@@ -21,15 +21,15 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardFooter from './FeedCardFooter';
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtils', () => ({
   getReplyText: jest.fn(),
 }));
 
-jest.mock('../../../utils/TimeUtils', () => ({
+jest.mock('../../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest
     .fn()
     .mockReturnValue(<p data-testid="replied-user">ProfilePicture</p>);
