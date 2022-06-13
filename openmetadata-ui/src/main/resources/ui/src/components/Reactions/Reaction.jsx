@@ -34,8 +34,8 @@ const Reaction = ({ reaction, isReacted, onReactionSelect, onHide }) => {
   return (
     <Button
       aria-label={reaction.reaction}
-      className={classNames('tw-mr-1', {
-        'ant-btn-isReacted': isReacted,
+      className={classNames('tw-mr-1 ant-btn-popover-reaction', {
+        'ant-btn-popover-isReacted': isReacted,
       })}
       key={uniqueId()}
       size="small"

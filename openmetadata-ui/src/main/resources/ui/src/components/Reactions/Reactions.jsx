@@ -98,7 +98,9 @@ const Reactions = ({ reactions, onReactionSelect }) => {
           visible={visible}
           zIndex={9999}
           onVisibleChange={handleVisibleChange}>
-          <Button className="ant-btn-reaction" shape="round">
+          <Button
+            className="ant-btn-reaction ant-btn-add-reactions"
+            shape="round">
             <SVGIcons
               alt="add-reaction"
               icon={Icons.ADD_REACTION}
