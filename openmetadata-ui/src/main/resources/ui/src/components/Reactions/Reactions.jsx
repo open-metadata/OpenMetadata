@@ -74,14 +74,14 @@ const Reactions = ({ reactions, onReactionSelect }) => {
 
   // prepare reacted emoji list
   const emojis = REACTION_TYPE_LIST.map((reaction) => {
-    const reactionList = modifiedReactionObject[reaction];
+    const reactionListValue = modifiedReactionObject[reaction];
 
     return (
-      reactionList && (
+      reactionListValue && (
         <Emoji
           key={uniqueId()}
           reaction={reaction}
-          reactionList={reactionList}
+          reactionList={reactionListValue}
           onReactionSelect={onReactionSelect}
         />
       )

@@ -301,11 +301,9 @@ const MyDataPage = () => {
   };
 
   const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name,
     };
     postFeedById(id, data)
       .then((res: AxiosResponse) => {
