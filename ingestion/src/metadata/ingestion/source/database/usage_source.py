@@ -85,7 +85,6 @@ class UsageSource(Source[TableQuery]):
             rows = self.engine.execute(self.sql_stmt)
             for row in rows:
                 row = dict(row)
-                print(row)
                 yield TableQuery(
                     query=row["query_text"],
                     userName=row["user_name"],

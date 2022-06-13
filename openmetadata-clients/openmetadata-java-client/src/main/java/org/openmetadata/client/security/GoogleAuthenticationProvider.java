@@ -61,7 +61,7 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
     try {
       String credPath = securityConfig.getSecretKey();
       String targetAudience = securityConfig.getAudience();
-      if ((credPath != null && credPath != "") && (targetAudience != null && targetAudience != "")) {
+      if ((credPath != null && !credPath.equals("")) && (targetAudience != null && !targetAudience.equals(""))) {
         ServiceAccountCredentials saCreds = ServiceAccountCredentials.fromStream(new FileInputStream(credPath));
 
         saCreds =

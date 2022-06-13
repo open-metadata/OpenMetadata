@@ -54,6 +54,7 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     _create_lineage_by_table_name,
@@ -128,10 +129,39 @@ class MetadataRestSink(Sink[Entity]):
             self.write_table_tests(record)
         elif isinstance(record, OMetaPipelineStatus):
             self.write_pipeline_status(record)
+        elif isinstance(record, DataModelLink):
+            self.write_datamodel(record)
         else:
-            logging.info(
-                f"Ignoring the record due to unknown Record type {type(record)}"
-            )
+            logging.debug(f"Processing Create request {type(record)}")
+            self.write_create_request(record)
+
+    def write_create_request(self, entity_request) -> None:
+        """
+        Send to OM the request creation received as is.
+        :param entity_request: Create Entity request
+        """
+        log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
+        try:
+            self.metadata.create_or_update(entity_request)
+
+        except APIError as err:
+            logger.error(f"Failed to ingest {log}")
+            logger.error(err)
+            self.status.failure(log)
+
+        logger.info(f"Successfully ingested {log}")
+
+    def write_datamodel(self, datamodel_link: DataModelLink) -> None:
+        """
+        Send to OM the DataModel based on a table ID
+        :param datamodel_link: Table ID + Data Model
+        """
+
+        table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+
+        self.metadata.ingest_table_data_model(
+            table=table, data_model=datamodel_link.datamodel
+        )
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:
