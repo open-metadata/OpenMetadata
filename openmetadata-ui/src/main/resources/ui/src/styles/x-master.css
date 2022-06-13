@@ -1013,6 +1013,7 @@ code {
   background-color: #7147e860;
 }
 
+.ant-btn-reaction:hover,
 .ant-btn-isReacted {
   color: #7147e8;
   border-color: #7147e8;
