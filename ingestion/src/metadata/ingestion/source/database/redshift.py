@@ -462,6 +462,7 @@ class RedshiftSource(CommonDbSourceService):
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+            self.inspector = inspect(self.engine)
             yield self.config.serviceConnection.__root__.config.database
         else:
             results = self.connection.execute("SELECT datname FROM pg_database")
