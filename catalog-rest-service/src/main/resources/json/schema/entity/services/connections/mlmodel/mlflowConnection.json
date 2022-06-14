@@ -4,7 +4,7 @@
   "title": "MlflowConnection",
   "description": "MlFlow Connection Config",
   "type": "object",
-  "javaType": "org.openmetadata.catalog.services.connections.pipeline.MlflowConnection",
+  "javaType": "org.openmetadata.catalog.services.connections.mlModel.MlflowConnection",
   "definitions": {
     "mlflowType": {
       "description": "Service type.",

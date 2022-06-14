@@ -118,6 +118,7 @@ import org.openmetadata.catalog.resources.metadata.TypeResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -188,6 +189,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference GLUE_REFERENCE;
+
+  public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
@@ -272,6 +275,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new PipelineServiceResourceTest().setupPipelineServices(test);
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
+    new MlModelServiceResourceTest().setupMlModelServices(test);
 
     new TableResourceTest().setupDatabaseSchemas(test);
   }
