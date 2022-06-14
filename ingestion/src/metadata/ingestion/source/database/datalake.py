@@ -14,14 +14,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import traceback
 import uuid
-from sys import prefix
 from typing import Iterable, Optional
-
-import boto3
-import dask.dataframe as dd
-import gcsfs
-import pandas as pd
-import pyarrow.parquet as pq
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema

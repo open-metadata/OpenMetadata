@@ -1,8 +1,5 @@
 def read_csv_from_gcs(key, bucket_name):
     import dask.dataframe as dd
-    import gcsfs
-    import pandas as pd
-    import pyarrow.parquet as pq
 
     df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
 
@@ -12,9 +9,6 @@ def read_csv_from_gcs(key, bucket_name):
 def read_tsv_from_gcs(key, bucket_name):
 
     import dask.dataframe as dd
-    import gcsfs
-    import pandas as pd
-    import pyarrow.parquet as pq
 
     df = dd.read_csv(f"gs://{bucket_name}/{key.name}", sep="\t")
 
@@ -23,10 +17,7 @@ def read_tsv_from_gcs(key, bucket_name):
 
 def read_json_from_gcs(key):
 
-    import dask.dataframe as dd
-    import gcsfs
     import pandas as pd
-    import pyarrow.parquet as pq
 
     from metadata.utils.logger import utils_logger
 
@@ -46,9 +37,7 @@ def read_json_from_gcs(key):
 
 
 def read_parquet_from_gcs(key, bucket_name):
-    import dask.dataframe as dd
     import gcsfs
-    import pandas as pd
     import pyarrow.parquet as pq
 
     gs = gcsfs.GCSFileSystem()
