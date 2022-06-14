@@ -16,7 +16,14 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  lowerCase,
+  uniqueId,
+  upperCase,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   DragEvent,
@@ -37,7 +44,6 @@ import ReactFlow, {
   Elements,
   FlowElement,
   getConnectedEdges,
-  isEdge,
   isNode,
   MarkerType,
   Node,
@@ -69,6 +75,7 @@ import {
   getModalBodyText,
   getNodeRemoveButton,
   getUniqueFlowElements,
+  onLoad,
   onNodeContextMenu,
   onNodeMouseEnter,
   onNodeMouseLeave,
@@ -245,12 +252,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         toEntity: data.target.type,
         toId: data.target.id,
       };
-
       removeLineageHandler(edgeData);
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      setElements((es) =>
-        getUniqueFlowElements(es.filter((e) => e.id !== data.id))
-      );
+      setEdges((es) => {
+        return es.filter((e) => e.id !== data.id);
+      });
 
       /**
        * Get new downstreamEdges
@@ -376,32 +382,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const { node: initialNode, edge: initialEdge } = getLayoutedElementsV1(
     setElementsHandleV1()
   ) || { node: [], edge: [] };
-  console.log({ node: initialNode, edge: initialEdge });
   const [elements, setElements] = useState<Elements>(
     getLayoutedElements(setElementsHandle()) || []
   );
-
-  //   const [nodes, setNodes] = useState([
-  //     {
-  //       id: '1',
-  //       type: 'input',
-  //       data: { label: 'Input Node' },
-  //       position: { x: 250, y: 25 },
-  //     },
-
-  //     {
-  //       id: '2',
-  //       // you can also pass a React component as a label
-  //       data: { label: <div>Default Node</div> },
-  //       position: { x: 100, y: 125 },
-  //     },
-  //     {
-  //       id: '3',
-  //       type: 'output',
-  //       data: { label: 'Output Node' },
-  //       position: { x: 250, y: 250 },
-  //     },
-  //   ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNode);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdge);
@@ -412,7 +395,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
-    setElements((prevElements) => {
+    setNodes((prevElements) => {
       return prevElements.map((el) => {
         if (el.id === selectedNode.id) {
           return {
@@ -486,7 +469,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         },
       };
 
-      setElements((els) => {
+      setEdges((els) => {
         const newEdgeData = {
           id: `edge-${params.source}-${params.target}`,
           source: `${params.source}`,
@@ -575,7 +558,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * take element and perform onClick logic
    * @param el
    */
-  const onElementClick = (el: FlowElement) => {
+  const onNodeClick = (el: FlowElement) => {
     if (isNode(el)) {
       const node = [
         ...(updatedLineageData.nodes as Array<EntityReference>),
@@ -602,22 +585,37 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param tableColumns
    */
   const onNodeExpand = (tableColumns?: Column[]) => {
-    const elements = getLayoutedElements(setElementsHandle());
-    setElements(
-      elements.map((preEl) => {
+    const nodesArr = [
+      ...(updatedLineageData.nodes || []),
+      updatedLineageData.entity,
+    ];
+    setNodes((preNode) => {
+      return preNode.map((preEl) => {
+        const changedNode = nodesArr.find((n) => {
+          return isEqual(n.id, preEl.id);
+        });
         if (preEl.id.includes(expandNode?.id as string)) {
           return {
             ...preEl,
-            data: { ...preEl.data, columns: tableColumns },
+            data: {
+              ...preEl.data,
+              label: getNodeLabel(changedNode as EntityReference),
+              columns: tableColumns,
+            },
           };
         } else {
           return {
             ...preEl,
+            data: {
+              ...preEl.data,
+              label: getNodeLabel(changedNode as EntityReference),
+              columns: undefined,
+            },
             className: getNodeClass(preEl),
           };
         }
-      })
-    );
+      });
+    });
   };
 
   /**
@@ -651,7 +649,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const removeNodeHandler = useCallback(
     (node: Node) => {
       // Get all edges for the flow
-      const edges = elements.filter((element) => isEdge(element));
+      //   const edges = elements.filter((element) => isEdge(element));
 
       // Get edges connected to selected node
       const edgesToRemove = getConnectedEdges([node], edges as Edge[]);
@@ -686,12 +684,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         );
       });
 
-      setElements((es) =>
+      setNodes((es) =>
         getUniqueFlowElements(es.filter((n) => n.id !== node.id))
       );
       setNewAddedNode({} as FlowElement);
     },
-    [elements, updatedLineageData]
+    [nodes, updatedLineageData]
   );
 
   /**
@@ -752,7 +750,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       };
       setNewAddedNode(newNode as FlowElement);
 
-      setElements((es) =>
+      setNodes((es) =>
         getUniqueFlowElements(es.concat(newNode as FlowElement))
       );
     }
@@ -764,9 +762,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const onEntitySelect = () => {
     if (!isEmpty(selectedEntity)) {
-      const isExistingNode = elements.some((n) => n.id === selectedEntity.id);
+      const isExistingNode = nodes.some((n) => n.id === selectedEntity.id);
       if (isExistingNode) {
-        setElements((es) =>
+        setNodes((es) =>
           es
             .map((n) =>
               n.id.includes(selectedEntity.id)
@@ -782,7 +780,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         setNewAddedNode({} as FlowElement);
         setSelectedEntity({} as EntityReference);
       } else {
-        setElements((es) => {
+        setNodes((es) => {
           return es.map((el) => {
             if (el.id === newAddedNode.id) {
               return {
@@ -992,7 +990,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    setElements(getLayoutedElements(setElementsHandle()));
+    const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
+    setNodes(node);
+    setEdges(edge);
     resetViewEditState();
   }, [lineageData, isNodeLoading, isEditMode]);
 
@@ -1074,10 +1074,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onDrop={onDrop}
               onEdgesChange={onEdgesChange}
               //   onElementClick={(_e, el) => onElementClick(el)}
-              //   onInit={(reactFlowInstance: ReactFlowInstance) => {
-              //     onLoad(reactFlowInstance);
-              //     setReactFlowInstance(reactFlowInstance);
-              //   }}
+              onNodeClick={(_e, node) => onNodeClick(node)}
+              onInit={(reactFlowInstance: ReactFlowInstance) => {
+                onLoad(reactFlowInstance);
+                setReactFlowInstance(reactFlowInstance);
+              }}
               onNodeContextMenu={onNodeContextMenu}
               onNodeDrag={dragHandle}
               onNodeDragStart={dragHandle}

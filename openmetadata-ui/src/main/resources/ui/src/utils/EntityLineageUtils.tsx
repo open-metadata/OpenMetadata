@@ -523,7 +523,9 @@ export const getLineageDataV1 = (
               source: `${node.id}`,
               target: edg ? edg.id : `${id}`,
               type: isEditMode ? edgeType : 'custom',
-              arrowHeadType: MarkerType.ArrowClosed,
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+              },
               data: {
                 id: `edge-${up.fromEntity}-${id}-${depth}`,
                 source: `${node.id}`,
@@ -565,7 +567,9 @@ export const getLineageDataV1 = (
               source: edg ? edg.id : `${id}`,
               target: `${node.id}`,
               type: isEditMode ? edgeType : 'custom',
-              arrowHeadType: MarkerType.ArrowClosed,
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+              },
               data: {
                 id: `edge-${id}-${down.toEntity}`,
                 source: edg ? edg.id : `${id}`,
@@ -752,26 +756,9 @@ export const getLineageDataV1 = (
             },
           };
     }),
-    // ...lineageEdges,
   ];
 
-  const uDownStrem = (entityLineage?.downstreamEdges || []).map((e) => {
-    return {
-      id: `e-${e.fromEntity}-${e.toEntity}`,
-      source: e.fromEntity,
-      target: e.toEntity,
-    };
-  });
-
-  const uUpStrem = (entityLineage?.upstreamEdges || []).map((e) => {
-    return {
-      id: `e-${e.fromEntity}-${e.toEntity}`,
-      source: e.fromEntity,
-      target: e.toEntity,
-    };
-  });
-
-  return { node: lineageData, edge: [...uDownStrem, ...uUpStrem] };
+  return { node: lineageData, edge: lineageEdges };
 };
 
 export const getDataLabel = (
