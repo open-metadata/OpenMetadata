@@ -9,27 +9,6 @@
       "type": "string",
       "enum": ["Profiler"],
       "default": "Profiler"
-    },
-    "partitionDetails": {
-      "description": "Partition details when profiling database supporting partition logic",
-      "properties": {
-        "partitionQueryDuration": {
-          "title": "Partition Query Duration",
-          "description": "If partitioned by time determine the time span to query for (where the start date is today)",
-          "type": "integer",
-          "default": 1
-        },
-        "partitionField": {
-          "title": "Partition Field",
-          "description": "Partition field. If not specified it will default to the first partition field defined in the table DDL",
-          "type": "string"
-        },
-        "partitionValues": {
-          "title": "Partition Values",
-          "description": "Explicit values to partition by",
-          "type": "array"
-        }
-      } 
     }
   },
   "properties": {
