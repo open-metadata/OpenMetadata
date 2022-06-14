@@ -1,21 +1,21 @@
 source:
   type: bigquery
-  serviceName: local_bigquery3
+  serviceName: local_bigquery
   serviceConnection:
     config:
       type: BigQuery
       credentials:
         gcsConfig:
           type: service_account
-          projectId: modified-leaf-330420
-          privateKeyId: 0b73d1216bb1a032a26a3a36f86bdd55c8d5523c
-          privateKey: "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDJKVIe5C1W1LHk\neev1cxp+K9tEaH0MRwiim3g2O5+Q/hGi5YugVh9IAPtPpyGkkefgMvrm/AR6gUbP\ndf90v1YsCJsOTwf9j2GDriea/V5+TN7psK3ZeNN8UZr6Ron86ipL3hXpHWfaGMpn\n5rIi5EtvS5s5skGZEGnoivZf2UiYpfCFgCHekNlSK1RdrDmefHUmjHAM4Wc+pvQR\nrpqRYBQc74xd6C6kfQ7xOQ8QLy34yr/ZwVurdq3ItStBE7mtGvK7wDA96OMhFPum\nHj57E7JG0UuszcXbocdV/qMZVTYqpXLMpD9Xnnc6AuPbxDGYqCvcbZ/qyozLMlTQ\nlADqCsttAgMBAAECggEALaNKxshkwujhbSD+GAMjtRFVHzmHeUQaYO3dwYwYYQhL\nTwY9/cPcN/VFDuavmsshbLuUMdhmWba/rmyqZr3MGpRfPUlP2kZvzLSztpWaHRRq\nlGEpqAeiD3fiLbrYLoGf0/OQTAGIYLI0JYtwybq6pIbmMhpPiJ7xMDlquQcuUbcZ\nBQVEdez1F9kob/58tnErUxi4PGDblGj38X4YEz8/8fjMP51hUUX8zq1gUjrelOyr\nlC6pHcxdbrCItFj0v+/D5f18hlYF4CCowV3YZNgBG++HN/xdZ0kfh/6cfPbeC1Vp\noqIa4hDSjCkx+N7QW5+Fs6NdnzBooqB/6gox1u3JvwKBgQDr3F5OIIT3xsAAHRK8\nIn1SHgmW3Tqpbc9BdfOTvYiqqqMgZ2g9uy37DBj87TR2n3sTNYFhV67QRJjnZ4nt\nPY4VWi/H2sqy+GJJbxy8O6si4fLxd1tQ5ApapAuPZqcqAjMhpfh2p5MwgU/imvIU\nRcg7EvWxN77iRwkWl96seDfzbwKBgQDaVncobIFW18ib89Pas6MqFn/qaSF176/k\non8XTIOaFRht6yjmC15h/cKw8QCBKynoUgO2CMotVgCShOBkkocOgdT1m+sBUN25\nl5hOAZcic10JcNRFpFgKhuLFrNHcJt8zoXRKkwmWRGGqp/duBhPjnN14AkWZBcXe\n9LAzerkQ4wKBgQCE3hyGGI2vY1hP+BDQyQEeHGu8gB4GyiRiNQclaDUwJ3ZDz90K\nQYLSlOsSuLHATXEwzgh3hMSm8K3OViZ97ho3bxnRlTBxB7mesqhWZaqvuOd6HYnk\nlMI8c4NLokFzSc/yGaRRe29QeNg+yJis0O7OUIz163ht0iSNhLpdIFAsowKBgQCl\nCWq0kaAKhr1KtLnUvKh+7dbu11zFitHH3tR2Rg3L8Fow6+pUSQ+kvm3l1aXt/TSG\nOUg41tgMANAZ8Hq1StTvsE/K/3pZ2khfOymS/TzCe7U9p52srpcmDeNoTEOtR2y7\n2DTREefTQAkbOC+daNar3CzDw+Pb0TNKXma54u/0xQKBgQCi/KOjTLDUeeYyVXHP\nNe3F+g/gEXeiczThNz1mSvVmcn/zCCUEvcHpZkKGR4EYiFq/nIPFGLI3VazH9jEC\no+Ck5cNBEUZqhli0pY3UmlsZUNCO7H4EJSXyD3F9ULQgLw6go15y5B0No622D9bE\njeFfROH8SR8XRyJhMS2PNpp9Gw==\n-----END PRIVATE KEY-----\n"
-          clientEmail: test-openmetadata@modified-leaf-330420.iam.gserviceaccount.com
-          clientId: 112732782865529894463
+          projectId: project_id
+          privateKeyId: private_key_id
+          privateKey: private_key
+          clientEmail: gcpuser@project_id.iam.gserviceaccount.com
+          clientId: client_id
           authUri: https://accounts.google.com/o/oauth2/auth
           tokenUri: https://oauth2.googleapis.com/token
           authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
-          clientX509CertUrl: https://www.googleapis.com/robot/v1/metadata/x509/test-openmetadata%40modified-leaf-330420.iam.gserviceaccount.com
+          clientX509CertUrl: clientX509CertUrl
   sourceConfig:
     config:
       type: DatabaseMetadata

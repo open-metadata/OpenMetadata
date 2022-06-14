@@ -702,7 +702,6 @@ const Explore: React.FC<ExploreProps> = ({
 
   return (
     <Fragment>
-      {!connectionError && getTabs()}
       <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
         {advanceFieldCheck && (
           <AdvancedFields
