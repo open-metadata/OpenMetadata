@@ -14,7 +14,6 @@
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -30,6 +29,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Thread } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -65,7 +65,7 @@ export interface DatasetDetailsProps {
   followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;

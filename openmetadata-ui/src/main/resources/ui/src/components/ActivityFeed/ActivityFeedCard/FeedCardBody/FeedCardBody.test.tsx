@@ -21,11 +21,11 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtils', () => ({
   getFrontEndFormat: jest.fn(),
 }));
 
-jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
+jest.mock('../../../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichText Preview</p>);
 });
 
@@ -36,6 +36,8 @@ const mockFeedCardBodyProps = {
   postId: 'id2',
   deletePostHandler: jest.fn(),
   onConfirmation: jest.fn(),
+  reactions: [],
+  onReactionSelect: jest.fn(),
 };
 
 describe('Test FeedCardBody component', () => {

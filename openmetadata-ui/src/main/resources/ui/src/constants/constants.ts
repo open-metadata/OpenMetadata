@@ -116,15 +116,15 @@ export const tableSortingFields = [
     value: 'last_updated_timestamp',
   },
   { name: 'Weekly Usage', value: 'weekly_stats' },
-  // { name: 'Daily Usage', value: 'daily_stats' },
-  // { name: 'Monthly Usage', value: 'monthly_stats' },
+  { name: 'Relevance', value: '' },
 ];
 
-export const topicSortingFields = [
+export const entitySortingFields = [
   {
     name: 'Last Updated',
     value: 'last_updated_timestamp',
   },
+  { name: 'Relevance', value: '' },
 ];
 
 export const sortingOrder = [
@@ -437,3 +437,7 @@ export const TITLE_FOR_NON_ADMIN_ACTION =
 
 export const TITLE_FOR_UPDATE_OWNER =
   'You do not have permissions to update the owner.';
+
+export const configOptions = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};
