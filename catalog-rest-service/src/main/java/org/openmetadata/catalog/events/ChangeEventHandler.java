@@ -19,6 +19,7 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -233,6 +234,7 @@ public class ChangeEventHandler implements EventHandler {
               .withThreadTs(System.currentTimeMillis())
               .withCreatedBy(entityInterface.getUpdatedBy())
               .withAbout(about.getLinkString())
+              .withReactions(Collections.emptyList())
               .withUpdatedBy(entityInterface.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis())
               .withMessage(message);
@@ -265,6 +267,7 @@ public class ChangeEventHandler implements EventHandler {
         .withThreadTs(System.currentTimeMillis())
         .withCreatedBy(loggedInUserName)
         .withAbout(linkString)
+        .withReactions(Collections.emptyList())
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withMessage(message);

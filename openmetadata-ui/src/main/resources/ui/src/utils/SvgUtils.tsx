@@ -20,6 +20,7 @@ import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
+import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -289,6 +290,7 @@ export const Icons = {
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
+  ADD_REACTION: 'add-reaction',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -839,6 +841,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DEPLOY_INGESTION:
       IconComponent = IconDeployIngestion;
+
+      break;
+    case Icons.ADD_REACTION:
+      IconComponent = IconAddReaction;
 
       break;
     default:

@@ -302,7 +302,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     }
   }, [searchText]);
 
-  // alwyas Keep this useEffect at the end...
+  // always Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
   }, []);
@@ -313,6 +313,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         <>
           <button
             className="tw-z-10 tw-fixed tw-inset-0 tw-h-full tw-w-full tw-bg-black tw-opacity-0 "
+            data-testid="suggestion-overlay"
             onClick={() => setIsOpen(false)}
           />
           <div

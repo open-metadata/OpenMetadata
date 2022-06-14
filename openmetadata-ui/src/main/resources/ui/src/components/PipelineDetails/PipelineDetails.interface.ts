@@ -15,13 +15,13 @@ import { Operation } from 'fast-json-patch';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
 } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -49,7 +49,7 @@ export interface PipeLineDetailsProp {
   tasks: Task[];
   deleted?: boolean;
   isLineageLoading?: boolean;
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
