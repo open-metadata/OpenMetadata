@@ -23,6 +23,7 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 # The naming convention is T for Entity Types and C for Create Types
+C = TypeVar("C", bound=BaseModel)
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -32,6 +33,23 @@ class OMetaServiceMixin:
 
     To be inherited by OpenMetadata
     """
+
+    def get_create_service_from_source(
+        self, entity: Type[T], config: WorkflowSource
+    ) -> C:
+        """
+        Prepare a CreateService request from source config
+        :param entity: Service Type
+        :param config: WorkflowSource
+        :return: CreateService request
+        """
+
+        create_entity_class = self.get_create_entity_type(entity=entity)
+        return create_entity_class(
+            name=config.serviceName,
+            serviceType=config.serviceConnection.__root__.config.type.value,
+            connection=config.serviceConnection.__root__,
+        )
 
     def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:
         """
@@ -47,13 +65,9 @@ class OMetaServiceMixin:
         :return: Created Service
         """
 
-        create_entity_class = self.get_create_entity_type(entity=entity)
-        create_service = create_entity_class(
-            name=config.serviceName,
-            serviceType=config.serviceConnection.__root__.config.type.value,
-            connection=config.serviceConnection.__root__,
+        create_service = self.get_create_service_from_source(
+            entity=entity, config=config
         )
-
         return self.create_or_update(create_service)
 
     def get_service_or_create(self, entity: Type[T], config: WorkflowSource) -> T:

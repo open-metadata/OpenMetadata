@@ -205,7 +205,7 @@ def test_clickhouse():
                 "username": "default",
                 "password": "",
                 "hostPort": "localhost:8123",
-                "database": "default",
+                "databaseSchema": "default",
             }
         },
         "sourceConfig": {

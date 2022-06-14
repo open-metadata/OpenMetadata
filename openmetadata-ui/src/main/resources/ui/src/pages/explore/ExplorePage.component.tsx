@@ -45,7 +45,6 @@ import {
   getQueryParam,
   getSearchFilter,
   INITIAL_FROM,
-  INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
   ZERO_SIZE,
@@ -81,9 +80,7 @@ const ExplorePage: FunctionComponent = () => {
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
-    searchQuery
-      ? tabsInfo[getCurrentTab(tab) - 1].sortField
-      : INITIAL_SORT_FIELD
+    tabsInfo[getCurrentTab(tab) - 1].sortField
   );
 
   const handleSearchText = (text: string) => {

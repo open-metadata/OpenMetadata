@@ -12,7 +12,7 @@
 DBT source methods.
 """
 import traceback
-from typing import Dict, List
+from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
@@ -23,34 +23,20 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.dbt_config import get_dbt_details
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class DBTSource:
-    def __init__(self):
-        dbt_details = get_dbt_details(self.source_config.dbtConfigSource)
-        self.dbt_catalog = dbt_details[0] if dbt_details else None
-        self.dbt_manifest = dbt_details[1] if dbt_details else None
-        self.data_models: dict = {}
+class DBTMixin:
 
-    def get_data_model(self, database: str, schema: str, table_name: str) -> DataModel:
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.config.serviceName,
-            database_name=database,
-            schema_name=schema,
-            table_name=table_name,
-        )
-        if table_fqn in self.data_models:
-            model = self.data_models[table_fqn]
-            return model
-        return None
+    metadata: OpenMetadata
+
+    def get_data_model(self, table_fqn: str) -> Optional[DataModel]:
+        return self.data_models.get(table_fqn)
 
     def _parse_data_model(self):
         """
@@ -165,7 +151,11 @@ class DBTSource:
 
         return columns
 
-    def _create_dbt_lineage(self):
+    def create_dbt_lineage(self) -> Iterable[AddLineageRequest]:
+        """
+        After everything has been processed, add the lineage info
+        """
+        logger.info("Processing DBT lineage")
         for data_model_name, data_model in self.data_models.items():
             for upstream_node in data_model.upstream:
                 try:
@@ -176,7 +166,7 @@ class DBTSource:
                         entity=Table, fqn=data_model_name
                     )
                     if from_entity and to_entity:
-                        lineage = AddLineageRequest(
+                        yield AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
                                     id=from_entity.id.__root__,
@@ -188,8 +178,7 @@ class DBTSource:
                                 ),
                             )
                         )
-                        created_lineage = self.metadata.add_lineage(lineage)
-                        logger.info(f"Successfully added Lineage {created_lineage}")
+
                 except Exception as err:  # pylint: disable=broad-except
                     logger.error(
                         f"Failed to parse the node {upstream_node} to capture lineage {err}"

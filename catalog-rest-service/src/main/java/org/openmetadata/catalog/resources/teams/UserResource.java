@@ -65,6 +65,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -378,7 +379,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
-      JWTTokenExpiry jwtTokenExpiry)
+      @Valid GenerateTokenRequest generateTokenRequest)
       throws IOException {
 
     User user = dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
@@ -386,7 +387,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("Generating JWT token is only supported for bot users");
     }
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN);
-    JWTAuthMechanism jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, jwtTokenExpiry);
+    JWTAuthMechanism jwtAuthMechanism =
+        jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);

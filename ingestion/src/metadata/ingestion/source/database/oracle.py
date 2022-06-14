@@ -41,10 +41,3 @@ class OracleSource(CommonDbSourceService):
                 f"Expected OracleConnection, but got {connection}"
             )
         return cls(config, metadata_config)
-
-    def get_schemas(self, inspector: Inspector) -> str:
-        return (
-            inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )

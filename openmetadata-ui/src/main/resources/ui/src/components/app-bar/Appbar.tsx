@@ -64,7 +64,7 @@ const Appbar: React.FC = (): JSX.Element => {
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
 
   const [version, setVersion] = useState<string>('');
@@ -229,15 +229,16 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push(
-      getExplorePathWithSearch(
+    history.push({
+      pathname: getExplorePathWithSearch(
         value,
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
           : 'tables'
-      )
-    );
+      ),
+      search: location.search,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

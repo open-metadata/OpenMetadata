@@ -993,6 +993,66 @@ code {
 .ant-card-extra {
   padding: 0px;
 }
+/* 
+*/
+/* Reaction CSS Start */
+.ant-btn-add-reactions:hover,
+.ant-btn-add-reactions:focus {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-reaction,
+.ant-btn-popover-reaction {
+  height: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.ant-btn-popover-reaction:hover {
+  background-color: #7147e860;
+}
+
+.ant-btn-reaction:hover,
+.ant-btn-isReacted {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-isReacted:hover {
+  color: #7147e8;
+  border-color: #7147e880;
+}
+
+.ant-btn-popover-isReacted,
+.ant-btn-popover-isReacted:hover {
+  background-color: #7147e860;
+}
+
+.ant-popover-inner-content {
+  padding: 8px;
+}
+/* Reaction CSS End */
+.ant-advaced-field-select {
+  color: #7147e8;
+  min-width: 130px;
+}
+.ant-suggestion-dropdown {
+  min-width: 200px !important;
+}
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbd1f9;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 0px 4px;
+}
+
+.ant-select-single .ant-select-selector .ant-select-selection-search {
+  left: 4px;
+}
 
 @media only screen and (max-width: 1440px) {
   #left-panel {
@@ -1003,5 +1063,3 @@ code {
     grid-template-columns: 256px auto 256px;
   }
 }
-/* 
-*/
