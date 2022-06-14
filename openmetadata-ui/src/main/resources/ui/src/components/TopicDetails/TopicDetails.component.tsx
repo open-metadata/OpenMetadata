@@ -85,6 +85,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   fetchFeedHandler,
   isSampleDataLoading,
   sampleData,
+  updateThreadHandler,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -440,6 +441,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -487,6 +489,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />
           ) : null}

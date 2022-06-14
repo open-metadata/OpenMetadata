@@ -108,6 +108,7 @@ const DashboardDetails = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  updateThreadHandler,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -658,6 +659,7 @@ const DashboardDetails = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -720,6 +722,7 @@ const DashboardDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />
       ) : null}

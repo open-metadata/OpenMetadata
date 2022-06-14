@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import React, { FC, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
-import { updatePost, updateThread } from '../../../axiosAPIs/feedsAPI';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
@@ -27,7 +25,6 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
@@ -46,6 +43,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   isFooterVisible = false,
   isThread,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -57,29 +55,12 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 
   const onFeedUpdate = (data: Operation[]) => {
-    if (isThread) {
-      updateThread(feedDetail.id, data)
-        .then((res: AxiosResponse) => {
-          setFeedDetail((pre) => ({
-            ...pre,
-            reactions: res.data.reactions || [],
-          }));
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err);
-        });
-    } else {
-      updatePost(threadId, feedDetail.id, data)
-        .then((res: AxiosResponse) => {
-          setFeedDetail((prevDetail) => ({
-            ...prevDetail,
-            reactions: res.data.reactions || [],
-          }));
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err);
-        });
-    }
+    updateThreadHandler(
+      threadId ?? feedDetail.id,
+      feedDetail.id,
+      Boolean(isThread),
+      data
+    );
   };
 
   const onReactionSelect = (

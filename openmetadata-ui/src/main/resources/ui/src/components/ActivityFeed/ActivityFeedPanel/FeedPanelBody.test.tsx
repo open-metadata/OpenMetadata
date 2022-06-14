@@ -55,6 +55,7 @@ const mockFeedPanelBodyProp = {
   threadData: mockThreadData,
   isLoading: false,
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {

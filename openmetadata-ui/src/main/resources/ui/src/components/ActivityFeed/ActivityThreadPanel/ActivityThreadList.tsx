@@ -28,6 +28,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onThreadIdSelect,
   onThreadSelect,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -81,6 +82,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           className="tw-mb-6"
                           entityLink={thread.about}
                           feed={mainFeed}
+                          updateThreadHandler={updateThreadHandler}
                         />
                       </div>
                       {postLength > 0 ? (
@@ -108,6 +110,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               className="tw-mb-6 tw-ml-9"
                               feed={lastPost as Post}
                               threadId={thread.id}
+                              updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}
                             />
                           </div>

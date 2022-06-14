@@ -15,6 +15,7 @@ import { HTMLAttributes } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 
 export interface ConfirmState {
   state: boolean;
@@ -33,6 +34,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   isThread?: boolean;
   onThreadSelect?: (id: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }
 export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
