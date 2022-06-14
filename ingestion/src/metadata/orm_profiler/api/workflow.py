@@ -40,6 +40,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.utils import fqn
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
@@ -170,9 +171,15 @@ class ProfilerWorkflow:
             fields=[
                 "tableProfile",
                 "tests",
-            ],  # We will need it for window metrics to check past data
+            ],
             params={
-                "database": f"{self.config.source.serviceName}.{database.name.__root__}"
+                "service": self.config.source.serviceName,
+                "database": fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.config.source.serviceName,
+                    database_name=database.name.__root__,
+                ),
             },
         )
 
@@ -197,7 +204,6 @@ class ProfilerWorkflow:
                 profile_and_tests: ProfilerResponse = self.processor.process(
                     record=entity,
                     generate_sample_data=self.source_config.generateSampleData,
-                    partition_details=self.source_config.partitionDetails,
                 )
 
                 if hasattr(self, "sink"):
