@@ -993,6 +993,46 @@ code {
   padding: 0px;
 }
 
+/* Reaction CSS Start */
+.ant-btn-add-reactions:hover,
+.ant-btn-add-reactions:focus {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-reaction,
+.ant-btn-popover-reaction {
+  height: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.ant-btn-popover-reaction:hover {
+  background-color: #7147e860;
+}
+
+.ant-btn-reaction:hover,
+.ant-btn-isReacted {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-isReacted:hover {
+  color: #7147e8;
+  border-color: #7147e880;
+}
+
+.ant-btn-popover-isReacted,
+.ant-btn-popover-isReacted:hover {
+  background-color: #7147e860;
+}
+
+.ant-popover-inner-content {
+  padding: 8px;
+}
+/* Reaction CSS End */
 .ant-advaced-field-select {
   color: #7147e8;
   min-width: 130px;

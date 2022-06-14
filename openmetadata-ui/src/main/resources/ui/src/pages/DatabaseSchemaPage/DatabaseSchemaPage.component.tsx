@@ -16,12 +16,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
+import { EntityFieldThreadCount, ExtraInfo, Paging } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -68,6 +63,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
@@ -119,7 +115,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
   const [error, setError] = useState('');
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -475,7 +471,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
