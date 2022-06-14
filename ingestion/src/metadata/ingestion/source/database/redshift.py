@@ -26,6 +26,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
@@ -37,6 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -428,6 +430,11 @@ def _get_column_info(
 
 PGDialect._get_column_info = _get_column_info
 
+STANDARD_TABLE_TYPES = {
+    "TABLE": TableType.Regular,
+    "VIEW": TableType.View,
+    "EXTERNAL TABLE": TableType.External,
+}
 
 # pylint: disable=useless-super-delegation
 class RedshiftSource(CommonDbSourceService):
@@ -441,6 +448,7 @@ class RedshiftSource(CommonDbSourceService):
 
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
+        self.table_type_map = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -459,6 +467,36 @@ class RedshiftSource(CommonDbSourceService):
                 f"Expected RedshiftConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_table_type(self, schema_name: str, table_name: str) -> TableType:
+        """
+        Fetch the table types and return standard TableType
+        """
+        tabel_fqn = fqn.build(
+            self.metadata,
+            Table,
+            database_name=self.context.database.name.__root__,
+            schema_name=schema_name,
+            table_name=table_name,
+            service_name=self.config.serviceName,
+        )
+        if not self.table_type_map:
+            table_type_query = "SELECT database_name,schema_name, table_name,table_type FROM svv_all_tables"
+            result = self.engine.execute(table_type_query)
+            self.table_type_map = {
+                fqn.build(
+                    self.metadata,
+                    Table,
+                    database_name=row[0],
+                    schema_name=row[1],
+                    table_name=row[2],
+                    service_name=self.config.serviceName,
+                ): row[3]
+                for row in result
+            }
+        return STANDARD_TABLE_TYPES.get(
+            self.table_type_map.get(tabel_fqn, "TABLE"), TableType.Regular
+        )
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:

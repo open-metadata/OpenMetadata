@@ -101,6 +101,12 @@ class CommonDbSourceService(
         self.engine = get_connection(new_service_connection)
         self.inspector = inspect(self.engine)
 
+    def get_table_type(self, schema_name: str, table_name: str) -> TableType:
+        """
+        Default table type will be Regular.
+        """
+        return TableType.Regular
+
     def get_database_names(self) -> Iterable[str]:
         """
         Default case with a single database.
@@ -207,7 +213,7 @@ class CommonDbSourceService(
                     )
                     continue
                 table_name = self.standardize_table_name(schema_name, table_name)
-                yield table_name, TableType.Regular
+                yield table_name, self.get_table_type(schema_name, table_name)
 
         if self.source_config.includeViews:
             for view_name in self.inspector.get_view_names(schema_name):
