@@ -25,10 +25,6 @@
       "description": "Option to turn on/off generating sample data.",
       "type": "boolean",
       "default": true
-    },
-    "partitionDetails": {
-      "description": "Partition details for the profiler",
-      "$ref": "#/definitions/partitionDetails"
     }
   },
   "additionalProperties": false
