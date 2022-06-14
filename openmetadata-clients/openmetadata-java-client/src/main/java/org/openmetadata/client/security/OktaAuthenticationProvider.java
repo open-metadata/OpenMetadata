@@ -20,7 +20,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.interceptors.OktaAccessTokenRequestInterceptor;
-import org.openmetadata.client.model.OktaAccessTokenResponse;
+import org.openmetadata.client.model.AccessTokenResponse;
 import org.openmetadata.client.model.OktaSSOConfig;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.client.security.interfaces.OktaAccessTokenApi;
@@ -67,7 +67,7 @@ public class OktaAuthenticationProvider implements AuthenticationProvider {
 
   @Override
   public String authToken() {
-    OktaAccessTokenResponse resp = oktaSSOClient.getAccessToken("client_credentials", "test");
+    AccessTokenResponse resp = oktaSSOClient.getAccessToken("client_credentials", "test");
     generatedAuthToken = resp.getAccessToken();
     expirationTimeMillis = Date.from(Instant.now().plus(resp.getExpiresIn(), ChronoUnit.SECONDS)).getTime();
     return generatedAuthToken;
