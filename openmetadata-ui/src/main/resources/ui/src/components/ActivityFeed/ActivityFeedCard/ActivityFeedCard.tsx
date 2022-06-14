@@ -142,7 +142,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         onConfirmation={onConfirmation}
         onReactionSelect={onReactionSelect}
       />
-      <div className="tw-filter-seperator" />
+      <div className="tw-mx-8 tw-filter-seperator" />
       <FeedCardFooter
         isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
