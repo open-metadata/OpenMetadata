@@ -20,7 +20,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
-@WebServlet("/socket.io/*")
+@WebServlet("/api/v1/push/feed/*")
 public class FeedServlet extends HttpServlet {
   public FeedServlet() {}
 

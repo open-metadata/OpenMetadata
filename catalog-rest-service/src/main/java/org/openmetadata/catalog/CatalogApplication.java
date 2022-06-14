@@ -286,18 +286,18 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     if (socketAddressFilter != null)
       environment
           .getApplicationContext()
-          .addFilter(new FilterHolder(socketAddressFilter), "/socket.io/*", EnumSet.of(DispatcherType.REQUEST));
-    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/socket.io/*");
+          .addFilter(new FilterHolder(socketAddressFilter), "/api/v1/push/feed/*", EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/api/v1/push/feed/*");
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter webSocketUpgradeFilter =
           WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
       webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec("/socket.io/*"),
+          new ServletPathSpec("/api/v1/push/feed/*"),
           (servletUpgradeRequest, servletUpgradeResponse) ->
               new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
     } catch (ServletException ex) {
-      ex.printStackTrace();
+      LOG.error("Websocket Upgrade Filter error : " ,  ex.getMessage());
     }
   }
 

@@ -13,7 +13,11 @@
 
 package org.openmetadata.catalog.socket;
 
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Collections;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 

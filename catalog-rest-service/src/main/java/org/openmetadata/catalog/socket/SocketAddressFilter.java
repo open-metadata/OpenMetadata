@@ -47,24 +47,21 @@ public class SocketAddressFilter implements Filter {
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-    String tokenFromHeader = httpServletRequest.getHeader("Authorization");
+    String tokenWithType = httpServletRequest.getHeader("Authorization");
+
     HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
     requestWrapper.addHeader("RemoteAddress", request.getRemoteAddr());
-    requestWrapper.addHeader("Authorization", tokenFromHeader);
+    requestWrapper.addHeader("Authorization", tokenWithType);
 
-    if (tokenFromHeader.startsWith("Bearer")) {
-      tokenFromHeader = tokenFromHeader.substring("Bearer".length() + 1);
-      // validate token
-      DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(tokenFromHeader);
-      // validate Domain and Username
-      Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-      claims.putAll(jwt.getClaims());
-      jwtFilter.validateAndReturnUsername(claims);
-      // Goes to default servlet.
-      chain.doFilter(requestWrapper, response);
-    } else {
-      LOG.error("Invalid Token , It should be Bearer");
-    }
+    String token = JwtFilter.extractToken(tokenWithType);
+    // validate token
+    DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
+    // validate Domain and Username
+    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getClaims());
+    jwtFilter.validateAndReturnUsername(claims);
+    // Goes to default servlet.
+    chain.doFilter(requestWrapper, response);
   }
 
   @Override

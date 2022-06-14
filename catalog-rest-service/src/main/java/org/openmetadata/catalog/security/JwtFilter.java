@@ -199,6 +199,18 @@ public class JwtFilter implements ContainerRequestFilter {
     throw new AuthenticationException("Not Authorized! Token not present");
   }
 
+  public static String extractToken(String tokenFromHeader) {
+    LOG.debug("Request Token:{}", tokenFromHeader);
+    if (Strings.isNullOrEmpty(tokenFromHeader)) {
+      throw new AuthenticationException("Not Authorized! Token not present");
+    }
+    // Extract the bearer token
+    if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
+      return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
+    }
+    throw new AuthenticationException("Not Authorized! Token not present");
+  }
+
   private void validateBotToken(String tokenFromHeader, String userName) throws IOException {
     EntityRepository<User> userRepository = Entity.getEntityRepository(Entity.USER);
     User user = userRepository.getByName(null, userName, new EntityUtil.Fields(List.of("authenticationMechanism")));
