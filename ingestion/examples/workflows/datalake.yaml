@@ -10,6 +10,7 @@ source:
           awsSecretAccessKey: aws secret access key
           awsRegion: aws region
       bucketName: bucket name
+      prefix: prefix
   sourceConfig:
     config:
       tableFilterPattern:

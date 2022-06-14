@@ -12,13 +12,12 @@
 """
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
-
-import json
 import traceback
 import uuid
-from io import StringIO
+from sys import prefix
 from typing import Iterable, Optional
 
+import boto3
 import dask.dataframe as dd
 import gcsfs
 import pandas as pd
@@ -50,7 +49,19 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.gcs_utils import (
+    read_csv_from_gcs,
+    read_json_from_gcs,
+    read_parquet_from_gcs,
+    read_tsv_from_gcs,
+)
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.s3_utils import (
+    read_csv_from_s3,
+    read_json_from_s3,
+    read_parquet_from_s3,
+    read_tsv_from_s3,
+)
 
 logger = ingestion_logger()
 
@@ -91,51 +102,31 @@ class DatalakeSource(Source[Entity]):
         try:
 
             bucket_name = self.service_connection.bucketName
+            prefix = self.service_connection.prefix
+
             if isinstance(self.service_connection.configSource, GCSConfig):
-                yield from self.get_gcs_files(bucket_name)
+                if bucket_name:
+                    yield from self.get_gcs_files(bucket_name, prefix)
+                else:
+                    for bucket in self.client.list_buckets():
+                        yield from self.get_gcs_files(bucket.name, prefix)
 
             if isinstance(self.service_connection.configSource, S3Config):
-                yield from self.get_s3_files(bucket_name)
+                if bucket_name:
+                    yield from self.get_s3_files(bucket_name, prefix)
+                else:
+                    for bucket in self.client.list_buckets()["Buckets"]:
+                        yield from self.get_s3_files(bucket["Name"], prefix)
 
         except Exception as err:
             logger.error(traceback.format_exc())
             logger.error(err)
 
-    def read_csv_from_gcs(self, key, bucket_name):
+    def get_gcs_files(self, bucket_name, prefix):
 
-        df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
-
-        return df
-
-    def read_tsv_from_gcs(self, key, bucket_name):
-
-        df = dd.read_csv(f"gs://{bucket_name}/{key.name}", sep="\t")
-
-        return df
-
-    def read_json_from_gcs(self, key):
-        try:
-
-            data = key.download_as_string().decode()
-            df = pd.DataFrame.from_dict(json.loads(data))
-            return df
-
-        except ValueError as verr:
-            logger.debug(traceback.format_exc())
-            logger.error(verr)
-
-    def read_parquet_from_gcs(self, key, bucket_name):
-
-        gs = gcsfs.GCSFileSystem()
-        arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key.name}", filesystem=gs)
-        df = arrow_df.read_pandas().to_pandas()
-
-        return df
-
-    def get_gcs_files(self, bucket_name):
         bucket = self.client.get_bucket(bucket_name)
 
-        for key in bucket.list_blobs():
+        for key in bucket.list_blobs(prefix=prefix):
             try:
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern, key.name
@@ -148,25 +139,25 @@ class DatalakeSource(Source[Entity]):
 
                 if key.name.endswith(".csv"):
 
-                    df = self.read_csv_from_gcs(key, bucket_name)
+                    df = read_csv_from_gcs(key, bucket_name)
 
                     yield from self.ingest_tables(key.name, df, bucket_name)
 
                 if key.name.endswith(".tsv"):
 
-                    df = self.read_tsv_from_gcs(key, bucket_name)
+                    df = read_tsv_from_gcs(key, bucket_name)
 
                     yield from self.ingest_tables(key.name, df, bucket_name)
 
                 if key.name.endswith(".json"):
 
-                    df = self.read_json_from_gcs(key)
+                    df = read_json_from_gcs(key)
 
                     yield from self.ingest_tables(key.name, df, bucket_name)
 
                 if key.name.endswith(".parquet"):
 
-                    df = self.read_parquet_from_gcs(key, bucket_name)
+                    df = read_parquet_from_gcs(key, bucket_name)
 
                     yield from self.ingest_tables(key.name, df, bucket_name)
 
@@ -174,41 +165,11 @@ class DatalakeSource(Source[Entity]):
                 logger.debug(traceback.format_exc())
                 logger.error(err)
 
-    def read_csv_from_s3(self, key, bucket_name):
-
-        csv_obj = self.client.get_object(Bucket=bucket_name, Key=key["Key"])
-        body = csv_obj["Body"]
-        csv_string = body.read().decode("utf-8")
-        df = pd.read_csv(StringIO(csv_string))
-
-        return df
-
-    def read_tsv_from_s3(self, key, bucket_name):
-
-        csv_obj = self.client.get_object(Bucket=bucket_name, Key=key["Key"])
-        body = csv_obj["Body"]
-        csv_string = body.read().decode("utf-8")
-        df = pd.read_csv(StringIO(csv_string), sep="\t")
-
-        return df
-
-    def read_json_from_s3(self, key, bucket_name):
-
-        obj = self.client.get_object(Bucket=bucket_name, Key=key["Key"])
-        json_text = obj["Body"].read().decode("utf-8")
-        data = json.loads(json_text)
-        df = pd.DataFrame.from_dict(data)
-
-        return df
-
-    def read_parquet_from_s3(self, key, bucket_name):
-
-        df = dd.read_parquet(f"s3://{bucket_name}/{key['Key']}")
-
-        return df
-
-    def get_s3_files(self, bucket_name):
-        for key in self.client.list_objects(Bucket=bucket_name)["Contents"]:
+    def get_s3_files(self, bucket_name, prefix):
+        kwargs = {"Bucket": bucket_name}
+        if prefix:
+            kwargs["prefix"] = prefix
+        for key in self.client.list_objects(**kwargs)["Contents"]:
             try:
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern, key["Key"]
@@ -220,25 +181,25 @@ class DatalakeSource(Source[Entity]):
                     continue
                 if key["Key"].endswith(".csv"):
 
-                    df = self.read_csv_from_s3(key, bucket_name)
+                    df = read_csv_from_s3(self.client, key, bucket_name)
 
                     yield from self.ingest_tables(key["Key"], df, bucket_name)
 
                 if key["Key"].endswith(".tsv"):
 
-                    df = self.read_tsv_from_s3(key, bucket_name)
+                    df = read_tsv_from_s3(self.client, key, bucket_name)
 
                     yield from self.ingest_tables(key["Key"], df, bucket_name)
 
                 if key["Key"].endswith(".json"):
 
-                    df = self.read_json_from_s3(key, bucket_name)
+                    df = read_json_from_s3(self.client, key, bucket_name)
 
                     yield from self.ingest_tables(key["Key"], df, bucket_name)
 
                 if key["Key"].endswith(".parquet"):
 
-                    df = self.read_parquet_from_s3(key, bucket_name)
+                    df = read_parquet_from_s3(self.client, key, bucket_name)
 
                     yield from self.ingest_tables(key["Key"], df, bucket_name)
 

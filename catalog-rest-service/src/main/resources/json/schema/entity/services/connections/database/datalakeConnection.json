@@ -54,8 +54,14 @@
       ]
     },
     "bucketName": {
-      "title": "Base Path",
-      "description": "Base Path of the data source.",
+      "title": "Bucket Name",
+      "description": "Bucket Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "prefix": {
+      "title": "Prefix",
+      "description": "Prefix of the data source.",
       "type": "string",
       "default": ""
     },
