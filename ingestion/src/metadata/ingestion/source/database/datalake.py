@@ -40,7 +40,7 @@ from metadata.ingestion.api.source import InvalidSourceException, Source, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
-from metadata.utils.connections import get_connection
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.gcs_utils import (
     read_csv_from_gcs,
@@ -76,7 +76,8 @@ class DatalakeSource(Source[Entity]):
         )
 
         self.connection = get_connection(self.service_connection)
-        self.client = self.connection.client if self.connection else None
+
+        self.client = self.connection.client
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -276,4 +277,4 @@ class DatalakeSource(Source[Entity]):
         return self.status
 
     def test_connection(self) -> None:
-        pass
+        test_connection(self.connection)

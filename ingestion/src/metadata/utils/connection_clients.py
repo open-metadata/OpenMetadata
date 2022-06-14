@@ -84,14 +84,10 @@ class PowerBiClient:
 class LookerClient:
     def __init__(self, client) -> None:
         self.client = client
-        
-@dataclass
-class S3Client:
-    def __init__(self, client) -> None:
-        self.client = client   
 
 
 @dataclass
-class GCSClient:
-    def __init__(self, client) -> None:
+class DatalakeClient:
+    def __init__(self, client, config) -> None:
         self.client = client
+        self.config = config

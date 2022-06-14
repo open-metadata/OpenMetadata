@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import traceback
+from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
@@ -78,16 +79,15 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
+    DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
-    GCSClient,
     GlueClient,
     KafkaClient,
     LookerClient,
     MetabaseClient,
     PowerBiClient,
     RedashClient,
-    S3Client,
     SalesforceClient,
     SupersetClient,
     TableauClient,
@@ -245,23 +245,6 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
         configure_spark_with_delta_pip(builder).getOrCreate()
     )
     return deltalake_connection
-
-
-# @get_connection.register
-# def _(connection: DatalakeConnection, verbose: bool = False) -> DataLakeClient:
-#     import pyspark
-#     from pyspark import SparkConf
-#     from pyspark.sql import SparkSession
-#     spark = (
-#         SparkSession
-#         .builder
-#         .config('fs.s3a.access.key', connection.awsConfig.awsAccessKeyId)
-#         .config('fs.s3a.secret.key', connection.awsConfig.awsSecretAccessKey)
-#         .appName(connection.appName)
-#         .getOrCreate()
-#     )
-#     datalake_connection = DatalakeConnection(spark)
-#     return datalake_connection
 
 
 @get_connection.register
@@ -589,10 +572,10 @@ def _(connection: LookerClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
-        
-        
+
+
 @test_connection.register
-def _(connection: S3Client) -> None:
+def _(connection: DatalakeClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
     :param engine: boto service resource to test
@@ -601,12 +584,23 @@ def _(connection: S3Client) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.list_buckets()
+        config = connection.config.configSource
+        if isinstance(config, GCSConfig):
+            if connection.config.bucketName:
+                connection.client.get_bucket(connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+        if isinstance(config, S3Config):
+            if connection.config.bucketName:
+                connection.client.list_objects(Bucket=connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
     except ClientError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
         )
-    
 
 
 @singledispatch
@@ -618,15 +612,16 @@ def get_datalake_client(config):
 
 
 @get_connection.register
-def _(connection: DatalakeConnection, verbose: bool = False) -> S3Client:
-    return get_datalake_client(connection.configSource)
+def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+    datalake_connection = get_datalake_client(connection.configSource)
+    return DatalakeClient(client=datalake_connection, config=connection)
 
 
 @get_datalake_client.register
 def _(config: S3Config):
     from metadata.utils.aws_client import AWSClient
 
-    s3_client = AWSClient(config.securityConfig).get_s3_client()
+    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
     return s3_client
 
 
@@ -635,5 +630,5 @@ def _(config: GCSConfig):
     from google.cloud import storage
 
     set_google_credentials(gcs_credentials=config.securityConfig)
-    gcs_client = GCSClient(storage.Client())
+    gcs_client = storage.Client()
     return gcs_client

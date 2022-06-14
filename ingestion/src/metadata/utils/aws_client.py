@@ -14,7 +14,7 @@ from typing import Any
 from boto3 import Session
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
-from metadata.utils.connection_clients import DynamoClient, GlueClient, S3Client
+from metadata.utils.connection_clients import DynamoClient, GlueClient
 
 
 class AWSClient:
@@ -71,6 +71,3 @@ class AWSClient:
 
     def get_glue_client(self) -> GlueClient:
         return GlueClient(self.get_client("glue"))
-
-    def get_s3_client(self) -> S3Client:
-        return S3Client(self.get_client("s3"))
