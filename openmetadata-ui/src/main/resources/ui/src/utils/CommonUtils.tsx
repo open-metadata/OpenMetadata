@@ -19,7 +19,6 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -417,10 +416,6 @@ export const getServiceLogo = (
   }
 
   return null;
-};
-
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 export const getSvgArrow = (isActive: boolean) => {
