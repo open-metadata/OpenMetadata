@@ -72,10 +72,6 @@ export const DELETE_ENTITY = {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
   },
-  dashboard: {
-    term: 'Misc Charts',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
-  },
   pipeline: {
     term: 'Presto ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
