@@ -8,9 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import traceback
-from typing import Any, Iterable, List, Optional
+from json import JSONDecodeError
+from typing import Any, Dict, Iterable, List, Optional
+
+from looker_sdk.sdk.api31.models import Query
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -78,6 +81,8 @@ class LookerSource(DashboardSourceService):
             "dashboard_elements",
             "dashboard_filters",
             "view_count",
+            "description",
+            "folder",
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
@@ -85,12 +90,14 @@ class LookerSource(DashboardSourceService):
         """
         Method to Get Dashboard Entity
         """
+        print("DASHBOARD")
+        print(dashboard_details.title)
         yield CreateDashboardRequest(
             name=dashboard_details.id,
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
             charts=get_chart_entities_from_id(
-                chart_ids=self.charts,
+                chart_ids=[chart.id for chart in self.charts],
                 metadata=self.metadata,
                 service_name=self.config.serviceName,
             ),
@@ -98,12 +105,83 @@ class LookerSource(DashboardSourceService):
             service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
+    @staticmethod
+    def _get_origin_field_map(dynamic_fields: List[Dict[str, Any]]) -> Dict[str, str]:
+        """
+        Some fields are derived from measures or other dimensions.
+        Prepare a map to obtain the base fields
+        :param dynamic_fields:
+        :return:
+        """
+        custom_field_to_original = {}
+
+        for custom_field in dynamic_fields:
+            if (
+                "measure" in custom_field
+            ):  # measures can reference other views, fetch the original field
+                custom_field_to_original[custom_field["measure"]] = custom_field[
+                    "based_on"
+                ]
+            if (
+                "dimension" in custom_field
+            ):  # this can be an arbitrary expression, not supported
+                custom_field_to_original[custom_field["dimension"]] = None
+
+        return custom_field_to_original
+
+    def _get_query_fields(self, query: Optional[Query]) -> List[str]:
+        """
+        Pick up field info from looker query.
+
+        :param query: Looker query
+        :return: List of tables to fetch in ES
+        """
+        try:
+            dynamic_fields = json.loads(query.dynamic_fields or "[]")
+        except JSONDecodeError as err:
+            logger.warning(
+                f"Dynamic fields parse error: {err}. The field value was: {query.dynamic_fields}"
+            )
+            dynamic_fields = []
+
+        custom_field_to_original = self._get_origin_field_map(dynamic_fields)
+
+        fields = query.fields or []
+        filters = query.filters or {}
+
+        fields_source = fields + list(filters.keys())
+
+        all_fields = [
+            custom_field_to_original.get(field, field) for field in fields_source
+        ]
+
+        # Remove None from dimensions
+        return [field for field in all_fields if field]
+
     def get_lineage(self, dashboard_details) -> Optional[AddLineageRequest]:
         """
-        Get lineage between dashboard and data sources
+        Get lineage between charts and data sources.
+
+        We look at:
+        - chart.query
+        - chart.look (chart.look.query)
+        - chart.result_maker
         """
-        logger.info("Lineage not implemented for Looker")
-        return None
+        print("GETTING LINEAGE")
+        for chart in self.charts:
+            if chart.query and chart.query.view:
+                print(f"chart.query.view: {chart.query.view}")
+                self._get_query_fields(chart.query)
+            if chart.look and chart.look.query and chart.look.query.view:
+                print(f"chart.look.query.view: {chart.look.query.view}")
+                self._get_query_fields(chart.look.query)
+            if (
+                chart.result_maker
+                and chart.result_maker.query
+                and chart.result_maker.query.view
+            ):
+                print(f"chart.result_maker.query.view: {chart.result_maker.query.view}")
+                self._get_query_fields(chart.result_maker.query)
 
     def fetch_dashboard_charts(
         self, dashboard_details
@@ -134,7 +212,8 @@ class LookerSource(DashboardSourceService):
                     raise ValueError("Chart(Dashboard Element) without ID")
                 self.status.scanned(dashboard_elements.id)
                 yield om_dashboard_elements
-                self.charts.append(dashboard_elements.id)
+                # Store the whole chart to pick up lineage info
+                self.charts.append(dashboard_elements)
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)

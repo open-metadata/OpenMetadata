@@ -123,9 +123,9 @@ class DashboardSourceService(Source, ABC):
                     )
                     continue
                 yield from self.fetch_dashboard_charts(dashboard_details) or []
-                yield from self.get_dashboard_entity(dashboard_details)
+                yield from self.get_dashboard_entity(dashboard_details) or []
                 if self.source_config.dbServiceName:
-                    yield from self.get_lineage(dashboard_details)
+                    yield from self.get_lineage(dashboard_details) or []
             except Exception as err:
                 logger.error(repr(err))
                 self.status.failure(self.get_dashboard_name(dashboard), repr(err))
