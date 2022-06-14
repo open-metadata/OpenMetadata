@@ -25,11 +25,11 @@ const FQN = 'service.database.schema.table';
 const type = 'table';
 const expectedDisplayName = 'database.schema.table';
 
-jest.mock('../../../axiosAPIs/userAPI', () => ({
+jest.mock('../../../../axiosAPIs/userAPI', () => ({
   getUserByName: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/CommonUtils', () => ({
   getPartialNameFromFQN: jest.fn().mockReturnValue('feedcard'),
   getNonDeletedTeams: jest.fn().mockReturnValue([]),
   getEntityName: jest.fn().mockReturnValue('entityname'),
@@ -38,15 +38,15 @@ jest.mock('../../../utils/CommonUtils', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
 }));
 
-jest.mock('../../../utils/TimeUtils', () => ({
+jest.mock('../../../../utils/TimeUtils', () => ({
   getDayTimeByTimeStamp: jest.fn(),
 }));
 
-jest.mock('../../common/ProfilePicture/ProfilePicture', () => {
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
 });
 

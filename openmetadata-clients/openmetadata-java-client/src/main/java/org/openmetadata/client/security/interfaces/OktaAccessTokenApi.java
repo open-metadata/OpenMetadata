@@ -16,7 +16,7 @@ package org.openmetadata.client.security.interfaces;
 import feign.*;
 import io.swagger.client.ApiClient;
 import java.util.Map;
-import org.openmetadata.client.model.OktaAccessTokenResponse;
+import org.openmetadata.client.model.AccessTokenResponse;
 
 public interface OktaAccessTokenApi extends ApiClient.Api {
   @RequestLine(
@@ -25,7 +25,7 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(
+  AccessTokenResponse getAccessToken(
       @Param("grant_type") String grant_type,
       @Param("scope") String scope,
       @Param("client_assertion_type") String client_assertion_type,
@@ -37,12 +37,12 @@ public interface OktaAccessTokenApi extends ApiClient.Api {
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(@QueryMap(encoded = true) Map<String, Object> queryParams);
+  AccessTokenResponse getAccessToken(@QueryMap(encoded = true) Map<String, Object> queryParams);
 
   @RequestLine("POST /v1/token?grant_type={grant_type}&scope={scope}")
   @Headers({
     "Content-Type: application/x-www-form-urlencoded",
     "Accept: application/json",
   })
-  OktaAccessTokenResponse getAccessToken(@Param("grant_type") String grant_type, @Param("scope") String scope);
+  AccessTokenResponse getAccessToken(@Param("grant_type") String grant_type, @Param("scope") String scope);
 }

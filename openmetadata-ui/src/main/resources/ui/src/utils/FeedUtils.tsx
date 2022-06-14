@@ -17,9 +17,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import {
   EntityFieldThreadCount,
   EntityFieldThreads,
-  EntityThread,
   EntityThreadField,
-  Post,
 } from 'Models';
 import React from 'react';
 import TurndownService from 'turndown';
@@ -39,6 +37,7 @@ import {
   mentionRegEx,
 } from '../constants/feed.constants';
 import { SearchIndex } from '../enums/search.enum';
+import { Post, Thread } from '../generated/entity/feed/thread';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -60,10 +59,10 @@ export const getEntityField = (entityLink: string) => {
   return match?.[3];
 };
 
-export const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
+export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt),
+    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 
@@ -302,7 +301,7 @@ export const deletePost = (threadId: string, postId: string) => {
 };
 
 export const getUpdatedThread = (id: string) => {
-  return new Promise<EntityThread>((resolve, reject) => {
+  return new Promise<Thread>((resolve, reject) => {
     getFeedById(id)
       .then((res: AxiosResponse) => {
         if (res.status === 200) {

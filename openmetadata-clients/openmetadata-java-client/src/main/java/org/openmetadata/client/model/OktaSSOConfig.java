@@ -14,9 +14,7 @@
 package org.openmetadata.client.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class OktaSSOConfig {
   /** Okta Client ID for the service application. (Required) */
@@ -120,40 +118,4 @@ public class OktaSSOConfig {
     return sb.toString();
   }
 
-  public enum GrantType {
-    AUTHORIZATION_CODE("authorization_code"),
-    CLIENT_CREDENTIALS("client_credentials"),
-    IMPLICIT("implicit");
-    private final String value;
-    private static final Map<String, OktaSSOConfig.GrantType> CONSTANTS =
-        new HashMap<String, OktaSSOConfig.GrantType>();
-
-    static {
-      for (OktaSSOConfig.GrantType c : values()) {
-        CONSTANTS.put(c.value, c);
-      }
-    }
-
-    GrantType(String value) {
-      this.value = value;
-    }
-
-    @Override
-    public String toString() {
-      return this.value;
-    }
-
-    public String value() {
-      return this.value;
-    }
-
-    public static OktaSSOConfig.GrantType fromValue(String value) {
-      OktaSSOConfig.GrantType constant = CONSTANTS.get(value);
-      if (constant == null) {
-        throw new IllegalArgumentException(value);
-      } else {
-        return constant;
-      }
-    }
-  }
 }

@@ -34,5 +34,5 @@ public class AuthConfiguration {
 
   @Getter @Setter private CustomOIDCSSOClientConfig customOidc;
 
-  @Getter @Setter private OpenMetadataJWTClientConfig openMetadataJWT;
+  @Getter @Setter private OpenMetadataJWTClientConfig openmetadata;
 }
