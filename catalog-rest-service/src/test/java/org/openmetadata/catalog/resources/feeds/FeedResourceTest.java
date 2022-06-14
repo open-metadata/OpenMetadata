@@ -32,6 +32,7 @@ import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -425,10 +426,12 @@ public class FeedResourceTest extends CatalogApplicationTest {
     String originalJson = JsonUtils.pojoToJson(thread);
 
     // add reactions
-    Reaction reaction = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER.getEntityReference());
+    Reaction reaction = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     Thread updated = thread.withReactions(List.of(reaction));
 
-    patchThreadAndCheck(updated, originalJson, ADMIN_AUTH_HEADERS);
+    Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+    assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
   }
 
   @Test
@@ -668,10 +671,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Post post = thread.getPosts().get(0);
     String originalJson = JsonUtils.pojoToJson(post);
     Reaction reaction1 = new Reaction().withReactionType(ReactionType.ROCKET).withUser(USER2.getEntityReference());
-    Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER.getEntityReference());
+    Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
     post.withReactions(List.of(reaction1, reaction2));
-    Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, AUTH_HEADERS);
+    Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
     assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2), REACTION_COMPARATOR));
+    ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
   }
 
   @Test
