@@ -30,10 +30,10 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
     : '--';
 };
 
-export const getDashboardConfig = (config?: DashboardConnection['config']) => {
+export const getDashboardConfig = (type: DashboardServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (config?.type) {
+  switch (type) {
     case DashboardServiceType.Looker: {
       schema = lookerConnection;
 

@@ -30,7 +30,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SqlColumnHandler:
+class SqlColumnHandlerMixin:
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemeneted for this connector")
@@ -80,12 +80,15 @@ class SqlColumnHandler:
                 data_type_display = column["type"]
         return data_type_display, arr_data_type, parsed_string
 
+    @staticmethod
     def _get_columns_with_constraints(
-        self, schema: str, table: str, inspector: Inspector
-    ) -> Tuple[List]:
-        pk_constraints = inspector.get_pk_constraint(table, schema)
+        schema_name: str, table_name: str, inspector: Inspector
+    ) -> Tuple[List, List]:
+        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
-            unique_constraints = inspector.get_unique_constraints(table, schema)
+            unique_constraints = inspector.get_unique_constraints(
+                table_name, schema_name
+            )
         except NotImplementedError:
             logger.warning("Cannot obtain unique constraints - NotImplementedError")
             unique_constraints = []
@@ -125,20 +128,19 @@ class SqlColumnHandler:
             ]
         return Column(**parsed_string)
 
-    def get_columns(
-        self, schema: str, table: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
+    def get_columns_and_constraints(
+        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:
         """
         Get columns types and constraints information
         """
         # Get inspector information:
         pk_columns, unique_columns = self._get_columns_with_constraints(
-            schema, table, inspector
+            schema_name, table_name, inspector
         )
         table_columns = []
-        columns = inspector.get_columns(
-            table, schema, db_name=self._get_database_name()
-        )
+        table_constraints = []
+        columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         for column in columns:
             try:
                 children = None
@@ -146,14 +148,14 @@ class SqlColumnHandler:
                     data_type_display,
                     arr_data_type,
                     parsed_string,
-                ) = self._process_col_type(column, schema)
+                ) = self._process_col_type(column, schema_name)
                 if parsed_string is None:
                     col_type = ColumnTypeParser.get_column_type(column["type"])
                     col_constraint = self._get_column_constraints(
                         column, pk_columns, unique_columns
                     )
                     if not col_constraint and len(pk_columns) > 1:
-                        self.table_constraints = [
+                        table_constraints = [
                             TableConstraint(
                                 constraintType=ConstraintType.PRIMARY_KEY,
                                 columns=pk_columns,
@@ -172,7 +174,6 @@ class SqlColumnHandler:
                         data_type_display, col_type, col_data_length, arr_data_type
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
-
                     om_column = Column(
                         name=column["name"],
                         description=column.get("comment", None),
@@ -188,13 +189,15 @@ class SqlColumnHandler:
                         column=column, parsed_string=parsed_string
                     )
                     om_column = col_obj
+                om_column.tags = self.get_column_tag_labels(
+                    table_name=table_name, column=column
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")
                 continue
-            self.fetch_column_tags(column=column, col_obj=om_column)
             table_columns.append(om_column)
-        return table_columns
+        return table_columns, table_constraints
 
     @staticmethod
     def _check_col_length(datatype: str, col_raw_type: object):

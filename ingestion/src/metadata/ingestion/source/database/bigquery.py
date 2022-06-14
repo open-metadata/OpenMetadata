@@ -8,12 +8,15 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+"""
+We require Taxonomy Admin permissions to fetch all Policy Tags
+"""
 import os
-import traceback
-from typing import Optional, Tuple
+from typing import Iterable, List, Optional
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy_bigquery import _types
 from sqlalchemy_bigquery._struct import STRUCT
@@ -26,8 +29,6 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -38,14 +39,12 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils import fqn
 from metadata.utils.column_type_parser import create_sqlalchemy_type
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -90,9 +89,6 @@ _types.get_columns = get_columns
 class BigquerySource(CommonDbSourceService):
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-        self.connection_config: BigQueryConnection = (
-            self.config.serviceConnection.__root__.config
-        )
         self.temp_credentials = None
         self.project_id = self.set_project_id()
 
@@ -107,87 +103,84 @@ class BigquerySource(CommonDbSourceService):
 
         return cls(config, metadata_config)
 
-    def standardize_schema_table_names(
-        self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        segments = table.split(".")
+    def standardize_table_name(self, schema: str, table: str) -> str:
+        segments = fqn.split(table)
         if len(segments) != 2:
             raise ValueError(f"expected table to contain schema name already {table}")
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
-        return segments[0], segments[1]
+        return segments[1]
 
     def set_project_id(self):
         _, project_id = auth.default()
         return project_id
 
-    def prepare(self):
-        #  and "policy_tags" in column and column["policy_tags"]
-        try:
-            if self.source_config.includeTags:
-                self.metadata.create_tag_category(
-                    CreateTagCategoryRequest(
-                        name=self.connection_config.tagCategoryName,
+    def yield_tag(self, _: str) -> Iterable[OMetaTagAndCategory]:
+        """
+        Build tag context
+        :param _:
+        :return:
+        """
+        taxonomies = PolicyTagManagerClient().list_taxonomies(
+            parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
+        )
+        for taxonomy in taxonomies:
+            policiy_tags = PolicyTagManagerClient().list_policy_tags(
+                parent=taxonomy.name
+            )
+            for tag in policiy_tags:
+                yield OMetaTagAndCategory(
+                    category_name=CreateTagCategoryRequest(
+                        name=self.service_connection.tagCategoryName,
                         description="",
                         categoryType="Classification",
-                    )
-                )
-        except Exception as err:
-            logger.error(err)
-        return super().prepare()
-
-    def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
-        try:
-            if (
-                self.source_config.includeTags
-                and "policy_tags" in column
-                and column["policy_tags"]
-            ):
-                self.metadata.create_primary_tag(
-                    category_name=self.service_connection.tagCategoryName,
-                    primary_tag_body=CreateTagRequest(
-                        name=column["policy_tags"],
-                        description="Bigquery Policy Tag",
+                    ),
+                    category_details=CreateTagRequest(
+                        name=tag.display_name, description="Bigquery Policy Tag"
                     ),
                 )
-        except APIError:
-            if column["policy_tags"] and self.source_config.includeTags:
-                col_obj.tags = [
-                    TagLabel(
-                        tagFQN=fqn.build(
-                            self.metadata,
-                            entity_type=Tag,
-                            tag_category_name=self.service_connection.tagCategoryName,
-                            tag_name=column["policy_tags"],
-                        ),
-                        labelType="Automated",
-                        state="Suggested",
-                        source="Tag",
-                    )
-                ]
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(err)
 
-    def _get_database_name(self) -> str:
-        return self.project_id or self.connection_config.credentials.gcsConfig.projectId
+    def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        return []
 
-    def get_database_entity(self) -> Database:
-        return Database(
-            name=self._get_database_name(),
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-        )
+    def get_column_tag_labels(
+        self, table_name: str, column: dict
+    ) -> Optional[List[TagLabel]]:
+        """
+        This will only get executed if the tags context
+        is properly informed
+        """
+        if column.get("policy_tags"):
+            return [
+                TagLabel(
+                    tagFQN=fqn.build(
+                        self.metadata,
+                        entity_type=Tag,
+                        tag_category_name=self.service_connection.tagCategoryName,
+                        tag_name=column["policy_tags"],
+                    ),
+                    labelType="Automated",
+                    state="Suggested",
+                    source="Tag",
+                )
+            ]
+
+    def get_database_names(self) -> Iterable[str]:
+        self.inspector = inspect(self.engine)
+        yield self.project_id
 
     def get_view_definition(
-        self, table_type: str, table_name: str, schema: str, inspector: Inspector
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         if table_type == "View":
             view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.project_id}.{schema}.{table_name}"
+                    f"{self.project_id}.{schema_name}.{table_name}"
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -200,7 +193,6 @@ class BigquerySource(CommonDbSourceService):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):
-        self._create_dbt_lineage()
         super().close()
         if self.temp_credentials:
             os.unlink(self.temp_credentials)

@@ -14,8 +14,8 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread, FormatedTableData } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import { FormatedTableData } from 'Models';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
@@ -36,6 +36,7 @@ import {
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -63,7 +64,7 @@ const MyDataPage = () => {
   const [followedDataCount, setFollowedDataCount] = useState(0);
 
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
@@ -91,6 +92,11 @@ const MyDataPage = () => {
   const setTeamCount = (count = 0) => {
     setCountTeams(count);
   };
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   const fetchEntityCount = () => {
     // limit=0 will fetch empty data list with total count
@@ -276,8 +282,7 @@ const MyDataPage = () => {
 
   const getFeedData = (filterType: FeedFilter, after?: string) => {
     setIsFeedLoading(true);
-    const currentUserId = AppState.userDetails?.id;
-    getFeedsWithFilter(currentUserId, filterType, after)
+    getFeedsWithFilter(currentUser?.id, filterType, after)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -296,11 +301,9 @@ const MyDataPage = () => {
   };
 
   const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name,
     };
     postFeedById(id, data)
       .then((res: AxiosResponse) => {
@@ -332,7 +335,7 @@ const MyDataPage = () => {
                 if (thread.id === data.id) {
                   return {
                     ...thread,
-                    posts: data.posts.slice(-3),
+                    posts: data.posts && data.posts.slice(-3),
                     postsCount: data.postsCount,
                   };
                 } else {

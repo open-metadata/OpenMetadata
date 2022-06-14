@@ -23,6 +23,7 @@ import { SettledStatus } from '../../../enums/axios.enum';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
+import { useAfterMount } from '../../../hooks/useAfterMount';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
 import {
@@ -96,6 +97,9 @@ const EntityPageInfo = ({
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
+    document.getElementById('version-and-follow-section')?.offsetWidth
+  );
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -184,7 +188,7 @@ const EntityPageInfo = ({
   const getVersionButton = (version: string) => {
     return (
       <div
-        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+        className="tw-flex tw-h-6 tw-ml-2"
         data-testid="version"
         onClick={versionHandler}>
         <span
@@ -298,12 +302,23 @@ const EntityPageInfo = ({
     setEntityFollowers(followersList);
   }, [followersList]);
 
+  useAfterMount(() => {
+    setVersionFollowButtonWidth(
+      document.getElementById('version-and-follow-section')?.offsetWidth
+    );
+  });
+
   return (
     <div data-testid="entity-page-info">
       <div className="tw-flex tw-flex-col">
         <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
           <div className="tw-flex tw-items-center">
-            <TitleBreadcrumb titleLinks={titleLinks} />
+            <TitleBreadcrumb
+              titleLinks={titleLinks}
+              widthDeductions={
+                (versionFollowButtonWidth ? versionFollowButtonWidth : 0) + 30
+              }
+            />
             {deleted && (
               <>
                 <div
@@ -318,7 +333,9 @@ const EntityPageInfo = ({
               </>
             )}
           </div>
-          <div className="tw-flex tw-py-1">
+          <div
+            className="tw-flex tw-py-1 tw-mt-1"
+            id="version-and-follow-section">
             {!isUndefined(version) ? (
               <>
                 {!isUndefined(isVersionSelected) ? (
@@ -339,7 +356,7 @@ const EntityPageInfo = ({
               </>
             ) : null}
             {!isUndefined(isFollowing) ? (
-              <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
+              <div className="tw-flex tw-h-6 tw-ml-2">
                 <span
                   className={classNames(
                     'tw-flex tw-border tw-border-primary tw-rounded',

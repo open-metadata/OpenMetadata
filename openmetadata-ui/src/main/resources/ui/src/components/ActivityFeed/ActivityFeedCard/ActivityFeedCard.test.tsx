@@ -12,9 +12,9 @@
  */
 
 import { findByText, render } from '@testing-library/react';
-import { Post } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
 jest.mock('../../../AppState', () => ({
@@ -22,6 +22,7 @@ jest.mock('../../../AppState', () => ({
     name: '',
   },
   users: [{ name: '' }],
+  getCurrentUserDetails: jest.fn(),
 }));
 
 jest.mock('../../../hooks/authHooks', () => ({
@@ -34,13 +35,13 @@ jest.mock('../../../utils/FeedUtils', () => ({
   getEntityType: jest.fn(),
 }));
 
-jest.mock('../FeedCardBody/FeedCardBody', () => {
+jest.mock('./FeedCardBody/FeedCardBody', () => {
   return jest.fn().mockReturnValue(<p>FeedCardBody</p>);
 });
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('./FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
-jest.mock('../FeedCardHeader/FeedCardHeader', () => {
+jest.mock('./FeedCardHeader/FeedCardHeader', () => {
   return jest.fn().mockReturnValue(<p>FeedCardHeader</p>);
 });
 
