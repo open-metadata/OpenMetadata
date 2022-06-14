@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
@@ -44,6 +45,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   postFeedHandler,
   createThread,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -90,14 +92,18 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     setConfirmationState(confirmStateInitialValue);
   };
 
+  const loadNewThreads = () => {
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
   const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
       deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
     }
     onDiscard();
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
   };
 
   const onConfirmation = (data: ConfirmState) => {
@@ -112,9 +118,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
 
   const postFeed = (value: string) => {
     postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
   };
 
   const onThreadIdSelect = (id: string) => {
@@ -140,9 +144,17 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       about: threadLink,
     };
     createThread(data);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
+  };
+
+  const onUpdateThread = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadHandler(threadId, postId, isThread, data);
+    loadNewThreads();
   };
 
   const getLoader = () => {
@@ -225,6 +237,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               className="tw-pb-6 tw-pl-5"
               postFeed={postFeed}
               selectedThread={selectedThread}
+              updateThreadHandler={onUpdateThread}
               onConfirmation={onConfirmation}
             />
           </Fragment>
@@ -248,6 +261,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
+              updateThreadHandler={onUpdateThread}
               onConfirmation={onConfirmation}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}

@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
@@ -98,7 +98,11 @@ import {
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -939,6 +943,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const handleExtentionUpdate = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable)
       .then((res) => {
@@ -1044,6 +1057,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
+          updateThreadHandler={updateThreadHandler}
           usageSummary={usageSummary}
           version={currentVersion}
           versionHandler={versionHandler}

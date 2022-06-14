@@ -56,6 +56,7 @@ const mockFeedCardProps = {
   onThreadSelect: jest.fn(),
   isFooterVisible: false,
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test ActivityFeedCard Component', () => {

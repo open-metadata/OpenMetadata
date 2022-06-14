@@ -69,7 +69,11 @@ import {
   getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -645,6 +649,15 @@ const PipelineDetailsPage = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -712,6 +725,7 @@ const PipelineDetailsPage = () => {
           tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

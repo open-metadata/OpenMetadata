@@ -29,6 +29,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onViewMore,
   selectedThreadId,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
@@ -109,6 +110,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   entityLink={feed.about}
                   feed={mainFeed}
                   isEntityFeed={isEntityFeed}
+                  updateThreadHandler={updateThreadHandler}
                 />
                 {postLength > 0 ? (
                   <Fragment>
@@ -125,6 +127,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                       feed={lastPost as Post}
                       isEntityFeed={isEntityFeed}
                       threadId={feed.id}
+                      updateThreadHandler={updateThreadHandler}
                       onConfirmation={onConfirmation}
                     />
                     <p

@@ -150,6 +150,7 @@ const TourPage = () => {
             ownedDataCount={1}
             paging={{} as Paging}
             postFeedHandler={handleOnClick}
+            updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
           />
         );
@@ -243,6 +244,7 @@ const TourPage = () => {
             testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
+            updateThreadHandler={handleOnClick}
             usageSummary={
               mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }

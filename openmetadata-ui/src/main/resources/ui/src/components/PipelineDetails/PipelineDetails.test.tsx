@@ -93,6 +93,7 @@ const PipelineDetailsProps = {
   fetchFeedHandler: jest.fn(),
   pipelineStatus: [],
   isPipelineStatusLoading: false,
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();

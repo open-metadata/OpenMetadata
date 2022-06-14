@@ -34,6 +34,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   postFeedHandler,
   entityName,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -123,6 +124,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   postFeed={postFeed}
                   relativeDay={d}
                   selectedThreadId={selectedThreadId}
+                  updateThreadHandler={updateThreadHandler}
                   updatedFeedList={updatedFeedList}
                   withSidePanel={withSidePanel}
                   onConfirmation={onConfirmation}
@@ -141,6 +143,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 open={!isUndefined(selectedThread) && isPanelOpen}
                 postFeed={postFeed}
                 selectedThread={selectedThread}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onCancel}
               />
             </Fragment>

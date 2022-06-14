@@ -23,6 +23,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   className,
   isLoading,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
@@ -46,6 +47,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 isThread
                 className="tw-mb-3"
                 feed={mainThread as Post}
+                updateThreadHandler={updateThreadHandler}
               />
             </div>
           ) : null}
@@ -66,6 +68,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                   feed={reply}
                   key={key}
                   threadId={threadData.id}
+                  updateThreadHandler={updateThreadHandler}
                   onConfirmation={onConfirmation}
                 />
               ))}

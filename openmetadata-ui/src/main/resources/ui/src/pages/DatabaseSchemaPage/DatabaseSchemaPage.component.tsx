@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, ExtraInfo, Paging } from 'Models';
@@ -85,6 +85,7 @@ import {
   deletePost,
   getEntityFieldThreadCounts,
   getUpdatedThread,
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -500,6 +501,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const getLoader = () => {
     return isentityThreadLoading ? <Loader /> : null;
   };
@@ -683,6 +693,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       entityName={databaseSchemaName}
                       feedList={entityThread}
                       postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
                     />
                     <div />
                   </div>
@@ -720,6 +731,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
               />
             ) : null}
