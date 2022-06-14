@@ -64,6 +64,11 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>1.3.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>1.12.0</version>
+        </dependency>
         <!-- TEST -->
         <dependency>
             <groupId>junit</groupId>

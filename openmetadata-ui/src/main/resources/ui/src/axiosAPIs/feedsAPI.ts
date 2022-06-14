@@ -12,9 +12,11 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Post } from 'Models';
+import { Operation } from 'fast-json-patch';
+import { configOptions } from '../constants/constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
+import { Post } from '../generated/entity/feed/thread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
@@ -87,4 +89,23 @@ export const deletePostById: Function = (
   postId: string
 ): Promise<AxiosResponse> => {
   return APIClient.delete(`/feed/${threadId}/posts/${postId}`);
+};
+
+export const updateThread: Function = (
+  threadId: string,
+  data: Operation[]
+): Promise<AxiosResponse> => {
+  return APIClient.patch(`/feed/${threadId}`, data, configOptions);
+};
+
+export const updatePost: Function = (
+  threadId: string,
+  postId: string,
+  data: Operation[]
+): Promise<AxiosResponse> => {
+  return APIClient.patch(
+    `/feed/${threadId}/posts/${postId}`,
+    data,
+    configOptions
+  );
 };

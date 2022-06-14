@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
+import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 
@@ -32,7 +32,7 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
-  feedData: EntityThread[];
+  feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;

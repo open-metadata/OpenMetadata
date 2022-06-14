@@ -60,3 +60,8 @@ export interface ExploreProps {
   fetchData: (value: SearchDataFunctionType[]) => void;
   onShowDeleted: (checked: boolean) => void;
 }
+
+export interface AdvanceField {
+  key: string;
+  value: string | undefined;
+}

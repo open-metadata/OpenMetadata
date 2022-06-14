@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
@@ -257,3 +257,16 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
+
+
+@fqn_build_registry.add(Column)
+def _(
+    _: OpenMetadata,  # ES Search not enabled for Columns
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, table_name, column_name)
