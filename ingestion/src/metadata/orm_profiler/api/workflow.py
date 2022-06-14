@@ -16,7 +16,7 @@ Workflow definition for the ORM Profiler.
 - How to specify the entities to run
 - How to define metrics & tests
 """
-import itertools
+from copy import deepcopy
 from typing import Iterable, List
 
 import click
@@ -40,6 +40,7 @@ from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.orm_profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
+from metadata.utils import fqn
 from metadata.utils.connections import (
     create_and_bind_session,
     get_connection,
@@ -69,8 +70,6 @@ class ProfilerWorkflow:
 
         # Prepare the connection to the source service
         # We don't need the whole Source class, as it is the OM Server
-        engine = get_connection(self.config.source.serviceConnection.__root__.config)
-        test_connection(engine)
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = (
@@ -78,14 +77,7 @@ class ProfilerWorkflow:
         )
         self.source_status = SQLSourceStatus()
 
-        self.processor = get_processor(
-            processor_type=self.config.processor.type,  # orm-profiler
-            processor_config=self.config.processor or ProfilerProcessorConfig(),
-            metadata_config=self.metadata_config,
-            _from="orm_profiler",
-            # Pass the session as kwargs for the profiler
-            session=create_and_bind_session(engine),
-        )
+        self.processor = None
 
         if self.config.sink:
             self.sink = get_sink(
@@ -131,7 +123,35 @@ class ProfilerWorkflow:
             self.source_status.scanned(table.fullyQualifiedName.__root__)
             yield table
 
-    def list_entities(self) -> Iterable[Table]:
+    def create_processor(self, service_connection_config):
+        self.processor = get_processor(
+            processor_type=self.config.processor.type,  # orm-profiler
+            processor_config=self.config.processor or ProfilerProcessorConfig(),
+            metadata_config=self.metadata_config,
+            _from="orm_profiler",
+            # Pass the session as kwargs for the profiler
+            session=create_and_bind_session(
+                self.create_engine_for_session(service_connection_config)
+            ),
+        )
+
+    def create_engine_for_session(self, service_connection_config):
+        """Create SQLAlchemy engine to use with a session object"""
+        engine = get_connection(service_connection_config)
+        test_connection(engine)
+
+        return engine
+
+    def get_database_entities(self):
+        """List all databases in service"""
+
+        for database in self.metadata.list_all_entities(
+            entity=Database,
+            params={"service": self.config.source.serviceName},
+        ):
+            yield database
+
+    def get_table_entities(self, database):
         """
         List and filter OpenMetadata tables based on the
         source configuration.
@@ -146,47 +166,50 @@ class ProfilerWorkflow:
 
         Same with `schema_filter_pattern`.
         """
-
-        # First, get all the databases for the service:
-        all_dbs = self.metadata.list_all_entities(
-            entity=Database,
-            params={"service": self.config.source.serviceName},
+        all_tables = self.metadata.list_all_entities(
+            entity=Table,
+            fields=[
+                "tableProfile",
+                "tests",
+            ],
+            params={
+                "service": self.config.source.serviceName,
+                "database": fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.config.source.serviceName,
+                    database_name=database.name.__root__,
+                ),
+            },
         )
 
-        # Then list all tables from each db.
-        # This returns a nested structure [[db1 tables], [db2 tables]...]
-        all_tables = [
-            self.metadata.list_all_entities(
-                entity=Table,
-                fields=[
-                    "tableProfile",
-                    "tests",
-                ],  # We will need it for window metrics to check past data
-                params={
-                    "database": f"{self.config.source.serviceName}.{database.name.__root__}"
-                },
-            )
-            for database in all_dbs
-        ]
-
-        # Flatten the structure into a List[Table]
-        flat_tables = list(itertools.chain.from_iterable(all_tables))
-
-        yield from self.filter_entities(flat_tables)
+        yield from self.filter_entities(all_tables)
 
     def execute(self):
         """
         Run the profiling and tests
         """
-        for entity in self.list_entities():
+        copy_service_connection_config = deepcopy(
+            self.config.source.serviceConnection.__root__.config
+        )
+        for database in self.get_database_entities():
+            if hasattr(
+                self.config.source.serviceConnection.__root__.config, "supportsDatabase"
+            ):
+                copy_service_connection_config.database = database.name.__root__
 
-            profile_and_tests: ProfilerResponse = self.processor.process(
-                record=entity,
-                generate_sample_data=self.source_config.generateSampleData,
-            )
+            self.create_processor(copy_service_connection_config)
 
-            if hasattr(self, "sink"):
-                self.sink.write_record(profile_and_tests)
+            for entity in self.get_table_entities(database=database):
+                profile_and_tests: ProfilerResponse = self.processor.process(
+                    record=entity,
+                    generate_sample_data=self.source_config.generateSampleData,
+                )
+
+                if hasattr(self, "sink"):
+                    self.sink.write_record(profile_and_tests)
+
+            self.processor.session.close()
 
     def print_status(self) -> int:
         """
