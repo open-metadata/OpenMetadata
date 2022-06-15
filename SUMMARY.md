@@ -16,11 +16,11 @@
 
 * [Metadata Ingestion Overview](metadata-ingestion/metadata-ingestion.md)
 * [Connectors](docs/integrations/connectors/README.md)
+  * [Amundsen](integrations/connectors/amundsen.md)
   * [Athena](docs/integrations/connectors/athena/README.md)
     * [Run Athena Connector using Airflow SDK](docs/integrations/connectors/athena/run-athena-connector-using-airflow-sdk.md)
     * [Run Athena Connector with the CLI](docs/integrations/connectors/athena/run-athena-connector-with-the-cli.md)
     * [AWS Credentials](docs/integrations/connectors/athena/aws-credentials.md)
-  * [Amundsen](integrations/connectors/amundsen.md)
   * [Azure SQL](integrations/connectors/azure-sql/README.md)
     * [Run AzureSQL Connector with the Airflow SDK](integrations/connectors/azure-sql/run-azuresql-connector-with-the-airflow-sdk.md)
     * [Run AzureSQL Connector with the CLI](integrations/connectors/azure-sql/run-azuresql-connector-with-the-cli.md)

@@ -4,6 +4,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Database Services
 
+* [Amundsen](https://docs.open-metadata.org/integrations/connectors/amundsen)
 * Apache Druid
 * [Athena](athena/)
 * [Azure SQL](../../../integrations/connectors/azure-sql/)
