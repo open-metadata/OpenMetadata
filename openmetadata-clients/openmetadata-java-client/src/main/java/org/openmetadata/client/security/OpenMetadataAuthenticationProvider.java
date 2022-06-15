@@ -14,25 +14,64 @@
 package org.openmetadata.client.security;
 
 import feign.RequestTemplate;
+import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OpenMetadataAuthenticationProvider implements AuthenticationProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(OpenMetadataAuthenticationProvider.class);
+  private final OpenMetadataJWTClientConfig securityConfig;
+  private String generatedAuthToken;
+  private Long expirationTimeMillis;
+
+  public OpenMetadataAuthenticationProvider(OpenMetadataServerConnection iConfig) {
+    if (!iConfig.getAuthProvider().equals(OpenMetadataServerConnection.AuthProvider.OPENMETADATA)) {
+      LOG.error("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
+      throw new RuntimeException("Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
+    }
+
+    securityConfig = (OpenMetadataJWTClientConfig) iConfig.getSecurityConfig();
+    if (securityConfig == null) {
+      LOG.error("Security Config is missing, it is required");
+      throw new RuntimeException("Security Config is missing, it is required");
+    }
+    generatedAuthToken = "";
+  }
+
   @Override
   public AuthenticationProvider create(OpenMetadataServerConnection iConfig) {
-    return null;
+    return new OpenMetadataAuthenticationProvider(iConfig);
   }
 
   @Override
   public String authToken() {
-    return null;
+    generatedAuthToken = securityConfig.getJwtToken();
+    return generatedAuthToken;
   }
 
   @Override
   public String getAccessToken() {
-    return null;
+    return generatedAuthToken;
   }
 
   @Override
-  public void apply(RequestTemplate requestTemplate) {}
+  public void apply(RequestTemplate requestTemplate) {
+    if (requestTemplate.url().contains("version")) {
+      return;
+    }
+    if (requestTemplate.headers().containsKey("Authorization")) {
+      return;
+    }
+    // If first time, get the token
+    if (expirationTimeMillis == null || System.currentTimeMillis() >= expirationTimeMillis) {
+      this.authToken();
+    }
+
+    if (getAccessToken() != null) {
+      requestTemplate.header("Authorization", "Bearer " + getAccessToken());
+    }
+  }
 }
