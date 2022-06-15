@@ -102,6 +102,7 @@ const mockFeedListBodyProp = {
   selectedThreadId: '',
   onConfirmation: jest.fn(),
   onThreadIdDeselect: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test FeedListBody Component', () => {

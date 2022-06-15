@@ -324,8 +324,8 @@ select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and T
 """
 
 SNOWFLAKE_GET_COMMENTS = """
-    select COMMENT 
-    from SHOP_DB.information_schema.TABLES 
+    select COMMENT
+    from information_schema.TABLES 
     WHERE TABLE_SCHEMA = '{schema_name}'
       AND TABLE_NAME = '{table_name}'
 """

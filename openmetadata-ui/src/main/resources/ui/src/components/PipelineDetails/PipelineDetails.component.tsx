@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo } from 'Models';
 import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -104,6 +104,7 @@ const PipelineDetails = ({
   fetchFeedHandler,
   pipelineStatus,
   isPipelineStatusLoading,
+  updateThreadHandler,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -500,7 +501,7 @@ const PipelineDetails = ({
                                           onThreadLinkSelect
                                         )
                                       ) &&
-                                      onEntityFieldSelect &&
+                                      !isUndefined(onEntityFieldSelect) &&
                                       !task.description ? (
                                         <button
                                           className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
@@ -567,6 +568,7 @@ const PipelineDetails = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -634,6 +636,7 @@ const PipelineDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />
       ) : null}

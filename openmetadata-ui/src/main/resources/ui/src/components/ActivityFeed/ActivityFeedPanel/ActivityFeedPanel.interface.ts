@@ -13,6 +13,7 @@
 
 import { HTMLAttributes } from 'react';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
@@ -21,6 +22,7 @@ export interface ActivityFeedPanelProp extends HTMLAttributes<HTMLDivElement> {
   onCancel: () => void;
   postFeed: (value: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }
 
 export interface FeedPanelHeaderProp
@@ -35,7 +37,7 @@ export interface FeedPanelOverlayProp
     Pick<ActivityFeedPanelProp, 'onCancel'> {}
 export interface FeedPanelBodyProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedPanelProp, 'deletePostHandler'> {
+    Pick<ActivityFeedPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
   threadData: Thread;
   isLoading: boolean;
   onConfirmation?: (data: ConfirmState) => void;

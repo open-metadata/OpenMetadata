@@ -31,6 +31,7 @@ const mockActivityThreadListProp = {
   onThreadIdSelect: jest.fn(),
   onThreadSelect: jest.fn(),
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {
