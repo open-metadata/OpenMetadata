@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import traceback
+from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
@@ -53,6 +54,11 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    GCSConfig,
+    S3Config,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
 )
@@ -73,6 +79,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
+    DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
     GlueClient,
@@ -565,3 +572,63 @@ def _(connection: LookerClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+
+
+@test_connection.register
+def _(connection: DatalakeClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        config = connection.config.configSource
+        if isinstance(config, GCSConfig):
+            if connection.config.bucketName:
+                connection.client.get_bucket(connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+        if isinstance(config, S3Config):
+            if connection.config.bucketName:
+                connection.client.list_objects(Bucket=connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+
+
+@singledispatch
+def get_datalake_client(config):
+    if config:
+        raise NotImplementedError(
+            f"Config not implemented for type {type(config)}: {config}"
+        )
+
+
+@get_connection.register
+def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+    datalake_connection = get_datalake_client(connection.configSource)
+    return DatalakeClient(client=datalake_connection, config=connection)
+
+
+@get_datalake_client.register
+def _(config: S3Config):
+    from metadata.utils.aws_client import AWSClient
+
+    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
+    return s3_client
+
+
+@get_datalake_client.register
+def _(config: GCSConfig):
+    from google.cloud import storage
+
+    set_google_credentials(gcs_credentials=config.securityConfig)
+    gcs_client = storage.Client()
+    return gcs_client

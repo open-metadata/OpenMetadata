@@ -1063,3 +1063,9 @@ code {
     grid-template-columns: 256px auto 256px;
   }
 }
+
+/* Description CSS */
+
+.description {
+  word-break: break-all;
+}

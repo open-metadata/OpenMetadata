@@ -19,6 +19,7 @@ import org.openmetadata.client.security.AzureAuthenticationProvider;
 import org.openmetadata.client.security.GoogleAuthenticationProvider;
 import org.openmetadata.client.security.NoOpAuthenticationProvider;
 import org.openmetadata.client.security.OktaAuthenticationProvider;
+import org.openmetadata.client.security.OpenMetadataAuthenticationProvider;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
 public class AuthenticationProviderFactory {
@@ -36,7 +37,7 @@ public class AuthenticationProviderFactory {
       case AZURE:
         return new AzureAuthenticationProvider(serverConfig);
       case OPENMETADATA:
-        return null;
+        return new OpenMetadataAuthenticationProvider(serverConfig);
     }
     return null;
   }

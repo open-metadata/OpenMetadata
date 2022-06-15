@@ -129,6 +129,8 @@ authorizerConfiguration:
   botPrincipals:
     - "ingestion-bot"
   principalDomain: "open-metadata.org"
+  enforcePrincipalDomain: false
+  enableSecureSocketConnection: false
 
 authenticationConfiguration:
   provider: "openID"
