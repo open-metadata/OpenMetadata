@@ -93,7 +93,9 @@ const Reactions = ({ reactions, onReactionSelect }) => {
       <div className="tw-flex">
         {emojis}
         <Popover
+          align={{ targetOffset: [0, -10] }}
           content={reactionList}
+          overlayClassName="ant-popover-feed-reactions"
           placement="topLeft"
           trigger="click"
           visible={visible}
