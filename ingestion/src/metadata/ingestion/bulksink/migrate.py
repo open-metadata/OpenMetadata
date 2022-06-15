@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import logging
 import traceback
 from datetime import datetime
 
@@ -58,8 +57,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
+from metadata.utils.logger import ingestion_logger
 
-logger = logging.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class MetadataMigrateSinkConfig(ConfigModel):

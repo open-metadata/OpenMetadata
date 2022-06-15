@@ -189,8 +189,9 @@ class MigrateSource(MetadataSource):
     def fetch_policy(self):
         after = None
         while True:
+            after_param = f"&after={after}" if after else ""
             policy_entities = self.metadata.client.get(
-                f"/policies?&limit={self.service_connection.limitRecords}&after={after if after else ''}"
+                f"/policies?&limit={self.service_connection.limitRecords}{after_param}"
             )
             for policy in policy_entities.get("data"):
                 yield PolicyWrapper(policy)
@@ -201,8 +202,9 @@ class MigrateSource(MetadataSource):
     def fetch_tables(self, fields):
         after = None
         while True:
+            after_param = f"&after={after}" if after else ""
             table_entities = self.metadata.client.get(
-                f"/tables?fields={','.join(fields)}&limit={self.service_connection.limitRecords}&after={after if after else ''}"
+                f"/tables?fields={','.join(fields)}&limit={self.service_connection.limitRecords}{after_param}"
             )
             for table in table_entities.get("data"):
                 yield TableWrapper(table)
@@ -219,8 +221,9 @@ class MigrateSource(MetadataSource):
     def fetch_messaging_services(self):
         after = None
         while True:
+            after_param = f"&after={after}" if after else ""
             service_entities = self.metadata.client.get(
-                f"/services/messagingServices?fields=owner&limit={self.service_connection.limitRecords}&after={after if after else ''}"
+                f"/services/messagingServices?fields=owner&limit={self.service_connection.limitRecords}{after_param}"
             )
             for service in service_entities.get("data"):
                 yield MessagingServiceWrapper(service)
@@ -231,8 +234,9 @@ class MigrateSource(MetadataSource):
     def fetch_database_services(self):
         after = None
         while True:
+            after_param = f"&after={after}" if after else ""
             service_entities = self.metadata.client.get(
-                f"/services/databaseServices?fields=owner&limit={self.service_connection.limitRecords}&after={after if after else ''}"
+                f"/services/databaseServices?fields=owner&limit={self.service_connection.limitRecords}{after_param}"
             )
             for service in service_entities.get("data"):
                 yield DatabaseServiceWrapper(service)
