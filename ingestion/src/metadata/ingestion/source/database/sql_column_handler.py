@@ -46,9 +46,9 @@ class SqlColumnHandlerMixin:
     ) -> str:
         if precision:
             return (
-                f"{data_type_display}"
+                data_type_display
                 if data_type_display
-                else "{}({},{})".format(col_type, precision[0], precision[1])
+                else f"{col_type}({precision[0]},{precision[1]})"
             )
         dataTypeDisplay = (
             f"{data_type_display}"
@@ -169,7 +169,9 @@ class SqlColumnHandlerMixin:
                             )
                         ]
                     col_data_length = self._check_col_length(col_type, column["type"])
-                    precision = self._check_col_precision(col_type, column["type"])
+                    precision = ColumnTypeParser.check_col_precision(
+                        col_type, column["type"]
+                    )
                     if col_type == "NULL" or col_type is None:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
@@ -222,25 +224,6 @@ class SqlColumnHandlerMixin:
                 return col_raw_type.length if col_raw_type.length else 1
             except AttributeError:
                 return 1
-
-    @staticmethod
-    def _check_col_precision(
-        datatype: str, col_raw_type: object
-    ) -> Optional[Tuple[str, str]]:
-        """
-        Method retuerns the precision details of column if available
-        """
-        if datatype and datatype.upper() in {
-            "DOUBLE",
-            "NUMBER",
-            "NUMERIC",
-            "FLOAT",
-            "DECIMAL",
-        }:
-            args = re.search(r"\((.*)\)", str(col_raw_type))
-            if args and args.group(1):
-                args = tuple(re.split(r"\s*,\s*", args.group(1)))
-                return args
 
     @staticmethod
     def _get_column_constraints(
