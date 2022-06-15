@@ -442,7 +442,9 @@ const PipelineDetails = ({
                                   to={{ pathname: task.taskUrl }}>
                                   <span className="tw-flex">
                                     <span className="tw-mr-1">
-                                      {task.displayName}
+                                      {getEntityName(
+                                        task as unknown as EntityReference
+                                      )}
                                     </span>
                                     <SVGIcons
                                       alt="external-link"
