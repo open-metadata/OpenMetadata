@@ -119,6 +119,7 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -291,6 +292,7 @@ export const Icons = {
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
   ADD_REACTION: 'add-reaction',
+  ADD_REPLY: 'add-reply',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -845,6 +847,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ADD_REACTION:
       IconComponent = IconAddReaction;
+
+      break;
+    case Icons.ADD_REPLY:
+      IconComponent = IconReplyFeed;
 
       break;
     default:
