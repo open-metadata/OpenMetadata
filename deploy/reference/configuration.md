@@ -99,10 +99,10 @@ database:
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 ```
 
-The section below refers to the database connection details to Postgres database. We recommend you create a Postgres user with a strong password and update this section accordingly.
+The section below refers to the database connection details to Postgres database. OpenMetadata uses stored generated columns which is supported in Postgres 12. Ensure that you have Postgres 12 or a later version. We recommend you create a Postgres user with a strong password and update this section accordingly.
 
 ```
-ddatabase:
+database:
   # the name of the JDBC driver, postgres in our case
   driverClass: org.postgresql.Driver
   # the username and password
