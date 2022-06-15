@@ -16,8 +16,6 @@ import datetime
 import traceback
 from typing import Optional
 
-from sql_metadata import Parser
-
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -25,6 +23,19 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import QueryParserData, TableQuery
 from metadata.utils.logger import ingestion_logger
+
+
+def parse_sql_statement(raw_sql: str) -> QueryParserData:
+    """
+    Use the lineage parser and work with the tokens
+    to convert a RAW SQL statement into
+    QueryParserData.
+    :param raw_sql: sql from usage
+    :return: QueryParserData
+    """
+
+    from sqllineage.runner import LineageRunner
+
 
 
 class QueryParserProcessorConfig(ConfigModel):

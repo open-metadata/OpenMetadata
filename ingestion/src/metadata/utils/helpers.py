@@ -46,7 +46,7 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 

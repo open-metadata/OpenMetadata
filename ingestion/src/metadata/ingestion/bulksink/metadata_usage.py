@@ -194,11 +194,6 @@ class MetadataUsageBulkSink(BulkSink):
                 joined_with = column_joins_dict[column_join.table_column.column]
             else:
                 column_joins_dict[column_join.table_column.column] = {}
-            main_column_fqdn = self.__get_column_fqdn(
-                table_usage.database,
-                table_usage.database_schema,
-                column_join.table_column,
-            )
             for column in column_join.joined_with:
                 joined_column_fqdn = self.__get_column_fqdn(
                     table_usage.database, table_usage.database_schema, column
