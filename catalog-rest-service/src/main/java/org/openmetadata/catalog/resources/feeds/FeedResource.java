@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -224,7 +225,7 @@ public class FeedResource {
           JsonPatch patch)
       throws IOException {
     PatchResponse<Thread> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patchThread(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
   }
 
@@ -300,6 +301,42 @@ public class FeedResource {
     return Response.created(thread.getHref()).entity(thread).build();
   }
 
+  @PATCH
+  @Path("/{threadId}/posts/{postId}")
+  @Operation(
+      operationId = "patchPostOfThread",
+      summary = "Update post of a thread by `id`.",
+      tags = "feeds",
+      description = "Update a post of an existing thread using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(responseCode = "404", description = "post with {postId} is not found")
+      })
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchPost(
+      @Context SecurityContext securityContext,
+      @Context UriInfo uriInfo,
+      @PathParam("threadId") String threadId,
+      @PathParam("postId") String postId,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException {
+    // validate and get thread & post
+    Thread thread = dao.get(threadId);
+    Post post = dao.getPostById(thread, postId);
+
+    PatchResponse<Post> response = dao.patchPost(thread, post, securityContext.getUserPrincipal().getName(), patch);
+    return response.toResponse();
+  }
+
   @DELETE
   @Path("/{threadId}/posts/{postId}")
   @Operation(
@@ -354,6 +391,7 @@ public class FeedResource {
         .withCreatedBy(create.getFrom())
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
+        .withReactions(Collections.emptyList())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
@@ -363,6 +401,7 @@ public class FeedResource {
         .withId(UUID.randomUUID())
         .withMessage(create.getMessage())
         .withFrom(create.getFrom())
+        .withReactions(Collections.emptyList())
         .withPostTs(System.currentTimeMillis());
   }
 }

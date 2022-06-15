@@ -26,6 +26,10 @@
         "from": {
           "description": "Name of the User posting the message.",
           "type": "string"
+        },
+        "reactions": {
+          "description": "Reactions for the post.",
+          "$ref": "../../type/reaction.json#/definitions/reactionList"
         }
       },
       "required": ["id", "message", "from"],
@@ -88,6 +92,10 @@
       "items": {
         "$ref": "#/definitions/post"
       }
+    },
+    "reactions": {
+      "description": "Reactions for the thread.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
     }
   },
   "required": ["id", "about", "message"],

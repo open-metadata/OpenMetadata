@@ -35,7 +35,7 @@ export const getSearchAPIQuery = (
     filters ? ` AND ${filters}` : ''
   }&from=${start}&size=${size}${onlyDeleted ? '&deleted=true' : ''}${
     sortField ? `&sort_field=${sortField}` : ''
-  }${sortOrder ? `&sort_order=${sortOrder}` : ''}${
+  }${sortOrder && sortField ? `&sort_order=${sortOrder}` : ''}${
     searchIndex ? `&index=${searchIndex}` : ''
   }${trackTotalHits ? '&track_total_hits=true' : ''}`;
 };

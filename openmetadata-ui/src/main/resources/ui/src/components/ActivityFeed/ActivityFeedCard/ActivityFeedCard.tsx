@@ -12,18 +12,23 @@
  */
 
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import { compare, Operation } from 'fast-json-patch';
+import { observer } from 'mobx-react';
+import React, { FC, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import { Post } from '../../../generated/entity/feed/thread';
+import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useAuth } from '../../../hooks/authHooks';
 import {
   getEntityField,
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
-import FeedCardBody from '../FeedCardBody/FeedCardBody';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
-import FeedCardHeader from '../FeedCardHeader/FeedCardHeader';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
+import FeedCardBody from './FeedCardBody/FeedCardBody';
+import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
+import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
@@ -36,36 +41,90 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   lastReplyTimeStamp,
   onThreadSelect,
   isFooterVisible = false,
+  isThread,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
   const entityField = getEntityField(entityLink as string);
 
   const { isAdminUser } = useAuth();
-  const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+  const currentUser = AppState.getCurrentUserDetails();
+
+  const [feedDetail, setFeedDetail] = useState<Post>(feed);
+
+  const onFeedUpdate = (data: Operation[]) => {
+    updateThreadHandler(
+      threadId ?? feedDetail.id,
+      feedDetail.id,
+      Boolean(isThread),
+      data
+    );
+  };
+
+  const onReactionSelect = (
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => {
+    let updatedReactions = feedDetail.reactions || [];
+    if (reactionOperation === ReactionOperation.ADD) {
+      const reactionObject = {
+        reactionType,
+        user: {
+          id: currentUser?.id as string,
+        },
+      };
+
+      updatedReactions = [...updatedReactions, reactionObject as Reaction];
+    } else {
+      updatedReactions = updatedReactions.filter(
+        (reaction) =>
+          !(
+            reaction.reactionType === reactionType &&
+            reaction.user.id === currentUser?.id
+          )
+      );
+    }
+
+    const patch = compare(
+      { ...feedDetail, reactions: [...(feedDetail.reactions || [])] },
+      {
+        ...feedDetail,
+        reactions: updatedReactions,
+      }
+    );
+
+    onFeedUpdate(patch);
+  };
+
+  useEffect(() => {
+    setFeedDetail(feed);
+  }, [feed]);
 
   return (
     <div className={classNames(className)}>
       <FeedCardHeader
-        createdBy={feed.from}
+        createdBy={feedDetail.from}
         entityFQN={entityFQN as string}
         entityField={entityField as string}
         entityType={entityType as string}
         isEntityFeed={isEntityFeed}
-        timeStamp={feed.postTs}
+        timeStamp={feedDetail.postTs}
       />
       <FeedCardBody
         className="tw-ml-8 tw-bg-white tw-border-main tw-rounded-md tw-break-all tw-flex tw-justify-between "
-        isAuthor={Boolean(feed.from === currentUser || isAdminUser)}
-        message={feed.message}
-        postId={feed.id}
+        isAuthor={Boolean(feedDetail.from === currentUser?.name || isAdminUser)}
+        isThread={isThread}
+        message={feedDetail.message}
+        postId={feedDetail.id}
+        reactions={feedDetail.reactions || []}
         threadId={threadId as string}
         onConfirmation={onConfirmation}
+        onReactionSelect={onReactionSelect}
       />
-      <div className="tw-filter-seperator" />
+      <div className="tw-mx-8 tw-filter-seperator" />
       <FeedCardFooter
-        className="tw-ml-9 tw-mt-3"
         isFooterVisible={isFooterVisible}
         lastReplyTimeStamp={lastReplyTimeStamp}
         repliedUsers={repliedUsers}
@@ -77,4 +136,4 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   );
 };
 
-export default ActivityFeedCard;
+export default observer(ActivityFeedCard);

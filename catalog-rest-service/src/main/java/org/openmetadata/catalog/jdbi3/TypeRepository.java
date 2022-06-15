@@ -88,11 +88,6 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  protected void postUpdate(Type entity) {
-    TypeRegistry.instance().addType(entity);
-  }
-
-  @Override
   public EntityUpdater getUpdater(Type original, Type updated, Operation operation) {
     return new TypeUpdater(original, updated, operation);
   }
@@ -102,7 +97,7 @@ public class TypeRepository extends EntityRepository<Type> {
     Type type = dao.findEntityById(UUID.fromString(id), Include.NON_DELETED);
     property.setPropertyType(dao.findEntityReferenceById(property.getPropertyType().getId(), Include.NON_DELETED));
     if (type.getCategory().equals(Category.Field)) {
-      throw new IllegalArgumentException("Property types can't be extended");
+      throw new IllegalArgumentException("Only entity types can be extended and field types can't be extended");
     }
     setFields(type, putFields);
 
@@ -148,7 +143,7 @@ public class TypeRepository extends EntityRepository<Type> {
       List<CustomProperty> origFields = listOrEmpty(original.getCustomProperties());
       List<CustomProperty> added = new ArrayList<>();
       List<CustomProperty> deleted = new ArrayList<>();
-      recordListChange("customProperty", origFields, updatedFields, added, deleted, EntityUtil.customFieldMatch);
+      recordListChange("customProperties", origFields, updatedFields, added, deleted, EntityUtil.customFieldMatch);
       for (CustomProperty property : added) {
         String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
         String customPropertyJson = JsonUtils.pojoToJson(property);

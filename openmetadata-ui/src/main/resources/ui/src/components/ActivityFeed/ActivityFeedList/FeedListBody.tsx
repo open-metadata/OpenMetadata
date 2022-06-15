@@ -12,11 +12,11 @@
  */
 
 import { Card } from 'antd';
-import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
@@ -29,6 +29,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onViewMore,
   selectedThreadId,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
@@ -47,10 +48,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
   const getThreadFooter = (
     postLength: number,
-    lastPost: Post,
     repliedUsers: Array<string>,
     replies: number,
-    threadId: string
+    threadId: string,
+    lastPost?: Post
   ) => {
     return postLength > 1 ? (
       <div className="tw-mb-2">
@@ -82,13 +83,14 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             postTs: feed.threadTs,
             from: feed.createdBy,
             id: feed.id,
-          };
-          const postLength = feed.posts.length;
-          const replies = feed.postsCount - 1;
-          const repliedUsers = feed.posts
+            reactions: feed.reactions,
+          } as Post;
+          const postLength = feed?.posts?.length || 0;
+          const replies = feed.postsCount ? feed.postsCount - 1 : 0;
+          const repliedUsers = (feed?.posts || [])
             .map((f) => f.from)
             .slice(0, postLength >= 3 ? 2 : 1);
-          const lastPost = feed.posts[postLength - 1];
+          const lastPost = feed?.posts?.[postLength - 1];
 
           return (
             <Card
@@ -103,26 +105,29 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               }}>
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
+                  isThread
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}
                   isEntityFeed={isEntityFeed}
+                  updateThreadHandler={updateThreadHandler}
                 />
                 {postLength > 0 ? (
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      lastPost,
                       repliedUsers,
                       replies,
-                      feed.id
+                      feed.id,
+                      lastPost
                     )}
                     <ActivityFeedCard
                       className="tw-mb-6 tw-ml-9"
                       data-testid="latest-message"
-                      feed={lastPost}
+                      feed={lastPost as Post}
                       isEntityFeed={isEntityFeed}
                       threadId={feed.id}
+                      updateThreadHandler={updateThreadHandler}
                       onConfirmation={onConfirmation}
                     />
                     <p
@@ -137,7 +142,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </Fragment>
                 ) : (
                   <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
+                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-1 tw-mb-1"
                     data-testid="replyInSidePanel"
                     onClick={() => {
                       onThreadSelect(feed.id);

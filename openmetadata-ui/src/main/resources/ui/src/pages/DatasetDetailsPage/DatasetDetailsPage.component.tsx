@@ -12,13 +12,12 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -74,6 +73,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Thread } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -98,7 +98,11 @@ import {
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -163,7 +167,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
@@ -908,7 +912,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -938,6 +942,37 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       });
   };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
+  const handleExtentionUpdate = (updatedTable: Table) => {
+    saveUpdatedTableData(updatedTable)
+      .then((res) => {
+        if (res.data) {
+          const { version, owner: ownerValue, tags } = res.data;
+          setCurrentVersion(version);
+          setTableDetails(res.data);
+          setOwner(ownerValue);
+          setTier(getTierTags(tags));
+        } else {
+          throw jsonData['api-error-messages']['update-entity-error'];
+        }
+      })
+      .catch((extensionErr: AxiosError) => {
+        showErrorToast(
+          extensionErr,
+          jsonData['api-error-messages']['update-entity-error']
+        );
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -987,6 +1022,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           followers={followers}
           handleAddColumnTestCase={handleAddColumnTestCase}
           handleAddTableTestCase={handleAddTableTestCase}
+          handleExtentionUpdate={handleExtentionUpdate}
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
           handleSelectedColumn={handleSelectedColumn}
@@ -1021,6 +1057,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
+          updateThreadHandler={updateThreadHandler}
           usageSummary={usageSummary}
           version={currentVersion}
           versionHandler={versionHandler}

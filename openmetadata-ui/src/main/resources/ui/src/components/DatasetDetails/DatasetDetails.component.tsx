@@ -67,6 +67,7 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
+import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -129,6 +130,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  handleExtentionUpdate,
+  updateThreadHandler,
 }: DatasetDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -279,6 +282,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 9,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -289,7 +303,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 9,
+      position: 10,
     },
   ];
 
@@ -651,6 +665,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -742,7 +757,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   />
                 </div>
               )}
-              {activeTab === 9 && !deleted && (
+              {activeTab === 9 && (
+                <CustomPropertyTable
+                  handleExtentionUpdate={handleExtentionUpdate}
+                  tableDetails={tableDetails}
+                />
+              )}
+              {activeTab === 10 && !deleted && (
                 <div>
                   <ManageTab
                     allowDelete
@@ -772,6 +793,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />
           ) : null}

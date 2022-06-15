@@ -178,22 +178,24 @@ const AddServicePage = () => {
 
   return (
     <PageContainerV1>
-      <AddService
-        addIngestion={addIngestion}
-        handleAddIngestion={handleAddIngestion}
-        ingestionAction={ingestionAction}
-        ingestionProgress={ingestionProgress}
-        isIngestionCreated={isIngestionCreated}
-        isIngestionDeployed={isIngestionDeployed}
-        newServiceData={newServiceData}
-        serviceCategory={serviceCategory as ServiceCategory}
-        showDeployButton={showIngestionButton}
-        slashedBreadcrumb={slashedBreadcrumb}
-        onAddIngestionSave={onAddIngestionSave}
-        onAddServiceSave={onAddServiceSave}
-        onAirflowStatusCheck={onAirflowStatusCheck}
-        onIngestionDeploy={onIngestionDeploy}
-      />
+      <div className="tw-self-center">
+        <AddService
+          addIngestion={addIngestion}
+          handleAddIngestion={handleAddIngestion}
+          ingestionAction={ingestionAction}
+          ingestionProgress={ingestionProgress}
+          isIngestionCreated={isIngestionCreated}
+          isIngestionDeployed={isIngestionDeployed}
+          newServiceData={newServiceData}
+          serviceCategory={serviceCategory as ServiceCategory}
+          showDeployButton={showIngestionButton}
+          slashedBreadcrumb={slashedBreadcrumb}
+          onAddIngestionSave={onAddIngestionSave}
+          onAddServiceSave={onAddServiceSave}
+          onAirflowStatusCheck={onAirflowStatusCheck}
+          onIngestionDeploy={onIngestionDeploy}
+        />
+      </div>
     </PageContainerV1>
   );
 };

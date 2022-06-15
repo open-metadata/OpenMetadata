@@ -72,13 +72,14 @@ export const getSuggestions: Function = (
   queryString: string,
   searchIndex?: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/suggest?q=${queryString}&index=${
+  const params = {
+    q: queryString,
+    index:
       searchIndex ??
-      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE}`
-    }
-    `
-  );
+      `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
 };
 
 export const getVersion: Function = () => {
@@ -131,9 +132,12 @@ export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
 export const getUserSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(
-    `/search/suggest?q=${term}&index=${SearchIndex.USER},${SearchIndex.TEAM}`
-  );
+  const params = {
+    q: term,
+    index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
 };
 
 export const getSearchedUsers = (
@@ -191,4 +195,14 @@ export const deleteEntity: Function = (
   }
 
   return APIClient.delete(path);
+};
+
+export const getAdvancedFieldOptions = (
+  q: string,
+  index: string,
+  field: string | undefined
+): Promise<AxiosResponse> => {
+  const params = { index, field, q };
+
+  return APIClient.get(`/search/suggest`, { params });
 };

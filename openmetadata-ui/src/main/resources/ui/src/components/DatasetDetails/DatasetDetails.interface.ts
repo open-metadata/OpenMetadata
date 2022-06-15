@@ -14,7 +14,6 @@
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -30,6 +29,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Thread } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -39,6 +39,7 @@ import {
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
@@ -65,7 +66,7 @@ export interface DatasetDetailsProps {
   followers: Array<EntityReference>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   deleted?: boolean;
   isLineageLoading?: boolean;
   isSampleDataLoading?: boolean;
@@ -109,4 +110,6 @@ export interface DatasetDetailsProps {
   ) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
   fetchFeedHandler: (after?: string) => void;
+  handleExtentionUpdate: (updatedTable: Table) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

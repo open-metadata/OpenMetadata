@@ -16,6 +16,7 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -36,7 +37,6 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
   getExplorePathWithSearch,
@@ -66,9 +66,11 @@ import {
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import AdvancedFields from '../AdvancedSearch/AdvancedFields';
+import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
 import PageLayout from '../containers/PageLayout';
-import { ExploreProps } from './explore.interface';
+import { AdvanceField, ExploreProps } from './explore.interface';
+import SortingDropDown from './SortingDropDown';
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
@@ -92,6 +94,7 @@ const Explore: React.FC<ExploreProps> = ({
   updateDashboardCount,
   updatePipelineCount,
   isFilterSelected,
+  updateMlModelCount,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -104,18 +107,16 @@ const Explore: React.FC<ExploreProps> = ({
     ...filterObject,
     ...searchFilter,
   });
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [searchTag, setSearchTag] = useState<string>(location.search);
-
-  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>(sortValue);
   const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
-  const [fieldList, setFieldList] =
-    useState<Array<{ name: string; value: string }>>(tableSortingFields);
+
   const [isEntityLoading, setIsEntityLoading] = useState(true);
   const [isFilterSet, setIsFilterSet] = useState<boolean>(
     !isEmpty(initialFilter)
@@ -124,6 +125,43 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
+  const [fieldList, setFieldList] =
+    useState<Array<{ name: string; value: string }>>(tableSortingFields);
+
+  const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
+    Array<AdvanceField>
+  >([]);
+
+  const onAdvancedFieldSelect = (value: string) => {
+    const flag = selectedAdvancedFields.some((field) => field.key === value);
+    if (!flag) {
+      setSelectedAdvancedField((pre) => [
+        ...pre,
+        { key: value, value: undefined },
+      ]);
+    }
+  };
+  const onAdvancedFieldRemove = (value: string) => {
+    setSelectedAdvancedField((pre) =>
+      pre.filter((field) => field.key !== value)
+    );
+  };
+
+  const onAdvancedFieldClear = () => {
+    setSelectedAdvancedField([]);
+  };
+
+  const onAdvancedFieldValueSelect = (field: AdvanceField) => {
+    setSelectedAdvancedField((pre) => {
+      return pre.map((preField) => {
+        if (preField.key === field.key) {
+          return field;
+        } else {
+          return preField;
+        }
+      });
+    });
+  };
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -159,11 +197,16 @@ const Explore: React.FC<ExploreProps> = ({
     handleFilterChange(filterData);
   };
 
+  const handleFieldDropDown = (value: string) => {
+    setSortField(value);
+  };
+
   const handleShowDeleted = (checked: boolean) => {
     onShowDeleted(checked);
   };
 
   const onClearFilterHandler = (type: string[], isForceClear = false) => {
+    setSelectedAdvancedField([]);
     const updatedFilter = type.reduce((filterObj, type) => {
       return { ...filterObj, [type]: [] };
     }, {});
@@ -240,6 +283,10 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
+
+        break;
+      case SearchIndex.MLMODEL:
+        updateMlModelCount(count);
 
         break;
       default:
@@ -330,44 +377,26 @@ const Explore: React.FC<ExploreProps> = ({
     return facetFilters;
   };
 
-  const handleFieldDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setSortField(value || sortField);
-    setFieldListVisible(false);
-  };
   const handleOrder = (value: string) => {
     setSortOrder(value);
   };
 
   const getSortingElements = () => {
     return (
-      <div className="tw-flex tw-gap-2">
-        <div className="tw-mt-4">
-          <span className="tw-mr-2">Sort by:</span>
-          <span className="tw-relative">
-            <Button
-              className="focus:tw-no-underline"
-              data-testid="sortBy"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setFieldListVisible((visible) => !visible)}>
-              {fieldList.find((field) => field.value === sortField)?.name ||
-                'Relevance'}
-              <DropDownIcon />
-            </Button>
-            {fieldListVisible && (
-              <DropDownList
-                dropDownList={fieldList}
-                value={sortField}
-                onSelect={handleFieldDropDown}
-              />
-            )}
-          </span>
-        </div>
-        <div className="tw-mt-2 tw-flex tw-gap-2">
+      <div className="tw-flex">
+        <AdvancedSearchDropDown
+          index={searchIndex}
+          selectedItems={selectedAdvancedFields}
+          onSelect={onAdvancedFieldSelect}
+        />
+
+        <SortingDropDown
+          fieldList={fieldList}
+          handleFieldDropDown={handleFieldDropDown}
+          sortField={sortField}
+        />
+
+        <div className="tw-flex">
           {sortOrder === 'asc' ? (
             <button onClick={() => handleOrder('desc')}>
               <FontAwesomeIcon
@@ -408,6 +437,8 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard, className, isActive);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline, className, isActive);
+      case SearchIndex.MLMODEL:
+        return getCountBadge(tabCounts.mlModel, className, isActive);
       default:
         return getCountBadge();
     }
@@ -435,7 +466,7 @@ const Explore: React.FC<ExploreProps> = ({
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button
                 className={classNames('tw-underline tw-mt-5', {
                   'tw-invisible': !getFilterCount(filters),
@@ -446,7 +477,7 @@ const Explore: React.FC<ExploreProps> = ({
                 onClick={() => resetFilters(true)}>
                 Clear All
               </Button>
-            </div>
+            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
@@ -479,6 +510,17 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
+  const handleAdvancedSearch = (advancedFields: AdvanceField[]) => {
+    const advancedFilterObject: FilterObject = {};
+    advancedFields.forEach((field) => {
+      if (field.value) {
+        advancedFilterObject[field.key] = [field.value];
+      }
+    });
+
+    handleFilterChange(advancedFilterObject);
+  };
+
   useEffect(() => {
     handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
@@ -486,11 +528,8 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
-    setSortField(
-      searchQuery
-        ? tabsInfo[getCurrentTab(tab) - 1].sortField
-        : INITIAL_SORT_FIELD
-    );
+    // if search text is there then set sortfield as ''(Relevance)
+    setSortField(searchText ? '' : tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder(INITIAL_SORT_ORDER);
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
@@ -518,7 +557,6 @@ const Explore: React.FC<ExploreProps> = ({
   useEffect(() => {
     forceSetAgg.current = true;
     if (!isMounting.current) {
-      resetFilters();
       fetchTableData();
     }
   }, [searchText, searchIndex, showDeleted]);
@@ -586,6 +624,32 @@ const Explore: React.FC<ExploreProps> = ({
     }
   }, [filters]);
 
+  /**
+   * on index change clear the filters
+   */
+  useEffect(() => {
+    setSelectedAdvancedField([]);
+  }, [searchIndex]);
+
+  /**
+   * if search query is there then make sortfield as empty (Relevance)
+   * otherwise change it to INITIAL_SORT_FIELD (last_updated)
+   */
+  useEffect(() => {
+    if (searchText) {
+      setSortField('');
+    } else {
+      setSortField(INITIAL_SORT_FIELD);
+    }
+  }, [searchText]);
+
+  /**
+   * on advance field change call handleAdvancedSearch methdod
+   */
+  useEffect(() => {
+    handleAdvancedSearch(selectedAdvancedFields);
+  }, [selectedAdvancedFields]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -593,41 +657,79 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Fragment>
-        {!error && (
-          <FacetFilter
-            aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
-            filters={getFacetedFilter()}
-            showDeletedOnly={showDeleted}
-            onSelectDeleted={handleShowDeleted}
-            onSelectHandler={handleSelectedFilter}
-          />
-        )}
-      </Fragment>
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <Fragment>
+          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            <Button
+              className={classNames('tw-underline tw-pb-4')}
+              disabled={!getFilterCount(filters)}
+              size="custom"
+              theme="primary"
+              variant="link"
+              onClick={() => resetFilters(true)}>
+              Clear All
+            </Button>
+          </div>
+          <div className="tw-filter-seperator" />
+          {!error && (
+            <FacetFilter
+              aggregations={getAggrWithDefaultValue(
+                aggregations,
+                visibleFilters
+              )}
+              filters={getFacetedFilter()}
+              showDeletedOnly={showDeleted}
+              onSelectDeleted={handleShowDeleted}
+              onSelectHandler={handleSelectedFilter}
+            />
+          )}
+        </Fragment>
+      </Card>
     );
   };
 
+  const advanceFieldCheck =
+    !connectionError && Boolean(selectedAdvancedFields.length);
+
   return (
     <Fragment>
-      {!connectionError && getTabs()}
-      <PageLayout
-        leftPanel={Boolean(!error) && fetchLeftPanel()}
-        rightPanel={Boolean(!error) && <></>}>
+      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
+        {advanceFieldCheck && (
+          <AdvancedFields
+            fields={selectedAdvancedFields}
+            index={searchIndex}
+            onClear={onAdvancedFieldClear}
+            onFieldRemove={onAdvancedFieldRemove}
+            onFieldValueSelect={onAdvancedFieldValueSelect}
+          />
+        )}
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
-          <SearchedData
-            showResultCount
-            currentPage={currentPage}
-            data={data}
-            isFilterSelected={isFilterSelected}
-            isLoading={
-              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-            }
-            paginate={paginate}
-            searchText={searchText}
-            totalValue={totalNumberOfValue}
-          />
+          <>
+            {!connectionError && getTabs()}
+            <SearchedData
+              showResultCount
+              currentPage={currentPage}
+              data={data}
+              isFilterSelected={isFilterSelected}
+              isLoading={
+                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+              }
+              paginate={paginate}
+              searchText={searchText}
+              totalValue={totalNumberOfValue}
+            />
+          </>
         )}
       </PageLayout>
     </Fragment>

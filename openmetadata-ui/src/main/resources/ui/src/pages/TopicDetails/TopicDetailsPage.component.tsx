@@ -12,10 +12,10 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
+import { EntityFieldThreadCount, EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -44,6 +44,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -55,7 +56,11 @@ import {
   getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -93,7 +98,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [currentVersion, setCurrentVersion] = useState<string>();
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -483,7 +488,7 @@ const TopicDetailsPage: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -512,6 +517,15 @@ const TopicDetailsPage: FunctionComponent = () => {
           jsonData['api-error-messages']['delete-message-error']
         );
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   useEffect(() => {
@@ -575,6 +589,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           topicFQN={topicFQN}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion}
           versionHandler={versionHandler}
         />

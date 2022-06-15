@@ -17,8 +17,10 @@ import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.catalog.type.Relationship.CREATED;
 import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
 import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
+import static org.openmetadata.catalog.util.EntityUtil.populateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.jsonwebtoken.lang.Collections;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,6 +49,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -379,8 +382,49 @@ public class FeedRepository {
     return new ResultList<>(threads, beforeCursor, afterCursor, total);
   }
 
+  private void storeReactions(Thread thread, String user) {
+    // Reactions are captured at the thread level. If the user reacted to a post of a thread,
+    // it will still be tracked as "user reacted to thread" since this will only be used to filter
+    // threads in the activity feed. Actual reactions are stored in thread.json or post.json itself.
+    // Multiple reactions by the same user on same thread or post is handled by
+    // field relationship table constraint (primary key)
+    dao.fieldRelationshipDAO()
+        .insert(user, thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.REACTED_TO.ordinal(), null);
+  }
+
   @Transaction
-  public final PatchResponse<Thread> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
+  public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch)
+      throws IOException {
+    // Apply JSON patch to the original post to get the updated post
+    Post updated = JsonUtils.applyPatch(post, patch, Post.class);
+
+    restorePatchAttributes(post, updated);
+
+    // Update the attributes
+    populateUserReactions(updated.getReactions());
+
+    // delete the existing post and add the updated post
+    List<Post> posts = thread.getPosts();
+    posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
+    posts.add(updated);
+    thread.withPosts(posts).withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
+
+    if (!updated.getReactions().isEmpty()) {
+      updated
+          .getReactions()
+          .forEach(
+              reaction -> {
+                storeReactions(thread, reaction.getUser().getName());
+              });
+    }
+
+    String change = patchUpdate(thread, post, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PatchResponse<>(Status.OK, updated, change);
+  }
+
+  @Transaction
+  public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
+      throws IOException {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
 
@@ -390,6 +434,15 @@ public class FeedRepository {
     updated.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
 
     restorePatchAttributes(original, updated);
+
+    if (!updated.getReactions().isEmpty()) {
+      updated
+          .getReactions()
+          .forEach(
+              reaction -> {
+                storeReactions(updated, reaction.getUser().getName());
+              });
+    }
 
     // Update the attributes
     String change = patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
@@ -402,21 +455,64 @@ public class FeedRepository {
     updated.withId(original.getId()).withAbout(original.getAbout());
   }
 
-  private boolean patchUpdate(Thread original, Thread updated) throws JsonProcessingException {
-    updated.setId(original.getId());
+  private void restorePatchAttributes(Post original, Post updated) {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withId(original.getId()).withPostTs(original.getPostTs()).withFrom(original.getFrom());
+  }
 
+  private void populateUserReactions(List<Reaction> reactions) {
+    if (!Collections.isEmpty(reactions)) {
+      reactions.forEach(
+          reaction -> {
+            try {
+              List<EntityReference> users =
+                  populateEntityReferences(List.of(reaction.getUser().getId().toString()), Entity.USER);
+              reaction.setUser(users.get(0));
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          });
+    }
+  }
+
+  private boolean patchUpdate(Thread original, Thread updated) throws JsonProcessingException {
     // store the updated thread
     // if there is no change, there is no need to apply patch
     if (fieldsChanged(original, updated)) {
+      populateUserReactions(updated.getReactions());
       dao.feedDAO().update(updated.getId().toString(), JsonUtils.pojoToJson(updated));
       return true;
     }
     return false;
   }
 
+  private boolean patchUpdate(Thread thread, Post originalPost, Post updatedPost) throws JsonProcessingException {
+    // store the updated post
+    // if there is no change, there is no need to apply patch
+    if (fieldsChanged(originalPost, updatedPost)) {
+      dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
+      return true;
+    }
+    return false;
+  }
+
+  private boolean fieldsChanged(Post original, Post updated) {
+    // Patch supports message, and reactions for now
+    return !original.getMessage().equals(updated.getMessage())
+        || (Collections.isEmpty(original.getReactions()) && !Collections.isEmpty(updated.getReactions()))
+        || (!Collections.isEmpty(original.getReactions()) && Collections.isEmpty(updated.getReactions()))
+        || original.getReactions().size() != updated.getReactions().size()
+        || !original.getReactions().containsAll(updated.getReactions());
+  }
+
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports only isResolved and message for now
-    return !original.getResolved().equals(updated.getResolved()) || !original.getMessage().equals(updated.getMessage());
+    // Patch supports isResolved, message, and reactions for now
+    return !original.getResolved().equals(updated.getResolved())
+        || !original.getMessage().equals(updated.getMessage())
+        || (Collections.isEmpty(original.getReactions()) && !Collections.isEmpty(updated.getReactions()))
+        || (!Collections.isEmpty(original.getReactions()) && Collections.isEmpty(updated.getReactions()))
+        || original.getReactions().size() != updated.getReactions().size()
+        || !original.getReactions().containsAll(updated.getReactions());
   }
 
   /** Limit the number of posts within each thread. */
@@ -464,7 +560,7 @@ public class FeedRepository {
   private FilteredThreads getThreadsByMentions(
       String userId, int limit, long time, boolean isResolved, PaginationType paginationType) throws IOException {
     List<EntityReference> teams =
-        EntityUtil.populateEntityReferences(
+        populateEntityReferences(
             dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM), Entity.TEAM);
     List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
     if (teamNames.isEmpty()) {

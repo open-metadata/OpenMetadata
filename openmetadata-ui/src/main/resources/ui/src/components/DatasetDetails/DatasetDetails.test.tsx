@@ -162,6 +162,8 @@ const DatasetDetailsProps = {
   deletePostHandler: jest.fn(),
   tagUpdateHandler: jest.fn(),
   fetchFeedHandler: jest.fn(),
+  handleExtentionUpdate: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
@@ -337,7 +339,7 @@ describe('Test MyDataDetailsPage page', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <DatasetDetails {...DatasetDetailsProps} activeTab={9} />,
+      <DatasetDetails {...DatasetDetailsProps} activeTab={10} />,
       {
         wrapper: MemoryRouter,
       }

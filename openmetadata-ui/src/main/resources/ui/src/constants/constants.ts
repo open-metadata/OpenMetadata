@@ -16,6 +16,9 @@ import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#7147E8';
 export const LITE_GRAY_COLOR = '#DBE0EB';
+export const TEXT_BODY_COLOR = '#37352F';
+
+export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 
 export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGIN_VALUE = 1;
@@ -72,7 +75,7 @@ export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
 export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
-const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
+export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -113,15 +116,15 @@ export const tableSortingFields = [
     value: 'last_updated_timestamp',
   },
   { name: 'Weekly Usage', value: 'weekly_stats' },
-  // { name: 'Daily Usage', value: 'daily_stats' },
-  // { name: 'Monthly Usage', value: 'monthly_stats' },
+  { name: 'Relevance', value: '' },
 ];
 
-export const topicSortingFields = [
+export const entitySortingFields = [
   {
     name: 'Last Updated',
     value: 'last_updated_timestamp',
   },
+  { name: 'Relevance', value: '' },
 ];
 
 export const sortingOrder = [
@@ -170,8 +173,6 @@ export const ROUTES = {
   SQL_BUILDER: '/sql-builder',
   TEAMS_AND_USERS: '/teams-and-users',
   TEAMS_AND_USERS_DETAILS: `/teams-and-users/${PLACEHOLDER_ROUTE_TEAM_AND_USER}`,
-  TEAMS_AND_USERS_USERS: `/teams-and-users/users`,
-  TEAMS_AND_USERS_ADMINS: `/teams-and-users/admins`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -419,7 +420,12 @@ export const navLinkSettings = [
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
   { name: 'Tags', to: '/tags', disabled: false },
-  { name: 'Teams & Users', to: ROUTES.TEAMS_AND_USERS, disabled: false },
+  {
+    name: 'Teams & Users',
+    to: ROUTES.TEAMS_AND_USERS,
+    disabled: false,
+    isAdminOnly: true,
+  },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
 ];
 
@@ -428,3 +434,10 @@ export const TITLE_FOR_NON_OWNER_ACTION =
 
 export const TITLE_FOR_NON_ADMIN_ACTION =
   'Only Admin is allowed for the action';
+
+export const TITLE_FOR_UPDATE_OWNER =
+  'You do not have permissions to update the owner.';
+
+export const configOptions = {
+  headers: { 'Content-type': 'application/json-patch+json' },
+};

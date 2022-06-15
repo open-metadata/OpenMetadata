@@ -92,6 +92,7 @@ const PipelineDetails = ({
   fetchFeedHandler,
   pipelineStatus,
   isPipelineStatusLoading,
+  updateThreadHandler,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -425,6 +426,7 @@ const PipelineDetails = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -492,6 +494,7 @@ const PipelineDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />
       ) : null}

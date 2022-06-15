@@ -235,6 +235,10 @@ class ElasticSearchIndex {
   String entityType;
 
   List<ElasticSearchSuggest> suggest;
+
+  @JsonProperty("service_suggest")
+  List<ElasticSearchSuggest> serviceSuggest;
+
   String description;
   String tier;
   List<String> tags;
@@ -326,6 +330,15 @@ class TableESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
+  @JsonProperty("column_suggest")
+  List<ElasticSearchSuggest> columnSuggest;
+
+  @JsonProperty("schema_suggest")
+  List<ElasticSearchSuggest> schemaSuggest;
+
+  @JsonProperty("database_suggest")
+  List<ElasticSearchSuggest> databaseSuggest;
+
   public static TableESIndexBuilder builder(Table table, EventType eventType) {
     String tableId = table.getId().toString();
     String tableName = table.getName();
@@ -335,8 +348,14 @@ class TableESIndex extends ElasticSearchIndex {
     List<String> columnNames = new ArrayList<>();
     List<String> columnDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> columnSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> databaseSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> schemaSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(table.getName()).weight(10).build());
+    databaseSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    schemaSuggest.add(ElasticSearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
 
     if (table.getTags() != null) {
       table.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
@@ -352,6 +371,7 @@ class TableESIndex extends ElasticSearchIndex {
         }
         columnDescriptions.add(col.getDescription());
         columnNames.add(col.getName());
+        columnSuggest.add(ElasticSearchSuggest.builder().input(col.getName()).weight(5).build());
       }
     }
     ParseTags parseTags = new ParseTags(tags);
@@ -366,6 +386,9 @@ class TableESIndex extends ElasticSearchIndex {
             .lastUpdatedTimestamp(updatedTimestamp)
             .fqdn(table.getFullyQualifiedName())
             .suggest(suggest)
+            .columnSuggest(columnSuggest)
+            .schemaSuggest(schemaSuggest)
+            .databaseSuggest(databaseSuggest)
             .entityType("table")
             .columnNames(columnNames)
             .columnDescriptions(columnDescriptions)
@@ -384,6 +407,8 @@ class TableESIndex extends ElasticSearchIndex {
     if (table.getService() != null) {
       tableESIndexBuilder.service(table.getService());
       tableESIndexBuilder.serviceType(table.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(table.getService().getName()).weight(5).build());
+      tableESIndexBuilder.serviceSuggest(serviceSuggest);
     }
 
     if (table.getUsageSummary() != null) {
@@ -448,6 +473,7 @@ class TopicESIndex extends ElasticSearchIndex {
   public static TopicESIndexBuilder builder(Topic topic, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(topic.getName()).weight(10).build());
 
@@ -476,6 +502,8 @@ class TopicESIndex extends ElasticSearchIndex {
     if (topic.getService() != null) {
       topicESIndexBuilder.service(topic.getService());
       topicESIndexBuilder.serviceType(topic.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
+      topicESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (topic.getFollowers() != null) {
       topicESIndexBuilder.followers(
@@ -524,11 +552,17 @@ class DashboardESIndex extends ElasticSearchIndex {
   @JsonProperty("daily_percentile_rank")
   Integer dailyPercentileRank;
 
+  @JsonProperty("chart_suggest")
+  List<ElasticSearchSuggest> chartSuggest;
+
   public static DashboardESIndexBuilder builder(Dashboard dashboard, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> chartNames = new ArrayList<>();
     List<String> chartDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> chartSuggest = new ArrayList<>();
+
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     Long updatedTimestamp = dashboard.getUpdatedAt();
@@ -540,6 +574,7 @@ class DashboardESIndex extends ElasticSearchIndex {
       for (EntityReference chart : dashboard.getCharts()) {
         chartNames.add(chart.getDisplayName());
         chartDescriptions.add(chart.getDescription());
+        chartSuggest.add(ElasticSearchSuggest.builder().input(chart.getName()).weight(5).build());
       }
     }
 
@@ -559,6 +594,7 @@ class DashboardESIndex extends ElasticSearchIndex {
             .chartDescriptions(chartDescriptions)
             .entityType("dashboard")
             .suggest(suggest)
+            .chartSuggest(chartSuggest)
             .serviceCategory("dashboardService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
@@ -566,6 +602,8 @@ class DashboardESIndex extends ElasticSearchIndex {
     if (dashboard.getService() != null) {
       dashboardESIndexBuilder.service(dashboard.getService());
       dashboardESIndexBuilder.serviceType(dashboard.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
+      dashboardESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (dashboard.getUsageSummary() != null) {
       dashboardESIndexBuilder
@@ -605,11 +643,16 @@ class PipelineESIndex extends ElasticSearchIndex {
   @JsonProperty("task_descriptions")
   List<String> taskDescriptions;
 
+  @JsonProperty("task_suggest")
+  List<ElasticSearchSuggest> taskSuggest;
+
   public static PipelineESIndexBuilder builder(Pipeline pipeline, EventType eventType) {
     List<String> tags = new ArrayList<>();
     List<String> taskNames = new ArrayList<>();
     List<String> taskDescriptions = new ArrayList<>();
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
+    List<ElasticSearchSuggest> taskSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
 
@@ -621,6 +664,7 @@ class PipelineESIndex extends ElasticSearchIndex {
       for (Task task : pipeline.getTasks()) {
         taskNames.add(task.getDisplayName());
         taskDescriptions.add(task.getDescription());
+        taskSuggest.add(ElasticSearchSuggest.builder().input(task.getDisplayName()).weight(5).build());
       }
     }
 
@@ -642,6 +686,7 @@ class PipelineESIndex extends ElasticSearchIndex {
             .taskDescriptions(taskDescriptions)
             .entityType("pipeline")
             .suggest(suggest)
+            .taskSuggest(taskSuggest)
             .serviceCategory("pipelineService")
             .tags(parseTags.tags)
             .tier(parseTags.tierTag);
@@ -649,6 +694,8 @@ class PipelineESIndex extends ElasticSearchIndex {
     if (pipeline.getService() != null) {
       pipelineESIndexBuilder.service(pipeline.getService());
       pipelineESIndexBuilder.serviceType(pipeline.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
+      pipelineESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     if (pipeline.getFollowers() != null) {
       pipelineESIndexBuilder.followers(
@@ -904,19 +951,32 @@ class MlModelESIndex extends ElasticSearchIndex {
     ParseTags parseTags = new ParseTags(tags);
     String description = mlModel.getDescription() != null ? mlModel.getDescription() : "";
     String displayName = mlModel.getDisplayName() != null ? mlModel.getDisplayName() : "";
-    return internalBuilder()
-        .mlModelId(mlModel.getId().toString())
-        .name(mlModel.getName())
-        .displayName(displayName)
-        .description(description)
-        .fqdn(mlModel.getFullyQualifiedName())
-        .algorithm(mlModel.getAlgorithm())
-        .mlFeatures(mlFeatures)
-        .mlHyperParameters(mlHyperParameters)
-        .lastUpdatedTimestamp(updatedTimestamp)
-        .entityType("glossaryTerm")
-        .suggest(suggest)
-        .deleted(mlModel.getDeleted())
-        .tags(parseTags.tags);
+    MlModelESIndexBuilder mlModelESIndexBuilder =
+        internalBuilder()
+            .mlModelId(mlModel.getId().toString())
+            .name(mlModel.getName())
+            .displayName(displayName)
+            .description(description)
+            .fqdn(mlModel.getFullyQualifiedName())
+            .algorithm(mlModel.getAlgorithm())
+            .mlFeatures(mlFeatures)
+            .mlHyperParameters(mlHyperParameters)
+            .lastUpdatedTimestamp(updatedTimestamp)
+            .entityType("mlmodel")
+            .suggest(suggest)
+            .deleted(mlModel.getDeleted())
+            .tags(parseTags.tags);
+
+    if (mlModel.getFollowers() != null) {
+      mlModelESIndexBuilder.followers(
+          mlModel.getFollowers().stream().map(item -> item.getId().toString()).collect(Collectors.toList()));
+    } else if (eventType == EventType.ENTITY_CREATED) {
+      mlModelESIndexBuilder.followers(Collections.emptyList());
+    }
+
+    if (mlModel.getOwner() != null) {
+      mlModelESIndexBuilder.owner(mlModel.getOwner());
+    }
+    return mlModelESIndexBuilder;
   }
 }

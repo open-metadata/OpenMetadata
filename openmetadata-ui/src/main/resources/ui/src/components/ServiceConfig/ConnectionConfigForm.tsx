@@ -18,19 +18,22 @@ import React, { Fragment, FunctionComponent, useMemo } from 'react';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
-  DashboardConnection,
   DashboardService,
+  DashboardServiceType,
 } from '../../generated/entity/services/dashboardService';
 import {
-  DatabaseConnection,
   DatabaseService,
+  DatabaseServiceType,
 } from '../../generated/entity/services/databaseService';
 import {
-  MessagingConnection,
   MessagingService,
+  MessagingServiceType,
 } from '../../generated/entity/services/messagingService';
-import { PipelineService } from '../../generated/entity/services/pipelineService';
-import { ConfigData } from '../../interface/service.interface';
+import {
+  PipelineService,
+  PipelineServiceType,
+} from '../../generated/entity/services/pipelineService';
+import { ConfigData, DataService } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -45,7 +48,11 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
-  data: DatabaseService | MessagingService | DashboardService | PipelineService;
+  data?:
+    | DatabaseService
+    | MessagingService
+    | DashboardService
+    | PipelineService;
   okText?: string;
   cancelText?: string;
   serviceType: string;
@@ -66,17 +73,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onSave,
 }: Props) => {
   const allowTestConn = useMemo(() => {
-    return shouldTestConnection(serviceType, serviceCategory);
-  }, [serviceType, serviceCategory]);
+    return shouldTestConnection(serviceType);
+  }, [serviceType]);
 
   const config = !isNil(data)
-    ? /* eslint-disable-next-line no-prototype-builtins */
-      data.hasOwnProperty('connection')
-      ? ((data as DatabaseService | MessagingService | DashboardService)
-          .connection.config as ConfigData)
-      : ({
-          pipelineUrl: (data as PipelineService).connection.config?.hostPort,
-        } as ConfigData)
+    ? ((data as DataService).connection.config as ConfigData)
     : ({} as ConfigData);
 
   const handleSave = (data: ISubmitEvent<ConfigData>) => {
@@ -124,28 +125,22 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        connSch = getDatabaseConfig(
-          validConfig as DatabaseConnection['config']
-        );
+        connSch = getDatabaseConfig(serviceType as DatabaseServiceType);
 
         break;
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = getMessagingConfig(
-          validConfig as MessagingConnection['config']
-        );
+        connSch = getMessagingConfig(serviceType as MessagingServiceType);
 
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = getDashboardConfig(
-          validConfig as DashboardConnection['config']
-        );
+        connSch = getDashboardConfig(serviceType as DashboardServiceType);
 
         break;
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = getPipelineConfig();
+        connSch = getPipelineConfig(serviceType as PipelineServiceType);
 
         break;
       }

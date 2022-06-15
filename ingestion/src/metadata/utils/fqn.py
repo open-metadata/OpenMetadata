@@ -25,11 +25,12 @@ from pydantic import BaseModel
 from metadata.antlr.split_listener import SplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
@@ -207,6 +208,20 @@ def _(
     return _build(service_name, dashboard_name)
 
 
+@fqn_build_registry.add(Chart)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    chart_name: str,
+) -> str:
+    if not service_name or not chart_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``"
+        )
+    return _build(service_name, chart_name)
+
+
 @fqn_build_registry.add(Tag)
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
@@ -242,3 +257,16 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
+
+
+@fqn_build_registry.add(Column)
+def _(
+    _: OpenMetadata,  # ES Search not enabled for Columns
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, table_name, column_name)

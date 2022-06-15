@@ -25,6 +25,7 @@ const mockActivityThreadProp = {
   selectedThread: mockThreadData[1],
   postFeed: jest.fn(),
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({

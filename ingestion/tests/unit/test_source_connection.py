@@ -301,7 +301,7 @@ class SouceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            database=None,
+            databaseSchema=None,
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
@@ -311,7 +311,7 @@ class SouceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            database="default",
+            databaseSchema="default",
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
@@ -459,7 +459,7 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
+            databaseSchema=None,
             connectionArguments=None,
             scheme=ClickhouseScheme.clickhouse_http,
         )
@@ -471,7 +471,7 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
+            databaseSchema="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=ClickhouseScheme.clickhouse_http,
         )

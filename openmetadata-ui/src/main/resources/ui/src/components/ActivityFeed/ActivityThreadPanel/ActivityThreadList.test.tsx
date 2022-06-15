@@ -31,6 +31,7 @@ const mockActivityThreadListProp = {
   onThreadIdSelect: jest.fn(),
   onThreadSelect: jest.fn(),
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {
@@ -45,7 +46,7 @@ jest.mock('../ActivityFeedList/FeedListSeparator', () => {
   return jest.fn().mockReturnValue(<p>FeedListSeparator</p>);
 });
 
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
 

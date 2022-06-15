@@ -53,6 +53,7 @@ module.exports = {
     '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
+    '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
   },
 
   // Sonar Cloud Configuration

@@ -117,6 +117,12 @@
       "suggest": {
         "type": "completion"
       },
+      "chart_suggest": {
+        "type": "completion"
+      },
+      "service_suggest": {
+        "type": "completion"
+      },
       "monthly_stats":{
         "type": "long"
       },

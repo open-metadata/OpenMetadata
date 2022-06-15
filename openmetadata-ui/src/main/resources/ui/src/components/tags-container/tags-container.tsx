@@ -37,6 +37,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onCancel,
   onSelectionChange,
   className,
+  containerClass,
+  buttonContainerClass,
   showTags = true,
   showAddTagButton = false,
 }: TagsContainerProps) => {
@@ -72,6 +74,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 
         return updatedTags;
       });
+    } else {
+      setTags([]);
     }
   };
 
@@ -133,7 +137,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   }, [selectedTags]);
 
   return (
-    <div className="tw-cursor-pointer" data-testid="tag-container">
+    <div
+      className={classNames('tw-cursor-pointer', containerClass)}
+      data-testid="tag-container">
       <div>
         {showTags && !editable && (
           <Fragment>
@@ -165,7 +171,12 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         )}
       </div>
       {editable && (
-        <div className="tw-flex tw-justify-end tw-mt-2" data-testid="buttons">
+        <div
+          className={classNames(
+            'tw-flex tw-justify-end tw-mt-2',
+            buttonContainerClass
+          )}
+          data-testid="buttons">
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
             data-testid="cancelAssociatedTag"

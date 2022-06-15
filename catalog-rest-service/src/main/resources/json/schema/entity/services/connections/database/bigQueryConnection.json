@@ -45,7 +45,7 @@
     },
     "tagCategoryName": {
       "title": "Tag Category Name",
-      "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
+      "description": "Custom OpenMetadata Tag category name for BigQuery policy tags.",
       "type": "string",
       "default": "BigqueryPolicyTags"
     },
@@ -66,6 +66,12 @@
       "description": "Column name on which the BigQuery table will be partitioned.",
       "type": "string",
       "default": "_PARTITIONTIME"
+    },
+    "taxonomyLocation": {
+      "title": "Taxonomy Location",
+      "description": "Taxonomy location used to fetch policy tags",
+      "type": "string",
+      "default": "us"
     },
     "connectionOptions": {
       "title": "Connection Options",

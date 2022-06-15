@@ -33,7 +33,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
 
@@ -102,6 +102,7 @@ const mockFeedListBodyProp = {
   selectedThreadId: '',
   onConfirmation: jest.fn(),
   onThreadIdDeselect: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test FeedListBody Component', () => {

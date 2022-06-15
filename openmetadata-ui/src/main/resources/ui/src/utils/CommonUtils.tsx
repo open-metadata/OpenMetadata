@@ -19,7 +19,6 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -328,15 +327,13 @@ export const getOwnerIds = (
   if (filter === Ownership.OWNER) {
     if (!isEmpty(userDetails)) {
       return [
-        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        ...(userDetails.teams?.map((team) => team.id) || []),
         userDetails.id,
       ];
     } else {
       if (!isEmpty(nonSecureUserDetails)) {
         return [
-          ...(nonSecureUserDetails.teams?.map(
-            (team) => team.id
-          ) as Array<string>),
+          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
           nonSecureUserDetails.id,
         ];
       } else {
@@ -419,10 +416,6 @@ export const getServiceLogo = (
   }
 
   return null;
-};
-
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 export const getSvgArrow = (isActive: boolean) => {

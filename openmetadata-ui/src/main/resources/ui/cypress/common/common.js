@@ -15,7 +15,7 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 
-export const handleIngestionRetry = (type, count = 0) => {
+export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
@@ -29,7 +29,7 @@ export const handleIngestionRetry = (type, count = 0) => {
     if (retryCount === 0) {
       cy.get('[data-testid="Ingestions"]').click();
     }
-    if (isDatabaseService(type)) {
+    if (isDatabaseService(type) && testIngestionButton) {
       cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
     }
   };
@@ -60,7 +60,8 @@ export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
   addIngestionInput,
-  type = 'database'
+  type = 'database',
+  testIngestionButton = true
 ) => {
   const serviceName = `${serviceType}-ci-test-${uuid()}`;
 
@@ -79,14 +80,14 @@ export const testServiceCreationAndIngestion = (
     .scrollTo('top', {
       ensureScrollable: false,
     });
-  cy.contains('Connection Details').should('be.visible');
+  cy.contains('Connection Details').scrollIntoView().should('be.visible');
 
   connectionInput();
 
   // Test the connection
   cy.get('[data-testid="test-connection-btn"]').should('exist');
   cy.get('[data-testid="test-connection-btn"]').click();
-
+  cy.wait(500); 
   cy.contains('Connection test was successful').should('exist');
   cy.get('[data-testid="submit-btn"]').should('exist').click();
 
@@ -106,13 +107,7 @@ export const testServiceCreationAndIngestion = (
       'be.visible'
     );
 
-    // Set all the sliders to off to disable sample data, data profiler etc.
-    cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-      .should('exist')
-      .click();
-    cy.get('[data-testid="toggle-button-data-profiler"]')
-      .should('exist')
-      .click();
+    // Set mark-deleted slider to off to disable it.
     cy.get('[data-testid="toggle-button-mark-deleted"]')
       .should('exist')
       .click();
@@ -152,7 +147,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
-  handleIngestionRetry(type);
+  handleIngestionRetry(type, testIngestionButton);
 };
 
 export const goToAddNewServicePage = () => {
@@ -169,6 +164,7 @@ export const goToAddNewServicePage = () => {
 
   // Services page
   cy.contains('Services').should('be.visible');
+  cy.wait(500);
   cy.get('.activeCategory > .tw-py-px').then(($databaseServiceCount) => {
     if ($databaseServiceCount.text() === '0') {
       cy.get('[data-testid="add-service-button"]').should('be.visible').click();
@@ -218,71 +214,9 @@ export const visitEntityTab = (id) => {
  * @param {string} term Entity name
  */
 export const searchEntity = (term) => {
-  cy.get('[data-testid="searchBox"]').should('be.visible');
-  cy.get('[data-testid="searchBox"]').scrollIntoView().type(term);
-  cy.get('.tw-cursor-pointer > [data-testid="image"]').click();
-};
-
-export const testSampleData = (entity) => {
-  cy.goToHomePage();
-
-  // initially sample data should not be present
-  searchEntity(entity.term);
-  cy.get(`[data-testid="${entity.entity}-tab"]`).should('be.visible').click();
-  cy.get(`[data-testid="${entity.entity}-tab"]`)
-    .should('be.visible')
-    .should('have.class', 'active');
-  cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
-  cy.contains('No sample data available').should('be.visible');
-
-  // go to service details and modify ingestion to enable sample data
-  cy.get(':nth-child(1) > .link-title').should('be.visible').click();
-  cy.wait(500);
-
-  if (entity.entityType === 'database') {
-    cy.get('[data-testid="table-container"]').contains(entity.db);
-  }
-
-  cy.get('[data-testid="Ingestions"]').should('be.visible').click();
-  cy.get('[data-testid="edit"]').should('be.visible').click();
-  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-  cy.get('[data-testid="toggle-button-ingest-sample-data"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .should('have.class', 'open');
-  cy.get('[data-testid="next-button"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .click();
-
-  cy.get('[data-testid="dbt-source"]').should('be.visible');
-  cy.get('[data-testid="submit-btn"]').should('be.visible').click();
-
-  cy.get('[data-testid="ingestion-type"]').should('be.visible');
-  cy.get('[data-testid="deploy-button"]').should('be.visible').click();
-
-  cy.contains('has been updated and deployed successfully').should(
-    'be.visible'
-  );
-  cy.get('[data-testid="view-service-button"]').should('be.visible').click();
-  cy.get('[data-testid="Ingestions"]')
-    .should('be.visible')
-    .should('have.class', 'active');
-
-  cy.get('[data-testid="run"]').should('be.visible').click();
-  cy.reload();
-  handleIngestionRetry(entity.entityType, 1);
-
-  searchEntity(entity.term);
-  cy.wait(500);
-  cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-  cy.get('[data-testid="Sample Data"]').should('be.visible').click();
-  cy.contains('No sample data available').should('not.exist');
+  cy.get('[data-testid="searchBox"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="searchBox"]').type(`${term}{enter}`);
+  cy.get('[data-testid="suggestion-overlay"]').click(1,1);
 };
 
 // add new tag to entity and its table
@@ -310,7 +244,7 @@ export const addNewTagToEntity = (entity, term) => {
     .contains(term);
 
   cy.get('[data-testid="table-body"] > :nth-child(1) > :nth-child(5)')
-    .contains('+ Tags')
+    .contains('Tags')
     .should('be.visible')
     .click();
 

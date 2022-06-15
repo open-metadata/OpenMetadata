@@ -42,7 +42,7 @@ export const SEARCH_ENTITY_TOPIC = {
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
-    term: 'Sales Dashboard',
+    term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   dashboard_2: {
@@ -52,9 +52,9 @@ export const SEARCH_ENTITY_DASHBOARD = {
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
-  pipeline_1: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+  pipeline_1: { term: 'Snowflake ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
   pipeline_2: {
-    term: 'Snowflake ETL',
+    term: 'Hive ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
@@ -71,10 +71,6 @@ export const DELETE_ENTITY = {
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  },
-  dashboard: {
-    term: 'Misc Charts',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   pipeline: {
     term: 'Presto ETL',
@@ -122,37 +118,6 @@ export const NEW_ADMIN = {
   description: 'Hello, I am test admin',
 };
 
-export const BIG_QUERY_TABLE = {
-  term: 'users',
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
-  db: 'modified-leaf-330420',
-  schema: 'stackoverflow',
-  entityType: 'database',
-};
-
-export const MY_SQL_TABLE = {
-  term: 'user_entity',
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
-  db: 'openmetadata_db',
-  schema: 'openmetadata_db',
-  entityType: 'database',
-};
-
-export const RED_SHIFT_TABLE = {
-  term: 'raw_customers',
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
-  db: 'dev',
-  schema: 'dbt_jaffle',
-  entityType: 'database',
-};
-
-export const SNOWFLAKE_TABLE = {
-  term: 'snow_t1',
-  entity: MYDATA_SUMMARY_OPTIONS.tables,
-  db: 'TESTDB',
-  schema: 'PUBLIC',
-  entityType: 'database',
-};
 export const NEW_TAG_CATEGORY = {
   name: 'TestCategory',
   description: 'This is the TestCategory',

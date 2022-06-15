@@ -40,15 +40,4 @@ class OracleSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected OracleConnection, but got {connection}"
             )
-        if config.sourceConfig.config.sampleDataQuery == "select * from {}.{} limit 50":
-            config.sourceConfig.config.sampleDataQuery = (
-                "select * from {}.{} where ROWNUM <= 50"
-            )
         return cls(config, metadata_config)
-
-    def get_schemas(self, inspector: Inspector) -> str:
-        return (
-            inspector.get_schema_names()
-            if not self.service_connection.databaseSchema
-            else [self.service_connection.databaseSchema]
-        )

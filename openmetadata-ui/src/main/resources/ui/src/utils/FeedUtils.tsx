@@ -14,16 +14,21 @@
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { isEqual } from 'lodash';
 import {
   EntityFieldThreadCount,
   EntityFieldThreads,
-  EntityThread,
   EntityThreadField,
-  Post,
 } from 'Models';
 import React from 'react';
 import TurndownService from 'turndown';
-import { deletePostById, getFeedById } from '../axiosAPIs/feedsAPI';
+import {
+  deletePostById,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '../axiosAPIs/feedsAPI';
 import {
   getInitialEntity,
   getSuggestions,
@@ -39,10 +44,12 @@ import {
   mentionRegEx,
 } from '../constants/feed.constants';
 import { SearchIndex } from '../enums/search.enum';
+import { Post, Thread } from '../generated/entity/feed/thread';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
 import { getRelativeDateByTimeStamp } from './TimeUtils';
+import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {
   const match = EntityRegEx.exec(entityLink);
@@ -60,10 +67,10 @@ export const getEntityField = (entityLink: string) => {
   return match?.[3];
 };
 
-export const getFeedListWithRelativeDays = (feedList: EntityThread[]) => {
+export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
   const updatedFeedList = feedList.map((feed) => ({
     ...feed,
-    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt),
+    relativeDay: getRelativeDateByTimeStamp(feed.updatedAt || 0),
   }));
   const relativeDays = [...new Set(updatedFeedList.map((f) => f.relativeDay))];
 
@@ -166,7 +173,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       });
     } else {
       const data = await getUserSuggestions(searchTerm);
-      const hits = data.data.suggest['table-suggest'][0]['options'];
+      const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
         const entityType = hit._source.entity_type;
@@ -202,7 +209,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       });
     } else {
       const data = await getSuggestions(searchTerm);
-      const hits = data.data.suggest['table-suggest'][0]['options'];
+      const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
         const entityType = hit._source.entity_type;
@@ -302,7 +309,7 @@ export const deletePost = (threadId: string, postId: string) => {
 };
 
 export const getUpdatedThread = (id: string) => {
-  return new Promise<EntityThread>((resolve, reject) => {
+  return new Promise<Thread>((resolve, reject) => {
     getFeedById(id)
       .then((res: AxiosResponse) => {
         if (res.status === 200) {
@@ -344,4 +351,54 @@ export const getEntityFieldDisplay = (entityField: string) => {
   }
 
   return null;
+};
+
+export const updateThreadData = (
+  threadId: string,
+  postId: string,
+  isThread: boolean,
+  data: Operation[],
+  callback: (value: React.SetStateAction<Thread[]>) => void
+) => {
+  if (isThread) {
+    updateThread(threadId, data)
+      .then((res: AxiosResponse) => {
+        callback((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              return { ...thread, reactions: res.data.reactions };
+            } else {
+              return thread;
+            }
+          });
+        });
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  } else {
+    updatePost(threadId, postId, data)
+      .then((res: AxiosResponse) => {
+        callback((prevData) => {
+          return prevData.map((thread) => {
+            if (isEqual(threadId, thread.id)) {
+              const updatedPosts = (thread.posts || []).map((post) => {
+                if (isEqual(postId, post.id)) {
+                  return { ...post, reactions: res.data.reactions };
+                } else {
+                  return post;
+                }
+              });
+
+              return { ...thread, posts: updatedPosts };
+            } else {
+              return thread;
+            }
+          });
+        });
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  }
 };

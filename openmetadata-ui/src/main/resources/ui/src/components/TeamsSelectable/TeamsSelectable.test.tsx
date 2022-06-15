@@ -45,7 +45,7 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
     Promise.resolve({
       data: {
         suggest: {
-          'table-suggest': [{ options: [] }],
+          'metadata-suggest': [{ options: [] }],
         },
       },
     })

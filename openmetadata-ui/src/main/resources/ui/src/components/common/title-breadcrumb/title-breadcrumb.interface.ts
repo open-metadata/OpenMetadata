@@ -20,4 +20,5 @@ export type TitleBreadcrumbProps = {
   }>;
   className?: string;
   noLink?: boolean;
+  widthDeductions?: number;
 };

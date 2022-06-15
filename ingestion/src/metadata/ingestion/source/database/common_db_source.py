@@ -13,21 +13,24 @@ Generic source to build SQL connectors.
 """
 
 import traceback
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Iterable, List, Optional, Tuple
+from abc import ABC
+from copy import deepcopy
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm import Session
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -35,42 +38,31 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import SourceStatus
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.dbt_source import DBTSource
-from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandler
-from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
-from metadata.utils.connections import (
-    create_and_bind_session,
-    get_connection,
-    test_connection,
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    SQLSourceStatus,
 )
+from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
+from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
+from metadata.utils import fqn
+from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-@dataclass
-class SQLSourceStatus(SourceStatus):
+class CommonDbSourceService(
+    DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlchemySource, ABC
+):
     """
-    Reports the source status after ingestion
+    - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
-    success: List[str] = field(default_factory=list)
-    failures: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.info(f"Table Scanned: {record}")
-
-    def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Filtered Table {record} due to {err}")
-
-
-class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
     def __init__(
         self,
         config: WorkflowSource,
@@ -87,64 +79,95 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         self.metadata_config = metadata_config
         self.metadata = OpenMetadata(metadata_config)
 
-        self.service = self.metadata.get_service_or_create(
-            entity=DatabaseService, config=config
-        )
         self.engine: Engine = get_connection(self.service_connection)
         self.test_connection()
 
-        self._session = None  # We will instantiate this just if needed
         self._connection = None  # Lazy init as well
-        self.data_profiler = None
         self.data_models = {}
         self.table_constraints = None
         self.database_source_state = set()
-        self.profile_date = datetime.now()
         super().__init__()
 
-    def prepare(self):
-        self._parse_data_model()
-
-    @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
-        pass
-
-    def standardize_schema_table_names(
-        self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        return schema, table
-
-    def fetch_sample_data(self, schema: str, table: str) -> Optional[TableData]:
+    def set_inspector(self, database_name: str) -> None:
         """
-        Get some sample data from the source to be added
-        to the Table Entities
+        When sources override `get_database_names`, they will need
+        to setup multiple inspectors. They can use this function.
+        :param database_name: new database to set
         """
-        try:
-            query = self.source_config.sampleDataQuery.format(schema, table)
-            logger.info(query)
-            results = self.connection.execute(query)
-            cols = [col for col in results.keys()]
-            rows = [list(res) for res in results]
-            return TableData(columns=cols, rows=rows)
-        # Catch any errors and continue the ingestion
-        except Exception as err:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to generate sample data for {table} - {err}")
-        return None
+        logger.info(f"Ingesting from database: {database_name}")
 
-    def get_databases(self) -> Iterable[Inspector]:
-        yield inspect(self.engine)
+        new_service_connection = deepcopy(self.service_connection)
+        new_service_connection.database = database_name
+        self.engine = get_connection(new_service_connection)
+        self.inspector = inspect(self.engine)
 
-    def get_schemas(self, inspector: Inspector) -> str:
-        for schema in inspector.get_schema_names():
-            yield schema
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
 
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+
+        database_name = self.service_connection.__dict__.get("database", "default")
+        # By default, set the inspector on the created engine
+        self.inspector = inspect(self.engine)
+        yield database_name
+
+    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink
+        """
+
+        yield CreateDatabaseRequest(
+            name=database_name,
+            service=EntityReference(
+                id=self.context.database_service.id,
+                type="databaseService",
+            ),
+        )
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        return schema names
+        """
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+
+        else:
+            for schema_name in self.inspector.get_schema_names():
+
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern, schema_name=schema_name
+                ):
+                    self.status.filter(schema_name, "Schema pattern not allowed")
+                    continue
+
+                yield schema_name
+
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+
+        yield CreateDatabaseSchemaRequest(
+            name=schema_name,
+            database=EntityReference(id=self.context.database.id, type="database"),
+        )
+
+    @staticmethod
     def get_table_description(
-        self, schema: str, table_name: str, inspector: Inspector
+        schema_name: str, table_name: str, inspector: Inspector
     ) -> str:
         description = None
         try:
-            table_info: dict = inspector.get_table_comment(table_name, schema)
+            table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
         except Exception as err:  # pylint: disable=broad-except
             logger.warning(f"Table Description Error : {str(err)}")
@@ -152,33 +175,131 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
             description = table_info["text"]
         return description
 
-    def is_partition(self, table_name: str, schema: str, inspector: Inspector) -> bool:
-        self.inspector = inspector
-        return False
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
 
-    def get_table_names(
-        self, schema: str, inspector: Inspector
-    ) -> Optional[Iterable[Tuple[str, str]]]:
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
-            for table in inspector.get_table_names(schema):
-                yield table, "Regular"
+            for table_name in self.inspector.get_table_names(schema_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=table_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{table_name}",
+                        "Table pattern not allowed",
+                    )
+                    continue
+
+                if self.is_partition(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    inspector=self.inspector,
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{table_name}",
+                        "Table is partition",
+                    )
+                    continue
+                table_name = self.standardize_table_name(schema_name, table_name)
+                yield table_name, TableType.Regular
+
         if self.source_config.includeViews:
-            for view in inspector.get_view_names(schema):
-                yield view, "View"
+            for view_name in self.inspector.get_view_names(schema_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=view_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{view_name}",
+                        "Table pattern not allowed for view",
+                    )
+                    continue
+
+                view_name = self.standardize_table_name(schema_name, view_name)
+                yield view_name, TableType.View
 
     def get_view_definition(
-        self, table_type: str, table_name: str, schema: str, inspector: Inspector
+        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
 
         if table_type == "View":
             try:
-                view_definition = inspector.get_view_definition(table_name, schema)
+                view_definition = inspector.get_view_definition(table_name, schema_name)
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
                 )
                 return view_definition
             except NotImplementedError:
+                logger.error("View definition not implemented")
                 return ""
+
+    def is_partition(
+        self, table_name: str, schema_name: str, inspector: Inspector
+    ) -> bool:
+        return False
+
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        pass
+
+    def yield_table(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[Optional[CreateTableRequest]]:
+        """
+        From topology.
+        Prepare a table request and pass it to the sink
+        """
+        table_name, table_type = table_name_and_type
+        schema_name = self.context.database_schema.name.__root__
+        db_name = self.context.database.name.__root__
+        try:
+
+            columns, table_constraints = self.get_columns_and_constraints(
+                schema_name=schema_name,
+                table_name=table_name,
+                db_name=db_name,
+                inspector=self.inspector,
+            )
+
+            table_request = CreateTableRequest(
+                name=table_name,
+                tableType=table_type,
+                description=self.get_table_description(
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    inspector=self.inspector,
+                ),
+                columns=columns,
+                viewDefinition=self.get_view_definition(
+                    table_type=table_type,
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    inspector=self.inspector,
+                ),
+                tableConstraints=table_constraints if table_constraints else None,
+                databaseSchema=EntityReference(
+                    id=self.context.database_schema.id,
+                    type="databaseSchema",
+                ),
+                tags=self.get_tag_labels(
+                    table_name=table_name
+                ),  # Pick tags from context info, if any
+            )
+
+            yield table_request
+
+            self.register_record(table_request=table_request)
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+            self.status.failures.append(
+                "{}.{}".format(self.config.serviceName, table_name)
+            )
 
     def test_connection(self) -> None:
         """
@@ -186,16 +307,6 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         can properly reach the source
         """
         test_connection(self.engine)
-
-    @property
-    def session(self) -> Session:
-        """
-        Return the SQLAlchemy session from the engine
-        """
-        if not self._session:
-            self._session = create_and_bind_session(self.engine)
-
-        return self._session
 
     @property
     def connection(self) -> Connection:
@@ -208,17 +319,19 @@ class CommonDbSourceService(DBTSource, SqlColumnHandler, SqlAlchemySource):
         return self._connection
 
     def close(self):
-        self._create_dbt_lineage()
         if self.connection is not None:
             self.connection.close()
 
-    def get_status(self) -> SourceStatus:
-        return self.status
-
     def fetch_table_tags(
-        self, table_name: str, schema: str, inspector: Inspector
+        self, table_name: str, schema_name: str, inspector: Inspector
     ) -> None:
         """
         Method to fetch tags associated with table
         """
+        pass
+
+    def standardize_table_name(self, schema: str, table: str) -> str:
+        return table
+
+    def yield_table_tag(self) -> Iterable[OMetaTagAndCategory]:
         pass

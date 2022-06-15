@@ -247,7 +247,7 @@ declare module 'Models' {
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     type: string;
     id: string;
     description?: string;
@@ -584,27 +584,6 @@ declare module 'Models' {
   }
 
   // Feed interfaces and types
-  export interface EntityThread {
-    id: string;
-    href: string;
-    threadTs: number;
-    about: string;
-    createdBy: string;
-    updatedAt: number;
-    updatedBy: string;
-    resolved: boolean;
-    message: string;
-    postsCount: number;
-    posts: Post[];
-  }
-
-  export interface Post {
-    message: string;
-    postTs: number;
-    from: string;
-    id: string;
-  }
-
   export interface EntityFieldThreadCount {
     count: number;
     entityLink: string;

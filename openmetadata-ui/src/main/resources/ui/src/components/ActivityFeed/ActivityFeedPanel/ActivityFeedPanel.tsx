@@ -13,10 +13,10 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { EntityThread } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -35,8 +35,9 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   className,
   postFeed,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
 
@@ -94,7 +95,8 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           className="tw-p-4 tw-pl-8 tw-mb-3"
           deletePostHandler={deletePostHandler}
           isLoading={isLoading}
-          threadData={threadData as EntityThread}
+          threadData={threadData as Thread}
+          updateThreadHandler={updateThreadHandler}
           onConfirmation={onConfirmation}
         />
         <ActivityFeedEditor

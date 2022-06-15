@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Post } from 'Models';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -23,6 +23,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
   className,
   isLoading,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
@@ -30,6 +31,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   return (
@@ -42,8 +44,10 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
             <div data-testid="main-message">
               <ActivityFeedCard
                 isEntityFeed
+                isThread
                 className="tw-mb-3"
                 feed={mainThread as Post}
+                updateThreadHandler={updateThreadHandler}
               />
             </div>
           ) : null}
@@ -64,6 +68,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                   feed={reply}
                   key={key}
                   threadId={threadData.id}
+                  updateThreadHandler={updateThreadHandler}
                   onConfirmation={onConfirmation}
                 />
               ))}

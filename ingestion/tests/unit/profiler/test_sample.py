@@ -200,3 +200,17 @@ class SampleTest(TestCase):
         # As we repeat data, we expect 0 unique counts.
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 0
+
+    def test_sample_data(self):
+        """
+        We should be able to pick up sample data from the sampler
+        """
+        sampler = Sampler(session=self.session, table=User)
+        sample_data = sampler.fetch_sample_data()
+
+        assert len(sample_data.columns) == 6
+        assert len(sample_data.rows) == 30
+
+        # Order matters, this is how we'll present the data
+        names = [str(col.__root__) for col in sample_data.columns]
+        assert names == ["id", "name", "fullname", "nickname", "comments", "age"]

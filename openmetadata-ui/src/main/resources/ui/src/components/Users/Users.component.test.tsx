@@ -196,6 +196,7 @@ const mockProp = {
   isLoggedinUser: false,
   isAuthDisabled: true,
   updateUserDetails,
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test User Component', () => {

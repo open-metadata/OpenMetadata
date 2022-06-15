@@ -15,17 +15,18 @@ import { Operation } from 'fast-json-patch';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
 } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
@@ -49,7 +50,7 @@ export interface PipeLineDetailsProp {
   tasks: Task[];
   deleted?: boolean;
   isLineageLoading?: boolean;
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
@@ -72,4 +73,5 @@ export interface PipeLineDetailsProp {
   entityLineageHandler: (lineage: EntityLineage) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }
