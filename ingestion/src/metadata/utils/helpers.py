@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -46,7 +46,7 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -211,3 +211,14 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
+
+
+def find_in_list(element: Any, container: List[Any]) -> Optional[Any]:
+    """
+    If the element is in the container, return it.
+    Otherwise, return None
+    :param element: to find
+    :param container: container with element
+    :return: element or None
+    """
+    return next(iter([elem for elem in container if elem == element]), None)

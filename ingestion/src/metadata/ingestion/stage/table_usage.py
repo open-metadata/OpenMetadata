@@ -17,48 +17,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.models.table_queries import (
-    QueryParserData,
-    TableColumn,
-    TableColumnJoin,
-    TableUsageCount,
-)
+from metadata.ingestion.models.table_queries import QueryParserData, TableUsageCount
 from metadata.ingestion.stage.file import FileStageConfig
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-def get_table_column_join(table, table_aliases, joins, database):
-    table_column = None
-    joined_with = []
-    for join in joins:
-        try:
-            if "." not in join:
-                continue
-            jtable, column = join.split(".")[-2:]
-            if (
-                table == jtable
-                or jtable == table.split(".")[-1]
-                or table == f"{database}.{jtable}"
-                or jtable in table_aliases
-            ):
-                table_column = TableColumn(
-                    table=table_aliases[jtable] if jtable in table_aliases else jtable,
-                    column=column,
-                )
-            else:
-                joined_with.append(
-                    TableColumn(
-                        table=table_aliases[jtable]
-                        if jtable in table_aliases
-                        else jtable,
-                        column=column,
-                    )
-                )
-        except ValueError as err:
-            logger.error("Error in parsing sql query joins {}".format(err))
-    return TableColumnJoin(table_column=table_column, joined_with=joined_with)
 
 
 class TableUsageStage(Stage[QueryParserData]):
@@ -95,35 +58,23 @@ class TableUsageStage(Stage[QueryParserData]):
         if record is None:
             return None
         for table in record.tables:
+            table_joins = record.joins.get(table)
             try:
                 self._add_sql_query(record=record, table=table)
                 table_usage_count = self.table_usage.get(table)
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
-                    if record.columns.get("join") is not None:
-                        table_usage_count.joins.append(
-                            get_table_column_join(
-                                table,
-                                record.tables_aliases,
-                                record.columns["join"],
-                                record.database,
-                            )
-                        )
+                    if table_joins:
+                        table_usage_count.joins.extend(table_joins)
                 else:
                     joins = []
-                    if record.columns.get("join") is not None:
-                        tbl_column_join = get_table_column_join(
-                            table,
-                            record.tables_aliases,
-                            record.columns["join"],
-                            record.database,
-                        )
-                        if tbl_column_join is not None:
-                            joins.append(tbl_column_join)
+                    if table_joins:
+                        joins.extend(table_joins)
 
                     table_usage_count = TableUsageCount(
                         table=table,
                         database=record.database,
+                        schema_name=record.schema_name,
                         date=record.date,
                         joins=joins,
                         service_name=record.service_name,

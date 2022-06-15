@@ -80,27 +80,15 @@ class MetadataUsageBulkSink(BulkSink):
         table_usage_map = {}
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
-            table_entities = []
+
             self.service_name = table_usage.service_name
-            if "." in table_usage.table:
-                (
-                    table_usage.database_schema,
-                    table_usage.table,
-                ) = table_usage.table.split(".")[-2:]
-                table_entities = self.__get_table_entity(
-                    table_usage.database, table_usage.database_schema, table_usage.table
-                )
-            else:
-                es_result = self.metadata.search_entities_using_es(
-                    service_name=self.service_name,
-                    table_obj={
-                        "database": table_usage.database,
-                        "database_schema": None,
-                        "name": table_usage.table,
-                    },
-                    search_index="table_search_index",
-                )
-                table_entities = es_result
+
+            table_entities = self.__get_table_entity(
+                table_usage.database,
+                table_usage.schema_name,
+                table_usage.table,
+            )
+
             for table_entity in table_entities:
                 if table_entity is not None:
                     if not table_usage_map.get(table_entity.id.__root__):
@@ -119,6 +107,7 @@ class MetadataUsageBulkSink(BulkSink):
                             table_usage.sql_queries
                         )
                     table_join_request = self.__get_table_joins(table_usage)
+
                     logger.debug("table join request {}".format(table_join_request))
                     try:
                         if (
@@ -196,8 +185,9 @@ class MetadataUsageBulkSink(BulkSink):
                 column_joins_dict[column_join.table_column.column] = {}
             for column in column_join.joined_with:
                 joined_column_fqdn = self.__get_column_fqdn(
-                    table_usage.database, table_usage.database_schema, column
+                    table_usage.database, table_usage.schema_name, column
                 )
+
                 if str(joined_column_fqdn) in joined_with.keys():
                     column_joined_with = joined_with[str(joined_column_fqdn)]
                     column_joined_with.joinCount += 1
@@ -234,6 +224,48 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_table_entity(
         self, database_name: str, database_schema: str, table_name: str
     ) -> List[Table]:
+
+        # First try to find the data from the given db and schema
+        # Otherwise, pick it up from the table_name str
+        # Finally, try with upper case
+
+        split_table = table_name.split(".")
+
+        database_query, schema_query, table = (
+            [None] * (3 - len(split_table))
+        ) + split_table
+
+        table_entities = self.__fetch_table_entity(
+            database_name=(database_name or database_query),
+            database_schema=(database_schema or schema_query),
+            table_name=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+        table_entities = self.__fetch_table_entity(
+            database_name=(database_query or database_name),
+            database_schema=(schema_query or database_schema),
+            table_name=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+        table_entities = self.__fetch_table_entity(
+            database_name=(database_query or database_name).upper(),
+            database_schema=(schema_query or database_schema).upper(),
+            table_name=table.upper(),
+        )
+
+        if table_entities:
+            return table_entities
+
+    def __fetch_table_entity(
+        self, database_name: str, database_schema: str, table_name: str
+    ) -> List[Table]:
+
         table_fqn = get_fqdn(
             Table, self.service_name, database_name, database_schema, table_name
         )

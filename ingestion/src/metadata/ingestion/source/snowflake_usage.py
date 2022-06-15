@@ -31,7 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
-
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.usage_source import UsageSource
 from metadata.utils.connections import get_connection
@@ -59,7 +58,9 @@ class SnowflakeUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         # Snowflake allows retrieving data as far as 7 days, counting today
-        start, end = get_start_and_end(min(self.config.sourceConfig.config.queryLogDuration, 6))
+        start, end = get_start_and_end(
+            min(self.config.sourceConfig.config.queryLogDuration, 6)
+        )
         self.analysis_date = start
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=start,
@@ -112,11 +113,14 @@ class SnowflakeUsageSource(UsageSource):
                     analysis_date=self.analysis_date,
                     aborted="1969" in str(row["end_time"]),
                     database=row["database_name"],
+                    schema_name=row["schema_name"],
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
                 if not row["database_name"] and self.connection.database:
-                    logger.debug(f"Query {table_query.sql} has no database informed. Skipping.")
+                    logger.debug(
+                        f"Query {table_query.sql} has no database informed. Skipping."
+                    )
                     continue
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
