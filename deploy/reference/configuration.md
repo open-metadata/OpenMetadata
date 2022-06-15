@@ -84,6 +84,10 @@ By default, the OpenMetadata server runs on port 8585. It uses Jetty Server. The
 
 ## Database
 
+OpenMetadata supports MySQL or Postgres as the database. The database configurations and connection strings must be as specified below.
+
+The section below refers to the database connection details to MySQL database. We recommend you create a MySQL user with a strong password and update this section accordingly.
+
 ```
 database:
   # the name of the JDBC driver, mysql in our case
@@ -95,7 +99,18 @@ database:
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 ```
 
-The above section is database connection details to MySQL database. We recommend you create a MySQL user with a strong password and update this section accordingly.
+The section below refers to the database connection details to Postgres database. We recommend you create a Postgres user with a strong password and update this section accordingly.
+
+```
+ddatabase:
+  # the name of the JDBC driver, postgres in our case
+  driverClass: org.postgresql.Driver
+  # the username and password
+  user: openmetadata_user
+  password: openmetadata_password
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:postgresql://localhost:5432/openmetadata_db?useSSL=false&serverTimezone=UTC
+```
 
 ## ElasticSearch
 
