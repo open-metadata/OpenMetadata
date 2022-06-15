@@ -136,7 +136,7 @@ const PopoverContent: FC<Props> = ({
         <button>
           <SVGIcons
             alt="add-reaction"
-            icon={Icons.ADD_REACTION}
+            icon={Icons.REACTION}
             title="Add reactions"
             width="16px"
           />
@@ -156,9 +156,9 @@ const PopoverContent: FC<Props> = ({
         <button onClick={handleDelete}>
           <SVGIcons
             alt="delete-reply"
-            icon={Icons.DELETE}
+            icon={Icons.FEED_DELETE}
             title="Delete"
-            width="14px"
+            width="16px"
           />
         </button>
       ) : null}

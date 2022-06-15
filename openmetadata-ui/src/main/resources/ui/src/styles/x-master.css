@@ -1031,9 +1031,6 @@ code {
   background-color: #7147e860;
 }
 
-.ant-popover-inner-content {
-  padding: 6px;
-}
 /* Reaction CSS End */
 .ant-advaced-field-select {
   color: #7147e8;
@@ -1072,8 +1069,19 @@ code {
 
 /* Feed popover CSS start */
 
+.ant-popover-inner-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .ant-popover-feed > .ant-popover-content > .ant-popover-arrow {
   display: none;
+}
+.ant-popover-feed > .ant-popover-content > .ant-popover-inner {
+  border-radius: 6px;
+  border: 1px solid #dde3ea;
 }
 
 /* Feed popover CSS end */

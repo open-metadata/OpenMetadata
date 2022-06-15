@@ -62,7 +62,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
       <div className="tw-ml-9 tw-my-2">
         {Boolean(lastPost) && <div className="tw-filter-seperator" />}
         {postLength > 1 ? (
-          <div className="tw-flex">
+          <div className="tw-flex tw-my-4">
             <FeedCardFooter
               isFooterVisible
               lastReplyTimeStamp={lastPost?.postTs}

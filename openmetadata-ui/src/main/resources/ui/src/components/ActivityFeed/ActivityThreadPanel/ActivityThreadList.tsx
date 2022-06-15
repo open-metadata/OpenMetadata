@@ -92,7 +92,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               {Boolean(lastPost) && (
                                 <div className="tw-filter-seperator" />
                               )}
-                              <div className="tw-flex">
+                              <div className="tw-flex tw-my-4">
                                 <FeedCardFooter
                                   isFooterVisible
                                   lastReplyTimeStamp={lastPost?.postTs}

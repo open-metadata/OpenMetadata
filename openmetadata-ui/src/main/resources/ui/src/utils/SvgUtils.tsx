@@ -44,6 +44,7 @@ import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
+import IconFeedDelete from '../assets/svg/delete-white.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
@@ -119,6 +120,7 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconReaction from '../assets/svg/Reaction.svg';
 import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
@@ -293,6 +295,8 @@ export const Icons = {
   DEPLOY_INGESTION: 'deploy-ingestion',
   ADD_REACTION: 'add-reaction',
   ADD_REPLY: 'add-reply',
+  REACTION: 'reaction',
+  FEED_DELETE: 'feed-delete',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -851,6 +855,15 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.ADD_REPLY:
       IconComponent = IconReplyFeed;
+
+      break;
+
+    case Icons.REACTION:
+      IconComponent = IconReaction;
+
+      break;
+    case Icons.FEED_DELETE:
+      IconComponent = IconFeedDelete;
 
       break;
     default:
