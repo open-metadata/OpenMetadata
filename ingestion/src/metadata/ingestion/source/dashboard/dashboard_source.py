@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -23,21 +22,6 @@ from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-
-@dataclass
-class DashboardSourceStatus(SourceStatus):
-    """
-    Reports the source status after ingestion
-    """
-
-    def scanned(self, record: str) -> None:
-        self.success.append(record)
-        logger.info(f"Scanned: {record}")
-
-    def filter(self, record: str, err: str) -> None:
-        self.filtered.append(record)
-        logger.warning(f"Filtered {record}: {err}")
 
 
 class DashboardSourceService(Source, ABC):
