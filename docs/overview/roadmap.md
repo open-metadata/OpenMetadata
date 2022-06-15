@@ -62,30 +62,22 @@ OpenMetadata now supports integration with your custom built OIDC SSO for authen
 
 Support has been added for Azure SSO on Airflow.
 
-## 0.11 Release - Jun 9th, 2022
+## 0.11 Release - Jun 30th, 2022
 
-### Data Insights
+### Collaboration
 
-* Show users/teams how their data doing
-* Cost analysis
-* How to improve Data culture
+* Turn conversations into Tasks and collaborate with your team
+* Data announcements
+* Webbrowser notifications
 
 ### Data Quality
 
-* Data SLAs
-* Freshness and completeness
 * Ability to deploy GE tests from OpenMetadata UI
+* GE test results integration
 
 ### Lineage
 
 * Column Level Lineage support
-* Incident detection through Lineage
-
-### Collaboration
-
-* Tiering Report on how to improve data assets and data culture
-* Email notifications
-* Webbrowser notifications
 
 ### ML Features
 
