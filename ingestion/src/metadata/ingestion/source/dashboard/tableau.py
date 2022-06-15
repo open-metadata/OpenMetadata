@@ -209,6 +209,18 @@ class TableauSource(DashboardSourceService):
             .tolist()
         )
         dashboard_name = dashboard_details.get("name")
+
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=dashboard_name,
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
+
         for datasource in datasource_list:
             try:
                 schema_and_table_name = (
@@ -227,16 +239,6 @@ class TableauSource(DashboardSourceService):
                 from_entity = self.metadata.get_by_name(
                     entity=Table,
                     fqn=from_fqn,
-                )
-                to_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=LineageDashboard,
-                    service_name=self.config.serviceName,
-                    dashboard_name=dashboard_name,
-                )
-                to_entity = self.metadata.get_by_name(
-                    entity=LineageDashboard,
-                    fqn=to_fqn,
                 )
                 if from_entity and to_entity:
                     lineage = AddLineageRequest(

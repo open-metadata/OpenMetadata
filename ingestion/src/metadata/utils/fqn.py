@@ -14,7 +14,7 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
-from typing import List, Optional, Type, TypeVar, Union
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -270,3 +270,19 @@ def _(
     column_name: str,
 ) -> str:
     return _build(service_name, database_name, schema_name, table_name, column_name)
+
+
+def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
+    """
+    Given a table name, try to extract database, schema and
+    table info
+    :param table_name: raw table name
+    :return: dict with data
+    """
+
+    details: List[str] = split(table_name)
+    # Pad None to the left until size of list is 3
+    full_details: List[Optional[str]] = ([None] * (3 - len(details))) + details
+
+    database, database_schema, table = full_details
+    return {"database": database, "database_schema": database_schema, "table": table}

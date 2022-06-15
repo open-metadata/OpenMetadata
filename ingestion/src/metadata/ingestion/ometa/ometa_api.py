@@ -528,7 +528,7 @@ class OpenMetadata(
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: str = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """

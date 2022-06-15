@@ -8,16 +8,20 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import traceback
-from json import JSONDecodeError
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Set
 
+from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
+from looker_sdk.sdk.api40.models import LookmlModelExplore
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as LineageDashboard,
+)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
@@ -27,9 +31,11 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -106,59 +112,60 @@ class LookerSource(DashboardSourceService):
         )
 
     @staticmethod
-    def _get_origin_field_map(dynamic_fields: List[Dict[str, Any]]) -> Dict[str, str]:
+    def _clean_table_name(table_name: str) -> str:
         """
-        Some fields are derived from measures or other dimensions.
-        Prepare a map to obtain the base fields
-        :param dynamic_fields:
-        :return:
+        sql_table_names might be renamed when defining
+        an explore. E.g., customers as cust
+        :param table_name: explore table name
+        :return: clean table name
         """
-        custom_field_to_original = {}
 
-        for custom_field in dynamic_fields:
-            if (
-                "measure" in custom_field
-            ):  # measures can reference other views, fetch the original field
-                custom_field_to_original[custom_field["measure"]] = custom_field[
-                    "based_on"
-                ]
-            if (
-                "dimension" in custom_field
-            ):  # this can be an arbitrary expression, not supported
-                custom_field_to_original[custom_field["dimension"]] = None
+        return table_name.lower().split("as")[0].strip()
 
-        return custom_field_to_original
-
-    def _get_query_fields(self, query: Optional[Query]) -> List[str]:
+    def _add_sql_table(self, query: Query, dashboard_sources: Set[str]):
         """
-        Pick up field info from looker query.
+        Add the SQL table information to the dashboard_sources.
 
-        :param query: Looker query
-        :return: List of tables to fetch in ES
+        Updates the seen dashboards.
+
+        :param query: Looker query, from a look or result_maker
+        :param dashboard_sources: seen tables so far
         """
         try:
-            dynamic_fields = json.loads(query.dynamic_fields or "[]")
-        except JSONDecodeError as err:
-            logger.warning(
-                f"Dynamic fields parse error: {err}. The field value was: {query.dynamic_fields}"
+            explore: LookmlModelExplore = self.client.lookml_model_explore(
+                query.model, query.view
             )
-            dynamic_fields = []
+            table_name = explore.sql_table_name
 
-        custom_field_to_original = self._get_origin_field_map(dynamic_fields)
+            if table_name:
+                dashboard_sources.add(self._clean_table_name(table_name))
 
-        fields = query.fields or []
-        filters = query.filters or {}
+        except SDKError as err:
+            logger.error(
+                f"Cannot get explore from model={query.model}, view={query.view} - {err}"
+            )
 
-        fields_source = fields + list(filters.keys())
+    def get_dashboard_sources(self) -> Set[str]:
+        """
+        Set of source tables to build lineage for the processed dashboard
+        """
+        dashboard_sources: Set[str] = set()
 
-        all_fields = [
-            custom_field_to_original.get(field, field) for field in fields_source
-        ]
+        for chart in self.charts:
+            if chart.query and chart.query.view:
+                self._add_sql_table(chart.query, dashboard_sources)
+            if chart.look and chart.look.query and chart.look.query.view:
+                self._add_sql_table(chart.look.query, dashboard_sources)
+            if (
+                chart.result_maker
+                and chart.result_maker.query
+                and chart.result_maker.query.view
+            ):
+                self._add_sql_table(chart.result_maker.query, dashboard_sources)
 
-        # Remove None from dimensions
-        return [field for field in all_fields if field]
+        return dashboard_sources
 
-    def get_lineage(self, dashboard_details) -> Optional[AddLineageRequest]:
+    def get_lineage(self, dashboard_details) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
 
@@ -167,21 +174,54 @@ class LookerSource(DashboardSourceService):
         - chart.look (chart.look.query)
         - chart.result_maker
         """
-        print("GETTING LINEAGE")
-        for chart in self.charts:
-            if chart.query and chart.query.view:
-                print(f"chart.query.view: {chart.query.view}")
-                self._get_query_fields(chart.query)
-            if chart.look and chart.look.query and chart.look.query.view:
-                print(f"chart.look.query.view: {chart.look.query.view}")
-                self._get_query_fields(chart.look.query)
-            if (
-                chart.result_maker
-                and chart.result_maker.query
-                and chart.result_maker.query.view
-            ):
-                print(f"chart.result_maker.query.view: {chart.result_maker.query.view}")
-                self._get_query_fields(chart.result_maker.query)
+        datasource_list = self.get_dashboard_sources()
+
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=dashboard_details.id,
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
+
+        for source in datasource_list:
+            try:
+                source_elements = fqn.split_table_name(table_name=source)
+
+                print(f"FOUND THE FOLLOWING SOURCES {source_elements}")
+
+                from_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.source_config.dbServiceName,
+                    database_name=source_elements["database"],
+                    schema_name=source_elements["database_schema"],
+                    table_name=source_elements["table"],
+                )
+                from_entity = self.metadata.get_by_name(
+                    entity=Table,
+                    fqn=from_fqn,
+                )
+
+                if from_entity and to_entity:
+                    lineage = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=from_entity.id.__root__, type="table"
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id.__root__, type="dashboard"
+                            ),
+                        )
+                    )
+                    yield lineage
+
+            except (Exception, IndexError) as err:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Error building lineage - {err}")
 
     def fetch_dashboard_charts(
         self, dashboard_details
