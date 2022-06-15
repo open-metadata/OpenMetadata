@@ -10,7 +10,7 @@
         "includeTables": true,
         "includeUsers": true,
         "includeTopics": true,
-        "limitRecords": 10
+        "limitRecords": 100
       }
     },
     "sourceConfig": {
