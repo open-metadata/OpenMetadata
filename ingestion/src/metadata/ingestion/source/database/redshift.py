@@ -14,12 +14,12 @@ Redshift source ingestion
 
 import re
 from collections import defaultdict
-from typing import Iterable
+from typing import Iterable, Optional, Tuple
 
 import sqlalchemy as sa
 from packaging.version import Version
 from sqlalchemy import inspect, util
-from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
+from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect, PGInspector
 from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
@@ -38,9 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.utils import fqn
-from metadata.utils.connections import get_connection
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import (
     REDSHIFT_GET_ALL_RELATION_INFO,
@@ -109,7 +107,12 @@ def _get_table_or_view_names(self, relkinds, connection, schema=None, **kw):
     relation_names = []
     for key, relation in all_relations.items():
         if key.schema == schema and relation.relkind in relkinds:
-            relation_names.append(key.name)
+            relation_names.append(
+                (
+                    key.name,
+                    relation.relkind,
+                )
+            )
     return relation_names
 
 
@@ -431,9 +434,9 @@ def _get_column_info(
 PGDialect._get_column_info = _get_column_info
 
 STANDARD_TABLE_TYPES = {
-    "TABLE": TableType.Regular,
-    "VIEW": TableType.View,
-    "EXTERNAL TABLE": TableType.External,
+    "r": TableType.Regular,
+    "e": TableType.External,
+    "v": TableType.View,
 }
 
 # pylint: disable=useless-super-delegation
@@ -468,35 +471,40 @@ class RedshiftSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_table_type(self, schema_name: str, table_name: str) -> TableType:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
-        Fetch the table types and return standard TableType
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
         """
-        tabel_fqn = fqn.build(
-            self.metadata,
-            Table,
-            database_name=self.context.database.name.__root__,
-            schema_name=schema_name,
-            table_name=table_name,
-            service_name=self.config.serviceName,
-        )
-        if not self.table_type_map:
-            table_type_query = "SELECT database_name,schema_name, table_name,table_type FROM svv_all_tables"
-            result = self.engine.execute(table_type_query)
-            self.table_type_map = {
-                fqn.build(
-                    self.metadata,
-                    Table,
-                    database_name=row[0],
-                    schema_name=row[1],
-                    table_name=row[2],
-                    service_name=self.config.serviceName,
-                ): row[3]
-                for row in result
-            }
-        return STANDARD_TABLE_TYPES.get(
-            self.table_type_map.get(tabel_fqn, "TABLE"), TableType.Regular
-        )
+        schema_name = self.context.database_schema.name.__root__
+        if self.source_config.includeTables:
+            # table_type value for regulart tables will be 'r' and for external tables will be 'e'
+            for table_name, table_type in self.inspector.get_table_names(schema_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=table_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{table_name}",
+                        "Table pattern not allowed",
+                    )
+                    continue
+                yield table_name, STANDARD_TABLE_TYPES.get(table_type)
+        if self.source_config.includeViews:
+            # table_type value for views will be 'v'
+            for view_name, table_type in self.inspector.get_view_names(schema_name):
+                if filter_by_table(
+                    self.source_config.tableFilterPattern, table_name=view_name
+                ):
+                    self.status.filter(
+                        f"{self.config.serviceName}.{view_name}",
+                        "Table pattern not allowed for view",
+                    )
+                    continue
+                yield view_name, STANDARD_TABLE_TYPES.get(table_type)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
