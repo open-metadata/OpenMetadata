@@ -220,7 +220,7 @@ class MigrateSource(MetadataSource):
         after = None
         while True:
             service_entities = self.metadata.client.get(
-                f"/services/messagingServices?fields=owner&limit={self.service_connection.limitRecords}"
+                f"/services/messagingServices?fields=owner&limit={self.service_connection.limitRecords}&after={after if after else ''}"
             )
             for service in service_entities.get("data"):
                 yield MessagingServiceWrapper(service)
@@ -232,7 +232,7 @@ class MigrateSource(MetadataSource):
         after = None
         while True:
             service_entities = self.metadata.client.get(
-                f"/services/databaseServices?fields=owner&limit={self.service_connection.limitRecords}"
+                f"/services/databaseServices?fields=owner&limit={self.service_connection.limitRecords}&after={after if after else ''}"
             )
             for service in service_entities.get("data"):
                 yield DatabaseServiceWrapper(service)
