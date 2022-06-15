@@ -8,7 +8,7 @@
   "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau.",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
       "type": "string",
       "enum": [
         "Superset",
@@ -16,7 +16,8 @@
         "Tableau",
         "Redash",
         "Metabase",
-        "PowerBI"
+        "PowerBI",
+        "Mode"
       ],
       "javaEnums": [
         {
@@ -36,6 +37,9 @@
         },
         {
           "name": "PowerBI"
+        },
+        {
+          "name": "Mode"
         }
       ]
     },
@@ -63,6 +67,9 @@
             },
             {
               "$ref": "./connections/dashboard/tableauConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/modeConnection.json"
             }
           ]
         }
