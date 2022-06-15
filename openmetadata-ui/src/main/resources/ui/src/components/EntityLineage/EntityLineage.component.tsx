@@ -954,9 +954,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
-    setNodes(node);
-    setEdges(edge);
     resetViewEditState();
   }, [lineageData, isNodeLoading, isEditMode]);
 
@@ -1024,7 +1021,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               data-testid="react-flow-component"
               edgeTypes={{ buttonedge: CustomEdge }}
               edges={edges}
-              //   elements={elements as Elements}
               maxZoom={2}
               minZoom={0.5}
               nodeTypes={nodeTypes}
@@ -1037,7 +1033,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onDragOver={onDragOver}
               onDrop={onDrop}
               onEdgesChange={onEdgesChange}
-              //   onElementClick={(_e, el) => onElementClick(el)}
               onInit={(reactFlowInstance: ReactFlowInstance) => {
                 onLoad(reactFlowInstance);
                 setReactFlowInstance(reactFlowInstance);
