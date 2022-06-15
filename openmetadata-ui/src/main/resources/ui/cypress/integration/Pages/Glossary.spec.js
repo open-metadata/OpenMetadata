@@ -310,8 +310,8 @@ describe('Glossary page should work properly', () => {
       .contains(term2)
       .should('be.visible');
   });
-  // Todo: remove skip once glossary term deletion bug is fixed
-  it.skip('Assets Tab should work properly', () => {
+  
+  it('Assets Tab should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
@@ -334,7 +334,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.skip('Remove Glossary term from entity should work properly', () => {
+  it('Remove Glossary term from entity should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     // go assets tab
