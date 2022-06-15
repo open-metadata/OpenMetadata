@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Trino service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (14) (1) (1) (1).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (14) (1) (1) (1) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
@@ -123,7 +123,7 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 </details>
 
-![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1) (1).png>)
+![Service has been saved](<../../../.gitbook/assets/image (22) (1) (1) (1) (1) (1) (1) (1) (1) (1) (2).png>)
 
 ### 6. Configure the Metadata Ingestion
 

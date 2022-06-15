@@ -25,7 +25,7 @@ description: >-
 
 * Click on the **Create App Integration** button.
 
-![](<../../../.gitbook/assets/image (11) (1) (1) (1) (1) (1) (1) (3).png>)
+![](<../../../.gitbook/assets/image (11) (1) (1) (1) (1) (1) (1) (1) (1) (2) (3).png>)
 
 ## Step 3: Configuring the App
 
@@ -65,7 +65,7 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../.gitbook/assets/image (26) (1) (1) (1).png>)
+![](<../../../../.gitbook/assets/image (29) (1) (1).png>)
 
 * Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
@@ -79,7 +79,7 @@ This will generate the Issuer URL.
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
-![](<../../../.gitbook/assets/image (71) (1).png>)
+![](<../../../.gitbook/assets/image (71) (1) (1).png>)
 
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**
@@ -114,7 +114,7 @@ This will generate the Issuer URL.
 * You can also go to **Application -> Application** as in step 2.
 * You should be able to see your application in the list.
 
-![](<../../../.gitbook/assets/image (35) (1) (1) (1) (1) (1) (1) (9).png>)
+![](<../../../../.gitbook/assets/image (35) (1) (1) (1) (1) (1) (12) (6).png>)
 
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
@@ -128,4 +128,4 @@ This will generate the Issuer URL.
 * For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 * The **Audience** is the same as the Client ID.
 
-![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (5) (1) (1) (1) (1) (1) (1) (1) (1) (1).png>)

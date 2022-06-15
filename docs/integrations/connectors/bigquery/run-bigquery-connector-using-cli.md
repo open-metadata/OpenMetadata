@@ -306,6 +306,7 @@ source:
           clientX509CertUrl: <client certificate URL>
   sourceConfig:
     config:
+      type: Profiler
       fqnFilterPattern: <table FQN filtering regex>
 processor:
   type: orm-profiler

@@ -174,7 +174,7 @@ Set the _Ingest sample data_ toggle to the on position to control whether or not
 
 </details>
 
-![](<../../../docs/.gitbook/assets/image (14) (1) (2).png>)
+![](<../../../docs/.gitbook/assets/image (14) (1) (1) (2).png>)
 
 ### 7. Schedule the Ingestion and Deploy
 
