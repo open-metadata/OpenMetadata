@@ -14,14 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import {
-  isEmpty,
-  isEqual,
-  isUndefined,
-  lowerCase,
-  uniqueId,
-  upperCase,
-} from 'lodash';
+import { isEmpty, isUndefined, lowerCase, uniqueId, upperCase } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   DragEvent,
@@ -119,12 +112,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     {} as SelectedNode
   );
   const expandButton = useRef<HTMLButtonElement | null>(null);
-  const [expandNode, setExpandNode] = useState<EntityReference | undefined>(
-    undefined
-  );
   const [isEditMode, setEditMode] = useState<boolean>(false);
 
-  const [tableColumns, setTableColumns] = useState<Column[]>([] as Column[]);
+  const tableColumnsRef = useRef<{ [key: string]: Column[] }>(
+    {} as { [key: string]: Column[] }
+  );
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
   const [selectedEntity, setSelectedEntity] = useState<EntityReference>(
     {} as EntityReference
@@ -199,7 +191,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param node
    * @returns label for given node
    */
-  const getNodeLabel = (node: EntityReference) => {
+  const getNodeLabel = (node: EntityReference, isExpanded = false) => {
     return (
       <Fragment>
         {node.type === 'table' && !isEditMode ? (
@@ -209,12 +201,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               expandButton.current = expandButton.current
                 ? null
                 : e.currentTarget;
-              setExpandNode(expandNode ? undefined : node);
+              // eslint-disable-next-line @typescript-eslint/no-use-before-define
+              handleNodeExpand(!isExpanded, node);
               setIsDrawerOpen(false);
             }}>
             <SVGIcons
               alt="plus"
-              icon={expandNode?.id === node.id ? 'icon-minus' : 'icon-plus'}
+              icon={isExpanded ? 'icon-minus' : 'icon-plus'}
               width="16px"
             />
           </button>
@@ -543,41 +536,17 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  /**
-   * this method is used for table entity to show table columns
-   * @param tableColumns
-   */
-  const onNodeExpand = (tableColumns?: Column[]) => {
-    const nodesArr = [
-      ...(updatedLineageData.nodes || []),
-      updatedLineageData.entity,
-    ];
-    setNodes((preNode) => {
-      return preNode.map((preEl) => {
-        const changedNode = nodesArr.find((n) => {
-          return isEqual(n.id, preEl.id);
-        });
-        if (preEl.id.includes(expandNode?.id as string)) {
-          return {
-            ...preEl,
-            data: {
-              ...preEl.data,
-              label: getNodeLabel(changedNode as EntityReference),
-              columns: tableColumns,
-            },
-          };
-        } else {
-          return {
-            ...preEl,
-            data: {
-              ...preEl.data,
-              label: getNodeLabel(changedNode as EntityReference),
-              columns: undefined,
-            },
-            className: getNodeClass(preEl),
-          };
+  const updateColumnsToNode = (columns: Column[], id: string) => {
+    setNodes((node) => {
+      const updatedNode = node.map((n) => {
+        if (n.id === id) {
+          n.data.columns = columns;
         }
+
+        return n;
       });
+
+      return updatedNode;
     });
   };
 
@@ -589,8 +558,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     if (expandNode) {
       getTableDetails(expandNode.id, ['columns'])
         .then((res: AxiosResponse) => {
+          const tableId = expandNode.id;
           const { columns } = res.data;
-          setTableColumns(columns);
+          tableColumnsRef.current[tableId] = columns;
+          updateColumnsToNode(columns, tableId);
         })
         .catch((error: AxiosError) => {
           showErrorToast(
@@ -602,6 +573,43 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             )} columns`
           );
         });
+    }
+  };
+
+  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
+    if (isExpanded) {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((n) => {
+          if (n.id === node.id) {
+            const nodeId = node.id;
+            n.data.label = getNodeLabel(node, true);
+            n.data.isExpanded = true;
+            if (isUndefined(tableColumnsRef.current[nodeId])) {
+              getTableColumns(node);
+            } else {
+              n.data.columns = tableColumnsRef.current[nodeId];
+            }
+          }
+
+          return n;
+        });
+
+        return newNodes;
+      });
+    } else {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((n) => {
+          if (n.id === node.id) {
+            n.data.label = getNodeLabel(node);
+            n.data.isExpanded = false;
+            n.data.columns = undefined;
+          }
+
+          return n;
+        });
+
+        return newNodes;
+      });
     }
   };
 
@@ -923,8 +931,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * Reset State between view and edit mode toggle
    */
   const resetViewEditState = () => {
-    setExpandNode(undefined);
-    setTableColumns([]);
     setConfirmDelete(false);
   };
 
@@ -973,23 +979,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   useEffect(() => {
     handleUpdatedLineageNode();
   }, [updatedLineageData]);
-
-  useEffect(() => {
-    onNodeExpand();
-    getTableColumns(expandNode);
-  }, [expandNode]);
-
-  useEffect(() => {
-    if (!isEmpty(selectedNode)) {
-      setExpandNode(undefined);
-    }
-  }, [selectedNode]);
-
-  useEffect(() => {
-    if (tableColumns.length) {
-      onNodeExpand(tableColumns);
-    }
-  }, [tableColumns]);
 
   useEffect(() => {
     onEntitySelect();

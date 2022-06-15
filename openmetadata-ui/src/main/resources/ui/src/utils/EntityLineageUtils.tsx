@@ -167,6 +167,7 @@ export const getLineageDataV1 = (
         entityType: node.type,
         removeNodeHandler,
         isEditMode,
+        isExpanded: false,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
