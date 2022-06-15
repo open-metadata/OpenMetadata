@@ -12,6 +12,7 @@
  */
 
 import { LeafNodes, LineagePos, LoadingNodeState, LoadingState } from 'Models';
+import { Edge as FlowEdge, Node } from 'react-flow-renderer';
 import {
   EntityLineage,
   EntityReference,
@@ -73,3 +74,6 @@ export interface SelectedEdge {
 }
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
+
+export type CustomeElement = { node: Node[]; edge: FlowEdge[] };
+export type CustomeFlow = Node | FlowEdge;

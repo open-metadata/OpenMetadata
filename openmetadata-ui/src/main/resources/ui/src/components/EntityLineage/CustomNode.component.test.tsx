@@ -115,9 +115,18 @@ jest.mock('react-flow-renderer', () => ({
 
 describe('Test CustomNode Component', () => {
   it('Check if CustomNode has all child elements', async () => {
-    const { container } = render(<CustomNode {...mockCustomNodeProp} />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <CustomNode
+        dragging={false}
+        xPos={0}
+        yPos={0}
+        zIndex={0}
+        {...mockCustomNodeProp}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     const nodeLabel = await findByTestId(container, 'node-label');
     const labelSeparator = await findByTestId(container, 'label-separator');
@@ -131,6 +140,10 @@ describe('Test CustomNode Component', () => {
   it('Check if CustomNode has data columns as undefined', async () => {
     const { container } = render(
       <CustomNode
+        dragging={false}
+        xPos={0}
+        yPos={0}
+        zIndex={0}
         {...mockCustomNodeProp}
         data={{ ...mockCustomNodeProp.data, columns: undefined }}
       />,
