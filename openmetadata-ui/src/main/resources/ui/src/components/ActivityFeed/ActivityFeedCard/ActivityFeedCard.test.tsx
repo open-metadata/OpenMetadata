@@ -23,6 +23,7 @@ jest.mock('../../../AppState', () => ({
   },
   users: [{ name: '' }],
   getCurrentUserDetails: jest.fn(),
+  isProfilePicLoading: jest.fn(),
 }));
 
 jest.mock('../../../hooks/authHooks', () => ({

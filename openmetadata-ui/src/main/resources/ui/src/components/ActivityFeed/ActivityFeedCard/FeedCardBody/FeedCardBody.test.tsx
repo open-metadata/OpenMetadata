@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
@@ -42,9 +42,7 @@ describe('Test FeedCardBody component', () => {
     });
 
     const messagePreview = await findByText(container, /RichText Preview/i);
-    const deleteButton = await findByTestId(container, 'delete-button');
 
     expect(messagePreview).toBeInTheDocument();
-    expect(deleteButton).toBeInTheDocument();
   });
 });
