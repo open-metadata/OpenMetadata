@@ -482,7 +482,7 @@ class RedshiftSource(CommonDbSourceService):
         """
         schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
-            # table_type value for regulart tables will be 'r' and for external tables will be 'e'
+            # table_type value for regular tables will be 'r' and for external tables will be 'e'
             for table_name, table_type in self.inspector.get_table_names(schema_name):
                 if filter_by_table(
                     self.source_config.tableFilterPattern, table_name=table_name
