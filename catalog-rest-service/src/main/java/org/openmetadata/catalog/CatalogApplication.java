@@ -297,7 +297,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           (servletUpgradeRequest, servletUpgradeResponse) ->
               new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
     } catch (ServletException ex) {
-      LOG.error("Websocket Upgrade Filter error : " ,  ex.getMessage());
+      LOG.error("Websocket Upgrade Filter error : ", ex.getMessage());
     }
   }
 
