@@ -127,7 +127,9 @@ const PopoverContent: FC<Props> = ({
   return (
     <div className="tw-flex tw-gap-x-2">
       <Popover
+        align={{ targetOffset: [0, -10] }}
         content={reactionList}
+        overlayClassName="ant-popover-feed-reactions"
         placement="topLeft"
         trigger="click"
         visible={visible}
