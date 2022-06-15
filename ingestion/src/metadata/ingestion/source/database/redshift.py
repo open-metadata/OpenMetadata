@@ -19,14 +19,14 @@ from typing import Iterable, Optional, Tuple
 import sqlalchemy as sa
 from packaging.version import Version
 from sqlalchemy import inspect, util
-from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect, PGInspector
+from sqlalchemy.dialects.postgresql.base import ENUM, PGDialect
 from sqlalchemy.dialects.postgresql.base import ischema_names as pg_ischema_names
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.types import CHAR, VARCHAR, NullType
 from sqlalchemy_redshift.dialect import RedshiftDialectMixin, RelationKey
 
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
