@@ -16,7 +16,8 @@ public class Auth0AccessTokenRequestInterceptor implements RequestInterceptor {
   @Override
   public void apply(RequestTemplate requestTemplate) {
     String requestBody =
-        "grant_type="+ AccessTokenResponse.GrantType.CLIENT_CREDENTIALS
+        "grant_type="
+            + AccessTokenResponse.GrantType.CLIENT_CREDENTIALS
             + "&client_id="
             + securityConfig.getClientId()
             + "&client_secret="
