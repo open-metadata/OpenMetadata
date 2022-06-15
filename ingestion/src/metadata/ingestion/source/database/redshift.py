@@ -434,7 +434,7 @@ def _get_column_info(
 PGDialect._get_column_info = _get_column_info
 
 STANDARD_TABLE_TYPES = {
-    "r": TableType.Regular,
+    "r": TableType.Local,
     "e": TableType.External,
     "v": TableType.View,
 }
@@ -451,7 +451,6 @@ class RedshiftSource(CommonDbSourceService):
 
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-        self.table_type_map = {}
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
