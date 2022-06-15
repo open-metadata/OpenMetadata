@@ -18,6 +18,8 @@ working with OpenMetadata entities.
 import urllib
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.generated.schema.entity.services.mlmodelService import MlmodelService
+
 try:
     from typing import get_args
 except ImportError:
@@ -323,6 +325,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/storageServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[StorageService, self.get_create_entity_type(MlmodelService)]
+            ),
+        ):
+            return "/services/mlmodelServices"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"

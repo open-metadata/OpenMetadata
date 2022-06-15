@@ -54,6 +54,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlmodelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -335,6 +336,16 @@ class SampleDataSource(Source[Entity]):
         )
         self.users = json.load(
             open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
+        )
+        self.model_service_json = json.load(
+            open(
+                self.service_connection.sampleDataFolder + "/models/service.json",
+                "r",
+            )
+        )
+        self.model_service = self.metadata.get_service_or_create(
+            entity=MlmodelService,
+            config=WorkflowSource(**self.model_service_json),
         )
         self.models = json.load(
             open(self.service_connection.sampleDataFolder + "/models/models.json", "r")
@@ -627,6 +638,10 @@ class SampleDataSource(Source[Entity]):
                         MlHyperParameter(name=param["name"], value=param["value"])
                         for param in model.get("mlHyperParameters", [])
                     ],
+                    service=EntityReference(
+                        id=self.model_service.id,
+                        type=self.model_service.serviceType.value,
+                    ),
                 )
                 yield model_ev
             except Exception as err:

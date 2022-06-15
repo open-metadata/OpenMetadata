@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.services.mlmodel;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;

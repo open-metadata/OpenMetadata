@@ -101,6 +101,7 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.MlModelService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -894,6 +895,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             DashboardService.class,
             MessagingService.class,
             IngestionPipeline.class,
+            MlModelService.class,
             Type.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entity.getVersion()); // Version did change

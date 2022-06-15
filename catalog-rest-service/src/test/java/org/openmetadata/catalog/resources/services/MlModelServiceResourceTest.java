@@ -42,12 +42,7 @@ import org.openmetadata.catalog.util.TestUtils.UpdateType;
 @Slf4j
 public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
-    super(
-        Entity.MLMODEL_SERVICE,
-        MlModelService.class,
-        MlModelServiceList.class,
-        "services/mlmodelServices",
-        "owner");
+    super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
     this.supportsAuthorizedMetadataOperations = false;
   }
@@ -61,7 +56,8 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
             .withServiceType(MlModelServiceType.Mlflow)
             .withConnection(TestUtils.MLFLOW_CONNECTION);
 
-    MlModelService MlModelService = new MlModelServiceResourceTest().createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
+    MlModelService MlModelService =
+        new MlModelServiceResourceTest().createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
     MLFLOW_REFERENCE = MlModelService.getEntityReference();
   }
 
@@ -109,8 +105,8 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         new MlModelConnection()
             .withConfig(
                 new MlflowConnection()
-                    .withRegistryUri("http://localhost:8080")
-                    .withTrackingUri("http://localhost:5000"));
+                    .withRegistryUri("http://localhost:8081")
+                    .withTrackingUri("http://localhost:5001"));
 
     CreateMlModelService update =
         createRequest(test).withDescription("description1").withConnection(MlModelConnection1);

@@ -974,6 +974,46 @@ MLMODEL_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
   			"service_suggest": {
                "type": "completion"
             },
+            "service": {
+             "properties": {
+                "id": {
+                    "type": "keyword",
+                    "fields": {
+                        "keyword": {
+                         "type": "keyword",
+                         "ignore_above": 256
+                        }
+                    }
+                },
+                "type": {
+                  "type": "text"
+                },
+                "name": {
+                  "type": "keyword",
+                  "fields": {
+                    "keyword": {
+                       "type": "keyword",
+                       "ignore_above": 256
+                    }
+                  }
+                },
+                "fullyQualifiedName": {
+                  "type": "text"
+                 },
+                "description": {
+                  "type": "text"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "href": {
+                  "type": "text"
+                }
+            }
+        },
+            "service_type": {
+              "type": "keyword"
+            },
   			"monthly_stats": {
   				"type": "long"
   			},

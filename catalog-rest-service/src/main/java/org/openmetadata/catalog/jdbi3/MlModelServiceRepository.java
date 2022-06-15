@@ -37,7 +37,7 @@ public class MlModelServiceRepository extends EntityRepository<MlModelService> {
   public MlModelServiceRepository(CollectionDAO dao) {
     super(
         MlModelServiceResource.COLLECTION_PATH,
-        Entity.PIPELINE_SERVICE,
+        Entity.MLMODEL_SERVICE,
         MlModelService.class,
         dao.mlModelServiceDAO(),
         dao,
