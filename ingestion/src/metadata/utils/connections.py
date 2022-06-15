@@ -80,6 +80,7 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
@@ -88,6 +89,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 )
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
+    GlueConnection as GlueConnectionPipeline,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
@@ -213,6 +217,14 @@ def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
 
 @get_connection.register
 def _(connection: GlueConnection, verbose: bool = False) -> GlueClient:
+    from metadata.utils.aws_client import AWSClient
+
+    glue_connection = AWSClient(connection.awsConfig).get_glue_client()
+    return glue_connection
+
+
+@get_connection.register
+def _(connection: GlueConnectionPipeline, verbose: bool = False) -> GlueClient:
     from metadata.utils.aws_client import AWSClient
 
     glue_connection = AWSClient(connection.awsConfig).get_glue_client()
