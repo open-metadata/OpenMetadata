@@ -134,7 +134,7 @@
     "limitRecords": {
       "description": "Limit the number of records for Indexing.",
       "type": "integer",
-      "default": "1000"
+      "default": "100"
     },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
