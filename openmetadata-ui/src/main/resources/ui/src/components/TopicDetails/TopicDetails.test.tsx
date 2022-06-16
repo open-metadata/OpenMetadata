@@ -93,6 +93,7 @@ const TopicDetailsProps = {
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();

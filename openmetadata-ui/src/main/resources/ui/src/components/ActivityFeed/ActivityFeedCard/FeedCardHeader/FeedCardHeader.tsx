@@ -258,21 +258,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   };
 
   return (
-    <div className={classNames('tw-flex tw-mb-4', className)}>
-      <PopOver
-        hideDelay={500}
-        html={getUserData()}
-        position="top"
-        theme="light"
-        trigger="click">
-        <span
-          className="tw-cursor-pointer"
-          data-testid="authorAvatar"
-          onClick={onClickHandler}>
-          <ProfilePicture id="" name={createdBy} width="24" />
-        </span>
-      </PopOver>
-      <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
+    <div className={classNames('tw-flex', className)}>
+      <div className="tw-flex tw-m-0 tw-pl-2 tw-leading-4">
         <PopOver
           hideDelay={500}
           html={getUserData()}
@@ -291,7 +278,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           data-testid="timestamp">
           {timeStamp && ' - ' + getDayTimeByTimeStamp(timeStamp)}
         </span>
-      </h6>
+      </div>
     </div>
   );
 };

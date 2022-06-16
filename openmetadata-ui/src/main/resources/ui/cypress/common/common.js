@@ -15,7 +15,7 @@ export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
 
-export const handleIngestionRetry = (type, count = 0) => {
+export const handleIngestionRetry = (type, testIngestionButton, count = 0) => {
   // ingestions page
   const retryTimes = 25;
   let retryCount = count;
@@ -29,7 +29,7 @@ export const handleIngestionRetry = (type, count = 0) => {
     if (retryCount === 0) {
       cy.get('[data-testid="Ingestions"]').click();
     }
-    if (isDatabaseService(type)) {
+    if (isDatabaseService(type) && testIngestionButton) {
       cy.get('[data-testid="add-new-ingestion-button"]').should('be.visible');
     }
   };
@@ -60,7 +60,8 @@ export const testServiceCreationAndIngestion = (
   serviceType,
   connectionInput,
   addIngestionInput,
-  type = 'database'
+  type = 'database',
+  testIngestionButton = true
 ) => {
   const serviceName = `${serviceType}-ci-test-${uuid()}`;
 
@@ -146,7 +147,7 @@ export const testServiceCreationAndIngestion = (
   cy.get('[data-testid="view-service-button"]').should('be.visible');
   cy.get('[data-testid="view-service-button"]').click();
 
-  handleIngestionRetry(type);
+  handleIngestionRetry(type, testIngestionButton);
 };
 
 export const goToAddNewServicePage = () => {

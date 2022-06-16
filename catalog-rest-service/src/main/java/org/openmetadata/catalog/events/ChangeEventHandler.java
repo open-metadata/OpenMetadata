@@ -18,7 +18,9 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,6 +37,7 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.socket.WebSocketManager;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
@@ -47,10 +50,12 @@ import org.openmetadata.catalog.util.RestUtil;
 public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
   private FeedRepository feedDao;
+  private ObjectMapper mapper;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
+    this.mapper = new ObjectMapper();
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -99,6 +104,8 @@ public class ChangeEventHandler implements EventHandler {
             }
             EntityLink about = EntityLink.parse(thread.getAbout());
             feedDao.create(thread, entity.getId(), owner, about);
+            String json = mapper.writeValueAsString(thread);
+            WebSocketManager.getInstance().broadCastMessageToClients(json);
           }
         }
       }
@@ -233,6 +240,7 @@ public class ChangeEventHandler implements EventHandler {
               .withThreadTs(System.currentTimeMillis())
               .withCreatedBy(entityInterface.getUpdatedBy())
               .withAbout(about.getLinkString())
+              .withReactions(Collections.emptyList())
               .withUpdatedBy(entityInterface.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis())
               .withMessage(message);
@@ -265,6 +273,7 @@ public class ChangeEventHandler implements EventHandler {
         .withThreadTs(System.currentTimeMillis())
         .withCreatedBy(loggedInUserName)
         .withAbout(linkString)
+        .withReactions(Collections.emptyList())
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withMessage(message);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import {
@@ -37,7 +37,7 @@ import {
   DatabaseServiceMetadataPipelineClass,
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
@@ -93,11 +93,6 @@ const AddIngestion = ({
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
-  const [startDate] = useState(
-    data?.airflowConfig.startDate ?? getCurrentDate()
-  );
-  const [endDate] = useState(data?.airflowConfig?.endDate ?? '');
-
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
       (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
@@ -474,8 +469,6 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        startDate: startDate as unknown as Date,
-        endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
@@ -522,8 +515,6 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          startDate: startDate as unknown as Date,
-          endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,

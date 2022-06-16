@@ -19,7 +19,6 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -419,10 +418,6 @@ export const getServiceLogo = (
   return null;
 };
 
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
-};
-
 export const getSvgArrow = (isActive: boolean) => {
   return isActive ? (
     <SVGIcons alt="arrow-down" icon={Icons.ARROW_DOWN_PRIMARY} />
@@ -631,4 +626,8 @@ export const getExploreLinkByFilter = (
     undefined,
     `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
   );
+};
+
+export const replaceSpaceWith_ = (text: string) => {
+  return text.replace(/\s/g, '_');
 };

@@ -133,6 +133,7 @@ authorizerConfiguration:
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
@@ -172,7 +173,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc"
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc", "openmetadata"
   authConfig:
     azure:
       clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
@@ -196,7 +197,7 @@ airflowConfiguration:
       clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
       tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
-    openMetadataJWT:
+    openmetadata:
       jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
 
 slackEventPublishers:

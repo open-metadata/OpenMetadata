@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
@@ -35,7 +35,11 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
@@ -162,6 +166,15 @@ const UserPage = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const updateUserDetails = (data: UserDetails) => {
     const updatedDetails = { ...userData, ...data };
     const jsonPatch = compare(userData, updatedDetails);
@@ -195,6 +208,7 @@ const UserPage = () => {
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
+          updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
           userData={userData}
         />

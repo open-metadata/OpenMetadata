@@ -68,8 +68,9 @@ class Profiler(Generic[TMetric]):
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = None,
+        profile_sample: Optional[float] = 100.0,
         timeout_seconds: Optional[int] = TEN_MIN,
+        partition_details: Optional[Dict] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -89,6 +90,7 @@ class Profiler(Generic[TMetric]):
         self._use_cols = use_cols
         self._profile_sample = profile_sample
         self._profile_date = profile_date
+        self._partition_details = partition_details
 
         self.validate_composed_metric()
 
@@ -101,13 +103,21 @@ class Profiler(Generic[TMetric]):
 
         # We will compute the sample from the property
         self._sampler = Sampler(
-            session=session, table=table, profile_sample=profile_sample
+            session=session,
+            table=table,
+            profile_sample=profile_sample,
+            partition_details=self._partition_details,
         )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
         # Prepare a timeout controlled query runner
         self.runner: QueryRunner = cls_timeout(timeout_seconds)(
-            QueryRunner(session=session, table=table, sample=self.sample)
+            QueryRunner(
+                session=session,
+                table=table,
+                sample=self.sample,
+                partition_details=self._partition_details,
+            )
         )
 
     @property

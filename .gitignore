@@ -92,6 +92,7 @@ ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
+.python-version
 
 # MLFlow
 mlruns/

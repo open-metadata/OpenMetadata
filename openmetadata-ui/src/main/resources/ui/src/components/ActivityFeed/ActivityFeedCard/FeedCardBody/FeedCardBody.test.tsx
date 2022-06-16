@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findByTestId,
-  findByText,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardBody from './FeedCardBody';
@@ -47,74 +42,7 @@ describe('Test FeedCardBody component', () => {
     });
 
     const messagePreview = await findByText(container, /RichText Preview/i);
-    const deleteButton = await findByTestId(container, 'delete-button');
 
     expect(messagePreview).toBeInTheDocument();
-    expect(deleteButton).toBeInTheDocument();
-  });
-
-  it('Check if FeedCardBody has isAuthor as false', async () => {
-    const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} isAuthor={false} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedCardBody has onConfirmation as undefined', async () => {
-    const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} onConfirmation={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedCardBody has postId as undefined', async () => {
-    const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} postId={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedCardBody has threadId as undefined', async () => {
-    const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} threadId={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedCardBody has postId, threadId and deletePostHandler as undefined and isAuthor as false', async () => {
-    const { container } = render(
-      <FeedCardBody {...mockFeedCardBodyProps} threadId={undefined} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const deleteButton = queryByTestId(container, 'delete-button');
-
-    expect(deleteButton).not.toBeInTheDocument();
   });
 });

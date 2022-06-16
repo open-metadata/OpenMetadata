@@ -225,7 +225,7 @@ public class FeedResource {
           JsonPatch patch)
       throws IOException {
     PatchResponse<Thread> response =
-        dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        dao.patchThread(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
   }
 
@@ -333,7 +333,7 @@ public class FeedResource {
     Thread thread = dao.get(threadId);
     Post post = dao.getPostById(thread, postId);
 
-    PatchResponse<Post> response = dao.patchPost(thread, post, patch);
+    PatchResponse<Post> response = dao.patchPost(thread, post, securityContext.getUserPrincipal().getName(), patch);
     return response.toResponse();
   }
 
