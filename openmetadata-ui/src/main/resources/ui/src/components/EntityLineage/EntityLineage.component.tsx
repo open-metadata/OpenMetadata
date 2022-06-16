@@ -960,6 +960,16 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
+    if (isEditMode) {
+      setNodes((node) => {
+        return node.map((el) => ({ ...el, type: 'default' }));
+      });
+    } else {
+      const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
+      setNodes(node);
+      setEdges(edge);
+    }
+
     resetViewEditState();
   }, [lineageData, isNodeLoading, isEditMode]);
 
