@@ -241,7 +241,7 @@ class MetadataUsageBulkSink(BulkSink):
             [None] * (3 - len(split_table))
         ) + split_table
 
-        table_entities = self.__fetch_table_entity(
+        table_entities = self.__fetch_table_entities(
             database_name=(database_name or database_query),
             database_schema=(database_schema or schema_query),
             table_name=table,
@@ -250,7 +250,7 @@ class MetadataUsageBulkSink(BulkSink):
         if table_entities:
             return table_entities
 
-        table_entities = self.__fetch_table_entity(
+        table_entities = self.__fetch_table_entities(
             database_name=(database_query or database_name),
             database_schema=(schema_query or database_schema),
             table_name=table,
@@ -259,7 +259,7 @@ class MetadataUsageBulkSink(BulkSink):
         if table_entities:
             return table_entities
 
-        table_entities = self.__fetch_table_entity(
+        table_entities = self.__fetch_table_entities(
             database_name=(database_query or database_name).upper(),
             database_schema=(schema_query or database_schema).upper(),
             table_name=table.upper(),
@@ -268,7 +268,7 @@ class MetadataUsageBulkSink(BulkSink):
         if table_entities:
             return table_entities
 
-    def __fetch_table_entity(
+    def __fetch_table_entities(
         self, database_name: str, database_schema: str, table_name: str
     ) -> List[Table]:
 
