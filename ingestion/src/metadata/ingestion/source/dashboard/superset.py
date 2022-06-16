@@ -14,7 +14,7 @@ Superset source module
 
 import json
 import traceback
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import dateutil.parser as dateparser
 
@@ -40,7 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -86,7 +86,7 @@ def get_filter_name(filter_obj):
     return f"{clause} {column} {operator} {comparator}"
 
 
-class SupersetSource(DashboardSourceService):
+class SupersetSource(DashboardServiceSource):
     """
     Superset source class
 
@@ -116,7 +116,6 @@ class SupersetSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.charts = []
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -169,7 +168,9 @@ class SupersetSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
+    def yield_dashboard(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
         """
@@ -178,12 +179,13 @@ class SupersetSource(DashboardSourceService):
             displayName=dashboard_details["dashboard_title"],
             description="",
             dashboardUrl=dashboard_details["url"],
-            charts=get_chart_entities_from_id(
-                chart_ids=self.charts,
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
-            service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
     def _get_charts_of_dashboard(self, dashboard_details: dict) -> List[str]:
@@ -200,10 +202,14 @@ class SupersetSource(DashboardSourceService):
             ]
         return []
 
-    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
+    def yield_dashboard_lineage(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
+        if not self.source_config.dbServiceName:
+            return
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
             datasource_fqn = (
@@ -245,14 +251,32 @@ class SupersetSource(DashboardSourceService):
                 logger.debug(traceback.format_exc())
                 logger.error(err)
 
-    def fetch_dashboard_charts(self, dashboard_details: dict) -> None:
+    def yield_dashboard_chart(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
-        self.charts = []
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
-            yield from self._build_chart(self.all_charts.get(chart_id))
-            self.charts.append(chart_id)
+            chart_json = self.all_charts.get(chart_id)
+            chart_id = chart_json["id"]
+            params = json.loads(chart_json["params"])
+            group_bys = params.get("groupby", []) or []
+            if isinstance(group_bys, str):
+                group_bys = [group_bys]
+
+            chart = CreateChartRequest(
+                name=chart_id,
+                displayName=chart_json["slice_name"],
+                description="",
+                chartType=get_standard_chart_type(chart_json["viz_type"]),
+                chartUrl=chart_json["url"],
+                service=EntityReference(
+                    id=self.context.dashboard_service.id.__root__,
+                    type="dashboardService",
+                ),
+            )
+            yield chart
 
     def _get_datasource_fqn(self, datasource_id: str) -> Optional[str]:
         if not self.source_config.dbServiceName:
@@ -274,21 +298,3 @@ class SupersetSource(DashboardSourceService):
         except KeyError:
             logger.warning(f"Failed to fetch Datasource with id: {datasource_id}")
             return None
-
-    # pylint: disable=too-many-locals
-    def _build_chart(self, chart_json: dict) -> CreateChartRequest:
-        chart_id = chart_json["id"]
-        params = json.loads(chart_json["params"])
-        group_bys = params.get("groupby", []) or []
-        if isinstance(group_bys, str):
-            group_bys = [group_bys]
-
-        chart = CreateChartRequest(
-            name=chart_id,
-            displayName=chart_json["slice_name"],
-            description="",
-            chartType=get_standard_chart_type(chart_json["viz_type"]),
-            chartUrl=chart_json["url"],
-            service=EntityReference(id=self.service.id, type="dashboardService"),
-        )
-        yield chart

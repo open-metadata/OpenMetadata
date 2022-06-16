@@ -12,14 +12,14 @@
 Tableau source module
 """
 import traceback
-from typing import Iterable, List, Optional, Union
+from typing import Iterable, List, Optional
 
-import dateutil.parser as dateparser
 from tableau_api_lib.utils.querying import (
     get_views_dataframe,
     get_workbook_connections_dataframe,
     get_workbooks_dataframe,
 )
+from tableau_api_lib.utils.querying.users import get_all_user_fields
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -49,7 +49,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
@@ -59,7 +59,7 @@ logger = ingestion_logger()
 TABLEAU_TAG_CATEGORY = "TableauTags"
 
 
-class TableauSource(DashboardSourceService):
+class TableauSource(DashboardServiceSource):
     """Tableau source entity class
 
     Args:
@@ -83,9 +83,45 @@ class TableauSource(DashboardSourceService):
     ):
 
         super().__init__(config, metadata_config)
-        self.charts = []
-        self.dashboards = get_workbooks_dataframe(self.client).to_dict()
-        self.all_dashboard_details = get_views_dataframe(self.client).to_dict()
+        self.workbooks = {}
+        self.tags = []
+        self.owner = {}
+
+    def prepare(self):
+        # Restructuring the api response for workbooks
+        workbook_details = get_workbooks_dataframe(self.client).to_dict()
+        for i in range(len(workbook_details.get("id"))):
+            workbook = {
+                key: workbook_details[key][i] for key in workbook_details.keys()
+            }
+            workbook["charts"] = []
+            self.workbooks[workbook_details["id"][i]] = workbook
+
+        # Restructuring the api response for views and attaching views to their respective workbooks
+        all_views_details = get_views_dataframe(self.client).to_dict()
+        for i in range(len(all_views_details.get("id"))):
+            chart = {
+                key: all_views_details[key][i]
+                for key in all_views_details.keys()
+                if key != "workbook"
+            }
+            self.workbooks[all_views_details["workbook"][i]["id"]]["charts"].append(
+                chart
+            )
+
+        # Collecting all view & workbook tags
+        for _, tags in workbook_details.get("tags").items():
+            self.tags.extend([tag["label"] for tag in tags.get("tag", [])])
+
+        for _, tags in all_views_details.get("tags").items():
+            self.tags.extend([tag["label"] for tag in tags.get("tag", [])])
+
+        # Fetch User/Owner Details
+        owner = get_all_user_fields(self.client)
+        self.owner = {user["id"]: user for user in owner}
+        print(self.workbooks)
+
+        return super().prepare()
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -101,11 +137,7 @@ class TableauSource(DashboardSourceService):
         """
         Get List of all dashboards
         """
-        dashboards = [{} for _ in range(len(self.dashboards["id"]))]
-        for key, obj_dicts in self.dashboards.items():
-            for index, value in obj_dicts.items():
-                dashboards[int(index)][key] = value
-        return dashboards
+        return self.workbooks.values()
 
     def get_dashboard_name(self, dashboard_details: dict) -> str:
         """
@@ -119,7 +151,7 @@ class TableauSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_owner(self, owner: dict) -> Optional[EntityReference]:
+    def yield_owner(self, dashboard_details: dict) -> Optional[EntityReference]:
         """Get dashboard owner
 
         Args:
@@ -127,36 +159,29 @@ class TableauSource(DashboardSourceService):
         Returns:
             Optional[EntityReference]
         """
-        try:
-            user_request = CreateUserRequest(
-                name=owner["name"], displayName=owner["fullName"], email=owner["email"]
-            )
-            created_user: User = self.metadata.create_or_update(user_request)
-            return EntityReference(
-                id=created_user.id.__root__,
-                type="user",
-            )
-        except Exception as err:
-            logger.error(err)
+        owner = self.owner[dashboard_details["owner"]["id"]]
+        print(owner["email"])
+        yield CreateUserRequest(
+            name=owner["name"], displayName=owner["fullName"], email=owner["email"]
+        )
 
-    def create_tags(self, entity_tags: dict) -> OMetaTagAndCategory:
+    def yield_tag(self, _) -> OMetaTagAndCategory:
         """
         Fetch Dashboard Tags
         """
-        if entity_tags.get("tag"):
-            for tag in entity_tags["tag"]:
-                tag_category = OMetaTagAndCategory(
-                    category_name=CreateTagCategoryRequest(
-                        name=TABLEAU_TAG_CATEGORY,
-                        description="Tags associates with amundsen entities",
-                        categoryType="Descriptive",
-                    ),
-                    category_details=CreateTagRequest(
-                        name=tag["label"], description="Amundsen Table Tag"
-                    ),
-                )
-                yield tag_category
-            logger.info(f"Tag Category {tag_category}, Primary Tag {tag} Ingested")
+        for tag in self.tags:
+            tag_category = OMetaTagAndCategory(
+                category_name=CreateTagCategoryRequest(
+                    name=TABLEAU_TAG_CATEGORY,
+                    description="Tags associates with tableau entities",
+                    categoryType="Descriptive",
+                ),
+                category_details=CreateTagRequest(name=tag, description="Tableau Tag"),
+            )
+            yield tag_category
+            logger.info(
+                f"Tag Category {TABLEAU_TAG_CATEGORY}, Primary Tag {tag} Ingested"
+            )
 
     def get_tag_lables(self, tags: dict) -> Optional[List[TagLabel]]:
         if tags.get("tag"):
@@ -176,33 +201,37 @@ class TableauSource(DashboardSourceService):
             ]
         return []
 
-    def get_dashboard_entity(
+    def yield_dashboard(
         self, dashboard_details: dict
-    ) -> Union[CreateDashboardRequest, Optional[OMetaTagAndCategory]]:
+    ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
         """
         dashboard_tag = dashboard_details.get("tags")
-        yield from self.create_tags(dashboard_tag)
         yield CreateDashboardRequest(
-            name=dashboard_details.get("name"),
+            name=dashboard_details.get("id"),
             displayName=dashboard_details.get("name"),
             description="",
-            owner=self.get_dashboard_owner(self.owner),
-            charts=get_chart_entities_from_id(
-                chart_ids=self.charts,
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
-            ),
+            owner=self.context.owner,
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
             tags=self.get_tag_lables(dashboard_tag),
             dashboardUrl=dashboard_details.get("webpageUrl"),
-            service=EntityReference(id=self.service.id, type="dashboardService"),
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
+            ),
         )
 
-    def get_lineage(self, dashboard_details: dict) -> Optional[AddLineageRequest]:
+    def yield_dashboard_lineage(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
+        if not self.source_config.dbServiceName:
+            return
         datasource_list = (
             get_workbook_connections_dataframe(self.client, dashboard_details.get("id"))
             .get("datasource_name")
@@ -254,53 +283,37 @@ class TableauSource(DashboardSourceService):
                 logger.debug(traceback.format_exc())
                 logger.error(err)
 
-    def fetch_dashboard_charts(
+    def yield_dashboard_chart(
         self, dashboard_details: dict
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Method to fetch charts linked to dashboard
         """
-        self.charts = []
-        self.chart = None
-        self.owner = None
-        for index in range(len(self.all_dashboard_details["id"])):
+        for chart in dashboard_details.get("charts"):
             try:
-                self.owner = self.all_dashboard_details["owner"][index]
-                self.chart = self.all_dashboard_details["workbook"][index]
-                if self.chart["id"] == dashboard_details.get("id"):
-                    chart_id = self.all_dashboard_details["id"][index]
-                    chart_name = self.all_dashboard_details["name"][index]
-                    if filter_by_chart(
-                        self.source_config.chartFilterPattern, chart_name
-                    ):
-                        self.status.failure(chart_name, "Chart Pattern not allowed")
-                        continue
-                    chart_tags = self.all_dashboard_details["tags"][index]
-                    chart_url = (
-                        f"{self.service_connection.hostPort}"
-                        f"/#/site/{self.service_connection.siteName}/"
-                        f"views/{self.all_dashboard_details['workbook'][index]['name']}/"
-                        f"{self.all_dashboard_details['viewUrlName'][index]}"
-                    )
-                    yield from self.create_tags(chart_tags)
-                    yield CreateChartRequest(
-                        name=chart_id,
-                        displayName=chart_name,
-                        description="",
-                        chartType=get_standard_chart_type(
-                            self.all_dashboard_details["sheetType"][index]
-                        ),
-                        chartUrl=chart_url,
-                        owner=self.get_dashboard_owner(
-                            self.all_dashboard_details["owner"][index]
-                        ),
-                        tags=self.get_tag_lables(chart_tags),
-                        service=EntityReference(
-                            id=self.service.id, type="dashboardService"
-                        ),
-                    )
-                    self.charts.append(chart_id)
-                    self.status.scanned(chart_id)
+                if filter_by_chart(
+                    self.source_config.chartFilterPattern, chart["name"]
+                ):
+                    self.status.failure(chart["name"], "Chart Pattern not allowed")
+                    continue
+                chart_url = (
+                    f"/#/site/{self.service_connection.siteName}/"
+                    f"views/{dashboard_details['name']}/"
+                    f"{chart['viewUrlName']}"
+                )
+                yield CreateChartRequest(
+                    name=chart["id"],
+                    displayName=chart["name"],
+                    description="",
+                    chartType=get_standard_chart_type(chart["sheetType"]),
+                    chartUrl=chart_url,
+                    tags=self.get_tag_lables(chart["tags"]),
+                    service=EntityReference(
+                        id=self.context.dashboard_service.id.__root__,
+                        type="dashboardService",
+                    ),
+                )
+                self.status.scanned(chart["id"])
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)

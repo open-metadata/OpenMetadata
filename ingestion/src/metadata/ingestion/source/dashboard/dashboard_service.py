@@ -13,20 +13,14 @@ Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable, List, Optional
 
-from pydantic import BaseModel
-from sqlalchemy.engine import Inspector
-
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -42,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -50,6 +45,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.connections import get_connection, test_connection
+from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -71,7 +67,14 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=DashboardService,
                 context="dashboard_service",
                 processor="yield_dashboard_service",
-            )
+            ),
+            NodeStage(
+                type_=OMetaTagAndCategory,
+                context="tags",
+                processor="yield_tag",
+                ack_sink=False,
+                nullable=True,
+            ),
         ],
         children=["dashboard"],
     )
@@ -80,25 +83,31 @@ class DashboardServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=Chart,
-                context="dashboard_chart",
+                context="charts",
                 processor="yield_dashboard_chart",
                 consumer=["dashboard_service"],
+                nullable=True,
+                cache_all=True,
+            ),
+            NodeStage(
+                type_=CreateUserRequest,
+                context="owner",
+                processor="yield_owner",
                 nullable=True,
             ),
             NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
-                consumer=["dashboard_service", "dashboard_chart"],
+                consumer=["dashboard_service"],
             ),
             NodeStage(
                 type_=AddLineageRequest,
-                context="dashboard_lineage",
-                processor="yield_dashboard_chart",
-                consumer=["dashboard_service", "dashboard_chart", "dashboard"],
+                context="lineage",
+                processor="yield_dashboard_lineage",
+                consumer=["dashboard_service"],
                 ack_sink=False,
                 nullable=True,
-                cache_all=True,
             ),
         ],
     )
@@ -126,9 +135,33 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     @abstractmethod
-    def get_dashboard(self) -> Any:
+    def yield_dashboard(
+        self, dashboard_details: Any
+    ) -> Iterable[CreateDashboardRequest]:
         """
-        Get dashboard details
+        Method to Get Dashboard Entity
+        """
+
+    @abstractmethod
+    def yield_dashboard_lineage(
+        self, dashboard_details: Any
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        Get lineage between dashboard and data sources
+        """
+
+    @abstractmethod
+    def yield_dashboard_chart(
+        self, dashboard_details: Any
+    ) -> Optional[Iterable[CreateChartRequest]]:
+        """
+        Method to fetch charts linked to dashboard
+        """
+
+    @abstractmethod
+    def get_dashboards_list(self) -> Optional[List[Any]]:
+        """
+        Get List of all dashboards
         """
 
     @abstractmethod
@@ -142,6 +175,18 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Get Dashboard Details
         """
+
+    def yield_tag(self, *args, **kwargs) -> Optional[Iterable[OMetaTagAndCategory]]:
+        """
+        Method to fetch dashboard tags
+        """
+        return  # Dashboard does not supports fetching tags except Tableau
+
+    def yield_owner(self, *args, **kwargs) -> Optional[CreateUserRequest]:
+        """
+        Method to fetch dashboard owner
+        """
+        return  # Dashboard does not supports fetching owner details except Tableau
 
     status: DashboardSourceStatus
     source_config: DashboardServiceMetadataPipeline
@@ -169,11 +214,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         )
         self.connection = get_connection(self.service_connection)
         self.test_connection()
+        self.status = DashboardSourceStatus()
 
         self.client = self.connection.client
-        self.service = self.metadata.get_service_or_create(
-            entity=DashboardService, config=config
-        )
         self.metadata_client = OpenMetadata(self.metadata_config)
 
     def get_status(self) -> SourceStatus:
@@ -181,6 +224,28 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         pass
+
+    def get_services(self) -> Iterable[WorkflowSource]:
+        yield self.config
+
+    def yield_dashboard_service(self, config: WorkflowSource):
+        yield self.metadata.get_create_service_from_source(
+            entity=DashboardService, config=config
+        )
+
+    def get_dashboard(self) -> Any:
+        for dashboard in self.get_dashboards_list():
+            dashboard_details = self.get_dashboard_details(dashboard)
+            if filter_by_dashboard(
+                self.source_config.dashboardFilterPattern,
+                self.get_dashboard_name(dashboard_details),
+            ):
+                self.status.filter(
+                    self.get_dashboard_name(dashboard),
+                    "Dashboard Pattern not Allowed",
+                )
+                continue
+            yield dashboard_details
 
     def test_connection(self) -> None:
         test_connection(self.connection)
