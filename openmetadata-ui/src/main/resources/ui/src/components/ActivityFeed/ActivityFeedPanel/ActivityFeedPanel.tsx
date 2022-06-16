@@ -84,7 +84,8 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
           }
-        )}>
+        )}
+        id="feed-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}

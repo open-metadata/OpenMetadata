@@ -627,3 +627,7 @@ export const getExploreLinkByFilter = (
     `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
   );
 };
+
+export const replaceSpaceWith_ = (text: string) => {
+  return text.replace(/\s/g, '_');
+};

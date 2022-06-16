@@ -86,12 +86,12 @@ const ActivityThread: FC<ActivityThreadProp> = ({
             ))}
           </div>
         ) : null}
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-my-6"
-          onSave={postFeed}
-        />
       </div>
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2 tw-my-6"
+        onSave={postFeed}
+      />
     </Fragment>
   );
 };

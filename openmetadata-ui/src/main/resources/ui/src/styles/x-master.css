@@ -1006,7 +1006,7 @@ code {
 .ant-btn-popover-reaction {
   height: auto;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   background-color: transparent;
 }
@@ -1031,9 +1031,6 @@ code {
   background-color: #7147e860;
 }
 
-.ant-popover-inner-content {
-  padding: 8px;
-}
 /* Reaction CSS End */
 .ant-advaced-field-select {
   color: #7147e8;
@@ -1069,3 +1066,24 @@ code {
 .description {
   word-break: break-all;
 }
+
+/* Feed popover CSS start */
+
+.ant-popover-inner-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
+  display: none;
+}
+.ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
+  border-radius: 6px;
+  border: 1px solid #dde3ea;
+}
+
+/* Feed popover CSS end */
