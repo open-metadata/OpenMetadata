@@ -480,7 +480,7 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             if err.status_code == 404:
-                logger.info(
+                logger.debug(
                     "GET %s for %s. HTTP %s - %s",
                     entity.__name__,
                     path,
