@@ -23,6 +23,7 @@ jest.mock('../../../AppState', () => ({
   },
   users: [{ name: '' }],
   getCurrentUserDetails: jest.fn(),
+  isProfilePicLoading: jest.fn(),
 }));
 
 jest.mock('../../../hooks/authHooks', () => ({
@@ -57,6 +58,7 @@ const mockFeedCardProps = {
   isFooterVisible: false,
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
+  onReply: jest.fn(),
 };
 
 describe('Test ActivityFeedCard Component', () => {
