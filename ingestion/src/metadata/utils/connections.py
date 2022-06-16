@@ -692,7 +692,7 @@ def _(connection: ModeConnection, verbose: bool = False):
 @test_connection.register
 def _(connection: ModeClient) -> None:
     try:
-        print("TESTING MODE CONNECTION")
+        connection.client.get_user_account()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

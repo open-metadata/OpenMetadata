@@ -46,7 +46,7 @@ class ModeApiClient:
         self.client = REST(client_config)
 
     def fetch_all_reports(self, workspace_name: str) -> list:
-        """Get charts method
+        """Method to fetch all reports for Mode
         Args:
             workspace_name:
         Returns:
@@ -58,7 +58,8 @@ class ModeApiClient:
             collections = response_collections["_embedded"]["spaces"]
             for collection in collections:
                 response_reports = self.get_all_reports_for_collection(
-                    workspace_name=workspace_name, collection_token=collection["token"]
+                    workspace_name=workspace_name,
+                    collection_token=collection.get("token"),
                 )
                 reports = response_reports["_embedded"]["reports"]
                 all_reports.extend(reports)
@@ -70,7 +71,7 @@ class ModeApiClient:
     def get_all_reports_for_collection(
         self, workspace_name: str, collection_token: str
     ) -> dict:
-        """Get charts method
+        """Method to fetch all reports for a collection
         Args:
             workspace_name:
             collection_token:
@@ -87,7 +88,7 @@ class ModeApiClient:
             logger.debug(traceback.format_exc())
 
     def get_all_queries(self, workspace_name: str, report_token: str) -> dict:
-        """Get charts method
+        """Method to fetch all queries
         Args:
             workspace_name:
             report_token:
@@ -106,7 +107,7 @@ class ModeApiClient:
     def get_all_charts(
         self, workspace_name: str, report_token: str, query_token: str
     ) -> dict:
-        """Get charts method
+        """Method to fetch all charts
         Args:
             workspace_name:
             report_token:
@@ -118,6 +119,43 @@ class ModeApiClient:
             response = self.client.get(
                 f"/{workspace_name}/reports/{report_token}/queries/{query_token}/charts"
             )
+            return response
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(err)
+            logger.debug(traceback.format_exc())
+
+    def get_all_data_sources(self, workspace_name: str) -> dict:
+        """Method to get all data sources
+        Args:
+            workspace_name:
+        Returns:
+            dict
+        """
+        try:
+            all_data_sources = {}
+            response_data_sources = self.client.get(f"/{workspace_name}/data_sources")
+            data_sources = response_data_sources["_embedded"]["data_sources"]
+            for data_source in data_sources:
+                if data_source.get("id"):
+                    data_source_dict = {
+                        "token": data_source.get("token"),
+                        "name": data_source.get("name"),
+                        "database": data_source.get("database"),
+                    }
+                    all_data_sources[data_source.get("id")] = data_source_dict
+
+            return all_data_sources
+        except Exception as err:  # pylint: disable=broad-except
+            logger.error(err)
+            logger.debug(traceback.format_exc())
+
+    def get_user_account(self) -> dict:
+        """Method to fetch account details
+        Returns:
+            dict
+        """
+        try:
+            response = self.client.get(f"/account")
             return response
         except Exception as err:  # pylint: disable=broad-except
             logger.error(err)

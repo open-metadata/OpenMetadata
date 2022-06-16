@@ -9,7 +9,18 @@ source:
       type: Mode
   sourceConfig:
     config:
-      dashboardFilterPattern: {}
+      chartFilterPattern:
+        includes:
+          - Gross Margin %
+          - Total Defect*
+          - "Number"
+        excludes:
+          - Total Revenue
+      dashboardFilterPattern:
+        includes:
+          - Supplier Quality Analysis Sample
+          - "Customer"
+      dbServiceName: local_redshift
 sink:
   type: metadata-rest
   config: {}
