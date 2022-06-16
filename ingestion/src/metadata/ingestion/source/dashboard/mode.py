@@ -13,7 +13,7 @@
 import traceback
 from typing import Any, Iterable, List, Optional
 
-from sql_metadata import Parser
+from sqllineage.runner import LineageRunner
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -39,6 +39,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_chart_entities_from_id
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.mode_client import ModeConstants
 from metadata.utils.sql_lineage import search_table_entities
 
 logger = ingestion_logger()
@@ -62,8 +63,7 @@ class ModeSource(DashboardSourceService):
     ):
         super().__init__(config, metadata_config)
         self.charts = []
-        self.workspace_name = config.serviceConnection.__root__.config.workspace_name
-        self.base_url = "https://app.mode.com"
+        self.workspace_name = config.serviceConnection.__root__.config.workspaceName
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
@@ -94,7 +94,7 @@ class ModeSource(DashboardSourceService):
         """
         Get Dashboard Name
         """
-        return dashboard_details.get("name")
+        return dashboard_details.get(ModeConstants.NAME.value)
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """
@@ -107,12 +107,13 @@ class ModeSource(DashboardSourceService):
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
         yield CreateDashboardRequest(
-            name=dashboard_details.get("token"),
-            # Mode has no hostPort property. All URL details are present in the webUrl property.
-            dashboardUrl=dashboard_details["_links"]["web"]["href"],
-            displayName=dashboard_details.get("name"),
-            description=dashboard_details.get("description")
-            if dashboard_details.get("description")
+            name=dashboard_details.get(ModeConstants.TOKEN.value),
+            dashboardUrl=dashboard_details[ModeConstants.LINKS.value][
+                ModeConstants.WEB.value
+            ][ModeConstants.HREF.value],
+            displayName=dashboard_details.get(ModeConstants.NAME.value),
+            description=dashboard_details.get(ModeConstants.DESCRIPTION.value)
+            if dashboard_details.get(ModeConstants.DESCRIPTION.value)
             else "",
             charts=get_chart_entities_from_id(
                 chart_ids=self.charts,
@@ -129,24 +130,29 @@ class ModeSource(DashboardSourceService):
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,
-                report_token=dashboard_details["token"],
+                report_token=dashboard_details[ModeConstants.TOKEN.value],
             )
-            queries = response_queries["_embedded"]["queries"]
+            queries = response_queries[ModeConstants.EMBEDDED.value][
+                ModeConstants.QUERIES.value
+            ]
             for query in queries:
                 data_source_id = query.get("data_source_id")
                 if not data_source_id:
                     continue
                 data_source = self.data_sources.get(data_source_id)
-                table_list = Parser(query.get("raw_query"))
                 if not data_source:
                     continue
-                for table in table_list.tables:
-                    database_schema_name = None
-                    if "." in table:
-                        database_schema_name, table = fqn.split(table)[-2:]
+                table_list = LineageRunner(query.get("raw_query"))
+                for table in table_list.source_tables:
+                    database_schema_name, table = fqn.split(str(table))[-2:]
+                    database_schema_name = (
+                        None
+                        if database_schema_name == "<default>"
+                        else database_schema_name
+                    )
                     from_entities = search_table_entities(
                         metadata=self.metadata,
-                        database=data_source.get("database"),
+                        database=data_source.get(ModeConstants.DATABASE.value),
                         service_name=self.source_config.dbServiceName,
                         database_schema=database_schema_name,
                         table=table,
@@ -158,7 +164,9 @@ class ModeSource(DashboardSourceService):
                                 self.metadata,
                                 Lineage_Dashboard,
                                 service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details.get("token"),
+                                dashboard_name=dashboard_details.get(
+                                    ModeConstants.TOKEN.value
+                                ),
                             ),
                         )
                         if from_entity and to_entity:
@@ -189,33 +197,42 @@ class ModeSource(DashboardSourceService):
         self.charts = []
         response_queries = self.client.get_all_queries(
             workspace_name=self.workspace_name,
-            report_token=dashboard_details.get("token"),
+            report_token=dashboard_details.get(ModeConstants.TOKEN.value),
         )
-        queries = response_queries["_embedded"]["queries"]
+        queries = response_queries[ModeConstants.EMBEDDED.value][
+            ModeConstants.QUERIES.value
+        ]
         for query in queries:
             response_charts = self.client.get_all_charts(
                 workspace_name=self.workspace_name,
-                report_token=dashboard_details.get("token"),
-                query_token=query.get("token"),
+                report_token=dashboard_details.get(ModeConstants.TOKEN.value),
+                query_token=query.get(ModeConstants.TOKEN.value),
             )
-            charts = response_charts["_embedded"]["charts"]
+            charts = response_charts[ModeConstants.EMBEDDED.value][
+                ModeConstants.CHARTS.value
+            ]
             for chart in charts:
                 try:
                     if filter_by_chart(
                         self.source_config.chartFilterPattern,
-                        chart["view_vegas"]["title"],
+                        chart[ModeConstants.VIEW_VEGAS.value][
+                            ModeConstants.TITLE.value
+                        ],
                     ):
                         self.status.filter(
-                            chart["view_vegas"]["title"], "Chart Pattern not Allowed"
+                            chart[ModeConstants.VIEW_VEGAS][ModeConstants.TITLE],
+                            "Chart Pattern not Allowed",
                         )
                         continue
                     chart_url = (
-                        f"{self.base_url}"
-                        f"{chart['_links']['report_viz_web']['href']}"
+                        f"{ModeConstants.BASE_URL.value}"
+                        f"{chart[ModeConstants.LINKS.value]['report_viz_web'][ModeConstants.HREF.value]}"
                     )
                     yield CreateChartRequest(
-                        name=chart.get("token"),
-                        displayName=chart["view_vegas"]["title"],
+                        name=chart.get(ModeConstants.TOKEN.value),
+                        displayName=chart[ModeConstants.VIEW_VEGAS.value][
+                            ModeConstants.TITLE.value
+                        ],
                         description="",
                         chartType=ChartType.Other.value,
                         chartUrl=chart_url,
@@ -223,9 +240,16 @@ class ModeSource(DashboardSourceService):
                             id=self.service.id, type="dashboardService"
                         ),
                     )
-                    self.charts.append(chart.get("token"))
-                    self.status.scanned(chart["view_vegas"]["title"])
+                    self.charts.append(chart.get(ModeConstants.TOKEN.value))
+                    self.status.scanned(
+                        chart[ModeConstants.VIEW_VEGAS.value][ModeConstants.TITLE.value]
+                    )
                 except Exception as err:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.error(err)
-                    self.status.failure(chart["view_vegas"]["title"], repr(err))
+                    self.status.failure(
+                        chart[ModeConstants.VIEW_VEGAS.value][
+                            ModeConstants.TITLE.value
+                        ],
+                        repr(err),
+                    )

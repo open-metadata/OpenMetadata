@@ -20,18 +20,18 @@
       "$ref": "#/definitions/modeType",
       "default": "Mode"
     },
-    "access_token": {
+    "accessToken": {
       "title": "Access Token",
       "description": "Access Token for Mode Dashboard",
       "type": "string"
     },
-    "access_token_password": {
+    "accessTokenPassword": {
       "title": "Access Token Password",
       "description": "Access Token Password for Mode Dashboard",
       "type": "string",
       "format": "password"
     },
-    "workspace_name": {
+    "workspaceName": {
       "title": "Workspace Name",
       "description": "Mode Workspace Name",
       "type": "string"
@@ -42,5 +42,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["access_token", "access_token_password", "workspace_name"]
+  "required": ["accessToken", "accessTokenPassword", "workspaceName"]
 }
