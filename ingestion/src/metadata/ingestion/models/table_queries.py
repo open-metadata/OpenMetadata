@@ -27,10 +27,11 @@ class TableQuery(JsonSerializable):
         starttime: str,
         endtime: str,
         analysis_date: str,
-        database: str,
+        database: Optional[str],
         aborted: bool,
         sql: str,
         service_name: str,
+        schema_name: Optional[str] = None,
     ) -> None:
         """ """
         self.query = query
@@ -39,6 +40,7 @@ class TableQuery(JsonSerializable):
         self.endtime = endtime
         self.analysis_date = analysis_date
         self.database = database
+        self.schema_name = schema_name
         self.aborted = aborted
         self.sql = sql
         self.service_name = service_name
@@ -61,7 +63,7 @@ class TableUsageCount(BaseModel):
     table: str
     date: str
     database: str
-    database_schema: Optional[str]
+    schema_name: Optional[str] = None
     sql_queries: List[SqlQuery]
     count: int = 1
     joins: TableColumnJoins
@@ -70,10 +72,10 @@ class TableUsageCount(BaseModel):
 
 class QueryParserData(BaseModel):
     tables: List[str]
-    tables_aliases: Dict[str, str]
-    columns: Dict[str, List[object]]
+    joins: Dict[str, List[TableColumnJoin]]
     date: str
     database: str
+    schema_name: Optional[str] = None
     sql: str
     service_name: str
 

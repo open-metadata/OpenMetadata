@@ -13,10 +13,9 @@ Snowflake usage module
 """
 
 import traceback
-from datetime import timedelta
-from typing import Any, Dict, Iterable, Iterator, Union
+from typing import Iterable, Iterator, Union
 
-from sqlalchemy import inspect
+from sqlalchemy.engine import Row
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
@@ -32,8 +31,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
-
-# This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.source.usage_source import UsageSource
 from metadata.utils.connections import get_connection
@@ -60,8 +57,10 @@ class SnowflakeUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(self.config.sourceConfig.config.queryLogDuration)
-        end = end + timedelta(days=1)
+        # Snowflake allows retrieving data as far as 7 days, counting today
+        start, end = get_start_and_end(
+            min(self.config.sourceConfig.config.queryLogDuration, 6)
+        )
         self.analysis_date = start
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=start,
@@ -81,7 +80,7 @@ class SnowflakeUsageSource(UsageSource):
             )
         return cls(config, metadata_config)
 
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
+    def _get_raw_extract_iter(self) -> Iterable[Row]:
         if self.config.serviceConnection.__root__.config.database:
             yield from super(SnowflakeUsageSource, self)._get_raw_extract_iter()
         else:
@@ -114,11 +113,15 @@ class SnowflakeUsageSource(UsageSource):
                     analysis_date=self.analysis_date,
                     aborted="1969" in str(row["end_time"]),
                     database=row["database_name"],
+                    schema_name=row["schema_name"],
                     sql=row["query_text"],
                     service_name=self.config.serviceName,
                 )
                 if not row["database_name"] and self.connection.database:
-                    TableQuery.database = self.connection.database
+                    logger.debug(
+                        f"Query {table_query.sql} has no database informed. Skipping."
+                    )
+                    continue
                 logger.debug(f"Parsed Query: {row['query_text']}")
                 if row["schema_name"] is not None:
                     self.report.scanned(f"{row['database_name']}.{row['schema_name']}")

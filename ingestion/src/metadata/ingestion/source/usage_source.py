@@ -86,13 +86,14 @@ class UsageSource(Source[TableQuery]):
                 analysis_date=self.analysis_date,
                 aborted=row["aborted"],
                 database=row["database_name"],
+                schema_name=row["schema_name"],
                 sql=row["query_text"],
                 service_name=self.config.serviceName,
             )
             if not row["schema_name"]:
-                self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
-            else:
                 self.report.scanned(f"{row['database_name']}")
+            else:
+                self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
             yield table_query
 
     def get_report(self):
