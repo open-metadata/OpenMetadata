@@ -160,9 +160,6 @@ class MetadataUsageBulkSink(BulkSink):
             )
 
             if not table_entities:
-                import pdb
-
-                pdb.set_trace()
                 logger.warning(
                     f"Could not fetch table {table_usage.databaseName}.{table_usage.schemaName}.{table_usage.table}"
                 )
@@ -191,9 +188,6 @@ class MetadataUsageBulkSink(BulkSink):
                             )
                         )
                 else:
-                    import pdb
-
-                    pdb.set_trace()
                     logger.warning(
                         "Table does not exist, skipping usage publish {}, {}".format(
                             table_usage.table, table_usage.databaseName
