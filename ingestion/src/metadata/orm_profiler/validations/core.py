@@ -44,8 +44,14 @@ from metadata.orm_profiler.validations.column.column_values_to_be_unique import 
 from metadata.orm_profiler.validations.column.column_values_to_match_regex import (
     column_values_to_match_regex,
 )
+from metadata.orm_profiler.validations.table.table_column_count_to_be_between import (
+    table_column_count_to_be_between,
+)
 from metadata.orm_profiler.validations.table.table_column_count_to_equal import (
     table_column_count_to_equal,
+)
+from metadata.orm_profiler.validations.table.table_column_to_match_set import (
+    table_column_to_match_set,
 )
 from metadata.orm_profiler.validations.table.table_row_count_to_be_between import (
     table_row_count_to_be_between,
@@ -74,6 +80,8 @@ def validate(test_case, **__) -> TestCaseResult:
 validate.register(table_row_count_to_equal)
 validate.register(table_row_count_to_be_between)
 validate.register(table_column_count_to_equal)
+validate.register(table_column_count_to_be_between)
+validate.register(table_column_to_match_set)
 
 # Column Tests
 validate.register(column_values_to_be_between)
