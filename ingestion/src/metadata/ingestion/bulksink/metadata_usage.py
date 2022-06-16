@@ -83,7 +83,7 @@ class MetadataUsageBulkSink(BulkSink):
 
             self.service_name = table_usage.service_name
 
-            table_entities = self.__get_table_entity(
+            table_entities = self.__get_table_entities(
                 table_usage.database,
                 table_usage.schema_name,
                 table_usage.table,
@@ -217,7 +217,7 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_column_fqdn(
         self, database: str, database_schema: str, table_column: TableColumn
     ):
-        table_entities = self.__get_table_entity(
+        table_entities = self.__get_table_entities(
             database, database_schema, table_column.table
         )
         if not table_entities:
@@ -227,7 +227,7 @@ class MetadataUsageBulkSink(BulkSink):
                 if table_column.column.lower() == tbl_column.name.__root__.lower():
                     return tbl_column.fullyQualifiedName.__root__.__root__
 
-    def __get_table_entity(
+    def __get_table_entities(
         self, database_name: str, database_schema: str, table_name: str
     ) -> List[Table]:
 
