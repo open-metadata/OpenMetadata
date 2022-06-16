@@ -11,10 +11,10 @@
 
 import logging
 import traceback
+from logging.config import DictConfigurator
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
-from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -60,6 +60,15 @@ from metadata.utils.sql_lineage import (
     _create_lineage_by_table_name,
     ingest_lineage_by_query,
 )
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
 
 logger = ingestion_logger()
 
@@ -577,10 +586,10 @@ class MetadataRestSink(Sink[Entity]):
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
         try:
-            parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
+            parser = LineageRunner(db_schema_and_table.table.viewDefinition.__root__)
             to_table_name = db_schema_and_table.table.name.__root__
 
-            for from_table_name in parser.tables:
+            for from_table_name in parser.source_tables:
                 if "." not in from_table_name:
                     from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
                 _create_lineage_by_table_name(

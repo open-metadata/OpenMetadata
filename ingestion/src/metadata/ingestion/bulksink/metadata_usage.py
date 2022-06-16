@@ -11,7 +11,7 @@
 
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -30,8 +30,6 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
-from metadata.utils.helpers import get_formatted_entity_name
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     get_column_fqn,
@@ -98,7 +96,7 @@ class MetadataUsageBulkSink(BulkSink):
                 "usage_count": table_usage.count,
                 "sql_queries": table_usage.sqlQueries,
                 "usage_date": table_usage.date,
-                "database": table_usage.database,
+                "database": table_usage.databaseName,
                 "database_schema": table_usage.databaseSchema,
             }
         else:
@@ -147,29 +145,30 @@ class MetadataUsageBulkSink(BulkSink):
                     "Table: {}".format(value_dict["table_entity"].name.__root__)
                 )
 
+    # Check here how to properly pick up ES and/or table query data
     def write_records(self) -> None:
         for usage_record in self.file_handler.readlines():
             record = json.loads(usage_record)
             table_usage = TableUsageCount(**json.loads(record))
+
             self.service_name = table_usage.serviceName
-            if "." in table_usage.table:
-                databaseSchema, table = fqn.split(table_usage.table)[-2:]
-                table_usage.table = table
-                if not table_usage.databaseSchema:
-                    table_usage.databaseSchema = databaseSchema
-            table_usage.database = get_formatted_entity_name(table_usage.database)
-            table_usage.databaseSchema = get_formatted_entity_name(
-                table_usage.databaseSchema
-            )
-            table_usage.table = get_formatted_entity_name(table_usage.table)
-            table_entities = search_table_entities(
-                self.metadata,
-                table_usage.serviceName,
-                table_usage.database,
-                table_usage.databaseSchema,
+
+            table_entities = self._get_table_entities(
+                table_usage.databaseName,
+                table_usage.schemaName,
                 table_usage.table,
             )
-            for table_entity in table_entities or []:
+
+            if not table_entities:
+                import pdb
+
+                pdb.set_trace()
+                logger.warning(
+                    f"Could not fetch table {table_usage.databaseName}.{table_usage.schemaName}.{table_usage.table}"
+                )
+                continue
+
+            for table_entity in table_entities:
                 if table_entity is not None:
                     self.__populate_table_usage_map(
                         table_usage=table_usage, table_entity=table_entity
@@ -192,9 +191,12 @@ class MetadataUsageBulkSink(BulkSink):
                             )
                         )
                 else:
+                    import pdb
+
+                    pdb.set_trace()
                     logger.warning(
                         "Table does not exist, skipping usage publish {}, {}".format(
-                            table_usage.table, table_usage.database
+                            table_usage.table, table_usage.databaseName
                         )
                     )
                     self.status.warnings.append(f"Table: {table_usage.table}")
@@ -225,7 +227,7 @@ class MetadataUsageBulkSink(BulkSink):
 
             for column in column_join.joinedWith:
                 joined_column_fqn = self.__get_column_fqn(
-                    table_usage.database, table_usage.databaseSchema, column
+                    table_usage.databaseName, table_usage.databaseSchema, column
                 )
                 if str(joined_column_fqn) in joined_with.keys():
                     column_joined_with = joined_with[str(joined_column_fqn)]
@@ -253,9 +255,7 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to get column fqn
         """
-        table_entities = search_table_entities(
-            self.metadata,
-            self.service_name,
+        table_entities = self._get_table_entities(
             database,
             database_schema,
             table_column.table,
@@ -265,6 +265,63 @@ class MetadataUsageBulkSink(BulkSink):
 
         for table_entity in table_entities:
             return get_column_fqn(table_entity, table_column.column)
+
+    def _get_table_entities(
+        self, database_name: str, database_schema: str, table_name: str
+    ) -> Optional[List[Table]]:
+        """
+        Tries 3 different ES queries to pick up the data:
+            1. Uses the data from tableUsage for db and schema info
+            2. Uses the data, if exists, from the table name in the query about db and schema
+            3. Tries to use the table data info in uppercase
+        :param database_name: table usage informed database
+        :param database_schema: table usage informed schema
+        :param table_name: query table name. Could be `table` or `schema.table` or `db.schema.table`.
+        :return: Tables matching the criteria, if any
+        """
+
+        split_table = table_name.split(".")
+        empty_list: List[Any] = [
+            None
+        ]  # Otherwise, there's a typing error in the concat
+
+        database_query, schema_query, table = (
+            empty_list * (3 - len(split_table))
+        ) + split_table
+
+        table_entities = search_table_entities(
+            metadata=self.metadata,
+            service_name=self.service_name,
+            database=(database_name or database_query),
+            database_schema=(database_schema or schema_query),
+            table=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+        table_entities = search_table_entities(
+            metadata=self.metadata,
+            service_name=self.service_name,
+            database=(database_query or database_name),
+            database_schema=(schema_query or database_schema),
+            table=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+        # Handle snowflake having uppercase and LineageRunner storing in lowercase
+        table_entities = search_table_entities(
+            metadata=self.metadata,
+            service_name=self.service_name,
+            database=(database_query or database_name).upper(),
+            database_schema=(schema_query or database_schema).upper(),
+            table=table.upper(),
+        )
+
+        if table_entities:
+            return table_entities
 
     def get_status(self):
         return self.status

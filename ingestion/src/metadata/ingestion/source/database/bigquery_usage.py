@@ -106,7 +106,7 @@ class BigqueryUsageSource(UsageSource):
                             endTime=str(jobStats["endTime"]),
                             analysisDate=analysis_date,
                             aborted=0,
-                            database=str(database),
+                            databaseName=str(database),
                             serviceName=self.config.serviceName,
                             databaseSchema=None,
                         )

@@ -16,7 +16,8 @@
           "description": "Name of the column",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "tableColumnJoin": {
       "type": "object",
@@ -32,7 +33,8 @@
             "$ref": "#/definitions/tableColumn"
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -44,8 +46,12 @@
       "description": "Date of execution of SQL query",
       "type": "string"
     },
-    "database": {
-      "description": "Database of the associated with table",
+    "databaseName": {
+      "description": "Database associated with the table in the query",
+      "type": "string"
+    },
+    "schemaName": {
+      "description": "Schema associated with the table in the query",
       "type": "string"
     },
     "count": {
@@ -76,6 +82,6 @@
       "type": "string"
     }
   },
-  "required": ["tableName", "date", "database", "serviceName"],
+  "required": ["tableName", "date", "databaseName", "serviceName"],
   "additionalProperties": false
 }

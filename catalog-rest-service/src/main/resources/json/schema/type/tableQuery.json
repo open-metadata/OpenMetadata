@@ -33,9 +33,14 @@
       "description": "Name that identifies this database service.",
       "type": "string"
     },
-    "database": {
-      "description": "Database of the associated with query",
+    "databaseName": {
+      "description": "Database associated with the table in the query",
       "type": "string"
+    },
+    "schemaName": {
+      "description": "Schema associated with the table in the query",
+      "type": "string",
+      "default": null
     },
     "databaseSchema": {
       "description": "Database schema of the associated with query",

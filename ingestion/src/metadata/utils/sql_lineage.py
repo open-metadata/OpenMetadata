@@ -61,7 +61,9 @@ def search_table_entities(
     table: str,
 ) -> Optional[List[Table]]:
     """
-    Method to get table entity from database, database_schema & table name
+    Method to get table entity from database, database_schema & table name.
+    It uses ES to build the FQN if we miss some info and will run
+    a request against the API to find the Entity.
     """
     try:
         table_fqns = fqn.build(
@@ -73,13 +75,11 @@ def search_table_entities(
             table_name=table,
             fetch_multiple_entities=True,
         )
-        table_entities = []
+        table_entities: Optional[List[Table]] = []
         for table_fqn in table_fqns or []:
-            try:
-                table_entity = metadata.get_by_name(Table, fqn=table_fqn)
+            table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
+            if table_entity:
                 table_entities.append(table_entity)
-            except APIError:
-                logger.debug(f"Table not found for fqn: {fqn}")
         return table_entities
     except Exception as err:
         logger.debug(traceback.format_exc())

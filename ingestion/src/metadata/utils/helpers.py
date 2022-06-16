@@ -67,7 +67,8 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Add one day to make sure we are handling today's queries
+    end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -207,8 +208,11 @@ def datetime_to_ts(date: datetime) -> int:
 
 
 def get_formatted_entity_name(name: str) -> Optional[str]:
-    if name:
-        return name.replace("[", "").replace("]", "")
+    return (
+        name.replace("[", "").replace("]", "").replace("<default>.", "")
+        if name
+        else None
+    )
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
@@ -255,3 +259,14 @@ def get_chart_entities_from_id(
             entity = EntityReference(id=chart.id, type="chart")
             entities.append(entity)
     return entities
+
+
+def find_in_list(element: Any, container: Iterable[Any]) -> Optional[Any]:
+    """
+    If the element is in the container, return it.
+    Otherwise, return None
+    :param element: to find
+    :param container: container with element
+    :return: element or None
+    """
+    return next(iter([elem for elem in container if elem == element]), None)

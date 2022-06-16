@@ -13,6 +13,7 @@ Usage Souce Module
 """
 import csv
 import traceback
+from abc import ABC
 from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -34,7 +35,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class UsageSource(Source[TableQuery]):
+class UsageSource(Source[TableQuery], ABC):
+
+    sql_stmt: str
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
@@ -107,7 +111,7 @@ class UsageSource(Source[TableQuery]):
             if table_query:
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_name=table_query.database,
+                    database_name=table_query.databaseName,
                 ):
                     continue
                 if filter_by_schema(
@@ -121,10 +125,10 @@ class UsageSource(Source[TableQuery]):
                     logger.debug(f"Parsed Query: {table_query.query}")
                     if not table_query.databaseSchema:
                         self.report.scanned(
-                            f"{table_query.database}.{table_query.databaseSchema}"
+                            f"{table_query.databaseName}.{table_query.databaseSchema}"
                         )
                     else:
-                        self.report.scanned(f"{table_query.database}")
+                        self.report.scanned(f"{table_query.databaseName}")
                     yield table_query
                 except Exception as err:
                     logger.debug(traceback.format_exc())

@@ -98,7 +98,8 @@ class SnowflakeUsageSource(UsageSource):
                         endTime=str(row["end_time"]),
                         analysisDate=self.analysis_date,
                         aborted=self.get_aborted_status(row),
-                        database=self.get_database_name(row),
+                        databaseName=self.get_database_name(row),
+                        schemaName=row["schema_name"],
                         serviceName=self.config.serviceName,
                         databaseSchema=row["schema_name"],
                     )

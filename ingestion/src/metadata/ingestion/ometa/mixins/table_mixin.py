@@ -137,6 +137,11 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_join_request: Join data to add
         """
+
+        print("PUBLISHING JOINS")
+        print(table.fullyQualifiedName)
+        print(table_join_request)
+
         logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
