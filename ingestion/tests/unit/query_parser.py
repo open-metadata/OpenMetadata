@@ -92,14 +92,6 @@ class QueryParserTests(TestCase):
         )
 
         self.assertEqual(
-            joins["db.grault"][0],
-            TableColumnJoin(
-                table_column=TableColumn(table="db.grault", column="col1"),
-                joined_with=[TableColumn(table="foo", column="col1")],
-            ),
-        )
-
-        self.assertEqual(
             joins["foo"],
             [
                 TableColumnJoin(
