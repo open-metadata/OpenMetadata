@@ -38,8 +38,9 @@ class ProfilerDef(BaseModel):
     # custom_metrics: List[CustomMetricDef] = None
     # rule_metrics: ...
 
+    # pylint: disable=no-self-argument
     @validator("metrics", each_item=True)
-    def valid_metric(cls, value):  # pylint: disable=no-self-argument,no-self-use
+    def valid_metric(cls, value):
         """
         We are using cls as per pydantic docs
 

@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  EntityThread,
-  FormatedTableData,
-  SearchDataFunctionType,
-} from 'Models';
+import { FormatedTableData, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface MyDataProps {
   error: string;
@@ -34,7 +32,7 @@ export interface MyDataProps {
   userDetails?: User;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
-  feedData: EntityThread[];
+  feedData: Thread[];
   feedFilter: FeedFilter;
   paging: Paging;
   isFeedLoading: boolean;
@@ -43,4 +41,5 @@ export interface MyDataProps {
   fetchData?: (value: SearchDataFunctionType) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

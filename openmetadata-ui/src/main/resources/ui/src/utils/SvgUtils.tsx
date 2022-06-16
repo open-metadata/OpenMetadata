@@ -20,6 +20,7 @@ import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
+import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -43,6 +44,7 @@ import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
 import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
+import IconFeedDelete from '../assets/svg/delete-white.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
@@ -118,6 +120,8 @@ import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconReaction from '../assets/svg/Reaction.svg';
+import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -289,6 +293,10 @@ export const Icons = {
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
+  ADD_REACTION: 'add-reaction',
+  ADD_REPLY: 'add-reply',
+  REACTION: 'reaction',
+  FEED_DELETE: 'feed-delete',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -839,6 +847,23 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DEPLOY_INGESTION:
       IconComponent = IconDeployIngestion;
+
+      break;
+    case Icons.ADD_REACTION:
+      IconComponent = IconAddReaction;
+
+      break;
+    case Icons.ADD_REPLY:
+      IconComponent = IconReplyFeed;
+
+      break;
+
+    case Icons.REACTION:
+      IconComponent = IconReaction;
+
+      break;
+    case Icons.FEED_DELETE:
+      IconComponent = IconFeedDelete;
 
       break;
     default:

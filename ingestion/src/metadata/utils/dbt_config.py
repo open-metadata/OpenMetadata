@@ -18,6 +18,7 @@ from functools import singledispatch
 from typing import Optional, Tuple
 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DbtCloudConfig,
     DbtGCSConfig,
     DbtHttpConfig,
     DbtLocalConfig,
@@ -67,6 +68,41 @@ def _(config: DbtHttpConfig):
     except Exception as exc:
         logger.error(traceback.format_exc())
         logger.error(f"Error fetching dbt files from file server {repr(exc)}")
+    return None
+
+
+@get_dbt_details.register
+def _(config: DbtCloudConfig):
+    try:
+        from metadata.ingestion.ometa.client import REST, ClientConfig
+
+        expiry = 0
+        auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
+        client_config = ClientConfig(
+            base_url="https://cloud.getdbt.com",
+            api_version="api/v2",
+            auth_token=lambda: auth_token,
+            auth_header="Authorization",
+            allow_redirects=True,
+        )
+        client = REST(client_config)
+        account_id = config.dbtCloudAccountId
+        response = client.get(
+            f"/accounts/{account_id}/runs/?order_by=-finished_at&limit=1"
+        )
+        runs_data = response.get("data")
+        if runs_data:
+            run_id = runs_data[0]["id"]
+            dbt_catalog = client.get(
+                f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_CATALOG_FILE_NAME}"
+            )
+            dbt_manifest = client.get(
+                f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_MANIFEST_FILE_NAME}"
+            )
+        return dbt_catalog, dbt_manifest
+    except Exception as exc:
+        logger.error(traceback.format_exc())
+        logger.error(f"Error fetching dbt files from DBT Cloud {repr(exc)}")
     return None
 
 

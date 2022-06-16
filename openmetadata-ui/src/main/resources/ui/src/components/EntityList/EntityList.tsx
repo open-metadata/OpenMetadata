@@ -101,7 +101,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
         ? entityList.map((item, index) => {
             return (
               <div
-                className="tw-flex tw-items-center tw-justify-between tw-mb-2"
+                className="tw-flex tw-items-center tw-justify-between"
                 data-testid={`${testIDText}-${getEntityName(
                   item as unknown as EntityReference
                 )}`}

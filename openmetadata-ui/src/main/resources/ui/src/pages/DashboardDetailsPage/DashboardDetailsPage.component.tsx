@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -58,6 +57,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -75,7 +75,11 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -122,7 +126,7 @@ const DashboardDetailsPage = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -664,7 +668,7 @@ const DashboardDetailsPage = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -691,6 +695,15 @@ const DashboardDetailsPage = () => {
           jsonData['api-error-messages']['delete-message-error']
         );
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   useEffect(() => {
@@ -759,6 +772,7 @@ const DashboardDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

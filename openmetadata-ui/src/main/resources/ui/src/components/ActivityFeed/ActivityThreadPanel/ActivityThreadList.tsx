@@ -12,11 +12,12 @@
  */
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
@@ -27,6 +28,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onThreadIdSelect,
   onThreadSelect,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -52,13 +54,14 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   postTs: thread.threadTs,
                   from: thread.createdBy,
                   id: thread.id,
-                };
-                const postLength = thread.posts.length;
-                const replies = thread.postsCount - 1;
-                const repliedUsers = thread.posts
+                  reactions: thread.reactions,
+                } as Post;
+                const postLength = thread?.posts?.length || 0;
+                const replies = thread.postsCount ? thread.postsCount - 1 : 0;
+                const repliedUsers = (thread.posts || [])
                   .map((f) => f.from)
                   .slice(0, postLength >= 3 ? 2 : 1);
-                const lastPost = thread.posts[postLength - 1];
+                const lastPost = thread?.posts?.[postLength - 1];
 
                 return (
                   <Fragment key={index}>
@@ -75,19 +78,23 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
-                          className="tw-mb-6"
+                          isThread
                           entityLink={thread.about}
                           feed={mainFeed}
+                          updateThreadHandler={updateThreadHandler}
+                          onReply={() => onThreadSelect(thread.id)}
                         />
                       </div>
                       {postLength > 0 ? (
                         <div data-testid="replies-container">
                           {postLength > 1 ? (
-                            <div className="tw-mb-6">
-                              <div className="tw-ml-9 tw-flex tw-mb-6">
+                            <div className="tw-ml-9 tw-my-2">
+                              {Boolean(lastPost) && (
+                                <div className="tw-filter-seperator" />
+                              )}
+                              <div className="tw-flex tw-my-4">
                                 <FeedCardFooter
                                   isFooterVisible
-                                  className="tw--mt-4"
                                   lastReplyTimeStamp={lastPost?.postTs}
                                   repliedUsers={repliedUsers}
                                   replies={replies}
@@ -102,30 +109,16 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           <div data-testid="latest-reply">
                             <ActivityFeedCard
                               isEntityFeed
-                              className="tw-mb-6 tw-ml-9"
-                              feed={lastPost}
+                              className="tw-ml-9"
+                              feed={lastPost as Post}
                               threadId={thread.id}
+                              updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}
+                              onReply={() => toggleReplyEditor(thread.id)}
                             />
                           </div>
-
-                          <p
-                            className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw-mt-4 tw-mb-2"
-                            data-testid="quick-reply-button"
-                            onClick={() => {
-                              toggleReplyEditor(thread.id);
-                            }}>
-                            Reply
-                          </p>
                         </div>
-                      ) : (
-                        <p
-                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
-                          data-testid="main-message-reply-button"
-                          onClick={() => onThreadSelect(thread.id)}>
-                          Reply
-                        </p>
-                      )}
+                      ) : null}
                       {selectedThreadId === thread.id ? (
                         <div data-testid="quick-reply-editor">
                           <ActivityFeedEditor

@@ -62,6 +62,7 @@ const MyData: React.FC<MyDataProps> = ({
   deletePostHandler,
   fetchFeedHandler,
   paging,
+  updateThreadHandler,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
@@ -229,6 +230,7 @@ const MyData: React.FC<MyDataProps> = ({
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
                 postFeedHandler={postFeedHandler}
+                updateThreadHandler={updateThreadHandler}
               />
             </Fragment>
           ) : (

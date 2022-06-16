@@ -13,15 +13,10 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  EntityFieldThreadCount,
-  EntityThread,
-  ExtraInfo,
-  Paging,
-} from 'Models';
+import { EntityFieldThreadCount, ExtraInfo, Paging } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -68,6 +63,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
@@ -89,6 +85,7 @@ import {
   deletePost,
   getEntityFieldThreadCounts,
   getUpdatedThread,
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import { getServicesWithTabPath } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -119,7 +116,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
   const [error, setError] = useState('');
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -475,7 +472,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -502,6 +499,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           jsonData['api-error-messages']['delete-message-error']
         );
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   const getLoader = () => {
@@ -687,6 +693,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                       entityName={databaseSchemaName}
                       feedList={entityThread}
                       postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
                     />
                     <div />
                   </div>
@@ -724,6 +731,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
               />
             ) : null}

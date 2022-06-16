@@ -42,7 +42,7 @@ export const SEARCH_ENTITY_TOPIC = {
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
-    term: 'Sales Dashboard',
+    term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   dashboard_2: {
@@ -52,9 +52,9 @@ export const SEARCH_ENTITY_DASHBOARD = {
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
-  pipeline_1: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+  pipeline_1: { term: 'Snowflake ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
   pipeline_2: {
-    term: 'Snowflake ETL',
+    term: 'Hive ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
@@ -71,10 +71,6 @@ export const DELETE_ENTITY = {
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  },
-  dashboard: {
-    term: 'Misc Charts',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   pipeline: {
     term: 'Presto ETL',

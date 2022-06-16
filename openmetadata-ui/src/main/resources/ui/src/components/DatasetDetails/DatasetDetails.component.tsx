@@ -131,6 +131,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   paging,
   fetchFeedHandler,
   handleExtentionUpdate,
+  updateThreadHandler,
 }: DatasetDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -664,6 +665,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -791,6 +793,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />
           ) : null}

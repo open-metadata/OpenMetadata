@@ -56,7 +56,6 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
-
   private List<String> jwtPrincipalClaims;
   private JwkProvider jwkProvider;
   private String principalDomain;
@@ -104,10 +103,33 @@ public class JwtFilter implements ContainerRequestFilter {
     String tokenFromHeader = extractToken(headers);
     LOG.debug("Token from header:{}", tokenFromHeader);
 
+    DecodedJWT jwt = validateAndReturnDecodedJwtToken(tokenFromHeader);
+
+    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getClaims());
+
+    String userName = validateAndReturnUsername(claims);
+
+    // validate bot token
+    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
+      validateBotToken(tokenFromHeader, userName);
+    }
+
+    // Setting Security Context
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
+    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
+    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    requestContext.setSecurityContext(catalogSecurityContext);
+  }
+
+  @SneakyThrows
+  public DecodedJWT validateAndReturnDecodedJwtToken(String token) {
     // Decode JWT Token
     DecodedJWT jwt;
     try {
-      jwt = JWT.decode(tokenFromHeader);
+      jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
       throw new AuthenticationException("Invalid token", e);
     }
@@ -127,10 +149,12 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (RuntimeException runtimeException) {
       throw new AuthenticationException("Invalid token");
     }
+    return jwt;
+  }
 
+  @SneakyThrows
+  public String validateAndReturnUsername(Map<String, Claim> claims) {
     // Get username from JWT token
-    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    claims.putAll(jwt.getClaims());
     String jwtClaim =
         jwtPrincipalClaims.stream()
             .filter(claims::containsKey)
@@ -141,6 +165,7 @@ public class JwtFilter implements ContainerRequestFilter {
                 () ->
                     new AuthenticationException(
                         "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
+
     String userName;
     String domain;
     if (jwtClaim.contains("@")) {
@@ -158,18 +183,7 @@ public class JwtFilter implements ContainerRequestFilter {
             String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
       }
     }
-
-    // validate bot token
-    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
-      validateBotToken(tokenFromHeader, userName);
-    }
-    // Setting Security Context
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
-    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
-    requestContext.setSecurityContext(catalogSecurityContext);
+    return userName;
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
@@ -181,6 +195,18 @@ public class JwtFilter implements ContainerRequestFilter {
     // Extract the bearer token
     if (source.startsWith(TOKEN_PREFIX)) {
       return source.substring(TOKEN_PREFIX.length() + 1);
+    }
+    throw new AuthenticationException("Not Authorized! Token not present");
+  }
+
+  public static String extractToken(String tokenFromHeader) {
+    LOG.debug("Request Token:{}", tokenFromHeader);
+    if (Strings.isNullOrEmpty(tokenFromHeader)) {
+      throw new AuthenticationException("Not Authorized! Token not present");
+    }
+    // Extract the bearer token
+    if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
+      return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
     }
     throw new AuthenticationException("Not Authorized! Token not present");
   }

@@ -18,7 +18,6 @@ import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -57,6 +56,7 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -69,7 +69,11 @@ import {
   getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -121,7 +125,7 @@ const PipelineDetailsPage = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -616,7 +620,7 @@ const PipelineDetailsPage = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -643,6 +647,15 @@ const PipelineDetailsPage = () => {
           jsonData['api-error-messages']['delete-message-error']
         );
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   useEffect(() => {
@@ -712,6 +725,7 @@ const PipelineDetailsPage = () => {
           tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

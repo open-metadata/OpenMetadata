@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByTestId,
-  findAllByText,
-  findByTestId,
-  findByText,
-  fireEvent,
-  queryByTestId,
-  queryByText,
-  render,
-} from '@testing-library/react';
+import { findAllByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FeedListBody from './FeedListBody';
@@ -33,7 +24,7 @@ jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
 
@@ -102,6 +93,7 @@ const mockFeedListBodyProp = {
   selectedThreadId: '',
   onConfirmation: jest.fn(),
   onThreadIdDeselect: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test FeedListBody Component', () => {
@@ -113,127 +105,5 @@ describe('Test FeedListBody Component', () => {
     const messages = await findAllByTestId(container, 'message-container');
 
     expect(messages).toHaveLength(2);
-  });
-
-  it('Check if FeedListBody has message with 0 posts', async () => {
-    const { container } = render(<FeedListBody {...mockFeedListBodyProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const messages = await findAllByTestId(container, 'message-container');
-
-    const message1 = messages[0];
-
-    const messsage1FeedCards = await findAllByText(
-      message1,
-      /ActivityFeedCard/i
-    );
-
-    const message1FeedCardFooter = queryByText(message1, /FeedCardFooter/i);
-    const message1ReplyInSidePanel = await findByTestId(
-      message1,
-      'replyInSidePanel'
-    );
-
-    const message1QuickReply = queryByTestId(message1, 'quick-reply');
-
-    // length should be 1 as message1 has only main post
-    expect(messsage1FeedCards).toHaveLength(1);
-
-    // should get rendered to start conversation in side panel
-    expect(message1ReplyInSidePanel).toBeInTheDocument();
-
-    // message1 has 0 posts so feedcard footer should not get rendered
-    expect(message1FeedCardFooter).not.toBeInTheDocument();
-
-    // message1 has 0 latest reply so quickreply button should not get rendered
-    expect(message1QuickReply).not.toBeInTheDocument();
-  });
-
-  it('Check if FeedListBody has message with 3 posts', async () => {
-    const { container } = render(<FeedListBody {...mockFeedListBodyProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const messages = await findAllByTestId(container, 'message-container');
-
-    const message2 = messages[1];
-
-    const messsage2FeedCards = await findAllByText(
-      message2,
-      /ActivityFeedCard/i
-    );
-
-    const message2FeedCardFooter = queryByText(message2, /FeedCardFooter/i);
-    const message2ReplyInSidePanel = queryByText(message2, 'replyInSidePanel');
-
-    const message2QuickReply = await findByTestId(message2, 'quick-reply');
-
-    // message2 has 3 posts so there should be 2 feedcards
-    // one is for main post and another is for latest post
-    expect(messsage2FeedCards).toHaveLength(2);
-
-    // should get rendered to see all the messages in sidepanel
-    expect(message2FeedCardFooter).toBeInTheDocument();
-
-    // should not rendered if feedfooter is in the document
-    expect(message2ReplyInSidePanel).not.toBeInTheDocument();
-
-    // should get rendered with latest post for quick reply
-    expect(message2QuickReply).toBeInTheDocument();
-  });
-
-  it('Should toggle FeedEditor on reply button click', async () => {
-    const { container, rerender } = render(
-      <FeedListBody {...mockFeedListBodyProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const messages = await findAllByTestId(container, 'message-container');
-
-    const message2 = messages[1];
-
-    const message2FeedCardFooter = queryByText(message2, /FeedCardFooter/i);
-
-    const message2QuickReply = await findByTestId(message2, 'quick-reply');
-
-    // should get rendered to see all the messages in sidepanel
-    expect(message2FeedCardFooter).toBeInTheDocument();
-
-    // should get rendered with latest post for quick reply
-    expect(message2QuickReply).toBeInTheDocument();
-
-    fireEvent.click(
-      message2QuickReply,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onThreadIdSelect).toBeCalled();
-
-    rerender(
-      <FeedListBody
-        {...mockFeedListBodyProp}
-        selectedThreadId="40c2faec-0159-4d86-9b15-c17f3e1c081b"
-      />
-    );
-
-    expect(
-      await findByText(container, /ActivityFeedEditor/i)
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      message2QuickReply,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onThreadIdSelect).toBeCalled();
-
-    rerender(<FeedListBody {...mockFeedListBodyProp} selectedThreadId="" />);
-
-    expect(
-      queryByText(container, /ActivityFeedEditor/i)
-    ).not.toBeInTheDocument();
   });
 });
