@@ -89,6 +89,12 @@ class MetadataUsageBulkSink(BulkSink):
                 table_usage.table,
             )
 
+            if not table_entities:
+                logger.warning(
+                    f"Could not fetch table from {table_usage.database}.{table_usage.schema_name}.{table_usage.table}"
+                )
+                continue
+
             for table_entity in table_entities:
                 if table_entity is not None:
                     if not table_usage_map.get(table_entity.id.__root__):

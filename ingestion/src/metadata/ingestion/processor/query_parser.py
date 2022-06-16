@@ -227,8 +227,9 @@ def stateful_add_joins_from_statement(
         left_table_column = TableColumn(table=table_left, column=column_left)
         right_table_column = TableColumn(table=table_right, column=column_right)
 
+        # We just send the info once, from Left -> Right.
+        # The backend will prepare the symmetric information.
         stateful_add_table_joins(join_data, left_table_column, right_table_column)
-        stateful_add_table_joins(join_data, right_table_column, left_table_column)
 
 
 def get_table_joins(

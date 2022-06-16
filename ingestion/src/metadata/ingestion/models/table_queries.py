@@ -28,10 +28,10 @@ class TableQuery(JsonSerializable):
         endtime: str,
         analysis_date: str,
         database: Optional[str],
-        schema_name: Optional[str],
         aborted: bool,
         sql: str,
         service_name: str,
+        schema_name: Optional[str] = None,
     ) -> None:
         """ """
         self.query = query
