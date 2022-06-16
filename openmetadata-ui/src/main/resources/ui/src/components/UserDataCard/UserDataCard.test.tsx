@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import UserDataCard from './UserDataCard';
+import { act } from 'react-test-renderer';
+import UserDataCard, { Item, Props } from './UserDataCard';
 
-const mockItem = {
+const onClick = jest.fn();
+const onDelete = jest.fn();
+
+const mockItem: Item = {
   displayName: 'description1',
   name: 'name1',
-  id: 'id1',
   email: 'string@email.com',
   isActiveUser: true,
   profilePhoto: '',
   teamCount: 'Cloud_Infra',
 };
 
-const mockSelect = jest.fn();
-const mockDelete = jest.fn();
+const mockProp: Props = {
+  item: mockItem,
+  onClick,
+  onDelete,
+};
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -57,38 +63,69 @@ jest.mock('../../utils/SvgUtils', () => {
   };
 });
 
+jest.mock('../common/non-admin-action/NonAdminAction', () => {
+  return jest.fn().mockImplementation(({ children }) => {
+    return (
+      <div>
+        NonAdminAction
+        {children}
+      </div>
+    );
+  });
+});
+
 describe('Test UserDataCard component', () => {
   it('Component should render', async () => {
-    const { container } = render(
-      <UserDataCard
-        item={mockItem}
-        onClick={mockSelect}
-        onDelete={mockDelete}
-      />,
+    const { findByTestId, findByText } = render(
+      <UserDataCard {...mockProp} item={{ ...mockItem, id: 'id1' }} />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const cardContainer = await findByTestId(container, 'user-card-container');
-    const avatar = await findByTestId(container, 'profile-picture');
+    const cardContainer = await findByTestId('user-card-container');
+    const avatar = await findByTestId('profile-picture');
+    const userDisplayName = await findByText(mockItem.displayName);
 
     expect(avatar).toBeInTheDocument();
     expect(cardContainer).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(userDisplayName);
+    });
+
+    expect(onClick).toBeCalled();
   });
 
   it('Data should render', async () => {
-    const { container } = render(
-      <UserDataCard
-        item={mockItem}
-        onClick={mockSelect}
-        onDelete={mockDelete}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
+    const { findByTestId } = render(<UserDataCard {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await findByTestId('data-container')).toBeInTheDocument();
+  });
+
+  it('Inacive status should be shown for deleted user', () => {
+    const { getByText } = render(
+      <UserDataCard {...mockProp} item={{ ...mockItem, isActiveUser: false }} />
     );
 
-    expect(await findByTestId(container, 'data-container')).toBeInTheDocument();
+    expect(getByText('Inactive')).toBeInTheDocument();
+  });
+
+  it('User should get removed when deleted', async () => {
+    const { queryByText, getByTestId } = render(
+      <UserDataCard {...mockProp} item={{ ...mockItem, id: 'id1' }} />
+    );
+    const removeButton = getByTestId('remove');
+
+    expect(queryByText(mockItem.displayName)).toBeInTheDocument();
+    expect(removeButton).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(removeButton);
+    });
+
+    expect(onDelete).toHaveBeenCalledWith('id1', mockItem.displayName);
   });
 });

@@ -37,6 +37,7 @@ const Avatar = ({
         'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
         className
       )}
+      data-testid="avatar"
       style={{
         height: `${width}px`,
         width: `${width}px`,
