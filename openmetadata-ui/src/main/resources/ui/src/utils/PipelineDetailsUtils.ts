@@ -98,6 +98,17 @@ export const getModifiedPipelineStatus = (
   }
 };
 
+export const getFilteredPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  if (!status) {
+    return pipelineStatus;
+  } else {
+    return pipelineStatus.filter((d) => d?.executionStatus === status);
+  }
+};
+
 export const STATUS_OPTIONS = [
   { value: StatusType.Successful, label: StatusType.Successful },
   { value: StatusType.Failed, label: StatusType.Failed },

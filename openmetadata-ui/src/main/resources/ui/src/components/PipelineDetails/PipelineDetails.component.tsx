@@ -402,7 +402,9 @@ const PipelineDetails = ({
                       />
                     </div>
                   </div>
-                  <div className="tw-flex-grow tw-w-full tw-h-full">
+                  <div
+                    className="tw-flex-grow tw-w-full tw-h-full"
+                    style={{ height: 'calc(100% - 150px)' }}>
                     {tasks ? (
                       <TasksDAGView tasks={tasks} />
                     ) : (
@@ -410,6 +412,12 @@ const PipelineDetails = ({
                         <span>No task data is available</span>
                       </div>
                     )}
+                  </div>
+                  <div>
+                    <PipelineStatusList
+                      isLoading={isPipelineStatusLoading}
+                      pipelineStatus={pipelineStatus}
+                    />
                   </div>
                 </>
               )}

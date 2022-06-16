@@ -11,19 +11,16 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import { isNil, uniqueId } from 'lodash';
-import moment from 'moment';
+import { isNil } from 'lodash';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import Select, { SingleValue } from 'react-select';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 import {
-  getModifiedPipelineStatus,
-  getStatusBadgeIcon,
+  getFilteredPipelineStatus,
   STATUS_OPTIONS,
 } from '../../utils/PipelineDetailsUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import D3ExecutionStrip from '../../_extras/D3ExecutionStrip';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import CustomOption from './CustomOption';
 
@@ -77,7 +74,33 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
               />
             </div>
           </div>
-          <table
+          <D3ExecutionStrip
+            endDate={pipelineStatus[0].executionDate}
+            executionInfo={{
+              executions: getFilteredPipelineStatus(
+                selectedFilter as StatusType,
+                pipelineStatus
+              ),
+            }}
+            fromTimeInMS={
+              pipelineStatus[pipelineStatus.length - 1].executionDate
+            }
+            selectedExecution={pipelineStatus[0]}
+            startDate={pipelineStatus[pipelineStatus.length - 1].executionDate}
+            statusObj={{
+              extra: {
+                startExecutionDate:
+                  pipelineStatus[pipelineStatus.length - 1].executionDate,
+                latestExecutionDate: pipelineStatus[0].executionDate,
+              },
+            }}
+            toTimeInMS={pipelineStatus[0].executionDate}
+            onSelectExecution={(e: unknown) => {
+              /* eslint-disable-next-line */
+              console.log('On Select:', e);
+            }}
+          />
+          {/* <table
             className="tw-w-full"
             data-testid="pipeline-status-table"
             id="pipeline-status-table">
@@ -122,7 +145,7 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table> */}
         </div>
       </Fragment>
     );

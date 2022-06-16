@@ -143,5 +143,6 @@ export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
   connection: {
     ...DEF_UI_SCHEMA,
+    scheme: { 'ui:widget': 'hidden', 'ui:hideError': true },
   },
 };

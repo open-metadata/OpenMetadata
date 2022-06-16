@@ -231,7 +231,16 @@ const PipelineDetailsPage = () => {
     getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { pipelineStatus: status } = res.data;
+          const status = res.data.pipelineStatus as Pipeline['pipelineStatus'];
+          if (status?.length) {
+            status.map((st) => {
+              const execDate = st.executionDate
+                ? st.executionDate * 1000
+                : st.executionDate;
+
+              return { ...st, executionDate: execDate };
+            });
+          }
           setPipelineStatus(status);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
@@ -344,11 +353,11 @@ const PipelineDetailsPage = () => {
 
         break;
       }
-      case TabSpecificField.PIPELINE_STATUS: {
-        getPipeLineStatus();
+      // case TabSpecificField.PIPELINE_STATUS: {
+      //   getPipeLineStatus();
 
-        break;
-      }
+      //   break;
+      // }
 
       default:
         break;
@@ -666,6 +675,7 @@ const PipelineDetailsPage = () => {
     fetchPipelineDetail(pipelineFQN);
     setEntityLineage({} as EntityLineage);
     getEntityFeedCount();
+    getPipeLineStatus();
   }, [pipelineFQN]);
 
   useEffect(() => {
