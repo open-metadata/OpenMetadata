@@ -52,7 +52,7 @@ def column_values_in_set(
     """
 
     set_count = add_props(values=test_case.allowedValues)(Metrics.COUNT_IN_SET.value)
-    
+
     try:
         set_count_res = run_col_metric(
             metric=set_count,
