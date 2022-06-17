@@ -169,10 +169,13 @@ class MigrateBulkSink(BulkSink):
         for table in file.readlines():
             table = json.loads(table)
             try:
+                table_obj = self._separate_fqn(table.get("fullyQualifiedName"))
                 table_entities = self.metadata.search_entities_using_es(
-                    table_obj=self._separate_fqn(table.get("fullyQualifiedName")),
                     search_index="table_search_index",
                     service_name=table.get("service").get("name"),
+                    table_name=table_obj.get("table"),
+                    database_name=table_obj.get("database"),
+                    schema_name=table_obj.get("database_schema"),
                 )
                 if len(table_entities) < 1:
                     continue

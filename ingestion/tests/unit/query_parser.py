@@ -40,7 +40,7 @@ class QueryParserTests(TestCase):
     Check methods from query_parser.py
     """
 
-    query = col_lineage = """
+    query = """
         SELECT
           a.col1,
           a.col2 + b.col2 AS col2,
@@ -58,7 +58,7 @@ class QueryParserTests(TestCase):
         WHERE a.col3 = 'abc'
     """
 
-    parser = LineageRunner(col_lineage)
+    parser = LineageRunner(query)
 
     def test_involved_tables(self):
         tables = {str(table) for table in get_involved_tables_from_parser(self.parser)}
@@ -109,3 +109,43 @@ class QueryParserTests(TestCase):
                 ),
             ],
         )
+
+    def test_capitals(self):
+        """
+        Example on how LineageRunner keeps capitals
+        for column names
+        """
+
+        query = """
+         SELECT
+           USERS.ID,
+           li.id
+        FROM TESTDB.PUBLIC.USERS
+        JOIN testdb.PUBLIC."lowercase_users" li
+          ON USERS.id = li.ID
+        ;
+        """
+
+        parser = LineageRunner(query)
+
+        tables = get_involved_tables_from_parser(parser)
+
+        clean_tables = get_clean_parser_table_list(tables)
+        aliases = get_parser_table_aliases(tables)
+
+        joins = get_table_joins(
+            parser=parser, tables=clean_tables, aliases=aliases
+        )
+
+        self.assertEqual(
+            joins["testdb.public.users"],
+            [
+                TableColumnJoin(
+                    table_column=TableColumn(table="testdb.public.users", column="id"),  # lowercase col
+                    joined_with=[
+                        TableColumn(table="testdb.public.lowercase_users", column="ID"),  # uppercase col
+                    ],
+                ),
+            ],
+        )
+

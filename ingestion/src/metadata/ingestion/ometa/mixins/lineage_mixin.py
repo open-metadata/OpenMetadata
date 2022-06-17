@@ -167,9 +167,11 @@ class OMetaLineageMixin(Generic[T]):
             if not from_entity:
                 table_obj = self._separate_fqn(database=database, fqn=from_fqdn)
                 multiple_from_fqns = self.search_entities_using_es(
-                    service_name=service_name,
-                    table_obj=table_obj,
                     search_index="table_search_index",
+                    service_name=service_name,
+                    table_name=table_obj.get("table"),
+                    database_name=table_obj.get("database"),
+                    schema_name=table_obj.get("database_schema"),
                 )
             else:
                 multiple_from_fqns = [from_entity]
@@ -183,9 +185,11 @@ class OMetaLineageMixin(Generic[T]):
             if not to_entity:
                 table_obj = self._separate_fqn(database=database, fqn=to_fqdn)
                 multiple_to_fqns = self.search_entities_using_es(
-                    service_name=service_name,
-                    table_obj=table_obj,
                     search_index="table_search_index",
+                    service_name=service_name,
+                    table_name=table_obj.get("table"),
+                    database_name=table_obj.get("database"),
+                    schema_name=table_obj.get("database_schema"),
                 )
             else:
                 multiple_to_fqns = [to_entity]

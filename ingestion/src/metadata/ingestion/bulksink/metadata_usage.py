@@ -112,7 +112,7 @@ class MetadataUsageBulkSink(BulkSink):
                         table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
                             table_usage.sql_queries
                         )
-                    table_join_request = self.__get_table_joins(table_usage)
+                    table_join_request = self.__get_table_joins(table_entity, table_usage)
 
                     logger.debug("table join request {}".format(table_join_request))
                     try:
@@ -120,6 +120,13 @@ class MetadataUsageBulkSink(BulkSink):
                             table_join_request is not None
                             and len(table_join_request.columnJoins) > 0
                         ):
+                            print("PUBLISHING JOINS")
+                            print(table_entity.fullyQualifiedName)
+                            print(table_join_request)
+
+                            import pudb
+                            pudb.set_trace()
+
                             self.metadata.publish_frequently_joined_with(
                                 table_entity, table_join_request
                             )
@@ -178,7 +185,7 @@ class MetadataUsageBulkSink(BulkSink):
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
-    def __get_table_joins(self, table_usage):
+    def __get_table_joins(self, table_entity: Table, table_usage: TableUsageCount):
         table_joins: TableJoins = TableJoins(columnJoins=[], startDate=table_usage.date)
         column_joins_dict = {}
         for column_join in table_usage.joins:
@@ -209,9 +216,12 @@ class MetadataUsageBulkSink(BulkSink):
             column_joins_dict[column_join.table_column.column] = joined_with
 
         for key, value in column_joins_dict.items():
+            # Fetch real key (column) name from the Entity
+            key_name = self.__fetch_column_in_entity(key, table_entity).split(".")[-1]
             table_joins.columnJoins.append(
-                ColumnJoins(columnName=key, joinedWith=list(value.values()))
+                ColumnJoins(columnName=key_name, joinedWith=list(value.values()))
             )
+
         return table_joins
 
     def __get_column_fqdn(
@@ -223,9 +233,16 @@ class MetadataUsageBulkSink(BulkSink):
         if not table_entities:
             return None
         for table_entity in table_entities:
-            for tbl_column in table_entity.columns:
-                if table_column.column.lower() == tbl_column.name.__root__.lower():
-                    return tbl_column.fullyQualifiedName.__root__.__root__
+            return self.__fetch_column_in_entity(table_column.column, table_entity)
+
+    @staticmethod
+    def __fetch_column_in_entity(column: str, table: Table) -> str:
+        """
+        Find the column in the table that matches the incoming name
+        """
+        for tbl_column in table.columns:
+            if column.lower() == tbl_column.name.__root__.lower():
+                return tbl_column.fullyQualifiedName.__root__.__root__
 
     def __get_table_entities(
         self, database_name: str, database_schema: str, table_name: str
@@ -241,28 +258,21 @@ class MetadataUsageBulkSink(BulkSink):
             [None] * (3 - len(split_table))
         ) + split_table
 
+        # First search by the information schema data
         table_entities = self.__fetch_table_entities(
-            database_name=(database_name or database_query),
-            database_schema=(database_schema or schema_query),
+            database_name=database_name,
+            database_schema=database_schema,
             table_name=table,
         )
 
         if table_entities:
             return table_entities
 
+        # Otherwise, try to use the info from the names embedded in the query
         table_entities = self.__fetch_table_entities(
-            database_name=(database_query or database_name),
-            database_schema=(schema_query or database_schema),
+            database_name=database_query,
+            database_schema=schema_query,
             table_name=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        table_entities = self.__fetch_table_entities(
-            database_name=(database_query or database_name).upper(),
-            database_schema=(schema_query or database_schema).upper(),
-            table_name=table.upper(),
         )
 
         if table_entities:
@@ -281,13 +291,13 @@ class MetadataUsageBulkSink(BulkSink):
             return [table_entity]
         es_result = self.metadata.search_entities_using_es(
             service_name=self.service_name,
-            table_obj={
-                "database": database_name,
-                "database_schema": database_schema,
-                "name": table_name,
-            },
+            table_name=table_name,
+            database_name=database_name,
+            schema_name=database_schema,
             search_index="table_search_index",
         )
+        import pudb
+        pudb.set_trace()
         return es_result
 
     def get_status(self):
