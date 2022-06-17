@@ -16,6 +16,9 @@
         },
         {
           "$ref": "../../../entity/services/messagingService.json#/definitions/messagingConnection"
+        },
+        {
+          "$ref": "../../../entity/services/pipelineService.json#/definitions/pipelineConnection"
         }
       ]
     },

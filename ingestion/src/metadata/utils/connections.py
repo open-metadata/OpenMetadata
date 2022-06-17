@@ -77,6 +77,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     DatalakeClient,
@@ -431,6 +434,26 @@ def _(connection: MetabaseClient) -> None:
             connection.client["connection"].hostPort + "/api/dashboard",
             headers=connection.client["metabase_session"],
         )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        test_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        return get_connection(connection.connection)
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
