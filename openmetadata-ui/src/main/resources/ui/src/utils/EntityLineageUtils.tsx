@@ -17,6 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
+import { isUndefined } from 'lodash';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -47,6 +48,7 @@ import {
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
+import { Column } from '../generated/entity/data/table';
 import {
   Edge as LineageEdge,
   EntityLineage,
@@ -126,7 +128,8 @@ export const getLineageDataV1 = (
     evt: React.MouseEvent<HTMLButtonElement>,
     data: CustomEdgeData
   ) => void,
-  removeNodeHandler: (node: Node) => void
+  removeNodeHandler: (node: Node) => void,
+  columns: { [key: string]: Column[] }
 ) => {
   const [x, y] = [0, 0];
   const nodes = [
@@ -155,7 +158,10 @@ export const getLineageDataV1 = (
     posDepth: number
   ) => {
     const [xVal, yVal] = [positionX * 2 * depth, y + positionY * posDepth];
-
+    const cols: { [key: string]: Column } = {};
+    columns[node.id]?.forEach((col) => {
+      cols[col.fullyQualifiedName || col.name] = col;
+    });
     return {
       id: `${node.id}`,
       sourcePosition: Position.Right,
@@ -168,6 +174,7 @@ export const getLineageDataV1 = (
         removeNodeHandler,
         isEditMode,
         isExpanded: false,
+        columns: cols,
       },
       position: {
         x: pos === 'from' ? -xVal : xVal,
@@ -323,7 +330,10 @@ export const getLineageDataV1 = (
 
     getDownStreamData(node);
   });
-
+  const mainCols: { [key: string]: Column } = {};
+  columns[mainNode.id]?.forEach((col) => {
+    mainCols[col.fullyQualifiedName || col.name] = col;
+  });
   const lineageData = [
     {
       id: `${mainNode.id}`,
@@ -342,6 +352,7 @@ export const getLineageDataV1 = (
         label: getNodeLabel(mainNode),
         isEditMode,
         removeNodeHandler,
+        columns: mainCols,
       },
       position: { x: x, y: y },
     },
@@ -429,6 +440,34 @@ export const getLineageDataV1 = (
           };
     }),
   ];
+
+  const edgesV1 = [
+    ...(entityLineage.downstreamEdges || []),
+    ...(entityLineage.upstreamEdges || []),
+  ];
+
+  edgesV1.forEach((edge) => {
+    if (!isUndefined(edge.lineageDetails)) {
+      edge.lineageDetails.columnsLineage.forEach((e) => {
+        const toColumn = e.toColumn || '';
+        if (e.fromColumns && e.fromColumns.length > 0) {
+          e.fromColumns.forEach((f) => {
+            lineageEdges.push({
+              id: `edge-${f}-${toColumn}`,
+              source: edge.fromEntity,
+              target: edge.toEntity,
+              targetHandle: toColumn,
+              sourceHandle: f,
+              //   type: 'buttonedge',
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+              },
+            });
+          });
+        }
+      });
+    }
+  });
 
   return { node: lineageData, edge: lineageEdges };
 };

@@ -14,6 +14,7 @@
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import { Column } from '../../generated/entity/data/table';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 
@@ -28,7 +29,8 @@ const handleStyles = {
 const getHandle = (
   nodeType: string,
   isConnectable: HandleProps['isConnectable'],
-  isNewNode = false
+  isNewNode = false,
+  id?: string
 ) => {
   const getLeftRightHandleStyles = () => {
     return {
@@ -50,12 +52,14 @@ const getHandle = (
     return (
       <Fragment>
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
           style={{ ...handleStyles, left: '-14px' } as CSSProperties}
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
           style={{
@@ -65,6 +69,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Bottom}
           style={{
@@ -74,6 +79,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Top}
           style={{
@@ -88,12 +94,14 @@ const getHandle = (
     return (
       <Fragment>
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
           style={{ ...handleStyles, right: '-14px' } as CSSProperties}
           type="source"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
@@ -103,6 +111,7 @@ const getHandle = (
           type="source"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Bottom}
           style={{
@@ -112,6 +121,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Top}
           style={{
@@ -126,6 +136,7 @@ const getHandle = (
     return (
       <Fragment>
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
           style={
@@ -138,6 +149,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
           style={
@@ -150,6 +162,7 @@ const getHandle = (
           type="source"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Left}
           style={{
@@ -159,6 +172,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
@@ -168,6 +182,7 @@ const getHandle = (
           type="source"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Bottom}
           style={{
@@ -177,6 +192,7 @@ const getHandle = (
           type="target"
         />
         <Handle
+          id={id}
           isConnectable={isConnectable}
           position={Position.Top}
           style={{
@@ -191,15 +207,15 @@ const getHandle = (
 };
 
 const CustomNode = (props: NodeProps) => {
-  const { data, type, isConnectable, selected } = props;
+  const { data, type, isConnectable, selected, id } = props;
   /* eslint-disable-next-line */
   const { label, columns, isNewNode, removeNodeHandler, isEditMode } = data;
 
   return (
     <div className="tw-relative nowheel ">
-      {getHandle(type, isConnectable, isNewNode)}
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')} data-testid="node-label">
+        {getHandle(type, isConnectable, isNewNode, id)}
         {label}{' '}
         {selected && isEditMode
           ? getNodeRemoveButton(() => {
@@ -213,23 +229,41 @@ const CustomNode = (props: NodeProps) => {
       ) : null}
       <section
         className={classNames('tw--mx-3 tw-px-3', {
-          'tw-h-36 tw-overflow-y-auto': columns?.length,
+          // 'tw-h-36 tw-overflow-y-auto': !isEmpty(columns),
         })}
         id="table-columns">
         <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
-          {columns?.map(
-            (c: { name: string; constraint: string }, i: number) => (
-              <Fragment key={i}>
-                <div
-                  className="tw-p-1 tw-rounded tw-border tw-text-grey-body"
-                  data-testid="column"
-                  key={c.name}>
-                  {getConstraintIcon(c.constraint, 'tw-')}
-                  {c.name}
-                </div>
-              </Fragment>
-            )
-          )}
+          {(Object.values(columns || {}) as Column[])?.map((c, i) => (
+            <Fragment key={i}>
+              <div
+                className="tw-p-1 tw-rounded tw-border tw-text-grey-body tw-relative"
+                data-testid="column"
+                key={c.name}>
+                {/* <Handle
+                  isConnectable
+                  id={c.fullyQualifiedName}
+                  position={Position.Left}
+                  style={{ top: 13 }}
+                  type="target"
+                />
+                <Handle
+                  isConnectable
+                  id={c.fullyQualifiedName}
+                  position={Position.Right}
+                  style={{ top: 13 }}
+                  type="source"
+                /> */}
+                {getHandle(
+                  type,
+                  isConnectable,
+                  isNewNode,
+                  c.fullyQualifiedName
+                )}
+                {getConstraintIcon(c.constraint, 'tw-')}
+                {c.name}
+              </div>
+            </Fragment>
+          ))}
         </div>
       </section>
     </div>
