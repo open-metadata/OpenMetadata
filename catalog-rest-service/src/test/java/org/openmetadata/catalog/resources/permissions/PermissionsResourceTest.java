@@ -85,8 +85,6 @@ class PermissionsResourceTest extends CatalogApplicationTest {
             TestUtils.ADMIN_USER_NAME,
             new HashMap<MetadataOperation, Boolean>() {
               {
-                put(MetadataOperation.SuggestDescription, Boolean.TRUE);
-                put(MetadataOperation.SuggestTags, Boolean.TRUE);
                 put(MetadataOperation.UpdateDescription, Boolean.TRUE);
                 put(MetadataOperation.UpdateLineage, Boolean.TRUE);
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);
@@ -103,8 +101,6 @@ class PermissionsResourceTest extends CatalogApplicationTest {
                 put(MetadataOperation.UpdateLineage, Boolean.TRUE);
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);
                 put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
                 put(MetadataOperation.DecryptTokens, Boolean.FALSE);
                 put(MetadataOperation.UpdateTeam, Boolean.FALSE);
               }
@@ -113,8 +109,6 @@ class PermissionsResourceTest extends CatalogApplicationTest {
             DATA_CONSUMER_USER_NAME,
             new HashMap<MetadataOperation, Boolean>() {
               {
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
                 put(MetadataOperation.UpdateDescription, Boolean.TRUE);
                 put(MetadataOperation.UpdateLineage, Boolean.FALSE);
                 put(MetadataOperation.UpdateOwner, Boolean.TRUE);

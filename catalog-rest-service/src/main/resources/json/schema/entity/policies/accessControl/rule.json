@@ -11,8 +11,6 @@
       "description": "This schema defines all possible operations on metadata of data entities.",
       "type": "string",
       "enum": [
-        "SuggestDescription",
-        "SuggestTags",
         "UpdateDescription",
         "UpdateOwner",
         "UpdateTags",
@@ -21,8 +19,6 @@
         "UpdateTeam"
       ],
       "javaEnums": [
-        { "name": "SuggestDescription" },
-        { "name": "SuggestTags" },
         { "name": "UpdateDescription" },
         { "name": "UpdateOwner" },
         { "name": "UpdateTags" },
