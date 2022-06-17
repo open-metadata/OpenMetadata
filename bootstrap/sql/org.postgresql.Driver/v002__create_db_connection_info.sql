@@ -18,10 +18,11 @@ DROP INDEX entity_relationship_edge_index;
 ALTER TABLE thread_entity
     ADD taskId BIGINT GENERATED ALWAYS AS (json ->> '$.task.id') STORED,
     ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.task.status') STORED,
-    ADD CONSTRAINT task_id_constraint UNIQUE(taskId),
-    ADD INDEX task_status_index (taskStatus),
-    ADD INDEX created_by_index (createdBy),
-    ADD INDEX updated_at_index (updatedAt);
+    ADD CONSTRAINT task_id_constraint UNIQUE(taskId);
+
+CREATE INDEX IF NOT EXISTS thread_entity_task_status_index ON thread_entity(taskStatus);
+CREATE INDEX IF NOT EXISTS thread_entity_created_by_index ON thread_entity(createdBy);
+CREATE INDEX IF NOT EXISTS thread_entity_updated_at_index ON thread_entity(updatedAt);
 
 CREATE TABLE task_sequence (id SERIAL PRIMARY KEY, dummy varchar(1));
 INSERT INTO task_sequence (dummy) VALUES (0) RETURNING id;
