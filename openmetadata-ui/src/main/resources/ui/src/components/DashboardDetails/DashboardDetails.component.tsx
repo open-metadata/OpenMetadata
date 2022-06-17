@@ -532,7 +532,9 @@ const DashboardDetails = ({
                                 to={{ pathname: chart.chartUrl }}>
                                 <span className="tw-flex">
                                   <span className="tw-mr-1">
-                                    {chart.displayName}
+                                    {getEntityName(
+                                      chart as unknown as EntityReference
+                                    )}
                                   </span>
                                   <SVGIcons
                                     alt="external-link"
