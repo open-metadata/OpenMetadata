@@ -13,7 +13,6 @@ REST Auth & Client for Mode
 """
 import traceback
 from base64 import b64encode
-from enum import Enum
 
 from requests._internal_utils import to_native_string
 
@@ -23,22 +22,21 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 
-class ModeConstants(Enum):
-    EMBEDDED = "_embedded"
-    COLLECTIONS = "collections"
-    TOKEN = "token"
-    REPORTS = "reports"
-    QUERIES = "queries"
-    CHARTS = "charts"
-    NAME = "name"
-    DATA_SOURCES = "data_sources"
-    DATABASE = "database"
-    VIEW_VEGAS = "view_vegas"
-    TITLE = "title"
-    DESCRIPTION = "description"
-    LINKS = "_links"
-    SHARE = "share"
-    HREF = "href"
+EMBEDDED = "_embedded"
+COLLECTIONS = "collections"
+TOKEN = "token"
+REPORTS = "reports"
+QUERIES = "queries"
+CHARTS = "charts"
+NAME = "name"
+DATA_SOURCES = "data_sources"
+DATABASE = "database"
+VIEW_VEGAS = "view_vegas"
+TITLE = "title"
+DESCRIPTION = "description"
+LINKS = "_links"
+SHARE = "share"
+HREF = "href"
 
 
 class ModeApiClient:
@@ -73,18 +71,14 @@ class ModeApiClient:
         """
         try:
             all_reports = []
-            response_collections = self.client.get(
-                f"/{workspace_name}/{ModeConstants.COLLECTIONS.value}"
-            )
-            collections = response_collections[ModeConstants.EMBEDDED.value]["spaces"]
+            response_collections = self.client.get(f"/{workspace_name}/{COLLECTIONS}")
+            collections = response_collections[EMBEDDED]["spaces"]
             for collection in collections:
                 response_reports = self.get_all_reports_for_collection(
                     workspace_name=workspace_name,
-                    collection_token=collection.get(ModeConstants.TOKEN.value),
+                    collection_token=collection.get(TOKEN),
                 )
-                reports = response_reports[ModeConstants.EMBEDDED.value][
-                    ModeConstants.REPORTS.value
-                ]
+                reports = response_reports[EMBEDDED][REPORTS]
                 all_reports.extend(reports)
             return all_reports
         except Exception as err:  # pylint: disable=broad-except
@@ -103,7 +97,7 @@ class ModeApiClient:
         """
         try:
             response = self.client.get(
-                f"/{workspace_name}/{ModeConstants.COLLECTIONS.value}/{collection_token}/{ModeConstants.REPORTS.value}"
+                f"/{workspace_name}/{COLLECTIONS}/{collection_token}/{REPORTS}"
             )
             return response
         except Exception as err:  # pylint: disable=broad-except
@@ -120,7 +114,7 @@ class ModeApiClient:
         """
         try:
             response = self.client.get(
-                f"/{workspace_name}/{ModeConstants.REPORTS.value}/{report_token}/{ModeConstants.QUERIES.value}"
+                f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}"
             )
             return response
         except Exception as err:  # pylint: disable=broad-except
@@ -140,7 +134,7 @@ class ModeApiClient:
         """
         try:
             response = self.client.get(
-                f"/{workspace_name}/{ModeConstants.REPORTS.value}/{report_token}/{ModeConstants.QUERIES.value}/{query_token}/{ModeConstants.CHARTS.value}"
+                f"/{workspace_name}/{REPORTS}/{report_token}/{QUERIES}/{query_token}/{CHARTS}"
             )
             return response
         except Exception as err:  # pylint: disable=broad-except
@@ -156,24 +150,14 @@ class ModeApiClient:
         """
         try:
             all_data_sources = {}
-            response_data_sources = self.client.get(
-                f"/{workspace_name}/{ModeConstants.DATA_SOURCES.value}"
-            )
-            data_sources = response_data_sources[ModeConstants.EMBEDDED.value][
-                ModeConstants.DATA_SOURCES.value
-            ]
+            response_data_sources = self.client.get(f"/{workspace_name}/{DATA_SOURCES}")
+            data_sources = response_data_sources[EMBEDDED][DATA_SOURCES]
             for data_source in data_sources:
                 if data_source.get("id"):
                     data_source_dict = {
-                        ModeConstants.TOKEN.value: data_source.get(
-                            ModeConstants.TOKEN.value
-                        ),
-                        ModeConstants.NAME.value: data_source.get(
-                            ModeConstants.NAME.value
-                        ),
-                        ModeConstants.DATABASE.value: data_source.get(
-                            ModeConstants.DATABASE.value
-                        ),
+                        TOKEN: data_source.get(TOKEN),
+                        NAME: data_source.get(NAME),
+                        DATABASE: data_source.get(DATABASE),
                     }
                     all_data_sources[data_source.get("id")] = data_source_dict
 

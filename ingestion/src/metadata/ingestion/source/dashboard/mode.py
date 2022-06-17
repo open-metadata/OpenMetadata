@@ -11,7 +11,7 @@
 """Mode source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from sqllineage.runner import LineageRunner
 
@@ -34,18 +34,17 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
-from metadata.utils import fqn
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.utils import fqn, mode_client
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_chart_entities_from_id
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.mode_client import ModeConstants
 from metadata.utils.sql_lineage import search_table_entities
 
 logger = ingestion_logger()
 
 
-class ModeSource(DashboardSourceService):
+class ModeSource(DashboardServiceSource):
     """Mode entity class
     Args:
         config:
@@ -94,7 +93,7 @@ class ModeSource(DashboardSourceService):
         """
         Get Dashboard Name
         """
-        return dashboard_details.get(ModeConstants.NAME.value)
+        return dashboard_details.get(mode_client.NAME)
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
         """
@@ -102,39 +101,45 @@ class ModeSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
+    def yield_dashboard(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateDashboardRequest]:
         """
-        Method to Get Dashboard Entity, Dashboard Charts & Lineage
+        Method to Get Dashboard Entity
         """
         yield CreateDashboardRequest(
-            name=dashboard_details.get(ModeConstants.TOKEN.value),
-            dashboardUrl=dashboard_details[ModeConstants.LINKS.value][
-                ModeConstants.SHARE.value
-            ][ModeConstants.HREF.value],
-            displayName=dashboard_details.get(ModeConstants.NAME.value),
-            description=dashboard_details.get(ModeConstants.DESCRIPTION.value)
-            if dashboard_details.get(ModeConstants.DESCRIPTION.value)
+            name=dashboard_details.get(mode_client.TOKEN),
+            dashboardUrl=dashboard_details[mode_client.LINKS][mode_client.SHARE][
+                mode_client.HREF
+            ],
+            displayName=dashboard_details.get(mode_client.NAME),
+            description=dashboard_details.get(mode_client.DESCRIPTION)
+            if dashboard_details.get(mode_client.DESCRIPTION)
             else "",
             charts=get_chart_entities_from_id(
                 chart_ids=self.charts,
                 metadata=self.metadata,
                 service_name=self.config.serviceName,
             ),
-            service=EntityReference(id=self.service.id, type="dashboardService"),
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
+            ),
         )
 
-    def get_lineage(self, dashboard_details: Any) -> Optional[AddLineageRequest]:
-        """
-        Get lineage between dashboard and data sources
+    def yield_dashboard_lineage(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """Get lineage method
+
+        Args:
+            dashboard_details
         """
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,
-                report_token=dashboard_details[ModeConstants.TOKEN.value],
+                report_token=dashboard_details[mode_client.TOKEN],
             )
-            queries = response_queries[ModeConstants.EMBEDDED.value][
-                ModeConstants.QUERIES.value
-            ]
+            queries = response_queries[mode_client.EMBEDDED][mode_client.QUERIES]
             for query in queries:
                 data_source_id = query.get("data_source_id")
                 if not data_source_id:
@@ -152,7 +157,7 @@ class ModeSource(DashboardSourceService):
                     )
                     from_entities = search_table_entities(
                         metadata=self.metadata,
-                        database=data_source.get(ModeConstants.DATABASE.value),
+                        database=data_source.get(mode_client.DATABASE),
                         service_name=self.source_config.dbServiceName,
                         database_schema=database_schema_name,
                         table=table,
@@ -164,9 +169,7 @@ class ModeSource(DashboardSourceService):
                                 self.metadata,
                                 Lineage_Dashboard,
                                 service_name=self.config.serviceName,
-                                dashboard_name=dashboard_details.get(
-                                    ModeConstants.TOKEN.value
-                                ),
+                                dashboard_name=dashboard_details.get(mode_client.TOKEN),
                             ),
                         )
                         if from_entity and to_entity:
@@ -185,69 +188,61 @@ class ModeSource(DashboardSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def fetch_dashboard_charts(
+    def yield_dashboard_chart(
         self, dashboard_details: dict
-    ) -> Iterable[CreateChartRequest]:
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
+
         Args:
             dashboard_details:
         Returns:
-            Iterable[Chart]
+            Iterable[CreateChartRequest]
         """
         self.charts = []
         response_queries = self.client.get_all_queries(
             workspace_name=self.workspace_name,
-            report_token=dashboard_details.get(ModeConstants.TOKEN.value),
+            report_token=dashboard_details.get(mode_client.TOKEN),
         )
-        queries = response_queries[ModeConstants.EMBEDDED.value][
-            ModeConstants.QUERIES.value
-        ]
+        queries = response_queries[mode_client.EMBEDDED][mode_client.QUERIES]
         for query in queries:
             response_charts = self.client.get_all_charts(
                 workspace_name=self.workspace_name,
-                report_token=dashboard_details.get(ModeConstants.TOKEN.value),
-                query_token=query.get(ModeConstants.TOKEN.value),
+                report_token=dashboard_details.get(mode_client.TOKEN),
+                query_token=query.get(mode_client.TOKEN),
             )
-            charts = response_charts[ModeConstants.EMBEDDED.value][
-                ModeConstants.CHARTS.value
-            ]
+            charts = response_charts[mode_client.EMBEDDED][mode_client.CHARTS]
             for chart in charts:
                 try:
                     if filter_by_chart(
                         self.source_config.chartFilterPattern,
-                        chart[ModeConstants.VIEW_VEGAS.value][
-                            ModeConstants.TITLE.value
-                        ],
+                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
                     ):
                         self.status.filter(
-                            chart[ModeConstants.VIEW_VEGAS][ModeConstants.TITLE],
+                            chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
                             "Chart Pattern not Allowed",
                         )
                         continue
                     yield CreateChartRequest(
-                        name=chart.get(ModeConstants.TOKEN.value),
-                        displayName=chart[ModeConstants.VIEW_VEGAS.value][
-                            ModeConstants.TITLE.value
-                        ],
+                        name=chart.get(mode_client.TOKEN),
+                        displayName=chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
                         description="",
-                        chartType=ChartType.Other.value,
-                        chartUrl=chart[ModeConstants.LINKS.value]["report_viz_web"][
-                            ModeConstants.HREF.value
+                        chartType=ChartType.Other,
+                        chartUrl=chart[mode_client.LINKS]["report_viz_web"][
+                            mode_client.HREF
                         ],
                         service=EntityReference(
-                            id=self.service.id, type="dashboardService"
+                            id=self.context.dashboard_service.id.__root__,
+                            type="dashboardService",
                         ),
                     )
-                    self.charts.append(chart.get(ModeConstants.TOKEN.value))
+                    self.charts.append(chart.get(mode_client.TOKEN))
                     self.status.scanned(
-                        chart[ModeConstants.VIEW_VEGAS.value][ModeConstants.TITLE.value]
+                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE]
                     )
                 except Exception as err:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.error(err)
                     self.status.failure(
-                        chart[ModeConstants.VIEW_VEGAS.value][
-                            ModeConstants.TITLE.value
-                        ],
+                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
                         repr(err),
                     )
