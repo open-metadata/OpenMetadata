@@ -26,6 +26,9 @@
               "$ref": "./column/columnValuesToBeNotInSet.json"
             },
             {
+              "$ref": "./column/columnValuesToBeInSet.json"
+            },
+            {
               "$ref": "column/columnValuesToBeBetween.json"
             },
             {
@@ -42,6 +45,7 @@
             "columnValuesToBeNotNull",
             "columnValuesToMatchRegex",
             "columnValuesToBeNotInSet",
+            "columnValuesToBeInSet",
             "columnValuesToBeBetween",
             "columnValuesMissingCountToBeEqual",
             "columnValueLengthsToBeBetween"
