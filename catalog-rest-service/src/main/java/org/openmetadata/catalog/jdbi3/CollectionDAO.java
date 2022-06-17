@@ -521,7 +521,7 @@ public interface CollectionDAO {
     int getTaskId();
 
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
-    String findByTaskId(@Bind("id") String id);
+    String findByTaskId(@Bind("id") int id);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "

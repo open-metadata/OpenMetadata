@@ -147,8 +147,8 @@ public class FeedRepository {
     return EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
   }
 
-  public Thread getTask(String id) throws IOException {
-    return EntityUtil.validate(id, dao.feedDAO().findByTaskId(id), Thread.class);
+  public Thread getTask(Integer id) throws IOException {
+    return EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
   }
 
   private void storeMentions(Thread thread, String message) {

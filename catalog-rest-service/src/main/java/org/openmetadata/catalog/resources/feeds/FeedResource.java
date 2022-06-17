@@ -219,7 +219,7 @@ public class FeedResource {
         @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
       })
   public Thread getTask(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.getTask(id));
+    return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
   }
 
   @PATCH
