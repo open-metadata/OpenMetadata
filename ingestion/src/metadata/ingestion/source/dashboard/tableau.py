@@ -119,7 +119,6 @@ class TableauSource(DashboardServiceSource):
         # Fetch User/Owner Details
         owner = get_all_user_fields(self.client)
         self.owner = {user["id"]: user for user in owner}
-        print(self.workbooks)
 
         return super().prepare()
 
@@ -160,7 +159,6 @@ class TableauSource(DashboardServiceSource):
             Optional[EntityReference]
         """
         owner = self.owner[dashboard_details["owner"]["id"]]
-        print(owner["email"])
         yield CreateUserRequest(
             name=owner["name"], displayName=owner["fullName"], email=owner["email"]
         )
