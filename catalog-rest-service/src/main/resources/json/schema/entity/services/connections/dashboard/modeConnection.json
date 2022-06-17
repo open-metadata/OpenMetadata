@@ -20,6 +20,13 @@
       "$ref": "#/definitions/modeType",
       "default": "Mode"
     },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "URL for the mode instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://app.mode.com"
+    },
     "accessToken": {
       "title": "Access Token",
       "description": "Access Token for Mode Dashboard",

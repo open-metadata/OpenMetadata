@@ -109,7 +109,7 @@ class ModeSource(DashboardSourceService):
         yield CreateDashboardRequest(
             name=dashboard_details.get(ModeConstants.TOKEN.value),
             dashboardUrl=dashboard_details[ModeConstants.LINKS.value][
-                ModeConstants.WEB.value
+                ModeConstants.SHARE.value
             ][ModeConstants.HREF.value],
             displayName=dashboard_details.get(ModeConstants.NAME.value),
             description=dashboard_details.get(ModeConstants.DESCRIPTION.value)
@@ -224,10 +224,6 @@ class ModeSource(DashboardSourceService):
                             "Chart Pattern not Allowed",
                         )
                         continue
-                    chart_url = (
-                        f"{ModeConstants.BASE_URL.value}"
-                        f"{chart[ModeConstants.LINKS.value]['report_viz_web'][ModeConstants.HREF.value]}"
-                    )
                     yield CreateChartRequest(
                         name=chart.get(ModeConstants.TOKEN.value),
                         displayName=chart[ModeConstants.VIEW_VEGAS.value][
@@ -235,7 +231,9 @@ class ModeSource(DashboardSourceService):
                         ],
                         description="",
                         chartType=ChartType.Other.value,
-                        chartUrl=chart_url,
+                        chartUrl=chart[ModeConstants.LINKS.value]["report_viz_web"][
+                            ModeConstants.HREF.value
+                        ],
                         service=EntityReference(
                             id=self.service.id, type="dashboardService"
                         ),

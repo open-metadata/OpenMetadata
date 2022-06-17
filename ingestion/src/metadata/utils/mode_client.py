@@ -37,9 +37,8 @@ class ModeConstants(Enum):
     TITLE = "title"
     DESCRIPTION = "description"
     LINKS = "_links"
-    WEB = "web"
+    SHARE = "share"
     HREF = "href"
-    BASE_URL = "https://app.mode.com"
 
 
 class ModeApiClient:
@@ -48,7 +47,7 @@ class ModeApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=ModeConstants.BASE_URL.value,
+            base_url=config.hostPort,
             api_version="api",
             auth_header="Authorization",
             auth_token_mode="Basic",
