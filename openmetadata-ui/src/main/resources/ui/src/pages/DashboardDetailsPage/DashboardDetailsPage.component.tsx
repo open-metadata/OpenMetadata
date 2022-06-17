@@ -310,7 +310,7 @@ const DashboardDetailsPage = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-pipeline-details-error']
+            jsonData['api-error-messages']['fetch-dashboard-details-error']
           );
           reject(err);
         });
