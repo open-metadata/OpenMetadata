@@ -133,19 +133,20 @@ class QueryParserTests(TestCase):
         clean_tables = get_clean_parser_table_list(tables)
         aliases = get_parser_table_aliases(tables)
 
-        joins = get_table_joins(
-            parser=parser, tables=clean_tables, aliases=aliases
-        )
+        joins = get_table_joins(parser=parser, tables=clean_tables, aliases=aliases)
 
         self.assertEqual(
             joins["testdb.public.users"],
             [
                 TableColumnJoin(
-                    table_column=TableColumn(table="testdb.public.users", column="id"),  # lowercase col
+                    table_column=TableColumn(
+                        table="testdb.public.users", column="id"
+                    ),  # lowercase col
                     joined_with=[
-                        TableColumn(table="testdb.public.lowercase_users", column="ID"),  # uppercase col
+                        TableColumn(
+                            table="testdb.public.lowercase_users", column="ID"
+                        ),  # uppercase col
                     ],
                 ),
             ],
         )
-

@@ -49,7 +49,7 @@ class ESMixin(Generic[T]):
         database_name: str = "*",
         schema_name: str = "*",
         from_count: int = 0,
-        size: int = 10
+        size: int = 10,
     ):
         table_fqn = get_fqdn(
             entity_type=Table,
@@ -61,9 +61,7 @@ class ESMixin(Generic[T]):
         multiple_entities = []
         try:
             resp_es = self.client.get(
-                self.es_url.format(
-                    table_fqn, from_count, size, search_index
-                )
+                self.es_url.format(table_fqn, from_count, size, search_index)
             )
 
             if resp_es:

@@ -112,7 +112,9 @@ class MetadataUsageBulkSink(BulkSink):
                         table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
                             table_usage.sql_queries
                         )
-                    table_join_request = self.__get_table_joins(table_entity, table_usage)
+                    table_join_request = self.__get_table_joins(
+                        table_entity, table_usage
+                    )
 
                     logger.debug("table join request {}".format(table_join_request))
                     try:
@@ -125,6 +127,7 @@ class MetadataUsageBulkSink(BulkSink):
                             print(table_join_request)
 
                             import pudb
+
                             pudb.set_trace()
 
                             self.metadata.publish_frequently_joined_with(
@@ -297,6 +300,7 @@ class MetadataUsageBulkSink(BulkSink):
             search_index="table_search_index",
         )
         import pudb
+
         pudb.set_trace()
         return es_result
 
