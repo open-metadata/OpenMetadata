@@ -35,6 +35,12 @@
               "$ref": "./column/columnValuesMissingCountToBeEqual.json"
             },
             {
+              "$ref": "./column/columnValueMaxToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMinToBeBetween.json"
+            },
+            {
               "$ref": "./column/columnValuesLengthsToBeBetween.json"
             }
           ]
@@ -48,7 +54,9 @@
             "columnValuesToBeInSet",
             "columnValuesToBeBetween",
             "columnValuesMissingCountToBeEqual",
-            "columnValueLengthsToBeBetween"
+            "columnValueLengthsToBeBetween",
+            "columnValueMaxToBeBetween",
+            "columnValueMinToBeBetween"
           ]
         }
       },

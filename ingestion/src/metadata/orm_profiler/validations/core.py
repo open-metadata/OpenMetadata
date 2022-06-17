@@ -23,6 +23,15 @@ of logging these issues.
 from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.orm_profiler.validations.column.column_value_max_to_be_between import (
+    column_value_max_to_be_between,
+)
+from metadata.orm_profiler.validations.column.column_value_min_to_be_between import (
+    column_value_min_to_be_between,
+)
+from metadata.orm_profiler.validations.column.column_values_in_set import (
+    column_values_in_set,
+)
 from metadata.orm_profiler.validations.column.column_values_length_to_be_between import (
     column_value_length_to_be_between,
 )
@@ -31,9 +40,6 @@ from metadata.orm_profiler.validations.column.column_values_missing_count_to_be_
 )
 from metadata.orm_profiler.validations.column.column_values_not_in_set import (
     column_values_not_in_set,
-)
-from metadata.orm_profiler.validations.column.column_values_in_set import (
-    column_values_in_set,
 )
 from metadata.orm_profiler.validations.column.column_values_to_be_between import (
     column_values_to_be_between,
@@ -91,6 +97,8 @@ validate.register(column_values_to_be_between)
 validate.register(column_values_to_be_unique)
 validate.register(column_values_to_be_not_null)
 validate.register(column_value_length_to_be_between)
+validate.register(column_value_max_to_be_between)
+validate.register(column_value_min_to_be_between)
 
 # Column Session Tests
 validate.register(column_values_not_in_set)
