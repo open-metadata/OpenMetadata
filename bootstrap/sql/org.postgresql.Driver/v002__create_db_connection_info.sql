@@ -16,7 +16,7 @@ DROP COLUMN deleted;
 DROP INDEX entity_relationship_edge_index;
 
 ALTER TABLE thread_entity
-    ADD taskId BIGINT GENERATED ALWAYS AS (json ->> '$.task.id') STORED,
+    ADD taskId INT GENERATED ALWAYS AS (json ->> '$.task.id') STORED,
     ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.task.status') STORED,
     ADD CONSTRAINT task_id_constraint UNIQUE(taskId);
 
