@@ -11,7 +11,7 @@
         "type": "integer"
       },
       "maxValueForMaxInCol": {
-        "description": "Expected maximum value in the column to be greater or equal than",
+        "description": "Expected maximum value in the column to be lower or equal than",
         "type": "integer"
       }
     },
