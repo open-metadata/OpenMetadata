@@ -62,6 +62,9 @@ from metadata.orm_profiler.validations.table.table_column_count_to_be_between im
 from metadata.orm_profiler.validations.table.table_column_count_to_equal import (
     table_column_count_to_equal,
 )
+from metadata.orm_profiler.validations.table.table_column_name_to_exist import (
+    table_column_name_to_exist,
+)
 from metadata.orm_profiler.validations.table.table_column_to_match_set import (
     table_column_to_match_set,
 )
@@ -94,6 +97,7 @@ validate.register(table_row_count_to_be_between)
 validate.register(table_column_count_to_equal)
 validate.register(table_column_count_to_be_between)
 validate.register(table_column_to_match_set)
+validate.register(table_column_name_to_exist)
 
 # Column Tests
 validate.register(column_values_to_be_between)

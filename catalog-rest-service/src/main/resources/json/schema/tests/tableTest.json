@@ -26,6 +26,9 @@
               "$ref": "./table/tableColumnCountToBeBetween.json"
             },
             {
+              "$ref": "./table/tableColumnNameToExist.json"
+            },
+            {
               "$ref": "./table/tableColumnToMatchSet.json"
             }
           ]
@@ -36,7 +39,8 @@
             "tableRowCountToBeBetween",
             "tableColumnCountToEqual",
             "tableColumnCountToBeBetween",
-            "tableColumnToMatchSet"
+            "tableColumnToMatchSet",
+            "tableColumnNameToExist"
           ]
         }
       },
