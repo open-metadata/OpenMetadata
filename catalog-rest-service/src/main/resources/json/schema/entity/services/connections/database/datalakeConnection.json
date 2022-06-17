@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/datalakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatalakeConnection",
+  "description": "Datalake Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.database.DatalakeConnection",
+  "definitions": {
+    "datalakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Datalake"],
+      "default": "Datalake"
+    },
+
+    "GCSConfig": {
+      "title": "DataLake GCS Config Source",
+      "description": "DataLake Catalog and Manifest files in GCS storage. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "securityConfig": {
+          "title": "DataLake GCS Security Config",
+          "$ref": "../../../../security/credentials/gcsCredentials.json"
+        }
+      }
+    },
+    "S3Config": {
+      "title": "DataLake S3 Config Source",
+      "description": "DataLake Catalog and Manifest files in S3 bucket. We will search for catalog.json and manifest.json.",
+      "properties": {
+        "securityConfig": {
+          "title": "DataLake S3 Security Config",
+          "$ref": "../../../../security/credentials/awsCredentials.json"
+        }
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/datalakeType",
+      "default": "Datalake"
+    },
+    "configSource": {
+      "title": "DataLake Configuration Source",
+      "description": "Available sources to fetch files.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/S3Config"
+        },
+        {
+          "$ref": "#/definitions/GCSConfig"
+        }
+      ]
+    },
+    "bucketName": {
+      "title": "Bucket Name",
+      "description": "Bucket Name of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "prefix": {
+      "title": "Prefix",
+      "description": "Prefix of the data source.",
+      "type": "string",
+      "default": ""
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["configSource"]
+}

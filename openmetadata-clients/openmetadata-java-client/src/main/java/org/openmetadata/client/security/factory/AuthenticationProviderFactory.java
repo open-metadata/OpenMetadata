@@ -16,9 +16,11 @@ package org.openmetadata.client.security.factory;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.security.Auth0AuthenticationProvider;
 import org.openmetadata.client.security.AzureAuthenticationProvider;
+import org.openmetadata.client.security.CustomOIDCAuthenticationProvider;
 import org.openmetadata.client.security.GoogleAuthenticationProvider;
 import org.openmetadata.client.security.NoOpAuthenticationProvider;
 import org.openmetadata.client.security.OktaAuthenticationProvider;
+import org.openmetadata.client.security.OpenMetadataAuthenticationProvider;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 
 public class AuthenticationProviderFactory {
@@ -33,10 +35,11 @@ public class AuthenticationProviderFactory {
       case AUTH_0:
         return new Auth0AuthenticationProvider(serverConfig);
       case CUSTOM_OIDC:
+        return new CustomOIDCAuthenticationProvider(serverConfig);
       case AZURE:
         return new AzureAuthenticationProvider(serverConfig);
       case OPENMETADATA:
-        return null;
+        return new OpenMetadataAuthenticationProvider(serverConfig);
     }
     return null;
   }

@@ -248,6 +248,7 @@ declare module 'Models' {
     name: string;
     displayName: string;
     fullyQualifiedName: string;
+    fqdn?: string;
     type: string;
     id: string;
     description?: string;

@@ -703,20 +703,20 @@ const Explore: React.FC<ExploreProps> = ({
   return (
     <Fragment>
       <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
-        {advanceFieldCheck && (
-          <AdvancedFields
-            fields={selectedAdvancedFields}
-            index={searchIndex}
-            onClear={onAdvancedFieldClear}
-            onFieldRemove={onAdvancedFieldRemove}
-            onFieldValueSelect={onAdvancedFieldValueSelect}
-          />
-        )}
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
           <>
             {!connectionError && getTabs()}
+            {advanceFieldCheck && (
+              <AdvancedFields
+                fields={selectedAdvancedFields}
+                index={searchIndex}
+                onClear={onAdvancedFieldClear}
+                onFieldRemove={onAdvancedFieldRemove}
+                onFieldValueSelect={onAdvancedFieldValueSelect}
+              />
+            )}
             <SearchedData
               showResultCount
               currentPage={currentPage}

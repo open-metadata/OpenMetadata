@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
+import { act } from 'react-test-renderer';
 import { PAGE_SIZE } from '../../../constants/constants';
 import NextPrevious from './NextPrevious';
 
@@ -222,5 +223,40 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toBeInTheDocument();
 
     expect(pageIndicator).toHaveTextContent(`${totalPage}/${totalPage} Page`);
+  });
+
+  it('On clicking Previous and Next button respective pages should be rendered', () => {
+    const paging = {
+      before: 'test',
+      after: '',
+      total: PAGE_SIZE * 2,
+    };
+
+    const totalPage = computeTotalPages(PAGE_SIZE, PAGE_SIZE * 2);
+
+    const { getByTestId } = render(
+      <NextPrevious
+        isNumberBased
+        currentPage={totalPage}
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+        totalCount={paging.total}
+      />
+    );
+    const nextButton = getByTestId('next');
+    const prevButton = getByTestId('previous');
+
+    act(() => {
+      fireEvent.click(prevButton);
+    });
+
+    expect(mockCallback).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      fireEvent.click(nextButton);
+    });
+
+    expect(mockCallback).toHaveBeenCalledTimes(2);
   });
 });
