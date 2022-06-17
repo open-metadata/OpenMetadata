@@ -242,11 +242,15 @@ class MetadataRestSink(Sink[Entity]):
                     table_queries=db_schema_and_table.table.tableQueries,
                 )
 
-            if db_schema_and_table.table.viewDefinition is not None:
+            if (
+                db_schema_and_table.table.viewDefinition is not None
+                and db_schema_and_table.table.viewDefinition.__root__
+            ):
                 lineage_status = self.metadata.ingest_lineage_by_query(
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
-                    database=db_schema_and_table.database.name.__root__,
+                    database_name=db_schema_and_table.database.name.__root__,
+                    schema_name=db_schema_and_table.database_schema.name.__root__,
                 )
                 if not lineage_status:
                     self.create_lineage_via_es(db_schema_and_table, db_schema, db)

@@ -11,7 +11,6 @@
 
 import json
 from datetime import datetime
-from typing import List
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -69,10 +68,13 @@ class MetadataUsageBulkSink(BulkSink):
     def handle_work_unit_end(self, wu):
         pass
 
-    def ingest_sql_queries_lineage(self, queries, database):
+    def ingest_sql_queries_lineage(self, queries, database, schema_name):
         for query in queries:
             self.metadata.ingest_lineage_by_query(
-                query=query.query, service_name=self.service_name, database=database
+                query=query.query,
+                service_name=self.service_name,
+                database_name=database,
+                schema_name=schema_name,
             )
 
     def write_records(self) -> None:
@@ -83,7 +85,8 @@ class MetadataUsageBulkSink(BulkSink):
 
             self.service_name = table_usage.service_name
 
-            table_entities = self.__get_table_entities(
+            table_entities = self.metadata.get_table_entities_from_query(
+                self.service_name,
                 table_usage.database,
                 table_usage.schema_name,
                 table_usage.table,
@@ -104,6 +107,7 @@ class MetadataUsageBulkSink(BulkSink):
                             "sql_queries": table_usage.sql_queries,
                             "usage_date": table_usage.date,
                             "database": table_usage.database,
+                            "schema_name": table_usage.schema_name,
                         }
                     else:
                         table_usage_map[table_entity.id.__root__][
@@ -122,14 +126,6 @@ class MetadataUsageBulkSink(BulkSink):
                             table_join_request is not None
                             and len(table_join_request.columnJoins) > 0
                         ):
-                            print("PUBLISHING JOINS")
-                            print(table_entity.fullyQualifiedName)
-                            print(table_join_request)
-
-                            import pudb
-
-                            pudb.set_trace()
-
                             self.metadata.publish_frequently_joined_with(
                                 table_entity, table_join_request
                             )
@@ -155,7 +151,9 @@ class MetadataUsageBulkSink(BulkSink):
                 table_queries=value_dict["sql_queries"],
             )
             self.ingest_sql_queries_lineage(
-                value_dict["sql_queries"], value_dict["database"]
+                value_dict["sql_queries"],
+                value_dict["database"],
+                value_dict["schema_name"],
             )
             table_usage_request = TableUsageRequest(
                 date=value_dict["usage_date"], count=value_dict["usage_count"]
@@ -230,8 +228,8 @@ class MetadataUsageBulkSink(BulkSink):
     def __get_column_fqdn(
         self, database: str, database_schema: str, table_column: TableColumn
     ):
-        table_entities = self.__get_table_entities(
-            database, database_schema, table_column.table
+        table_entities = self.metadata.get_table_entities_from_query(
+            self.service_name, database, database_schema, table_column.table
         )
         if not table_entities:
             return None
@@ -246,63 +244,6 @@ class MetadataUsageBulkSink(BulkSink):
         for tbl_column in table.columns:
             if column.lower() == tbl_column.name.__root__.lower():
                 return tbl_column.fullyQualifiedName.__root__.__root__
-
-    def __get_table_entities(
-        self, database_name: str, database_schema: str, table_name: str
-    ) -> List[Table]:
-
-        # First try to find the data from the given db and schema
-        # Otherwise, pick it up from the table_name str
-        # Finally, try with upper case
-
-        split_table = table_name.split(".")
-
-        database_query, schema_query, table = (
-            [None] * (3 - len(split_table))
-        ) + split_table
-
-        # First search by the information schema data
-        table_entities = self.__fetch_table_entities(
-            database_name=database_name,
-            database_schema=database_schema,
-            table_name=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        # Otherwise, try to use the info from the names embedded in the query
-        table_entities = self.__fetch_table_entities(
-            database_name=database_query,
-            database_schema=schema_query,
-            table_name=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-    def __fetch_table_entities(
-        self, database_name: str, database_schema: str, table_name: str
-    ) -> List[Table]:
-
-        table_fqn = get_fqdn(
-            Table, self.service_name, database_name, database_schema, table_name
-        )
-        table_fqn = _get_formmated_table_name(table_fqn)
-        table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
-        if table_entity:
-            return [table_entity]
-        es_result = self.metadata.search_entities_using_es(
-            service_name=self.service_name,
-            table_name=table_name,
-            database_name=database_name,
-            schema_name=database_schema,
-            search_index="table_search_index",
-        )
-        import pudb
-
-        pudb.set_trace()
-        return es_result
 
     def get_status(self):
         return self.status
