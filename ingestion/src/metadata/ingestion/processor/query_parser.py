@@ -118,7 +118,7 @@ def get_table_name_from_list(
 
 def get_comparison_elements(
     identifier: Identifier, tables: List[str], aliases: Dict[str, str]
-) -> Optional[Tuple[str, str]]:
+) -> Tuple[Optional[str], Optional[str]]:
     """
     Return the tuple table_name, column_name from each comparison element
     :param identifier: comparison identifier
@@ -133,7 +133,7 @@ def get_comparison_elements(
 
     if not table_or_alias or not column_name:
         logger.debug(f"Cannot obtain comparison elements from identifier {identifier}")
-        return None
+        return None, None
 
     alias_to_table = aliases.get(table_or_alias)
     if alias_to_table:
@@ -148,7 +148,7 @@ def get_comparison_elements(
 
     if not table_from_list:
         logger.debug(f"Cannot find {table_or_alias} in comparison elements")
-        return None
+        return None, None
 
     return table_from_list, column_name
 
