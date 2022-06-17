@@ -6,6 +6,106 @@
   "type": "object",
 
   "definitions": {
+    "taskType": {
+      "javaType": "org.openmetadata.catalog.type.TaskType",
+      "description": "Type of a task.",
+      "type": "string",
+      "enum": [
+        "RequestDescription",
+        "UpdateDescription",
+        "RequestTag",
+        "UpdateTag",
+        "Generic"
+      ],
+      "javaEnums": [
+        {
+          "name": "RequestDescription"
+        },
+        {
+          "name": "UpdateDescription"
+        },
+        {
+          "name": "RequestTag"
+        },
+        {
+          "name": "UpdateTag"
+        },
+        {
+          "name": "Generic"
+        }
+      ]
+    },
+    "taskDetails": {
+      "javaType": "org.openmetadata.catalog.type.TaskDetails",
+      "description": "Details about the task. This is only applicable if thread is of type task.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier that identifies the task.",
+          "type": "integer"
+        },
+        "type": {
+          "$ref": "#/definitions/taskType"
+        },
+        "assignees": {
+          "description": "List of users or teams the task is assigned to",
+          "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+        },
+        "status": {
+          "$ref": "#/definitions/taskStatus"
+        },
+        "closedBy": {
+          "description": "The user that closed the task.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "closedAt": {
+          "description": "Timestamp when the task was closed in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "suggestion": {
+          "description": "The suggestion object for the task provided by the creator.",
+          "type": "string"
+        }
+      },
+      "required": ["id", "assignees", "type"],
+      "additionalProperties": false
+    },
+    "taskStatus": {
+      "javaType": "org.openmetadata.catalog.type.TaskStatus",
+      "type": "string",
+      "description": "Status of a task.",
+      "enum": ["Open", "Resolved", "Closed"],
+      "javaEnums": [
+        {
+          "name": "Open"
+        },
+        {
+          "name": "Resolved"
+        },
+        {
+          "name": "Closed"
+        }
+      ],
+      "default": "Open"
+    },
+    "threadType": {
+      "javaType": "org.openmetadata.catalog.type.ThreadType",
+      "type": "string",
+      "description": "Type of thread.",
+      "enum": ["Conversation", "Task", "Announcement"],
+      "javaEnums": [
+        {
+          "name": "Conversation"
+        },
+        {
+          "name": "Task"
+        },
+        {
+          "name": "Announcement"
+        }
+      ],
+      "default": "Conversation"
+    },
     "post": {
       "javaType": "org.openmetadata.catalog.type.Post",
       "type": "object",
@@ -40,6 +140,9 @@
     "id": {
       "description": "Unique identifier that identifies an entity instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "type": {
+      "$ref": "#/definitions/threadType"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -96,6 +199,10 @@
     "reactions": {
       "description": "Reactions for the thread.",
       "$ref": "../../type/reaction.json#/definitions/reactionList"
+    },
+    "task": {
+      "description": "Details about the task. This is only applicable if thread is of type task.",
+      "$ref": "#/definitions/taskDetails"
     }
   },
   "required": ["id", "about", "message"],

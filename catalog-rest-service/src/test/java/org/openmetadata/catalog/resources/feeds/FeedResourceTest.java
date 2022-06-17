@@ -83,10 +83,15 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
+import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.ReactionType;
+import org.openmetadata.catalog.type.TaskDetails;
+import org.openmetadata.catalog.type.TaskStatus;
+import org.openmetadata.catalog.type.TaskType;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -291,6 +296,33 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(userThreadCount, listThreadsCount(USER_LINK, userAuthHeaders).getTotalCount());
     assertEquals(tableDescriptionThreadCount, getThreadCount(TABLE_DESCRIPTION_LINK, userAuthHeaders));
     assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, userAuthHeaders));
+  }
+
+  @Test
+  void post_validTaskAndList_200() throws IOException {
+
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+    CreateThread create =
+        create().withMessage("Request Description for column").withTaskDetails(taskDetails).withType(ThreadType.Task);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+    ThreadList threads = listThreads(null, null, userAuthHeaders);
+    TaskDetails task = threads.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    assertEquals(List.of(USER2.getEntityReference()), task.getAssignees());
+    assertEquals("new description", task.getSuggestion());
+
+    Thread taskThread = getTask(task.getId(), userAuthHeaders);
+    TaskDetails task2 = taskThread.getTask();
+    assertEquals(task.getId(), task2.getId());
+    assertEquals(task.getAssignees(), task2.getAssignees());
+    assertEquals(task.getSuggestion(), task2.getSuggestion());
+    assertEquals(TaskStatus.Open, task2.getStatus());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -762,6 +794,11 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   public static Thread getThread(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/" + id);
+    return TestUtils.get(target, Thread.class, authHeaders);
+  }
+
+  public static Thread getTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("feed/task/" + id);
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 

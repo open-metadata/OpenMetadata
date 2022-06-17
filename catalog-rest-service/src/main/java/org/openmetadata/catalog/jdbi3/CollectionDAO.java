@@ -513,6 +513,16 @@ public interface CollectionDAO {
     @SqlQuery("SELECT count(id) FROM thread_entity WHERE resolved = :resolved")
     int listCount(@Bind("resolved") boolean resolved);
 
+    @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=(id+1) RETURNING id", connectionType = POSTGRES)
+    void updateTaskId();
+
+    @SqlQuery("SELECT id FROM task_sequence LIMIT 1")
+    int getTaskId();
+
+    @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
+    String findByTaskId(@Bind("id") String id);
+
     @SqlQuery(
         "SELECT json FROM thread_entity "
             + "WHERE updatedAt > :before AND resolved = :resolved "

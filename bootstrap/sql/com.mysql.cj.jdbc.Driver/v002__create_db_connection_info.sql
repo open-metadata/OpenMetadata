@@ -16,3 +16,13 @@ DROP COLUMN deleted;
 ALTER TABLE entity_relationship
 DROP INDEX edge_index;
 
+ALTER TABLE thread_entity
+ADD taskId INT UNSIGNED GENERATED ALWAYS AS (json ->> '$.task.id'),
+ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.task.status'),
+ADD CONSTRAINT task_id_constraint UNIQUE(taskId),
+ADD INDEX task_status_index (taskStatus),
+ADD INDEX created_by_index (createdBy),
+ADD INDEX updated_at_index (updatedAt);
+
+CREATE TABLE task_sequence (id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY (id));
+INSERT INTO task_sequence VALUES (0);

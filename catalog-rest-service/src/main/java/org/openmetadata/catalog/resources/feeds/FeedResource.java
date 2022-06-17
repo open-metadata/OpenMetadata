@@ -61,7 +61,10 @@ import org.openmetadata.catalog.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.TaskDetails;
+import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -201,6 +204,24 @@ public class FeedResource {
     return addHref(uriInfo, dao.get(id));
   }
 
+  @GET
+  @Path("/task/{id}")
+  @Operation(
+      operationId = "getTaskByID",
+      summary = "Get a task thread by task id",
+      tags = "feeds",
+      description = "Get a task thread by `task id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
+      })
+  public Thread getTask(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    return addHref(uriInfo, dao.getTask(id));
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -269,7 +290,8 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
+  public Response createThread(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
       throws IOException {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
@@ -392,6 +414,8 @@ public class FeedResource {
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
         .withReactions(Collections.emptyList())
+        .withType(create.getType())
+        .withTask(getTaskDetails(create.getTaskDetails()))
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
@@ -403,5 +427,16 @@ public class FeedResource {
         .withFrom(create.getFrom())
         .withReactions(Collections.emptyList())
         .withPostTs(System.currentTimeMillis());
+  }
+
+  private TaskDetails getTaskDetails(CreateTaskDetails create) {
+    if (create != null) {
+      return new TaskDetails()
+          .withAssignees(create.getAssignees())
+          .withType(create.getType())
+          .withStatus(TaskStatus.Open)
+          .withSuggestion(create.getSuggestion());
+    }
+    return null;
   }
 }

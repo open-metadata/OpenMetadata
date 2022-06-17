@@ -51,6 +51,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -78,6 +79,12 @@ public class FeedRepository {
   }
 
   @Transaction
+  public int getNextTaskId() {
+    dao.feedDAO().updateTaskId();
+    return dao.feedDAO().getTaskId();
+  }
+
+  @Transaction
   public Thread create(Thread thread, UUID entityId, EntityReference entityOwner, EntityLink about) throws IOException {
 
     String createdBy = thread.getCreatedBy();
@@ -87,6 +94,11 @@ public class FeedRepository {
 
     // Add entity id to thread
     thread.withEntityId(entityId);
+
+    // if thread is of type "task", assign a taskid
+    if (thread.getType().equals(ThreadType.Task)) {
+      thread.withTask(thread.getTask().withId(getNextTaskId()));
+    }
 
     // Insert a new thread
     dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
@@ -133,6 +145,10 @@ public class FeedRepository {
 
   public Thread get(String id) throws IOException {
     return EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
+  }
+
+  public Thread getTask(String id) throws IOException {
+    return EntityUtil.validate(id, dao.feedDAO().findByTaskId(id), Thread.class);
   }
 
   private void storeMentions(Thread thread, String message) {

@@ -14,3 +14,14 @@ ADD status VARCHAR(256) GENERATED ALWAYS AS (json ->> 'status') STORED NOT NULL,
 DROP COLUMN deleted;
 
 DROP INDEX entity_relationship_edge_index;
+
+ALTER TABLE thread_entity
+    ADD taskId BIGINT GENERATED ALWAYS AS (json ->> '$.task.id') STORED,
+    ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.task.status') STORED,
+    ADD CONSTRAINT task_id_constraint UNIQUE(taskId),
+    ADD INDEX task_status_index (taskStatus),
+    ADD INDEX created_by_index (createdBy),
+    ADD INDEX updated_at_index (updatedAt);
+
+CREATE TABLE task_sequence (id SERIAL PRIMARY KEY, dummy varchar(1));
+INSERT INTO task_sequence (dummy) VALUES (0) RETURNING id;
