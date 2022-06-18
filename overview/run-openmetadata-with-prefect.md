@@ -116,26 +116,17 @@ Follow the [OSX instructions](run-openmetadata.md#1.-create-a-directory-for-open
 
 ## Installation Process
 
-This documentation will walk you through the process of configuring OpenMetadata and Prefect 2.0. It is intended as a minimal viable setup to get you started using both platforms together to build a reliable data platform. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
+This documentation page will walk you through the process of configuring OpenMetadata and [Prefect 2.0](https://www.prefect.io/blog/introducing-prefect-2-0/). It is intended as a minimal viable setup to get you started using both platforms together. Once you want to move to a production-ready deployment, check the last two sections of this tutorial.
 
-### 1. Clone the OpenMetadata repository
 
-Clone the latest version of the [OpenMetadata repository](https://github.com/open-metadata/OpenMetadata) and navigate to the directory `openmetadata` containing the `docker-compose.yml` file with the minimal requirements to get started with OpenMetadata.
+### 1. Clone the ``prefect-openmetadata`` repository
 
-```
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd docker/openmetadata/
-```
+First, clone the latest version of the [prefect-openmetadata](https://github.com/PrefectHQ/prefect-openmetadata) Prefect Collection. 
 
-### 2. Start the OpenMetadata containers
+Then, navigate to the directory ``openmetadata-docker`` containing the `docker-compose.yml` file with the minimal requirements to get started with OpenMetadata.
 
-If you list the files in this directory, you should see, among others, a `docker-compose.yml` file. You may extend this file if needed. For instance, you may want to include:
 
-* Metadata ingestion and orchestration framework (_such as Prefect_),
-* Additional environment variables,
-* Additional bind mounts and volumes.
-
-Even though this setup is highly extensible, the included `docker-compose.yml` file already contains **all components** which are **necessary to run in Docker**. Therefore, this tutorial will demonstrate installing Prefect 2.0 separately from OpenMetadata. That'll reduce the complexity of running your metadata ingestion workflows locally and then promoting those to a production environment using Prefect [deployments](https://orion-docs.prefect.io/concepts/deployments/).
+### 2. Start OpenMetadata containers
 
 You can start the containers with OpenMetadata components using:
 
@@ -160,11 +151,11 @@ openmetadata_mysql           "/entrypoint.sh mysq…"   mysql                 ru
 openmetadata_server          "./openmetadata-star…"   openmetadata-server   running             0.0.0.0:8585->8585/tcp
 ```
 
-### 3. Confirm you can access the UI
+### 3. Confirm you can access the OpenMetadata UI
 
 Visit the following URL to confirm that you can access the UI and start exploring OpenMetadata:
 
-```yaml
+```
 http://localhost:8585
 ```
 
@@ -172,196 +163,79 @@ You should see a page similar to the following as the landing page for the OpenM
 
 ![](../docs/.gitbook/assets/landing-page.png)
 
-### 4. Install the OpenMetadata ingestion package
 
-Before running the commands below to install Python libraries, you may optionally create a **virtual environment** with a tool of your choice (_such as venv, conda, or poetry_).
+### 4. Install `prefect-openmetadata`
 
-Then, **install** the **OpenMetadata ingestion** package using `pip`:
+Before running the commands below to install Python libraries, we recommend creating a **virtual environment** with a Python virtual environment manager such as pipenv, conda or virtualenv.
 
-```yaml
-pip install --upgrade 'openmetadata-ingestion[docker]'
+You can install the Prefect OpenMetadata package using a single command:
+
+```
+pip install prefect-openmetadata
 ```
 
-The above library contains everything you need to turn your JSON ingestion specifications into workflows that will:
+This will already include Prefect 2.0 - both the client library, as well as an embedded API server and UI, which can *optionally* be started using:
 
-* Scan your source systems,
-* Figure out which metadata needs to be ingested,
-* Load the requested metadata into your OpenMetadata backend.
-
-### 5. Install Prefect
-
-The challenge with the metadata ingestion is to ensure that this process can be **automated** and can run **reliably**, either on a regular interval, or ad-hoc. This is where [Prefect](http://prefect.io/) can help.
-
-[Prefect 2.0](https://www.prefect.io/blog/introducing-prefect-2-0/) is a general-purpose workflow orchestration platform allowing you to build, run, schedule, and operationalize your data pipelines at scale. It supports both [batch and streaming workflows](https://www.prefect.io/blog/you-no-longer-need-two-separate-systems-for-batch-processing-and-streaming/). It provides an excellent developer experience allowing you to run your flows locally and seamlessly to move to production and to Cloud when you’re ready.
-
-Among [many other features](https://www.prefect.io/opensource/v2/), it natively supports:
-
-* Dynamic runtime-discoverable and modular workflows,
-* Passing data between tasks,
-* Running your workflows on [various execution platforms](https://orion-docs.prefect.io/concepts/flow-runners/) (on-prem, cloud, Docker, Kubernetes) while maintaining privacy via a [hybrid execution model](https://www.prefect.io/why-prefect/hybrid-model/),
-* Scaling out for parallel and concurrent execution with [async, Dask, and Ray](https://orion-docs.prefect.io/concepts/task-runners/),
-* Various integrations through [Prefect Collections](https://orion-docs.prefect.io/collections/overview/).
-
-You can **install** **Prefect** using a single command:
-
-```yaml
-pip install -U "prefect>=2.0b"
 ```
-
-This will not only install the client library, but also an embedded API server and UI. Both can be started _optionally_:
-
-```yaml
 prefect orion start
 ```
 
 If you navigate to the URL, you’ll be able to access a locally running Prefect Orion UI:
 
-```yaml
+```
 http://localhost:4200
 ```
 
-### 6. Run a simple ingestion workflow locally
+Apart from Prefect, `prefect-openmetadata` comes prepackaged with the `openmetadata-ingestion[docker]` library for metadata ingestion. This library contains everything you need to turn your JSON ingestion specifications into workflows that will:
 
-To see how Prefect can be used for metadata ingestion, you can create a flow with the following structure:
+- scan your source systems,
+- figure out which metadata needs to be ingested,
+- load the requested metadata into your OpenMetadata backend.
 
-```python
-from prefect import flow
-from metadata.ingestion.api.workflow import prefect_ingestion
 
-config = """PASTE YOUR JSON CONFIG HERE"""
+### 5. Prepare your metadata ingestion spec
 
-@flow
-def metadata_ingestion_workflow():
-    prefect_ingestion(config)
 
-if __name__ == "__main__":
-    metadata_ingestion_workflow()
-```
+If you followed the first step of this tutorial, then you cloned the `prefect-openmetadata` repository. This repository contains a directory **example-data** which you can use to ingest sample data into your `OpenMetadata` backend using Prefect. 
 
-In the first step of this installation process, you cloned the OpenMetadata repository. This will come in handy, as it contains **sample metadata** we can ingest using Prefect. You can locate the [sample data here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/sample\_data).
+[This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) contains an example configuration you can use in your flow to ingest that sample data.
 
-First, adjust the `sampleDataFolder` path in order to point it at the directory to which you cloned the OpenMetadata repository. Specifically, it should be a path to the `sample_data` folder. Then paste the JSON configuration shown below into the `config` placeholder in the flow code.
 
-```json
-{
-  "source": {
-    "type": "sample-data",
-    "serviceName": "sample_data",
-    "serviceConnection": {
-      "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "/Users/you/OpenMetadata/ingestion/examples/sample_data"
-      }
-    },
-    "sourceConfig": {}
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
-```
+### 6. Run ingestion workflow locally
 
-Now you can paste the JSON-config from above into your flow and run it:
+Now you can paste the config from above as a string into your flow definition and run it. [This documentation page](https://prefecthq.github.io/prefect-openmetadata/run_ingestion_flow/) explains in detail how that works.  
 
-```python
-# sample_metadata_flow.py
-from prefect import flow
-from metadata.ingestion.api.workflow import prefect_ingestion
+In short, we only have to:
 
-config = """
-{
-  "source": {
-    "type": "sample-data",
-    "serviceName": "sample_data",
-    "serviceConnection": {
-      "config": {
-        "type": "SampleData",
-        "sampleDataFolder": "/Users/you/OpenMetadata/ingestion/examples/sample_data"
-      }
-    },
-    "sourceConfig": {}
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-}
-"""
+1. Import the flow function, 
+2. Pass the config as a string.
 
-@flow
-def metadata_ingestion_workflow():
-    prefect_ingestion(config)
-
-if __name__ == "__main__":
-    metadata_ingestion_workflow()
-```
-
-You can trigger your workflow directly from your terminal:
-
-```python
-python sample_metadata_flow.py
-```
+You can run the workflow as any Python function. No DAGs and no boilerplate.
 
 After running your flow, you should see **new users**, **datasets**, **dashboards,** and other **metadata** in your OpenMetadata UI. Also, **your Prefect UI** will display the workflow run and will show the logs with details on which source system has been scanned and which data has been ingested.
 
-**Congratulations** on building your first metadata ingestion workflow with OpenMetadata and Prefect!
+If you haven't started the Prefect Orion UI yet, you can do that from your CLI:
 
-### 7. Schedule your metadata ingestion flows with Prefect
-
-Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows at a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
-
-Here's how you can add a `DeploymentSpec` to your flow to ensure that your metadata gets refreshed every 15 minutes:
-
-```python
-# flow_with_schedule.py
-from datetime import timedelta
-from prefect import flow
-from prefect.deployments import DeploymentSpec
-from prefect.flow_runners import SubprocessFlowRunner
-from prefect.orion.schemas.schedules import IntervalSchedule
-from metadata.ingestion.api.workflow import prefect_ingestion
-
-config = """PASTE YOUR JSON CONFIG HERE"""
-
-@flow
-def metadata_ingestion_workflow():
-    prefect_ingestion(config)
-
-DeploymentSpec(
-    name="openmetadata-dev",
-    flow=metadata_ingestion_workflow,
-    flow_runner=SubprocessFlowRunner(condaenv="openmetadata"),
-    schedule=IntervalSchedule(interval=timedelta(minutes=15)),
-)
+```
+prefect orion start
 ```
 
-Here is an explanation of the `DeploymentSpec` arguments:
+If you navigate to the URL [http://localhost:4200](http://localhost:4200/), you’ll be able to:
 
-* `name` - Specifies the name of the deployment - you could use it to differentiate between a deployment for development and production environment
-* `flow` - Points to the flow object, i.e. the flow function name
-* `flow_runner` - Specifies how the flow run should be deployed; this allows you to deploy the flow run as a docker container, a Kubernetes job, or as a local subprocess. In this example, we deploy it as a subprocess running in a Conda virtual environment named “openmetadata”
-* `schedule` - Allows you to choose and customize your desired schedule class. In this example, we are using a simple `IntervalSchedule` triggering a new flow run every 15 minutes. With the asynchronous scheduling service in Prefect 2.0, you could even schedule your flow to run every 10 seconds if you need your metadata to be always up-to-date
+- access a locally running Prefect Orion UI
+- see all previously triggered ingestion workflow runs.
 
-To deploy this scheduled workflow to Prefect, run the following command from your CLI:
+**Congratulations** on building your first metadata ingestion workflow with OpenMetadata and Prefect! In the next section, we'll look at how you can run this flow on schedule.
 
-```python
-prefect deployment create flow_with_schedule.py
-```
 
-### 8. Deploy Prefect metadata ingestion flows
+### 7. Schedule and deploy your metadata ingestion flows with Prefect
+
+Ingesting your data via manually executed scripts is great for initial exploration, but in order to build a reliable metadata platform, you need to run those workflows on a regular cadence. That’s where you can leverage Prefect [schedules](https://orion-docs.prefect.io/concepts/schedules/) and [deployments](https://orion-docs.prefect.io/concepts/deployments/).
+
+[This documentation page](https://prefecthq.github.io/prefect-openmetadata/schedule_ingestion_flow/) demonstrates how you can configure a `DeploymentSpec` to deploy your flow and ensure that your metadata gets refreshed on schedule. 
+
+
+## 8. Deploy the execution layer to run your flows
 
 So far, we’ve looked at how you can **create** and **schedule** your workflow; but where does this code actually run? This is a place where the concepts of [storage](https://orion-docs.prefect.io/concepts/storage/), [work queues, and agents](https://orion-docs.prefect.io/concepts/work-queues/) become important. But don’t worry - all you need to know to get started is running one CLI command for each of those concepts.
 
@@ -377,7 +251,7 @@ The CLI will guide you through the process to select the storage of your choice 
 
 **2) Work Queue**
 
-Work queues collect scheduled runs that are picked up by the agents. To create a default work queue, run:
+Work queues collect scheduled runs and agents pick those up from the queue. To create a default work queue, run:
 
 ```python
 prefect work-queue create default
@@ -391,38 +265,37 @@ Agents are lightweight processes that poll their work queues for scheduled runs 
 prefect agent start default
 ```
 
-That’s all you need! Once you have executed those three commands, your scheduled deployments (such as the one we defined using `flow_with_schedule.py` in section 7) are now scheduled, and Prefect will ensure that your metadata stays up-to-date.
+That’s all you need! Once you have executed those three commands, your scheduled deployments (*such as the one we defined using `ingestion_flow.py` above*) are now scheduled, and Prefect will ensure that your metadata stays up-to-date.
 
 You can observe the state of your metadata ingestion workflows from the [Prefect Orion UI](https://orion-docs.prefect.io/ui/overview/). The UI will also include detailed logs showing which metadata got updated to ensure your data platform remains healthy and observable.
 
-### 9. Deploying Prefect 2.0 orchestration layer to the Cloud
+## 9. Using Prefect 2.0 in the Cloud
 
-If you want to move beyond this local installation, you can deploy Prefect to run your OpenMetadata ingestion workflows by:
+If you want to move beyond this local installation, you can deploy Prefect 2.0 to run your OpenMetadata ingestion workflows by:
 
 * Self-hosting the orchestration layer - see the [list of resources on Prefect Discourse](https://discourse.prefect.io/t/how-to-self-host-prefect-2-0-orchestration-layer-list-of-resources-to-get-started/952), or
 * Signing up for [Prefect Cloud 2.0](https://beta.prefect.io/) - [the following page](https://discourse.prefect.io/t/how-to-get-started-with-prefect-cloud-2-0/539) will walk you through the process.
 
-For various deployment options of OpenMetadata itself, check the “Deploy” section of this documentation.
+For various deployment options of OpenMetadata, check the “Deploy” section of [this documentation](https://docs.open-metadata.org/).
 
-### 10. Questions about using OpenMetadata with Prefect
+## 10. Questions about using OpenMetadata with Prefect
 
-If you have any questions about configuring Prefect, check [Prefect Discourse](https://discourse.prefect.io/) or post your question in the [Prefect Community Slack](https://www.prefect.io/slack/).
+If you have any questions about configuring Prefect, post your question on [Prefect Discourse](https://discourse.prefect.io/) or in the [Prefect Community Slack](https://www.prefect.io/slack/).
 
-And if you need support about OpenMetadata, get in touch on [OpenMetadata Slack](http://slack.open-metadata.org/).
+And if you need support for OpenMetadata, get in touch on [OpenMetadata Slack](https://slack.open-metadata.org).
 
-***
+---
 
-## Troubleshooting
+### Troubleshooting
 
 #### Could not find a version that satisfied the requirement
 
 ```
-pip3 install 'openmetadata-ingestion[docker]'
 ERROR: Could not find a version that satisfies the requirement openmetadata-ingestion[docker] (from versions: none)
 ERROR: No matching distribution found for openmetadata-ingestion[docker]
 ```
 
-If you see the above when attempting to install OpenMetadata, this can be due to using an older version of Python and pip. Please check the [Requirements](run-openmetadata-with-prefect.md#requirements-osx-and-linux) section above and confirm that you have the supported versions installed.
+If you see the above when attempting to install `prefect-openmetadata`, this can be due to using an older version of Python and pip. Please check the [Requirements](run-openmetadata.md#requirements) section above and confirm that you have supported versions installed.
 
 ## Next Steps
 
