@@ -19,8 +19,6 @@ import $ from 'jquery';
 import _ from 'lodash';
 import moment from 'moment';
 import React, { Component } from 'react';
-// import { OverlayTrigger, Tooltip } from 'react-bootstrap';
-import PopOver from '../components/common/popover/PopOver';
 import Utils from './Utils';
 
 export default class ExecutionStrip extends Component {
@@ -73,20 +71,17 @@ export default class ExecutionStrip extends Component {
   };
 
   getExecutionTooltip = (execution) => {
-    let { executionName, executionDate } = execution;
+    let { executionDate } = execution;
 
-    if (
-      executionName &&
-      executionName.toLowerCase() !== executionDate.toLowerCase()
-    ) {
-      return (
-        executionName +
-        ' - ' +
-        moment.unix(executionDate / 1000).format('DD MMM YYYY hh:mm a')
-      );
-    } else {
-      return moment.unix(executionDate / 1000).format('DD MMM YYYY hh:mm a');
-    }
+    const momentDateTime = moment.unix(executionDate / 1000);
+
+    return (
+      <>
+        <span>{momentDateTime.format('DD MMM YYYY')}</span>
+        <br />
+        <span>{momentDateTime.format('hh:mm A')}</span>
+      </>
+    );
   };
 
   render() {
@@ -95,7 +90,7 @@ export default class ExecutionStrip extends Component {
     const { enableRightArrow, enableLeftArrow } = this.state;
 
     return (
-      <div className="execution-timeline-wrapper">
+      <div className="execution-timeline-wrapper tw-mt-20">
         <button
           className={`btn btn-xs btn-link timeline-left ${
             enableLeftArrow ? '' : 'disabled'
@@ -119,6 +114,7 @@ export default class ExecutionStrip extends Component {
                 new Date(execution.executionDate).getTime(),
                 new Date(statusObj.extra.latestSubmission).getTime()
               );
+              const isSelected = _.isEqual(execution, selectedExecution);
               let className = 'data-box ';
               const status = Utils.getStatusBox({
                 status: isExecutionLatest
@@ -127,33 +123,15 @@ export default class ExecutionStrip extends Component {
               });
 
               className += status.className;
-              className += _.isEqual(execution, selectedExecution)
-                ? ' selected'
-                : '';
+              className += isSelected ? ' selected' : '';
               className += isExecutionLatest ? ' latest' : '';
 
               return (
-                <div className="data-box-wrapper tw-mr-3" key={i}>
-                  {/* <OverlayTrigger
-                  overlay={
-                    <Tooltip id={`tooltip-${i}`}>
-                      <strong>{this.getExecutionTooltip(execution)}</strong>
-                    </Tooltip>
-                  }
-                  placement="top">
-                  <div
-                    className={className}
-                    onClick={() => onSelectExecution(execution)}>
-                    <i className="fa fa-check" />
-                  </div>
-                </OverlayTrigger> */}
-                  <PopOver
-                    html={
-                      <strong>{this.getExecutionTooltip(execution)}</strong>
-                    }
-                    position="top"
-                    size="regular"
-                    trigger="mouseenter">
+                <div className="data-box-wrapper tw-mr-5" key={i}>
+                  <div className="tw-relative">
+                    <div className="exec-date-time">
+                      {this.getExecutionTooltip(execution)}
+                    </div>
                     <div
                       className={classNames(
                         className,
@@ -162,11 +140,11 @@ export default class ExecutionStrip extends Component {
                       onClick={() => onSelectExecution(execution)}>
                       <FontAwesomeIcon
                         className="tw-w-3.5 tw-h-3.5"
-                        color="#FFFFFF"
+                        color={isSelected ? '#FFFFFF' : 'transparent'}
                         icon="check"
                       />
                     </div>
-                  </PopOver>
+                  </div>
                 </div>
               );
             })

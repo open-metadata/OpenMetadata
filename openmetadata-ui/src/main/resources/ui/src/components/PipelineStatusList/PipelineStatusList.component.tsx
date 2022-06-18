@@ -69,7 +69,7 @@ const PipelineStatusList: FC<Prop> = ({
       <Fragment>
         <div className={className} data-testid="pipeline-status-list">
           <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
-            <div />
+            <div className="tw-text-base">Executions</div>
             <div data-testid="filter-dropdown">
               <Select
                 isClearable

@@ -1126,7 +1126,7 @@ code {
 }
 
 .data-box {
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .data-box.Successful {
@@ -1145,4 +1145,22 @@ code {
 .data-box.Failed.selected,
 .data-box.Pending.selected {
   background-color: #7147e8;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
 }

@@ -417,7 +417,7 @@ const PipelineDetails = ({
                   </div>
                   <div
                     className="tw-flex-grow tw-w-full tw-h-full"
-                    style={{ height: 'calc(100% - 150px)' }}>
+                    style={{ height: 'calc(100% - 250px)' }}>
                     {tasks ? (
                       <TasksDAGView
                         selectedExec={selectedExecution}
@@ -429,6 +429,7 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
+                  <hr />
                   <div>
                     <PipelineStatusList
                       isLoading={isPipelineStatusLoading}
@@ -458,7 +459,7 @@ const PipelineDetails = ({
                   <div />
                 </div>
               )}
-              {activeTab === 3 && (
+              {/* {activeTab === 3 && (
                 <PipelineStatusList
                   isLoading={isPipelineStatusLoading}
                   pipelineStatus={pipelineStatus}
@@ -466,7 +467,7 @@ const PipelineDetails = ({
                     return;
                   }}
                 />
-              )}
+              )} */}
               {activeTab === 4 && (
                 <div className="tw-h-full tw-px-3">
                   <Entitylineage
