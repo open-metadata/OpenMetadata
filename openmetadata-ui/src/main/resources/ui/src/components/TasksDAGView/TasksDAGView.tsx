@@ -82,7 +82,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
         return {
           arrowHeadType: ArrowHeadType.ArrowClosed,
           id: `${src}-${dest}`,
-          type: 'straight',
+          type: 'custom',
           source: src,
           target: dest,
           label: '',

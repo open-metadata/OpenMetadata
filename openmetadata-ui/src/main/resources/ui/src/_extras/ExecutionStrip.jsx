@@ -72,14 +72,14 @@ export default class ExecutionStrip extends Component {
 
   getExecutionTooltip = (execution) => {
     let { executionDate } = execution;
-
-    const momentDateTime = moment.unix(executionDate / 1000);
+    const momentDate = moment.unix(executionDate / 1000).format('DD MMM YYYY');
+    const momentTime = moment.unix(executionDate / 1000).format('hh:mm A');
 
     return (
       <>
-        <span>{momentDateTime.format('DD MMM YYYY')}</span>
+        <span>{momentDate}</span>
         <br />
-        <span>{momentDateTime.format('hh:mm A')}</span>
+        <span>{momentTime}</span>
       </>
     );
   };

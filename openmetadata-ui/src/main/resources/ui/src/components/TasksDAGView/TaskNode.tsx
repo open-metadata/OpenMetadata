@@ -12,16 +12,74 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
-import { NodeProps } from 'react-flow-renderer';
+import React, { CSSProperties, Fragment } from 'react';
+import { Handle, NodeProps, Position } from 'react-flow-renderer';
+
+const handleStyles = {
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  position: 'absolute',
+  top: 10,
+};
+
+const getHandle = (nodeType: string) => {
+  if (nodeType === 'output') {
+    return (
+      <Handle
+        isConnectable
+        position={Position.Left}
+        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
+        type="target"
+      />
+    );
+  } else if (nodeType === 'input') {
+    return (
+      <Handle
+        isConnectable
+        position={Position.Right}
+        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
+        type="source"
+      />
+    );
+  } else {
+    return (
+      <Fragment>
+        <Handle
+          isConnectable
+          position={Position.Left}
+          style={
+            {
+              ...handleStyles,
+              left: '-14px',
+            } as CSSProperties
+          }
+          type="target"
+        />
+        <Handle
+          isConnectable
+          position={Position.Right}
+          style={
+            {
+              ...handleStyles,
+              right: '-14px',
+            } as CSSProperties
+          }
+          type="source"
+        />
+      </Fragment>
+    );
+  }
+};
 
 const TaskNode = (props: NodeProps) => {
-  const { data } = props;
+  const { data, type } = props;
   /* eslint-disable-next-line */
   const { label, taskStatus } = data;
 
   return (
     <div className="tw-relative nowheel ">
+      {getHandle(type)}
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')} data-testid="node-label">
         {label}
