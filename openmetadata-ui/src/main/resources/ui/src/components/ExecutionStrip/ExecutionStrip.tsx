@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-
 import {
   faChevronLeft,
   faChevronRight,
@@ -54,7 +52,7 @@ const ExecutionStrip = ({
   };
 
   const getExecutionTooltip = (execution: PipelineStatus) => {
-    let executionDate = execution.executionDate as number;
+    const executionDate = execution.executionDate as number;
     const momentDate = moment.unix(executionDate).format('DD MMM YYYY');
     const momentTime = moment.unix(executionDate).format('hh:mm A');
 
