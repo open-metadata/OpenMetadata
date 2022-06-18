@@ -11,7 +11,7 @@
 """PowerBI source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -31,16 +31,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_chart_entities_from_id
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-class PowerbiSource(DashboardSourceService):
+class PowerbiSource(DashboardServiceSource):
     """PowerBi entity class
     Args:
         config:
@@ -57,7 +56,6 @@ class PowerbiSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.charts = []
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -95,7 +93,9 @@ class PowerbiSource(DashboardSourceService):
         """
         return dashboard
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
+    def yield_dashboard(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
@@ -105,18 +105,23 @@ class PowerbiSource(DashboardSourceService):
             dashboardUrl=dashboard_details["webUrl"],
             displayName=dashboard_details["displayName"],
             description="",
-            charts=get_chart_entities_from_id(
-                chart_ids=self.charts,
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
-            service=EntityReference(id=self.service.id, type="dashboardService"),
         )
 
-    def get_lineage(self, dashboard_details: Any) -> Optional[AddLineageRequest]:
+    def yield_dashboard_lineage(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
+        if not self.source_config.dbServiceName:
+            return
         try:
             charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
                 "value"
@@ -166,16 +171,15 @@ class PowerbiSource(DashboardSourceService):
             logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def fetch_dashboard_charts(
+    def yield_dashboard_chart(
         self, dashboard_details: dict
-    ) -> Iterable[CreateChartRequest]:
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
         Args:
             dashboard_details:
         Returns:
             Iterable[Chart]
         """
-        self.charts = []
         charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
             "value"
         )
@@ -195,10 +199,10 @@ class PowerbiSource(DashboardSourceService):
                     # PBI has no hostPort property. All URL details are present in the webUrl property.
                     chartUrl=chart["embedUrl"],
                     service=EntityReference(
-                        id=self.service.id, type="dashboardService"
+                        id=self.context.dashboard_service.id.__root__,
+                        type="dashboardService",
                     ),
                 )
-                self.charts.append(chart["id"])
                 self.status.scanned(chart["title"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())

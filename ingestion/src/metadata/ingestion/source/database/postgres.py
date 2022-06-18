@@ -82,7 +82,7 @@ class PostgresSource(CommonDbSourceService):
                         f"Error trying to connect to database {new_database} - {err}"
                     )
 
-    def is_partition(self, table_name: str, schema: str, inspector) -> bool:
+    def is_partition(self, table_name: str, schema_name: str, inspector) -> bool:
         cur = self.pgconn.cursor()
         cur.execute(
             """
@@ -92,7 +92,7 @@ class PostgresSource(CommonDbSourceService):
                 WHERE  c.relname = %s
                   AND  n.nspname = %s
             """,
-            (table_name, schema),
+            (table_name, schema_name),
         )
         obj = cur.fetchone()
         is_partition = obj[0] if obj else False

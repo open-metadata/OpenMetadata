@@ -15,6 +15,14 @@ import { getByTestId, getByText, render } from '@testing-library/react';
 import React from 'react';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
+jest.mock('../../../AppState', () => ({
+  userDetails: {
+    name: 'testUser',
+    displayName: 'Test User',
+  },
+  users: [{ name: 'user1', displayName: 'User1DN' }],
+}));
+
 jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -25,15 +33,6 @@ jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
     })),
   };
 });
-
-jest.mock('../../../AppState', () =>
-  jest.fn().mockReturnValue({
-    users: [],
-    userDetails: {
-      displayName: 'Test User',
-    },
-  })
-);
 
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';

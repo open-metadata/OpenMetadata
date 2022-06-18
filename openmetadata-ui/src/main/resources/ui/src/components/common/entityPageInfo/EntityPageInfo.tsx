@@ -271,7 +271,7 @@ const EntityPageInfo = ({
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
         <p
-          className="link-text tw-ml-1 tw-w-8 tw-flex-none"
+          className="link-text tw-m-0 tw-ml-1 tw-w-8 tw-flex-none"
           data-testid="tag-thread"
           onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
           <span className="tw-flex">
@@ -283,7 +283,7 @@ const EntityPageInfo = ({
         </p>
       ) : (
         <p
-          className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
+          className="link-text tw-self-start tw-w-8 tw-m-0 tw-ml-1  tw-flex-none"
           data-testid="start-tag-thread"
           onClick={() =>
             onThreadLinkSelect?.(
@@ -420,7 +420,7 @@ const EntityPageInfo = ({
         ))}
       </div>
       <div
-        className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
+        className="tw-flex tw-items-center tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
         data-testid="entity-tags">
         {(!isEditable || !isTagEditable || deleted) && (
           <>
@@ -478,7 +478,9 @@ const EntityPageInfo = ({
                     handleTagSelection(tags);
                   }}>
                   {tags.length || tier ? (
-                    <button className=" tw-ml-1 focus:tw-outline-none">
+                    <button
+                      className=" tw-ml-1 focus:tw-outline-none"
+                      data-testid="edit-button">
                       <SVGIcons
                         alt="edit"
                         icon="icon-edit"
