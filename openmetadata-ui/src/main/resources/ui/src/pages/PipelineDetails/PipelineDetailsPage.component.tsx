@@ -332,11 +332,6 @@ const PipelineDetailsPage = () => {
 
         break;
       }
-      // case TabSpecificField.PIPELINE_STATUS: {
-      //   getPipeLineStatus();
-
-      //   break;
-      // }
 
       default:
         break;

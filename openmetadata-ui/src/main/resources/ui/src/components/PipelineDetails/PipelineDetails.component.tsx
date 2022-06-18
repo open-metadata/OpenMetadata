@@ -449,15 +449,6 @@ const PipelineDetails = ({
                   <div />
                 </div>
               )}
-              {/* {activeTab === 3 && (
-                <PipelineStatusList
-                  isLoading={isPipelineStatusLoading}
-                  pipelineStatus={pipelineStatus}
-                  onSelectExecution={() => {
-                    return;
-                  }}
-                />
-              )} */}
               {activeTab === 3 && (
                 <div className="tw-h-full tw-px-3">
                   <Entitylineage

@@ -1088,43 +1088,6 @@ code {
 
 /* Feed popover CSS end */
 
-.timeline-tooltip {
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 5px;
-  border-radius: 4px;
-}
-.timeline-tooltip:before {
-  position: absolute;
-  left: -7px;
-  top: calc(50% - 5px);
-  content: '';
-  width: 0;
-  height: 0;
-  border-top: 5px solid transparent;
-  border-right: 7px solid rgba(0, 0, 0, 0.7);
-  border-bottom: 5px solid transparent;
-}
-
-.timelineSeries_Successful {
-  fill: #07a35a !important;
-}
-
-.timelineSeries_Failed {
-  fill: #e54937 !important;
-}
-
-.timelineSeries_Pending {
-  fill: #276ef1 !important;
-}
-
-.timelineSeries_Successful.selected,
-.timelineSeries_Failed.selected,
-.timelineSeries_Pending.selected {
-  fill: #7147e8 !important;
-}
-
 .data-box {
   padding: 8px 12px;
 }
