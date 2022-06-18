@@ -16,7 +16,7 @@ import React from 'react';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import PipelineStatusListComponent from './PipelineStatusList.component';
 
-const mockPipelineStatus = [
+const mockPipelineStatus: Pipeline['pipelineStatus'] = [
   {
     executionDate: 1649669589,
     executionStatus: 'Successful',
@@ -115,7 +115,7 @@ const mockPipelineStatus = [
       },
     ],
   },
-];
+] as Pipeline['pipelineStatus'];
 
 const mockSelectExec = jest.fn();
 
@@ -147,7 +147,8 @@ describe('Test PipelineStatus list component', () => {
   it('Should render all child elements', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
-        pipelineStatus={mockPipelineStatus as Pipeline['pipelineStatus']}
+        pipelineStatus={mockPipelineStatus}
+        selectedExec={mockPipelineStatus?.[0] || {}}
         onSelectExecution={mockSelectExec}
       />
     );
@@ -164,6 +165,7 @@ describe('Test PipelineStatus list component', () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
         pipelineStatus={undefined}
+        selectedExec={{}}
         onSelectExecution={mockSelectExec}
       />
     );
@@ -177,6 +179,7 @@ describe('Test PipelineStatus list component', () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
         pipelineStatus={[]}
+        selectedExec={{}}
         onSelectExecution={mockSelectExec}
       />
     );

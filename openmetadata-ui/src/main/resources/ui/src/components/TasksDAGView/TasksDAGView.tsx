@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   ArrowHeadType,
@@ -22,6 +23,7 @@ import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
+import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
 import TaskNode from './TaskNode';
 
 export interface Props {
@@ -59,14 +61,17 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
 
     return tasks.map((task, index) => {
       posX += deltaX;
+      const taskStatus = getTaskExecStatus(
+        task.name,
+        selectedExec?.taskStatus || []
+      );
 
       return {
-        className: 'leaf-node',
+        className: classNames('leaf-node', taskStatus),
         id: replaceSpaceWith_(task.name),
         type: getNodeType(index),
         data: {
           label: getEntityName(task as EntityReference),
-          taskStatus: selectedExec?.taskStatus || [],
         },
         position: { x: posX, y: posY },
       };

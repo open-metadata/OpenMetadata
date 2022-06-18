@@ -74,8 +74,7 @@ const getHandle = (nodeType: string) => {
 
 const TaskNode = (props: NodeProps) => {
   const { data, type } = props;
-  /* eslint-disable-next-line */
-  const { label, taskStatus } = data;
+  const { label } = data;
 
   return (
     <div className="tw-relative nowheel ">
@@ -84,26 +83,6 @@ const TaskNode = (props: NodeProps) => {
       <div className={classNames('tw-px-2')} data-testid="node-label">
         {label}
       </div>
-
-      {taskStatus?.length ? (
-        <hr className="tw-my-2 tw--mx-3" data-testid="label-separator" />
-      ) : null}
-      <section
-        className={classNames('tw--mx-3 tw-px-3', {
-          'tw-h-10 tw-overflow-y-auto': taskStatus?.length,
-        })}
-        id="table-columns">
-        <div className="tw-flex tw-flex-col tw-gap-y-1 tw-relative">
-          {taskStatus?.map((c: { name: string; executionStatus: string }) => (
-            <div
-              className="tw-p-1 tw-text-grey-body"
-              data-testid="task-status"
-              key={c.name}>
-              Status: {c.executionStatus}
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 };

@@ -1164,3 +1164,15 @@ code {
   /* IE */
   -ms-transform: rotate(-70deg);
 }
+
+.leaf-node.Successful {
+  border-color: #07a35a;
+}
+
+.leaf-node.Failed {
+  border-color: #e54937;
+}
+
+.leaf-node.Pending {
+  border-color: #276ef1;
+}

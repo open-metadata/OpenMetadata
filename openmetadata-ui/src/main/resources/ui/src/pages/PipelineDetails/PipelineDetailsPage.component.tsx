@@ -231,12 +231,11 @@ const PipelineDetailsPage = () => {
     getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          let dStatus = res.data.pipelineStatus as Pipeline['pipelineStatus'];
+          let dStatus =
+            (res.data.pipelineStatus as Pipeline['pipelineStatus']) || [];
           if (dStatus?.length) {
             dStatus = dStatus.map((st) => {
-              const execDate = st.executionDate
-                ? st.executionDate * 1000
-                : st.executionDate;
+              const execDate = st.executionDate;
 
               return { ...st, executionDate: execDate };
             });

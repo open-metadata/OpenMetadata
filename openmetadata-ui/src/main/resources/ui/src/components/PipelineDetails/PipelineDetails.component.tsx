@@ -388,7 +388,7 @@ const PipelineDetails = ({
             tabs={tabs}
           />
 
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4 tw-w-full">
+          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
             <div className="tw-flex-grow tw-flex tw-flex-col tw-bg-white tw-p-4 tw-shadow tw-rounded-md tw-w-full">
               {activeTab === 1 && (
                 <>
@@ -429,11 +429,12 @@ const PipelineDetails = ({
                       </div>
                     )}
                   </div>
-                  <hr />
+                  <hr className="tw-my-3" />
                   <div>
                     <PipelineStatusList
                       isLoading={isPipelineStatusLoading}
                       pipelineStatus={pipelineStatus}
+                      selectedExec={selectedExecution}
                       onSelectExecution={(exec) => {
                         setSelectedExecution(exec);
                       }}

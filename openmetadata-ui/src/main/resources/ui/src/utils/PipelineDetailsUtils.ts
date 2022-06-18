@@ -12,7 +12,11 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
-import { Pipeline, StatusType } from '../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  StatusType,
+  TaskStatus,
+} from '../generated/entity/data/pipeline';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
@@ -107,6 +111,10 @@ export const getFilteredPipelineStatus = (
   } else {
     return pipelineStatus.filter((d) => d?.executionStatus === status);
   }
+};
+
+export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
+  return tasks.find((task) => task.name === taskName)?.executionStatus || '';
 };
 
 export const STATUS_OPTIONS = [
