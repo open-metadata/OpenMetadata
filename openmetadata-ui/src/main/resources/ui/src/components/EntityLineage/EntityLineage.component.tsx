@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import {
   isEmpty,
@@ -81,7 +81,6 @@ import {
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
@@ -188,6 +187,43 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
+    if (
+      entity.type === 'table' &&
+      isUndefined(tableColumnsRef.current[entity.id])
+    ) {
+      getTableDetails(entity.id, ['columns']).then((res: AxiosResponse) => {
+        const { columns } = res.data;
+
+        const mainCols: { [key: string]: Column } = {};
+        columns?.forEach((col: Column) => {
+          mainCols[col.fullyQualifiedName || col.name] = col;
+        });
+        tableColumnsRef.current[entity.id] = columns;
+        setNewAddedNode((preNode) => ({
+          ...preNode,
+          data: {
+            ...preNode.data,
+            columns: mainCols,
+          },
+        }));
+
+        setNodes((preNodes) => {
+          return preNodes.map((node) => {
+            if (node.data?.isNewNode) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  columns: mainCols,
+                },
+              };
+            }
+
+            return node;
+          });
+        });
+      });
+    }
   };
 
   /**
@@ -205,10 +241,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param node
    * @returns label for given node
    */
-  const getNodeLabel = (node: EntityReference, isExpanded = false) => {
+  const getNodeLabel = (node: EntityReference) => {
     return (
       <Fragment>
-        {node.type === 'table' ? (
+        {/* {node.type === 'table' ? (
           <button
             className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
             onClick={(e) => {
@@ -225,7 +261,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               width="16px"
             />
           </button>
-        ) : null}
+        ) : null} */}
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
           {getDataLabel(
@@ -487,8 +523,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               id: `column-${sourceHandle}-${targetHandle}`,
               source: source,
               target: target,
-              targetHandle: sourceHandle,
-              sourceHandle: targetHandle,
+              sourceHandle: sourceHandle,
+              targetHandle: targetHandle,
               type: isEditMode ? 'buttonedge' : 'custom',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -497,8 +533,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 id: `column-${sourceHandle}-${targetHandle}`,
                 source: params.source,
                 target: params.target,
-                targetHandle: sourceHandle,
-                sourceHandle: targetHandle,
+                sourceHandle: sourceHandle,
+                targetHandle: targetHandle,
                 sourceType: sourceNode?.type,
                 targetType: targetNode?.type,
                 onEdgeClick,
@@ -625,82 +661,84 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
-  const updateColumnsToNode = (columns: Column[], id: string) => {
-    setNodes((node) => {
-      const updatedNode = node.map((n) => {
-        if (n.id === id) {
-          n.data.columns = columns;
-        }
+  //   ToDo: remove below code once design flow finalized for column expand and colaps
 
-        return n;
-      });
+  //   const updateColumnsToNode = (columns: Column[], id: string) => {
+  //     setNodes((node) => {
+  //       const updatedNode = node.map((n) => {
+  //         if (n.id === id) {
+  //           n.data.columns = columns;
+  //         }
 
-      return updatedNode;
-    });
-  };
+  //         return n;
+  //       });
 
-  /**
-   * take node and get the columns for that node
-   * @param expandNode
-   */
-  const getTableColumns = (expandNode?: EntityReference) => {
-    if (expandNode) {
-      getTableDetails(expandNode.id, ['columns'])
-        .then((res: AxiosResponse) => {
-          const tableId = expandNode.id;
-          const { columns } = res.data;
-          tableColumnsRef.current[tableId] = columns;
-          updateColumnsToNode(columns, tableId);
-        })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            `Error while fetching ${getDataLabel(
-              expandNode.displayName,
-              expandNode.name,
-              true
-            )} columns`
-          );
-        });
-    }
-  };
+  //       return updatedNode;
+  //     });
+  //   };
 
-  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
-    if (isExpanded) {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            const nodeId = node.id;
-            n.data.label = getNodeLabel(node, true);
-            n.data.isExpanded = true;
-            if (isUndefined(tableColumnsRef.current[nodeId])) {
-              getTableColumns(node);
-            } else {
-              n.data.columns = tableColumnsRef.current[nodeId];
-            }
-          }
+  //   /**
+  //    * take node and get the columns for that node
+  //    * @param expandNode
+  //    */
+  //   const getTableColumns = (expandNode?: EntityReference) => {
+  //     if (expandNode) {
+  //       getTableDetails(expandNode.id, ['columns'])
+  //         .then((res: AxiosResponse) => {
+  //           const tableId = expandNode.id;
+  //           const { columns } = res.data;
+  //           tableColumnsRef.current[tableId] = columns;
+  //           updateColumnsToNode(columns, tableId);
+  //         })
+  //         .catch((error: AxiosError) => {
+  //           showErrorToast(
+  //             error,
+  //             `Error while fetching ${getDataLabel(
+  //               expandNode.displayName,
+  //               expandNode.name,
+  //               true
+  //             )} columns`
+  //           );
+  //         });
+  //     }
+  //   };
 
-          return n;
-        });
+  //   const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
+  //     if (isExpanded) {
+  //       setNodes((prevState) => {
+  //         const newNodes = prevState.map((n) => {
+  //           if (n.id === node.id) {
+  //             const nodeId = node.id;
+  //             n.data.label = getNodeLabel(node, true);
+  //             n.data.isExpanded = true;
+  //             if (isUndefined(tableColumnsRef.current[nodeId])) {
+  //               getTableColumns(node);
+  //             } else {
+  //               n.data.columns = tableColumnsRef.current[nodeId];
+  //             }
+  //           }
 
-        return newNodes;
-      });
-    } else {
-      setNodes((prevState) => {
-        const newNodes = prevState.map((n) => {
-          if (n.id === node.id) {
-            n.data.label = getNodeLabel(node);
-            n.data.isExpanded = false;
-            n.data.columns = undefined;
-          }
+  //           return n;
+  //         });
 
-          return n;
-        });
+  //         return newNodes;
+  //       });
+  //     } else {
+  //       setNodes((prevState) => {
+  //         const newNodes = prevState.map((n) => {
+  //           if (n.id === node.id) {
+  //             n.data.label = getNodeLabel(node);
+  //             n.data.isExpanded = false;
+  //             n.data.columns = undefined;
+  //           }
 
-        return newNodes;
-      });
-    }
-  };
+  //           return n;
+  //         });
+
+  //         return newNodes;
+  //       });
+  //     }
+  //   };
 
   /**
    * take node and remove it from the graph
@@ -784,6 +822,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         className: 'leaf-node',
         connectable: false,
         selectable: false,
+        type: 'default',
         data: {
           label: (
             <div className="tw-relative">

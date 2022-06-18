@@ -237,22 +237,7 @@ const CustomNode = (props: NodeProps) => {
             <Fragment key={i}>
               <div
                 className="tw-p-1 tw-rounded tw-border tw-text-grey-body tw-relative"
-                data-testid="column"
-                key={c.name}>
-                {/* <Handle
-                  isConnectable
-                  id={c.fullyQualifiedName}
-                  position={Position.Left}
-                  style={{ top: 13 }}
-                  type="target"
-                />
-                <Handle
-                  isConnectable
-                  id={c.fullyQualifiedName}
-                  position={Position.Right}
-                  style={{ top: 13 }}
-                  type="source"
-                /> */}
+                data-testid="column">
                 {getHandle(
                   type,
                   isConnectable,
