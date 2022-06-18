@@ -207,7 +207,7 @@ const getHandle = (
 };
 
 const CustomNode = (props: NodeProps) => {
-  const { data, type, isConnectable, selected, id } = props;
+  const { data, type, isConnectable, selected } = props;
   /* eslint-disable-next-line */
   const { label, columns, isNewNode, removeNodeHandler, isEditMode } = data;
 
@@ -215,7 +215,7 @@ const CustomNode = (props: NodeProps) => {
     <div className="tw-relative nowheel ">
       {/* Node label could be simple text or reactNode */}
       <div className={classNames('tw-px-2')} data-testid="node-label">
-        {getHandle(type, isConnectable, isNewNode, id)}
+        {getHandle(type, isConnectable, isNewNode)}
         {label}{' '}
         {selected && isEditMode
           ? getNodeRemoveButton(() => {

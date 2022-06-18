@@ -453,7 +453,7 @@ export const getLineageDataV1 = (
         if (e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
             lineageEdges.push({
-              id: `edge-${fromColumn}-${toColumn}`,
+              id: `column-${fromColumn}-${toColumn}`,
               source: edge.fromEntity,
               target: edge.toEntity,
               targetHandle: toColumn,
@@ -463,7 +463,7 @@ export const getLineageDataV1 = (
                 type: MarkerType.ArrowClosed,
               },
               data: {
-                id: `edge-${fromColumn}-${toColumn}`,
+                id: `column-${fromColumn}-${toColumn}`,
                 source: edge.fromEntity,
                 target: edge.toEntity,
                 targetHandle: toColumn,

@@ -484,7 +484,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
           setEdges((els) => {
             const newEdgeData = {
-              id: `edge-${sourceHandle}-${targetHandle}`,
+              id: `column-${sourceHandle}-${targetHandle}`,
               source: source,
               target: target,
               targetHandle: sourceHandle,
@@ -494,7 +494,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 type: MarkerType.ArrowClosed,
               },
               data: {
-                id: `edge-${sourceHandle}-${targetHandle}`,
+                id: `column-${sourceHandle}-${targetHandle}`,
                 source: params.source,
                 target: params.target,
                 targetHandle: sourceHandle,
@@ -541,6 +541,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 {
                   fromEntity: sourceNode?.id as string,
                   toEntity: targetNode?.id as string,
+                  lineageDetails: newEdge.edge.lineageDetails,
                 },
               ]
             : updatedLineageData.downstreamEdges;
@@ -556,6 +557,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 {
                   fromEntity: sourceNode?.id as string,
                   toEntity: targetNode?.id as string,
+                  lineageDetails: newEdge.edge.lineageDetails,
                 },
               ]
             : updatedLineageData.upstreamEdges;
