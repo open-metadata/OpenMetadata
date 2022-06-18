@@ -14,25 +14,34 @@
 import { isNil } from 'lodash';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import Select, { SingleValue } from 'react-select';
-import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  PipelineStatus,
+  StatusType,
+} from '../../generated/entity/data/pipeline';
 import { withLoader } from '../../hoc/withLoader';
 import {
   getFilteredPipelineStatus,
   STATUS_OPTIONS,
 } from '../../utils/PipelineDetailsUtils';
-import D3ExecutionStrip from '../../_extras/D3ExecutionStrip';
+import ExecutionStrip from '../../_extras/ExecutionStrip';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import CustomOption from './CustomOption';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
   pipelineStatus: Pipeline['pipelineStatus'];
+  onSelectExecution: (e: PipelineStatus) => void;
 }
 interface Option {
   value: string;
   label: string;
 }
 
-const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
+const PipelineStatusList: FC<Prop> = ({
+  className,
+  pipelineStatus,
+  onSelectExecution,
+}: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
 
   const handleOnChange = (
@@ -74,7 +83,7 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
               />
             </div>
           </div>
-          <D3ExecutionStrip
+          {/* <D3ExecutionStrip
             endDate={pipelineStatus[0].executionDate}
             executionInfo={{
               executions: getFilteredPipelineStatus(
@@ -95,11 +104,32 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
               },
             }}
             toTimeInMS={pipelineStatus[0].executionDate}
-            onSelectExecution={(e: unknown) => {
+            onSelectExecution={(e: PipelineStatus) => {
+              console.log('On Select:', e);
+              onSelectExecution(e);
+            }}
+          /> */}
+
+          <ExecutionStrip
+            executions={getFilteredPipelineStatus(
+              selectedFilter as StatusType,
+              pipelineStatus
+            )}
+            selectedExecution={pipelineStatus[0]}
+            statusObj={{
+              extra: {
+                startExecutionDate:
+                  pipelineStatus[pipelineStatus.length - 1].executionDate,
+                latestExecutionDate: pipelineStatus[0].executionDate,
+              },
+            }}
+            onSelectExecution={(e: PipelineStatus) => {
               /* eslint-disable-next-line */
               console.log('On Select:', e);
+              onSelectExecution(e);
             }}
           />
+
           {/* <table
             className="tw-w-full"
             data-testid="pipeline-status-table"

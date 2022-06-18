@@ -1,16 +1,16 @@
-/**
- * Copyright 2017 Hortonworks.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *   http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- **/
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 /* eslint-disable */
 
 import * as d3 from 'd3';
@@ -36,7 +36,7 @@ export default class D3ExecutionStrip extends Component {
     const { executionInfo, statusObj, startDate } = this.props;
     let start_time = new Date(statusObj?.extra.startExecutionDate).getTime();
     let end_time = new Date(statusObj?.extra.latestExecutionDate).getTime();
-    let time_interval = statusObj?.extra.executionInterval || '1';
+    let time_interval = statusObj?.extra.executionInterval || '5';
     let time_unit = statusObj?.extra.executionIntervalUnit || 'Minute';
     let currentOffset = new Date().getTimezoneOffset();
 
@@ -115,7 +115,7 @@ export default class D3ExecutionStrip extends Component {
         ending_time: starting_time + 1250000,
       };
       let existingObj = timelineData.find((d) => {
-        return d.label === executionObj.status;
+        return d.label === executionObj.executionStatus;
       });
 
       if (existingObj) {
@@ -126,7 +126,7 @@ export default class D3ExecutionStrip extends Component {
         }
       } else {
         timelineData.push({
-          label: executionObj.status,
+          label: executionObj.executionStatus,
           times: [obj],
         });
       }

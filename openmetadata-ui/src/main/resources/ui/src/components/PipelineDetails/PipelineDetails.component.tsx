@@ -20,7 +20,11 @@ import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
-import { Pipeline, Task } from '../../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  PipelineStatus,
+  Task,
+} from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -107,6 +111,15 @@ const PipelineDetails = ({
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [selectedExecution, setSelectedExecution] = useState<PipelineStatus>(
+    () => {
+      if (pipelineStatus) {
+        return pipelineStatus[0];
+      } else {
+        return {} as PipelineStatus;
+      }
+    }
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -406,7 +419,10 @@ const PipelineDetails = ({
                     className="tw-flex-grow tw-w-full tw-h-full"
                     style={{ height: 'calc(100% - 150px)' }}>
                     {tasks ? (
-                      <TasksDAGView tasks={tasks} />
+                      <TasksDAGView
+                        selectedExec={selectedExecution}
+                        tasks={tasks}
+                      />
                     ) : (
                       <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
                         <span>No task data is available</span>
@@ -417,6 +433,9 @@ const PipelineDetails = ({
                     <PipelineStatusList
                       isLoading={isPipelineStatusLoading}
                       pipelineStatus={pipelineStatus}
+                      onSelectExecution={(exec) => {
+                        setSelectedExecution(exec);
+                      }}
                     />
                   </div>
                 </>
@@ -443,6 +462,9 @@ const PipelineDetails = ({
                 <PipelineStatusList
                   isLoading={isPipelineStatusLoading}
                   pipelineStatus={pipelineStatus}
+                  onSelectExecution={() => {
+                    return;
+                  }}
                 />
               )}
               {activeTab === 4 && (

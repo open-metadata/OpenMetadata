@@ -117,6 +117,8 @@ const mockPipelineStatus = [
   },
 ];
 
+const mockSelectExec = jest.fn();
+
 jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getModifiedPipelineStatus: jest.fn().mockReturnValue([
     {
@@ -146,6 +148,7 @@ describe('Test PipelineStatus list component', () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
         pipelineStatus={mockPipelineStatus as Pipeline['pipelineStatus']}
+        onSelectExecution={mockSelectExec}
       />
     );
 
@@ -159,7 +162,10 @@ describe('Test PipelineStatus list component', () => {
 
   it('Should render no data placeholder if pipelinestatus is undefined', async () => {
     const { findByTestId } = render(
-      <PipelineStatusListComponent pipelineStatus={undefined} />
+      <PipelineStatusListComponent
+        pipelineStatus={undefined}
+        onSelectExecution={mockSelectExec}
+      />
     );
 
     const noData = await findByTestId('no-data');
@@ -169,7 +175,10 @@ describe('Test PipelineStatus list component', () => {
 
   it('Should render no data placeholder if pipelinestatus is empty list', async () => {
     const { findByTestId } = render(
-      <PipelineStatusListComponent pipelineStatus={[]} />
+      <PipelineStatusListComponent
+        pipelineStatus={[]}
+        onSelectExecution={mockSelectExec}
+      />
     );
 
     const noData = await findByTestId('no-data');

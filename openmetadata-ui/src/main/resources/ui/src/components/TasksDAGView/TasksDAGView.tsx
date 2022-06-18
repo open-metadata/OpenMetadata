@@ -18,16 +18,18 @@ import ReactFlow, {
   Elements,
   Node,
 } from 'react-flow-renderer';
-import { Task } from '../../generated/entity/data/pipeline';
+import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
+import TaskNode from './TaskNode';
 
 export interface Props {
   tasks: Task[];
+  selectedExec?: PipelineStatus;
 }
 
-const TasksDAGView = ({ tasks }: Props) => {
+const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   const [elements, setElements] = useState<Elements>([]);
 
   const getNodeType = useCallback(
@@ -39,6 +41,15 @@ const TasksDAGView = ({ tasks }: Props) => {
         : 'default';
     },
     [tasks]
+  );
+
+  const nodeTypes = useMemo(
+    () => ({
+      output: TaskNode,
+      input: TaskNode,
+      default: TaskNode,
+    }),
+    []
   );
 
   const nodes: Node[] = useMemo(() => {
@@ -53,11 +64,14 @@ const TasksDAGView = ({ tasks }: Props) => {
         className: 'leaf-node',
         id: replaceSpaceWith_(task.name),
         type: getNodeType(index),
-        data: { label: getEntityName(task as EntityReference) },
+        data: {
+          label: getEntityName(task as EntityReference),
+          taskStatus: selectedExec?.taskStatus || [],
+        },
         position: { x: posX, y: posY },
       };
     });
-  }, [tasks]);
+  }, [tasks, selectedExec]);
 
   const edges: Edge[] = useMemo(() => {
     return tasks.reduce((prev, task) => {
@@ -89,6 +103,7 @@ const TasksDAGView = ({ tasks }: Props) => {
       elements={elements}
       maxZoom={2}
       minZoom={0.5}
+      nodeTypes={nodeTypes}
       selectNodesOnDrag={false}
       zoomOnDoubleClick={false}
       zoomOnScroll={false}

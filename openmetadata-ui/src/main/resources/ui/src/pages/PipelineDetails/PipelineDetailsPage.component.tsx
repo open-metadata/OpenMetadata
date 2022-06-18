@@ -231,9 +231,9 @@ const PipelineDetailsPage = () => {
     getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const status = res.data.pipelineStatus as Pipeline['pipelineStatus'];
-          if (status?.length) {
-            status.map((st) => {
+          let dStatus = res.data.pipelineStatus as Pipeline['pipelineStatus'];
+          if (dStatus?.length) {
+            dStatus = dStatus.map((st) => {
               const execDate = st.executionDate
                 ? st.executionDate * 1000
                 : st.executionDate;
@@ -241,7 +241,7 @@ const PipelineDetailsPage = () => {
               return { ...st, executionDate: execDate };
             });
           }
-          setPipelineStatus(status);
+          setPipelineStatus(dStatus);
         } else {
           throw jsonData['api-error-messages']['unexpected-server-response'];
         }
