@@ -20,7 +20,7 @@ import {
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}`;
 
 export const pipelineDetailsTabs = [
   {
@@ -31,11 +31,6 @@ export const pipelineDetailsTabs = [
     name: 'Activity Feed',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: 'Executions',
-    path: 'execution',
-    field: TabSpecificField.PIPELINE_STATUS,
   },
   {
     name: 'Lineage',
@@ -56,18 +51,13 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'execution':
+    case 'lineage':
       currentTab = 3;
 
       break;
 
-    case 'lineage':
-      currentTab = 4;
-
-      break;
-
     case 'manage':
-      currentTab = 5;
+      currentTab = 4;
 
       break;
 

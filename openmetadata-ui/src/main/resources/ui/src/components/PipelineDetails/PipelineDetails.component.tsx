@@ -170,17 +170,6 @@ const PipelineDetails = ({
       count: feedCount,
     },
     {
-      name: 'Executions',
-      icon: {
-        alt: 'execution',
-        name: 'execution',
-        title: 'Execution',
-        selectedName: 'execution-color',
-      },
-      isProtected: false,
-      position: 3,
-    },
-    {
       name: 'Lineage',
       icon: {
         alt: 'lineage',
@@ -189,7 +178,7 @@ const PipelineDetails = ({
         selectedName: 'icon-lineagecolor',
       },
       isProtected: false,
-      position: 4,
+      position: 3,
     },
     {
       name: 'Manage',
@@ -202,7 +191,7 @@ const PipelineDetails = ({
       isProtected: true,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 5,
+      position: 4,
     },
   ];
 
@@ -469,7 +458,7 @@ const PipelineDetails = ({
                   }}
                 />
               )} */}
-              {activeTab === 4 && (
+              {activeTab === 3 && (
                 <div className="tw-h-full tw-px-3">
                   <Entitylineage
                     addLineageHandler={addLineageHandler}
@@ -485,7 +474,7 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 5 && !deleted && (
+              {activeTab === 4 && !deleted && (
                 <div>
                   <ManageTabComponent
                     allowDelete

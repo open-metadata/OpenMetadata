@@ -94,8 +94,7 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
-  const [isPipelineStatusLoading, setIsPipelineStatusLoading] =
-    useState<boolean>(false);
+  const [isPipelineStatusLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -226,36 +225,6 @@ const PipelineDetailsPage = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
-  const getPipeLineStatus = () => {
-    setIsPipelineStatusLoading(true);
-    getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          let dStatus =
-            (res.data.pipelineStatus as Pipeline['pipelineStatus']) || [];
-          if (dStatus?.length) {
-            dStatus = dStatus.map((st) => {
-              const execDate = st.executionDate;
-
-              return { ...st, executionDate: execDate };
-            });
-          }
-          setPipelineStatus(dStatus);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-pipeline-status-error']
-        );
-      })
-      .finally(() => {
-        setIsPipelineStatusLoading(false);
-      });
-  };
-
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
@@ -274,6 +243,7 @@ const PipelineDetailsPage = () => {
             displayName,
             tasks,
             pipelineUrl,
+            pipelineStatus,
             version,
           } = res.data;
           setDisplayName(displayName);
@@ -315,6 +285,16 @@ const PipelineDetailsPage = () => {
 
           setPipelineUrl(pipelineUrl);
           setTasks(tasks);
+
+          let statuses = (pipelineStatus as Pipeline['pipelineStatus']) || [];
+          if (statuses?.length) {
+            statuses = statuses.map((st) => {
+              const execDate = st.executionDate;
+
+              return { ...st, executionDate: execDate };
+            });
+          }
+          setPipelineStatus(statuses);
         } else {
           setIsError(true);
 
@@ -674,7 +654,6 @@ const PipelineDetailsPage = () => {
     fetchPipelineDetail(pipelineFQN);
     setEntityLineage({} as EntityLineage);
     getEntityFeedCount();
-    getPipeLineStatus();
   }, [pipelineFQN]);
 
   useEffect(() => {
