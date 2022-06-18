@@ -140,8 +140,25 @@ jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getStatusBadgeIcon: jest.fn().mockImplementation((status: StatusType) => {
     return status;
   }),
+  getFilteredPipelineStatus: jest
+    .fn()
+    .mockImplementation(
+      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = []) => {
+        if (!status) {
+          return pipelineStatus;
+        } else {
+          return pipelineStatus.filter((d) => d?.executionStatus === status);
+        }
+      }
+    ),
   STATUS_OPTIONS: [],
 }));
+
+jest.mock('../ExecutionStrip/ExecutionStrip', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="exec-strip">Execution Strip</p>);
+});
 
 describe('Test PipelineStatus list component', () => {
   it('Should render all child elements', async () => {
@@ -155,10 +172,10 @@ describe('Test PipelineStatus list component', () => {
 
     const filterDropDown = await findByTestId('filter-dropdown');
 
-    const pipelineStatusTable = await findByTestId('pipeline-status-table');
+    const executionStrip = await findByTestId('exec-strip');
 
     expect(filterDropDown).toBeInTheDocument();
-    expect(pipelineStatusTable).toBeInTheDocument();
+    expect(executionStrip).toBeInTheDocument();
   });
 
   it('Should render no data placeholder if pipelinestatus is undefined', async () => {
