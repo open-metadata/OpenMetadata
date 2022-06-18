@@ -385,8 +385,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
       const normalConnection = isNil(sourceHandle) && isNil(targetHandle);
       if (columnConnection || normalConnection) {
-        // setStatus('waiting');
-        // setLoading(true);
+        setStatus('waiting');
+        setLoading(true);
 
         const nodes = [
           ...(updatedLineageData.nodes as EntityReference[]),
@@ -489,9 +489,19 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               target: target,
               targetHandle: sourceHandle,
               sourceHandle: targetHandle,
-              //   type: 'buttonedge',
+              type: isEditMode ? 'buttonedge' : 'custom',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
+              },
+              data: {
+                id: `edge-${sourceHandle}-${targetHandle}`,
+                source: params.source,
+                target: params.target,
+                targetHandle: sourceHandle,
+                sourceHandle: targetHandle,
+                sourceType: sourceNode?.type,
+                targetType: targetNode?.type,
+                onEdgeClick,
               },
             };
 
@@ -504,11 +514,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               source: `${params.source}`,
               target: `${params.target}`,
               type: isEditMode ? 'buttonedge' : 'custom',
-              arrowHeadType: MarkerType.ArrowClosed,
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+              },
               data: {
                 id: `edge-${params.source}-${params.target}`,
-                source: `${params.source}`,
-                target: `${params.target}`,
+                source: params.source,
+                target: params.target,
                 sourceType: sourceNode?.type,
                 targetType: targetNode?.type,
                 onEdgeClick,

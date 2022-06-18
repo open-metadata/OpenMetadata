@@ -451,16 +451,24 @@ export const getLineageDataV1 = (
       edge.lineageDetails.columnsLineage.forEach((e) => {
         const toColumn = e.toColumn || '';
         if (e.fromColumns && e.fromColumns.length > 0) {
-          e.fromColumns.forEach((f) => {
+          e.fromColumns.forEach((fromColumn) => {
             lineageEdges.push({
-              id: `edge-${f}-${toColumn}`,
+              id: `edge-${fromColumn}-${toColumn}`,
               source: edge.fromEntity,
               target: edge.toEntity,
               targetHandle: toColumn,
-              sourceHandle: f,
-              //   type: 'buttonedge',
+              sourceHandle: fromColumn,
+              type: isEditMode ? edgeType : 'custom',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
+              },
+              data: {
+                id: `edge-${fromColumn}-${toColumn}`,
+                source: edge.fromEntity,
+                target: edge.toEntity,
+                targetHandle: toColumn,
+                sourceHandle: fromColumn,
+                onEdgeClick,
               },
             });
           });
