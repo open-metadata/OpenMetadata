@@ -1,24 +1,49 @@
 {
   "properties": {
+    "id": {
+      "type": "text"
+    },
     "name": {
+      "type":"text"
+    },
+    "fullyQualifiedName": {
+      "type":"text"
+    },
+    "displayName": {
       "type": "text"
     },
-    "display_name": {
+    "description": {
       "type": "text"
     },
-    "owner": {
+    "version": {
+      "type": "float"
+    },
+    "updatedAt": {
+      "type": "date",
+      "format": "epoch_second"
+    },
+    "updatedBy": {
+      "type": "text"
+    },
+    "href": {
+      "type": "text"
+    },
+    "synonyms": {
+      "type": "text"
+    },
+    "glossary": {
       "properties": {
         "id": {
           "type": "keyword",
           "fields": {
             "keyword": {
               "type": "keyword",
-              "ignore_above": 128
+              "ignore_above": 36
             }
           }
         },
         "type": {
-          "type": "text"
+          "type": "keyword"
         },
         "name": {
           "type": "keyword",
@@ -43,36 +68,147 @@
         }
       }
     },
-    "fqdn": {
-      "type": "keyword"
+    "children": {
+      "properties": {
+        "id": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 36
+            }
+          }
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "fullyQualifiedName": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "href": {
+          "type": "text"
+        }
+      }
     },
-    "last_updated_timestamp": {
-      "type": "date",
-      "format": "epoch_second"
+    "relatedTerms": {
+      "properties": {
+        "id": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 36
+            }
+          }
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "fullyQualifiedName": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "href": {
+          "type": "text"
+        }
+      }
     },
-    "description": {
-      "type": "text"
+    "reviewers": {
+      "properties": {
+        "id": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 36
+            }
+          }
+        },
+        "type": {
+          "type": "keyword"
+        },
+        "name": {
+          "type": "keyword",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "fullyQualifiedName": {
+          "type": "text"
+        },
+        "description": {
+          "type": "text"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "href": {
+          "type": "text"
+        }
+      }
     },
-    "glossary_name": {
-      "type": "keyword"
-    },
-    "glossary_id": {
-      "type": "keyword"
-    },
-    "status": {
-      "type": "keyword"
+    "usageCount": {
+      "type": "integer"
     },
     "tags": {
-      "type": "keyword"
-    },
-    "entity_type": {
-      "type": "keyword"
-    },
-    "suggest": {
-      "type": "completion"
+      "properties": {
+        "tagFQN": {
+          "type": "keyword"
+        },
+        "labelType": {
+          "type": "keyword"
+        },
+        "description": {
+          "type": "text"
+        },
+        "source": {
+          "type": "keyword"
+        },
+        "state": {
+          "type": "keyword"
+        }
+      }
     },
     "deleted": {
       "type": "boolean"
+    },
+    "status": {
+      "type": "text"
+    },
+    "suggest": {
+      "type": "completion"
     }
   }
 }

@@ -14,8 +14,22 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.mlmodel import (
+    MlFeature,
+    MlHyperParameter,
+    MlStore,
+)
+from metadata.generated.schema.entity.data.pipeline import Task
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
+from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.usageDetails import (
+    TypeUsedToReturnUsageDetailsOfAnEntity,
+)
 
 
 class DeleteTable(BaseModel):
@@ -43,54 +57,61 @@ class ESEntityReference(BaseModel):
 class TableESDocument(BaseModel):
     """Elastic Search Mapping doc"""
 
-    table_id: str
-    deleted: bool
-    database: str
-    database_schema: str
-    service: ESEntityReference
-    service_type: str
-    entity_type: str = "table"
+    entityType: str = "table"
+    id: str
     name: str
+    fullyQualifiedName: str
+    displayName: str
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    href: Optional[str]
+    columns: List[Column]
+    databaseSchema: EntityReference
+    database: EntityReference
+    service: EntityReference
+    owner: EntityReference = None
+    location: Optional[EntityReference] = None
+    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    deleted: bool
+    serviceType: str
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    followers: List[str]
     suggest: List[dict]
     column_suggest: List[dict]
     database_suggest: List[dict]
     schema_suggest: List[dict]
     service_suggest: List[dict]
-    description: Optional[str] = None
-    table_type: Optional[str] = None
-    last_updated_timestamp: Optional[int]
-    column_names: List[str]
-    column_descriptions: List[str]
-    monthly_stats: int
-    monthly_percentile_rank: int
-    weekly_stats: int
-    weekly_percentile_rank: int
-    daily_stats: int
-    daily_percentile_rank: int
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
-    owner: EntityReference = None
-    followers: List[str]
     doc_as_upsert: bool = True
 
 
 class TopicESDocument(BaseModel):
     """Topic Elastic Search Mapping doc"""
 
-    topic_id: str
-    deleted: bool
-    service: ESEntityReference
-    service_type: str
-    entity_type: str = "topic"
+    entityType: str = "topic"
+    id: str
     name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    href: Optional[str]
+    deleted: bool
+    service: EntityReference
+    serviceType: str
+    schemaText: Optional[str] = None
+    schemaType: Optional[str] = None
+    cleanupPolicies: List[str] = None
+    replicationFactor: Optional[int] = None
+    maximumMessageSize: Optional[int] = None
+    retentionSize: Optional[int] = None
     suggest: List[dict]
     service_suggest: List[dict]
-    description: Optional[str] = None
-    last_updated_timestamp: Optional[int]
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
     owner: EntityReference = None
     followers: List[str]
     doc_as_upsert: bool = True
@@ -99,124 +120,156 @@ class TopicESDocument(BaseModel):
 class DashboardESDocument(BaseModel):
     """Elastic Search Mapping doc for Dashboards"""
 
-    dashboard_id: str
-    deleted: bool
-    service: EntityReference
-    service_type: str
-    entity_type: str = "dashboard"
+    entityType: str = "dashboard"
+    id: str
     name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    dashboardUrl: Optional[str]
+    charts: List[EntityReference]
+    href: Optional[str]
+    owner: EntityReference = None
+    followers: List[str]
+    service: EntityReference
+    serviceType: str
+    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    deleted: bool
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
     suggest: List[dict]
     chart_suggest: List[dict]
     service_suggest: List[dict]
-    description: Optional[str] = None
-    last_updated_timestamp: Optional[int]
-    chart_names: List[str]
-    chart_descriptions: List[str]
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
-    owner: ESEntityReference = None
-    followers: List[str]
-    monthly_stats: int
-    monthly_percentile_rank: int
-    weekly_stats: int
-    weekly_percentile_rank: int
-    daily_stats: int
-    daily_percentile_rank: int
     doc_as_upsert: bool = True
 
 
 class PipelineESDocument(BaseModel):
     """Elastic Search Mapping doc for Pipelines"""
 
-    pipeline_id: str
-    deleted: bool
-    service: ESEntityReference
-    service_type: str
-    entity_type: str = "pipeline"
+    entityType: str = "pipeline"
+    id: str
     name: str
+    displayName: str
+    fullyQualifiedName: str
+    description: Optional[str] = None
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    pipelineUrl: Optional[str]
+    tasks: List[Task]
+    deleted: bool
+    href: Optional[str]
+    owner: EntityReference = None
+    followers: List[str]
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
+    service: EntityReference
+    serviceType: str
     suggest: List[dict]
     task_suggest: List[dict]
     service_suggest: List[dict]
-    description: Optional[str] = None
-    last_updated_timestamp: Optional[int]
-    task_names: List[str]
-    task_descriptions: List[str]
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
-    owner: ESEntityReference = None
-    followers: List[str]
     doc_as_upsert: bool = True
 
 
 class MlModelESDocument(BaseModel):
     """Elastic Search Mapping doc for MlModels"""
 
-    ml_model_id: str
-    deleted: bool
-    entity_type: str = "mlmodel"
+    entityType: str = "mlmodel"
+    id: str
     name: str
-    suggest: List[dict]
-    service_suggest: List[dict] = None
+    displayName: str
+    fullyQualifiedName: str
     description: Optional[str] = None
-    last_updated_timestamp: Optional[int]
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
     algorithm: str
-    ml_features: List[str]
-    ml_hyper_parameters: List[str]
-    tags: List[str]
-    fqdn: str
-    tier: Optional[str] = None
+    mlFeatures: Optional[List[MlFeature]] = None
+    mlHyperParameters: Optional[List[MlHyperParameter]] = None
+    target: str
+    dashboard: Optional[EntityReference] = None
+    mlStore: Optional[MlStore] = None
+    server: Optional[str] = None
+    usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity = None
+    tags: List[TagLabel]
+    tier: Optional[TagLabel] = None
     owner: ESEntityReference = None
     followers: List[str]
+    href: Optional[str]
+    deleted: bool
+    suggest: List[dict]
+    service_suggest: List[dict] = None
     doc_as_upsert: bool = True
 
 
 class UserESDocument(BaseModel):
     """Elastic Search Mapping doc for Users"""
 
-    user_id: str
-    deleted: bool
-    entity_type: str = "user"
+    entityType: str = "user"
+    id: str
     name: str
-    display_name: str
+    fullyQualifiedName: str
+    displayName: str
+    description: str
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
     email: str
+    href: Optional[str]
+    isAdmin: bool
+    teams: EntityReferenceList
+    roles: EntityReferenceList
+    inheritedRoles: EntityReferenceList
+    deleted: bool
     suggest: List[dict]
-    last_updated_timestamp: Optional[int]
-    teams: List[ESEntityReference]
-    roles: List[ESEntityReference]
     doc_as_upsert: bool = True
 
 
 class TeamESDocument(BaseModel):
     """Elastic Search Mapping doc for Teams"""
 
-    team_id: str
-    deleted: bool
-    entity_type: str = "team"
+    entityType: str = "team"
+    id: str
     name: str
-    display_name: str
+    fullyQualifiedName: str
+    displayName: str
+    description: str
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    href: Optional[str]
     suggest: List[dict]
-    last_updated_timestamp: Optional[int]
-    users: List[ESEntityReference]
-    default_roles: List[ESEntityReference]
-    owns: List[str]
+    users: EntityReferenceList
+    defaultRoles: EntityReferenceList
+    isJoinable: bool
+    deleted: bool
     doc_as_upsert: bool = True
 
 
 class GlossaryTermESDocument(BaseModel):
     """Elastic Search Mapping doc for Glossary Term"""
 
-    glossary_term_id: str
-    deleted: bool
-    entity_type: str = "glossaryTerm"
+    entityType: str = "glossaryTerm"
+    id: str
     name: str
-    display_name: str
-    fqdn: str
+    fullyQualifiedName: str
+    displayName: str
     description: str
-    glossary_name: str
-    glossary_id: str
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    href: Optional[str]
+    synonyms: Optional[List[str]]
+    glossary: EntityReference
+    children: Optional[List[EntityReference]]
+    relatedTerms: Optional[List[EntityReference]]
+    reviewers: Optional[List[EntityReference]]
+    usageCount: Optional[int]
+    tags: List[TagLabel]
     status: str
     suggest: List[dict]
-    last_updated_timestamp: Optional[int]
+    deleted: bool
     doc_as_upsert: bool = True

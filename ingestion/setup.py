@@ -91,7 +91,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
-    "elasticsearch": {"elasticsearch==7.13.1"},
+    "elasticsearch_mapping": {"elasticsearch_mapping==7.13.1"},
     "glue": {"boto3~=1.19.12"},
     "dynamodb": {"boto3~=1.19.12"},
     "hive": {
