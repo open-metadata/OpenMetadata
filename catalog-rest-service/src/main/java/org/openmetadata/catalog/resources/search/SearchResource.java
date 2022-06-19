@@ -15,6 +15,7 @@ package org.openmetadata.catalog.resources.search;
 
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.catalog.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.catalog.Entity.FIELD_NAME;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.swagger.annotations.Api;
@@ -40,6 +41,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.Fuzziness;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
@@ -242,36 +244,42 @@ public class SearchResource {
   }
 
   private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
+    QueryStringQueryBuilder queryStringBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 5.0f)
-            .field(FIELD_DESCRIPTION)
-            .field("column_names")
-            .field("column_descriptions")
-            .lenient(true);
+            .field(FIELD_NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 1.0f)
+            .field("columns.name", 5.0f)
+            .field("columns.description", 1.0f)
+            .field("columns.children.name", 5.0f)
+            .lenient(true)
+            .fuzziness(Fuzziness.AUTO);
     HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(NAME);
     highlightTableName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("column_names");
-    highlightColumns.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("column_descriptions");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
+    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
+    highlightColumns.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("columns.description");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("columns.children.name");
+    highlightColumnDescriptions.highlighterType(UNIFIED);
     hb.field(highlightDescription);
     hb.field(highlightTableName);
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database"));
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("database_schema"));
+    hb.field(highlightColumnChildren);
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(queryStringBuilder).from(from).size(size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database.name.keyword"));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
+
     return addAggregation(searchSourceBuilder);
   }
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION).lenient(true);
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field("name");
+        QueryBuilders.queryStringQuery(query).field(FIELD_NAME, 10.0f).field(FIELD_DESCRIPTION, 2.0f).lenient(true);
+    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_NAME);
     highlightTopicName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
@@ -285,18 +293,18 @@ public class SearchResource {
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
-            .field(NAME, 5.0f)
-            .field(FIELD_DESCRIPTION)
-            .field("chart_names")
-            .field("chart_descriptions")
+            .field(NAME, 10.0f)
+            .field(FIELD_DESCRIPTION, 2.0f)
+            .field("chars.name")
+            .field("charts.description")
             .lenient(true);
     HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(NAME);
     highlightDashboardName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("chart_names");
+    HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
     highlightCharts.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("chart_descriptions");
+    HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("charts.description");
     highlightChartDescriptions.highlighterType(UNIFIED);
 
     HighlightBuilder hb = new HighlightBuilder();
@@ -314,16 +322,16 @@ public class SearchResource {
         QueryBuilders.queryStringQuery(query)
             .field(NAME, 5.0f)
             .field(DESCRIPTION)
-            .field("task_names")
-            .field("task_descriptions")
+            .field("tasks.name")
+            .field("tasks.description")
             .lenient(true);
     HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(NAME);
     highlightPipelineName.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
     highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("task_names");
+    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
     highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("task_descriptions");
+    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("tasks.description");
     highlightTaskDescriptions.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
@@ -347,13 +355,14 @@ public class SearchResource {
 
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
-        .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("Service").field("serviceType"))
+        .size(MAX_AGGREGATE_SIZE)
         .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("ServiceCategory").field("service.type.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
-        .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-        .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE));
+        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service.type").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("EntityType").field("entityType").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("Tier").field("tier.tagFQN"))
+        .aggregation(AggregationBuilders.terms("Tags").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
+
     return builder;
   }
 
