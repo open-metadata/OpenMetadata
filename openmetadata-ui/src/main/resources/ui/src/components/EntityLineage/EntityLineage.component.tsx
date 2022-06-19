@@ -327,6 +327,128 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const removeColumnEdge = (data: SelectedEdge, confirmDelete: boolean) => {
+    if (confirmDelete) {
+      const upStreamEdge = updatedLineageData.upstreamEdges?.find(
+        (up) =>
+          up.fromEntity === data.source.id && up.toEntity === data.target.id
+      );
+
+      const downStreamEdge = updatedLineageData.downstreamEdges?.find(
+        (down) =>
+          down.fromEntity === data.source.id && down.toEntity === data.target.id
+      );
+
+      const selectedEdge: AddLineage = {
+        edge: {
+          fromEntity: {
+            id: data.source.id,
+            type: data.source.type,
+          },
+          toEntity: {
+            id: data.target.id,
+            type: data.target.type,
+          },
+        },
+      };
+
+      if (!isUndefined(upStreamEdge)) {
+        const upColumnsLineage: ColumnLineage[] =
+          upStreamEdge.lineageDetails?.columnsLineage?.reduce((col, curr) => {
+            if (curr.toColumn === data.data?.targetHandle) {
+              const newCol = {
+                ...curr,
+                fromColumns:
+                  curr.fromColumns?.filter(
+                    (c) => c !== data.data?.sourceHandle
+                  ) || [],
+              };
+              if (newCol.fromColumns?.length) {
+                return [...col, newCol];
+              } else {
+                return col;
+              }
+            }
+
+            return [...col, curr];
+          }, [] as ColumnLineage[]) || [];
+        selectedEdge.edge.lineageDetails = {
+          sqlQuery: upStreamEdge.lineageDetails?.sqlQuery || '',
+          columnsLineage: upColumnsLineage,
+        };
+
+        setUpdatedLineageData({
+          ...updatedLineageData,
+          upstreamEdges: updatedLineageData.upstreamEdges?.map((up) => {
+            if (
+              up.fromEntity === data.source.id &&
+              up.toEntity === data.target.id
+            ) {
+              return {
+                ...up,
+                lineageDetails: selectedEdge.edge.lineageDetails,
+              };
+            }
+
+            return up;
+          }),
+        });
+      }
+
+      if (!isUndefined(downStreamEdge)) {
+        const downColumnsLineage: ColumnLineage[] =
+          downStreamEdge.lineageDetails?.columnsLineage?.reduce((col, curr) => {
+            if (curr.toColumn === data.data?.targetHandle) {
+              const newCol = {
+                ...curr,
+                fromColumns:
+                  curr.fromColumns?.filter(
+                    (c) => c !== data.data?.sourceHandle
+                  ) || [],
+              };
+              if (newCol.fromColumns?.length) {
+                return [...col, newCol];
+              }
+            }
+
+            return [...col, curr];
+          }, [] as ColumnLineage[]) || [];
+        selectedEdge.edge.lineageDetails = {
+          sqlQuery: downStreamEdge.lineageDetails?.sqlQuery || '',
+          columnsLineage: downColumnsLineage,
+        };
+
+        setUpdatedLineageData({
+          ...updatedLineageData,
+          downstreamEdges: updatedLineageData.downstreamEdges?.map((down) => {
+            if (
+              down.fromEntity === data.source.id &&
+              down.toEntity === data.target.id
+            ) {
+              return {
+                ...down,
+                lineageDetails: selectedEdge.edge.lineageDetails,
+              };
+            }
+
+            return down;
+          }),
+        });
+      }
+      setEdges((pre) =>
+        pre.filter(
+          (e) =>
+            e.sourceHandle !== data.data?.sourceHandle &&
+            e.targetHandle !== data.data?.targetHandle
+        )
+      );
+      addLineageHandler(selectedEdge);
+      setNewAddedNode({} as Node);
+      setSelectedEntity({} as EntityReference);
+      setConfirmDelete(false);
+    }
+  };
+
   /**
    * take edge data and set it as selected edge
    * @param evt
@@ -339,13 +461,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setShowDeleteModal(true);
     evt.stopPropagation();
     setSelectedEdge(() => {
-      let targetNode = updatedLineageData.nodes?.find((n) =>
-        data.target?.includes(n.id)
-      );
+      const allNode = [
+        ...(updatedLineageData.nodes || []),
+        updatedLineageData.entity,
+      ];
+      let targetNode = allNode.find((n) => data.target?.includes(n.id));
 
-      let sourceNode = updatedLineageData.nodes?.find((n) =>
-        data.source?.includes(n.id)
-      );
+      let sourceNode = allNode.find((n) => data.source?.includes(n.id));
 
       if (isUndefined(targetNode)) {
         targetNode = isEmpty(selectedEntity)
@@ -358,7 +480,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           : selectedEntity;
       }
 
-      return { id: data.id, source: sourceNode, target: targetNode };
+      return { id: data.id, source: sourceNode, target: targetNode, data };
     });
   };
 
@@ -383,8 +505,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         tableColumnsRef.current
       ) as CustomeElement;
 
-      //   uniqueElements = getUniqueFlowElements(graphElements);
-      uniqueElements = graphElements;
+      uniqueElements = {
+        node: getUniqueFlowElements(graphElements.node) as Node[],
+        edge: getUniqueFlowElements(graphElements.edge) as Edge[],
+      };
     }
 
     return uniqueElements;
@@ -420,9 +544,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       const { target, source, sourceHandle, targetHandle } = params;
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
       const normalConnection = isNil(sourceHandle) && isNil(targetHandle);
+      const mainEntity = updatedLineageData.entity;
       if (columnConnection || normalConnection) {
         setStatus('waiting');
         setLoading(true);
+
+        let edgeType: 'upstream' | 'downstream' | '' = '';
 
         const nodes = [
           ...(updatedLineageData.nodes as EntityReference[]),
@@ -430,20 +557,46 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         ];
 
         const sourceDownstreamNode = updatedLineageData.downstreamEdges?.find(
-          (d) => source?.includes(d.toEntity)
+          (d) =>
+            (source?.includes(d.fromEntity) || source?.includes(d.toEntity)) &&
+            source !== mainEntity.id
         );
 
-        const sourceUpStreamNode = updatedLineageData.upstreamEdges?.find((u) =>
-          source?.includes(u.fromEntity)
+        const sourceUpStreamNode = updatedLineageData.upstreamEdges?.find(
+          (u) =>
+            (source?.includes(u.fromEntity) || source?.includes(u.toEntity)) &&
+            source !== mainEntity.id
         );
 
         const targetDownStreamNode = updatedLineageData.downstreamEdges?.find(
-          (d) => target?.includes(d.toEntity)
+          (d) =>
+            (target?.includes(d.toEntity) || target?.includes(d.fromEntity)) &&
+            target !== mainEntity.id
         );
 
-        const targetUpStreamNode = updatedLineageData.upstreamEdges?.find((u) =>
-          target?.includes(u.fromEntity)
+        const targetUpStreamNode = updatedLineageData.upstreamEdges?.find(
+          (u) =>
+            (target?.includes(u.toEntity) || target?.includes(u.fromEntity)) &&
+            target !== mainEntity.id
         );
+
+        const isUpstream =
+          (!isNil(sourceUpStreamNode) && !isNil(targetDownStreamNode)) ||
+          !isNil(sourceUpStreamNode) ||
+          !isNil(targetUpStreamNode) ||
+          target?.includes(mainEntity.id);
+
+        const isDownstream =
+          (!isNil(sourceDownstreamNode) && !isNil(targetUpStreamNode)) ||
+          !isNil(sourceDownstreamNode) ||
+          !isNil(targetDownStreamNode) ||
+          source?.includes(mainEntity.id);
+
+        if (isUpstream) {
+          edgeType = 'upstream';
+        } else if (isDownstream) {
+          edgeType = 'downstream';
+        }
 
         let targetNode = nodes?.find((n) => target?.includes(n.id));
 
@@ -520,9 +673,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
           setEdges((els) => {
             const newEdgeData = {
-              id: `column-${sourceHandle}-${targetHandle}`,
-              source: source,
-              target: target,
+              id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
+              source: source || '',
+              target: target || '',
               sourceHandle: sourceHandle,
               targetHandle: targetHandle,
               type: isEditMode ? 'buttonedge' : 'custom',
@@ -530,35 +683,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 type: MarkerType.ArrowClosed,
               },
               data: {
-                id: `column-${sourceHandle}-${targetHandle}`,
+                id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
                 source: params.source,
                 target: params.target,
                 sourceHandle: sourceHandle,
                 targetHandle: targetHandle,
                 sourceType: sourceNode?.type,
                 targetType: targetNode?.type,
-                onEdgeClick,
-              },
-            };
-
-            return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
-          });
-        } else {
-          setEdges((els) => {
-            const newEdgeData = {
-              id: `edge-${params.source}-${params.target}`,
-              source: `${params.source}`,
-              target: `${params.target}`,
-              type: isEditMode ? 'buttonedge' : 'custom',
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-              },
-              data: {
-                id: `edge-${params.source}-${params.target}`,
-                source: params.source,
-                target: params.target,
-                sourceType: sourceNode?.type,
-                targetType: targetNode?.type,
+                isColumnLineage: true,
                 onEdgeClick,
               },
             };
@@ -567,11 +699,31 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           });
         }
 
+        setEdges((els) => {
+          const newEdgeData = {
+            id: `edge-${params.source}-${params.target}`,
+            source: `${params.source}`,
+            target: `${params.target}`,
+            type: isEditMode ? 'buttonedge' : 'custom',
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+            },
+            data: {
+              id: `edge-${params.source}-${params.target}`,
+              source: params.source,
+              target: params.target,
+              sourceType: sourceNode?.type,
+              targetType: targetNode?.type,
+              isColumnLineage: false,
+              onEdgeClick,
+            },
+          };
+
+          return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
+        });
+
         const updatedDownStreamEdges = () => {
-          return !isUndefined(sourceUpStreamNode) ||
-            !isUndefined(targetUpStreamNode) ||
-            targetNode?.id === selectedEntity.id ||
-            nodes?.find((n) => targetNode?.id === n.id)
+          return edgeType === 'downstream'
             ? [
                 ...(updatedLineageData.downstreamEdges as EntityEdge[]),
                 {
@@ -584,10 +736,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         };
 
         const updatedUpStreamEdges = () => {
-          return !isUndefined(sourceDownstreamNode) ||
-            !isUndefined(targetDownStreamNode) ||
-            sourceNode?.id === selectedEntity.id ||
-            nodes?.find((n) => sourceNode?.id === n.id)
+          return edgeType === 'upstream'
             ? [
                 ...(updatedLineageData.upstreamEdges as EntityEdge[]),
                 {
@@ -1142,7 +1291,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEntity]);
 
   useEffect(() => {
-    removeEdgeHandler(selectedEdge, confirmDelete);
+    if (selectedEdge.data?.isColumnLineage) {
+      removeColumnEdge(selectedEdge, confirmDelete);
+    } else {
+      removeEdgeHandler(selectedEdge, confirmDelete);
+    }
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {

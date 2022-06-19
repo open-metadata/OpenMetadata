@@ -271,7 +271,7 @@ export const getLineageDataV1 = (
         if (e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
             lineageEdgesV1.push({
-              id: `column-${fromColumn}-${toColumn}`,
+              id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
               source: edge.fromEntity,
               target: edge.toEntity,
               targetHandle: toColumn,
@@ -281,12 +281,13 @@ export const getLineageDataV1 = (
                 type: MarkerType.ArrowClosed,
               },
               data: {
-                id: `column-${fromColumn}-${toColumn}`,
+                id: `column-${fromColumn}-${toColumn}-edge-${edge.fromEntity}-${edge.toEntity}`,
                 source: edge.fromEntity,
                 target: edge.toEntity,
                 targetHandle: toColumn,
                 sourceHandle: fromColumn,
                 onEdgeClick,
+                isColumnLineage: true,
               },
             });
           });
@@ -309,6 +310,7 @@ export const getLineageDataV1 = (
         sourceType: sourceType?.type,
         targetType: targetType?.type,
         onEdgeClick,
+        isColumnLineage: false,
       },
     });
   });

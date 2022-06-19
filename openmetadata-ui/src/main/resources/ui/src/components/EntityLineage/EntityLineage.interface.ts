@@ -65,12 +65,16 @@ export interface CustomEdgeData {
   target: string;
   sourceType: string;
   targetType: string;
+  isColumnLineage: boolean;
+  sourceHandle: string;
+  targetHandle: string;
 }
 
 export interface SelectedEdge {
   id: string;
   source: EntityReference;
   target: EntityReference;
+  data?: CustomEdgeData;
 }
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
