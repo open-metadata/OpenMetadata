@@ -108,3 +108,44 @@ class QueryParserTests(TestCase):
                 ),
             ],
         )
+
+    def test_capitals(self):
+        """
+        Example on how LineageRunner keeps capitals
+        for column names
+        """
+
+        query = """
+         SELECT
+           USERS.ID,
+           li.id
+        FROM TESTDB.PUBLIC.USERS
+        JOIN testdb.PUBLIC."lowercase_users" li
+          ON USERS.id = li.ID
+        ;
+        """
+
+        parser = LineageRunner(query)
+
+        tables = get_involved_tables_from_parser(parser)
+
+        clean_tables = get_clean_parser_table_list(tables)
+        aliases = get_parser_table_aliases(tables)
+
+        joins = get_table_joins(parser=parser, tables=clean_tables, aliases=aliases)
+
+        self.assertEqual(
+            joins["testdb.public.users"],
+            [
+                TableColumnJoin(
+                    tableColumn=TableColumn(
+                        table="testdb.public.users", column="id"
+                    ),  # lowercase col
+                    joinedWith=[
+                        TableColumn(
+                            table="testdb.public.lowercase_users", column="ID"
+                        ),  # uppercase col
+                    ],
+                ),
+            ],
+        )
