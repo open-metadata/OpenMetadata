@@ -29,7 +29,7 @@ Admin permissions are required to register the application on the Azure portal.
 
 * The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
 
-![](<../../../../.gitbook/assets/image (71) (1) (1) (4) (7).png>)
+![](<../../../../.gitbook/assets/image (71) (1) (1) (3) (7).png>)
 
 * When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example below. https://login.microsoftonline.com/TenantID
 
