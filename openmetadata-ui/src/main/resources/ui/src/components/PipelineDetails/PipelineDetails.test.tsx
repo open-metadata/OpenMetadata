@@ -206,8 +206,13 @@ describe('Test PipelineDetails component', () => {
       }
     );
     const taskDetail = await findByTestId(container, 'tasks-dag');
+    const pipelineStatus = await findByTestId(
+      container,
+      'pipeline-status-list'
+    );
 
     expect(taskDetail).toBeInTheDocument();
+    expect(pipelineStatus).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
@@ -222,24 +227,9 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is executions', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const pipelineStatus = await findByTestId(
-      container,
-      'pipeline-status-list'
-    );
-
-    expect(pipelineStatus).toBeInTheDocument();
-  });
-
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -251,7 +241,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }
