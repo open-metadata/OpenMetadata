@@ -422,7 +422,7 @@ class Profiler(Generic[TMetric]):
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnNames=self._table_results.get(ColumnNames.name()).split(","),
+                columnNames=self._table_results.get(ColumnNames.name(),"").split(","),
                 columnProfile=computed_profiles,
             )
 
