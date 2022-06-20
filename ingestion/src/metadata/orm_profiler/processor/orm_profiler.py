@@ -336,7 +336,7 @@ class OrmProfilerProcessor(Processor[Table]):
             self.status.failure(msg)
             return TestCaseResult(
                 executionTime=self.execution_date.timestamp(),
-                status=TestCaseStatus.Aborted,
+                testCaseStatus=TestCaseStatus.Aborted,
                 result=msg,
             )
 
