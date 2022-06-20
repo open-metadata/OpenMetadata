@@ -14,11 +14,13 @@
 import { Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTask } from '../../axiosAPIs/feedsAPI';
+import { getFeedById, getTask } from '../../axiosAPIs/feedsAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -29,10 +31,7 @@ import {
 } from '../../constants/constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import {
-  TaskStatus,
-  Thread as TaskDetail,
-} from '../../generated/entity/feed/thread';
+import { TaskStatus, Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import {
   getEntityName,
@@ -52,8 +51,10 @@ const TaskDetailPage = () => {
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
-  const [taskDetail, setTaskDetail] = useState<TaskDetail>({} as TaskDetail);
+  const [taskDetail, setTaskDetail] = useState<Thread>({} as Thread);
+  const [taskFeedDetail, setTaskFeedDetail] = useState<Thread>({} as Thread);
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -61,6 +62,18 @@ const TaskDetailPage = () => {
         setTaskDetail(res.data);
       })
       .catch((err: AxiosError) => showErrorToast(err));
+  };
+
+  const fetchTaskFeed = (id: string) => {
+    setIsLoading(true);
+    getFeedById(id)
+      .then((res: AxiosResponse) => {
+        setTaskFeedDetail(res.data);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const fetchTableDetails = (entityFQN: string) => {
@@ -130,10 +143,11 @@ const TaskDetailPage = () => {
   }, [taskId]);
 
   useEffect(() => {
-    if (taskDetail.about) {
+    if (!isEmpty(taskDetail)) {
       const entityFQN = getEntityFQN(taskDetail.about);
 
       entityFQN && fetchTableDetails(entityFQN);
+      fetchTaskFeed(taskDetail.id);
     }
   }, [taskDetail]);
 
@@ -198,7 +212,15 @@ const TaskDetailPage = () => {
       <Sider className="ant-layout-sider-task-detail" width={600}>
         <Tabs className="ant-tabs-task-detail">
           <TabPane key="1" tab="Task">
-            Content of Tab Pane 1
+            {!isEmpty(taskFeedDetail) ? (
+              <FeedPanelBody
+                isLoading={isLoading}
+                threadData={taskFeedDetail}
+                updateThreadHandler={() => {
+                  return;
+                }}
+              />
+            ) : null}
           </TabPane>
           <TabPane key="2" tab="Conversations">
             Content of Tab Pane 2

@@ -143,15 +143,15 @@ const CustomPropertiesPage = withSuspenseFallback(
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/TasksPage/RequestDescription'))
+  React.lazy(() => import('../pages/TasksPage/RequestDescriptionPage'))
 );
 
 const UpdateDescriptionPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/TasksPage/UpdateDescription'))
+  React.lazy(() => import('../pages/TasksPage/UpdateDescriptionPage'))
 );
 
 const TaskDetailPage = withSuspenseFallback(
-  React.lazy(() => import('../pages/TasksPage/TaskDetail'))
+  React.lazy(() => import('../pages/TasksPage/TaskDetailPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
