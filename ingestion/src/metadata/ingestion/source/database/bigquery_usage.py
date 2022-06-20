@@ -17,6 +17,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Iterable, Optional
 
+from google import auth
 from google.cloud import logging
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
@@ -46,10 +47,9 @@ class BigqueryUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
         self.temp_credentials = None
-        # Used as db
-        self.project_id = (
-            self.connection.projectId or self.connection.credentials.gcsConfig.projectId
-        )
+
+        self.project_id = self.set_project_id()
+
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.logging_client = logging.Client()
         self.usage_logger = self.logging_client.logger(self.logger_name)
@@ -69,6 +69,11 @@ class BigqueryUsageSource(UsageSource):
         )
 
         return cls(config, metadata_config)
+
+    @staticmethod
+    def set_project_id():
+        _, project_id = auth.default()
+        return project_id
 
     def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
         entries = self.usage_logger.list_entries()
