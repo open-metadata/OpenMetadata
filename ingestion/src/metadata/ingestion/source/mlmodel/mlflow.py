@@ -10,8 +10,8 @@
 #  limitations under the License.
 """ml flow source module"""
 
-import json
 import ast
+import json
 import traceback
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
@@ -33,10 +33,13 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -87,11 +90,16 @@ class MlflowSource(Source[CreateMlModelRequest]):
         self.config = config
         self.service_connection = self.config.serviceConnection.__root__.config
 
+        self.metadata = OpenMetadata(metadata_config)
+
         self.client = MlflowClient(
             tracking_uri=self.service_connection.trackingUri,
             registry_uri=self.service_connection.registryUri,
         )
         self.status = MlFlowStatus()
+        self.service = self.metadata.get_service_or_create(
+            entity=MlModelService, config=config
+        )
 
     def prepare(self):
         pass
@@ -143,6 +151,7 @@ class MlflowSource(Source[CreateMlModelRequest]):
                     run.data, latest_version.run_id, model.name
                 ),
                 mlStore=self._get_ml_store(latest_version),
+                service=EntityReference(id=self.service.id, type="mlmodelService"),
             )
 
     @staticmethod
