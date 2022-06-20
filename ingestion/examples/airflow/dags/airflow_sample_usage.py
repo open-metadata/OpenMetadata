@@ -47,9 +47,7 @@ config = """
   },
   "processor": {
     "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "config": {}
   },
   "stage": {
     "type": "table-usage",
