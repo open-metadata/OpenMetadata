@@ -169,10 +169,11 @@ class AirflowSource(Source[CreatePipelineRequest]):
                 )
                 for task in tasks
             ]
+
             pipeline_status = PipelineStatus(
                 taskStatus=task_statuses,
                 executionStatus=STATUS_MAP.get(dag._state, StatusType.Pending.value),
-                executionDate=dag.start_date.timestamp(),
+                executionDate=dag.execution_date.timestamp(),
             )
             yield OMetaPipelineStatus(
                 pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status

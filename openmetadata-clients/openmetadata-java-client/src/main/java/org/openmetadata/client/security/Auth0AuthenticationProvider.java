@@ -18,8 +18,6 @@ import io.swagger.client.ApiClient;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.client.interceptors.Auth0AccessTokenRequestInterceptor;

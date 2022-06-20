@@ -39,6 +39,7 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
+import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
@@ -248,6 +249,27 @@ const PipelineDetailsPage = () => {
       });
   };
 
+  const fetchServiceDetails = (type: string, fqn: string) => {
+    return new Promise<string>((resolve, reject) => {
+      getServiceByFQN(type + 's', fqn, ['owner'])
+        .then((resService: AxiosResponse) => {
+          if (resService?.data) {
+            const hostPort = resService.data.connection?.config?.hostPort || '';
+            resolve(hostPort);
+          } else {
+            throw null;
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-pipeline-details-error']
+          );
+          reject(err);
+        });
+    });
+  };
+
   const fetchPipelineDetail = (pipelineFQN: string) => {
     setLoading(true);
     getPipelineByFqn(pipelineFQN, defaultFields)
@@ -264,11 +286,12 @@ const PipelineDetailsPage = () => {
             tags,
             owner,
             displayName,
+            name,
             tasks,
             pipelineUrl,
             version,
           } = res.data;
-          setDisplayName(displayName);
+          setDisplayName(displayName || name);
           setPipelineDetails(res.data);
           setCurrentVersion(version);
           setPipelineId(id);
@@ -305,8 +328,19 @@ const PipelineDetailsPage = () => {
             timestamp: 0,
           });
 
-          setPipelineUrl(pipelineUrl);
-          setTasks(tasks);
+          fetchServiceDetails(service.type, service.name)
+            .then((hostPort: string) => {
+              setPipelineUrl(hostPort + pipelineUrl);
+              const updatedTasks = (tasks as Task[]).map((task) => ({
+                ...task,
+                taskUrl: hostPort + task.taskUrl,
+              }));
+              setTasks(updatedTasks);
+              setLoading(false);
+            })
+            .catch((err: AxiosError) => {
+              throw err;
+            });
         } else {
           setIsError(true);
 
@@ -322,8 +356,8 @@ const PipelineDetailsPage = () => {
             jsonData['api-error-messages']['fetch-pipeline-details-error']
           );
         }
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   };
 
   const fetchTabSpecificData = (tabField = '') => {
