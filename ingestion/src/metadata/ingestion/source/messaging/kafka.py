@@ -17,12 +17,8 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 import confluent_kafka
-from confluent_avro import AvroKeyValueSerde, SchemaRegistry
 from confluent_kafka.admin import AdminClient, ConfigResource
-from confluent_kafka.schema_registry.schema_registry_client import (
-    Schema,
-    SchemaRegistryClient,
-)
+from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import (
@@ -203,31 +199,31 @@ class KafkaSource(Source[CreateTopicRequest]):
         return schema
 
     def _get_sample_data(self, topic_name):
+        sample_data = []
         try:
             self.consumer_client.subscribe([topic_name.__root__])
-            registry_client = SchemaRegistry(
-                self.service_connection.schemaRegistryURL,
-                headers={"Content-Type": "application/vnd.schemaregistry.v1+json"},
+            logger.info(
+                f"Kafka consumer polling for sample messages in topic {topic_name.__root__}"
             )
-            avro_serde = AvroKeyValueSerde(registry_client, topic_name.__root__)
-            logger.info("Kafka consumer polling for sample messages")
             messages = self.consumer_client.consume(num_messages=10, timeout=10)
-            sample_data = []
-            if len(messages) > 0:
-                for message in messages:
-                    sample_data.append(
-                        str(avro_serde.value.deserialize(message.value()))
-                    )
-            topic_sample_data = TopicSampleData(messages=sample_data)
-            self.consumer_client.unsubscribe()
-            return topic_sample_data
         except Exception as e:
             logger.error(
                 f"Failed to fetch sample data from topic {topic_name.__root__}"
             )
             logger.error(traceback.format_exc())
             logger.error(sys.exc_info()[2])
-        return None
+        else:
+            if messages:
+                for message in messages:
+                    sample_data.append(
+                        str(
+                            self.consumer_client._serializer.decode_message(
+                                message.value()
+                            )
+                        )
+                    )
+        self.consumer_client.unsubscribe()
+        return TopicSampleData(messages=sample_data)
 
     def on_assign(self, a_consumer, partitions):
         # get offset tuple from the first partition
