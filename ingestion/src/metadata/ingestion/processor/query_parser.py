@@ -279,7 +279,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[QueryParserData]:
         tables=clean_tables,
         joins=get_table_joins(parser=parser, tables=clean_tables, aliases=aliases),
         databaseName=record.databaseName,
-        databaseSchema=record.schemaName,
+        databaseSchema=record.databaseSchema,
         sql=record.query,
         date=start_date.__root__.strftime("%Y-%m-%d"),
         serviceName=record.serviceName,

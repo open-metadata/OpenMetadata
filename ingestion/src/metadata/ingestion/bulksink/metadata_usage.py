@@ -160,13 +160,13 @@ class MetadataUsageBulkSink(BulkSink):
                 metadata=self.metadata,
                 service_name=self.service_name,
                 database_name=table_usage.databaseName,
-                database_schema=table_usage.schemaName,
+                database_schema=table_usage.databaseSchema,
                 table_name=table_usage.table,
             )
 
             if not table_entities:
                 logger.warning(
-                    f"Could not fetch table {table_usage.databaseName}.{table_usage.schemaName}.{table_usage.table}"
+                    f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                 )
                 continue
 

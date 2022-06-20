@@ -50,10 +50,6 @@
       "description": "Database associated with the table in the query",
       "type": "string"
     },
-    "schemaName": {
-      "description": "Schema associated with the table in the query",
-      "type": "string"
-    },
     "count": {
       "description": "Usage count of table",
       "type": "integer",

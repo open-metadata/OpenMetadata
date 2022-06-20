@@ -99,7 +99,6 @@ class SnowflakeUsageSource(UsageSource):
                         analysisDate=self.analysis_date,
                         aborted=self.get_aborted_status(row),
                         databaseName=self.get_database_name(row),
-                        schemaName=row["schema_name"],
                         serviceName=self.config.serviceName,
                         databaseSchema=row["schema_name"],
                     )
