@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -231,36 +232,47 @@ const ServicesPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Services</h6>
-        </div>
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <>
+          <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+            <h6 className="tw-heading tw-text-base">Services</h6>
+          </div>
 
-        {getServiceTabs()?.map((tab, index) => {
-          return (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                tab.name,
-                serviceName
-              )}`}
-              data-testid="tab"
-              key={index}
-              onClick={() => {
-                handleTabChange(tab.name);
-              }}>
-              <p className="tw-text-center tw-self-center label-category">
-                {tab.displayName}
-              </p>
+          {getServiceTabs()?.map((tab, index) => {
+            return (
+              <div
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                  tab.name,
+                  serviceName
+                )}`}
+                data-testid="tab"
+                key={index}
+                onClick={() => {
+                  handleTabChange(tab.name);
+                }}>
+                <p className="tw-text-center tw-self-center label-category">
+                  {tab.displayName}
+                </p>
 
-              {getCountBadge(
-                servicesCount[tab.name],
-                'tw-self-center',
-                tab.name === serviceName
-              )}
-            </div>
-          );
-        })}
-      </>
+                {getCountBadge(
+                  servicesCount[tab.name],
+                  'tw-self-center',
+                  tab.name === serviceName
+                )}
+              </div>
+            );
+          })}
+        </>
+      </Card>
     );
   };
 
@@ -490,7 +502,10 @@ const ServicesPage = () => {
       <ErrorPlaceHolder>{errorMessage}</ErrorPlaceHolder>
     ) : (
       <PageLayout leftPanel={fetchLeftPanel()}>
-        <div data-testid="services-container">
+        <div
+          className="tw-bg-white"
+          data-testid="services-container"
+          style={{ padding: '14px' }}>
           {getServiceList()}
 
           {getPagination()}

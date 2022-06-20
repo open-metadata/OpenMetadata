@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
@@ -88,104 +89,115 @@ const TeamsAndUsers = ({
    */
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-mb-8">
-          <div
-            className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b"
-            data-testid="add-team-container">
-            <p className="tw-heading">Teams</p>
-            {hasAccess && (
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  className="tw-h-7 tw-px-2 tw-mb-4"
-                  data-testid="add-team-button"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => {
-                    handleAddTeam(true);
-                  }}>
-                  <FontAwesomeIcon icon="plus" />
-                </Button>
-              </NonAdminAction>
-            )}
-          </div>
-          {teams.map((team) => (
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <>
+          <div className="tw-mb-8">
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-              data-testid={`team-${team.name}`}
-              key={team.name}
-              onClick={() => {
-                changeCurrentTeam(team.name, false);
-              }}>
-              <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
-                  team.name,
-                  currentTeam?.name
-                )}`}>
-                <p
-                  className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                  data-testid="team-name"
-                  title={team.displayName ?? team.name}>
-                  {team.displayName ?? team.name}
-                </p>
-              </div>
-              {getCountBadge(
-                getActiveUsers(team.users).length,
-                '',
-                currentTeam?.name === team.name
-              )}
-            </div>
-          ))}
-        </div>
-        {hasAccess && (
-          <div>
-            <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
-              <p className="tw-heading">All Users</p>
+              className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b"
+              data-testid="add-team-container">
+              <p className="tw-heading">Teams</p>
               {hasAccess && (
                 <NonAdminAction
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-7 tw-px-2 tw-mb-4"
-                    data-testid="add-user-button"
+                    data-testid="add-team-button"
                     size="small"
                     theme="primary"
                     variant="contained"
-                    onClick={handleAddNewUser}>
+                    onClick={() => {
+                      handleAddTeam(true);
+                    }}>
                     <FontAwesomeIcon icon="plus" />
                   </Button>
                 </NonAdminAction>
               )}
             </div>
-            {usersData.map((user) => (
+            {teams.map((team) => (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-                data-testid={user.name}
-                key={user.name}
+                data-testid={`team-${team.name}`}
+                key={team.name}
                 onClick={() => {
-                  changeCurrentTeam(user.name, true);
+                  changeCurrentTeam(team.name, false);
                 }}>
                 <div
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
-                    user.name,
-                    activeUserTab
+                    team.name,
+                    currentTeam?.name
                   )}`}>
                   <p
                     className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                    data-testid="user-type"
-                    title={capitalize(user.name)}>
-                    {capitalize(user.name)}
+                    data-testid="team-name"
+                    title={team.displayName ?? team.name}>
+                    {team.displayName ?? team.name}
                   </p>
                 </div>
-                {getCountBadge(user.count, '', activeUserTab === user.name)}
+                {getCountBadge(
+                  getActiveUsers(team.users).length,
+                  '',
+                  currentTeam?.name === team.name
+                )}
               </div>
             ))}
           </div>
-        )}
-      </>
+          {hasAccess && (
+            <div>
+              <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
+                <p className="tw-heading">All Users</p>
+                {hasAccess && (
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className="tw-h-7 tw-px-2 tw-mb-4"
+                      data-testid="add-user-button"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={handleAddNewUser}>
+                      <FontAwesomeIcon icon="plus" />
+                    </Button>
+                  </NonAdminAction>
+                )}
+              </div>
+              {usersData.map((user) => (
+                <div
+                  className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+                  data-testid={user.name}
+                  key={user.name}
+                  onClick={() => {
+                    changeCurrentTeam(user.name, true);
+                  }}>
+                  <div
+                    className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
+                      user.name,
+                      activeUserTab
+                    )}`}>
+                    <p
+                      className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                      data-testid="user-type"
+                      title={capitalize(user.name)}>
+                      {capitalize(user.name)}
+                    </p>
+                  </div>
+                  {getCountBadge(user.count, '', activeUserTab === user.name)}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      </Card>
     );
   };
 
@@ -195,8 +207,9 @@ const TeamsAndUsers = ({
         <Loader />
       ) : (
         <div
-          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
-          data-testid="team-and-user-container">
+          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col tw-bg-white"
+          data-testid="team-and-user-container"
+          style={{ padding: '14px' }}>
           {!isTeamVisible ? (
             <UserDetails
               currentUserPage={currentUserPage}

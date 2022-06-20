@@ -89,6 +89,26 @@ const NavBar = ({
                 label="Settings"
                 type="link"
               />
+              <NavLink
+                className="tw-nav focus:tw-no-underline"
+                data-testid="appbar-item"
+                id="explore"
+                style={navStyle(pathname.startsWith('/glossary'))}
+                to={{
+                  pathname: '/glossary',
+                }}>
+                Glossaries
+              </NavLink>
+              <NavLink
+                className="tw-nav focus:tw-no-underline"
+                data-testid="appbar-item"
+                id="explore"
+                style={navStyle(pathname.startsWith('/tags'))}
+                to={{
+                  pathname: '/tags',
+                }}>
+                Tags
+              </NavLink>
             </div>
           </div>
           <div

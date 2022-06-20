@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isNil, startCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
@@ -86,55 +87,77 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <h6 className="tw-heading tw-text-base">Webhooks</h6>
-        <div className="tw-flex tw-justify-between tw-flex-col">
-          <h6 className="tw-heading tw-mb-0" data-testid="filter-heading">
-            Status
-          </h6>
-          <div className="tw-flex tw-mt-2" />
-        </div>
-        <div
-          className="sidebar-my-data-holder"
-          data-testid="filter-containers-1">
-          {statuses.map((statusType, index) => (
-            <div
-              className="filter-group tw-justify-between tw-mb-3"
-              data-testid={`status-type-${statusType.value}`}
-              key={index}>
-              <div className="tw-flex">
-                <input
-                  checked={selectedStatus.includes(statusType.value)}
-                  className="tw-mr-1 custom-checkbox"
-                  data-testid="checkbox"
-                  type="checkbox"
-                  onChange={() => {
-                    handleStatusSelection(statusType.value);
-                  }}
-                />
-                <div
-                  className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                  data-testid="checkbox-label">
-                  <div className="tw-ml-1">{statusType.name}</div>
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <>
+          <h6 className="tw-heading tw-text-base">Webhooks</h6>
+          <div className="tw-flex tw-justify-between tw-flex-col">
+            <h6 className="tw-heading tw-mb-0" data-testid="filter-heading">
+              Status
+            </h6>
+            <div className="tw-flex tw-mt-2" />
+          </div>
+          <div
+            className="sidebar-my-data-holder"
+            data-testid="filter-containers-1">
+            {statuses.map((statusType, index) => (
+              <div
+                className="filter-group tw-justify-between tw-mb-3"
+                data-testid={`status-type-${statusType.value}`}
+                key={index}>
+                <div className="tw-flex">
+                  <input
+                    checked={selectedStatus.includes(statusType.value)}
+                    className="tw-mr-1 custom-checkbox"
+                    data-testid="checkbox"
+                    type="checkbox"
+                    onChange={() => {
+                      handleStatusSelection(statusType.value);
+                    }}
+                  />
+                  <div
+                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
+                    data-testid="checkbox-label">
+                    <div className="tw-ml-1">{statusType.name}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </>
+            ))}
+          </div>
+        </>
+      </Card>
     );
   };
 
   const fetchRightPanel = () => {
     return (
-      <>
-        <div className="tw-mb-5 tw-mt-11">
-          The webhook allows external services to be notified of the metadata
-          change events happening in your organization through APIs. Register
-          callback URLs with webhook integration to receive metadata event
-          notifications. You can add, list, update, and delete webhooks.
-        </div>
-      </>
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <>
+          <div className="tw-mb-5 tw-mt-11">
+            The webhook allows external services to be notified of the metadata
+            change events happening in your organization through APIs. Register
+            callback URLs with webhook integration to receive metadata event
+            notifications. You can add, list, update, and delete webhooks.
+          </div>
+        </>
+      </Card>
     );
   };
 
@@ -167,7 +190,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   return data.length ? (
     <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
-      <div>
+      <div className="tw-bg-white" style={{ padding: '14px' }}>
         {filteredData.length ? (
           <>
             <div className="tw-flex tw-justify-end tw-items-center">
