@@ -138,6 +138,7 @@ class ProfilerWorkflowTest(TestCase):
         on top of the Users table
         """
         workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update({"type": "Profiler"})
         workflow_config["processor"] = {
             "type": "orm-profiler",
             "config": {
