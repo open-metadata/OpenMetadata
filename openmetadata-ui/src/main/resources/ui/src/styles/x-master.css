@@ -28,6 +28,10 @@ a:focus {
   text-decoration: none;
 }
 
+.list-reset {
+  margin: 0;
+}
+
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -1087,3 +1091,83 @@ code {
 }
 
 /* Feed popover CSS end */
+
+/* Antd custom button CSS */
+.ant-btn-link-custom,
+.ant-btn-link-custom:hover {
+  color: #7147e8;
+}
+.ant-btn-primary-custom {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+}
+.ant-btn-primary-custom:hover {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+}
+/* Antd custom button CSS */
+
+.ant-select-assignee {
+  width: 100%;
+  margin: 8px 0px;
+  outline: none;
+}
+.ant-select-assignee:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #7147e8;
+}
+.ant-select-focused {
+  border-color: #7147e8;
+  outline: none;
+}
+
+/* Description tabs CSS */
+.ant-tabs-description {
+  margin-top: 8px;
+}
+
+.ant-tabs-description > .ant-tabs-nav {
+  margin-bottom: 0px;
+}
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover,
+.ant-tabs-task-detail
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-task-detail
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover {
+  color: #7147e8;
+}
+.ant-tabs-ink-bar {
+  background: #7147e8;
+}
+/* Description tabs CSS */
+
+/* Task Detail Side CSS */
+
+.ant-layout-sider-task-detail {
+  background: #ffffff;
+  border: 1px solid #dde3ea;
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.16);
+  height: 100vh;
+  padding: 16px;
+  padding-top: 0px;
+}
+
+/* Task Detail Side CSS */

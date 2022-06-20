@@ -14,7 +14,11 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
-import { Post, Thread } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -59,6 +63,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               isThread
               className="tw-mb-3"
               feed={mainThread as Post}
+              feedType={threadData.type || ThreadType.Conversation}
               updateThreadHandler={updateThreadHandler}
             />
           </div>
@@ -78,6 +83,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 isEntityFeed
                 className="tw-mb-3"
                 feed={reply}
+                feedType={threadData.type || ThreadType.Conversation}
                 key={key}
                 threadId={threadData.id}
                 updateThreadHandler={updateThreadHandler}

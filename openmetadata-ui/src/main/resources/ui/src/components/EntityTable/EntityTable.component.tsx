@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
@@ -53,6 +53,7 @@ import {
   makeData,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import { getRequestDescriptionPath } from '../../utils/TasksUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -86,10 +87,11 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
-  onEntityFieldSelect,
+  // onEntityFieldSelect,
   entityFqn,
   tableConstraints,
 }: Props) => {
+  const history = useHistory();
   const columns = React.useMemo(
     () => [
       {
@@ -361,10 +363,19 @@ const EntityTable = ({
 
   /* eslint-disable-next-line */
   const onRequestDescriptionHandler = (cell: any) => {
-    const columnName = getColumnName(cell);
-    onEntityFieldSelect?.(
-      `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
+    const field = 'columns';
+    const value = getColumnName(cell);
+    history.push(
+      getRequestDescriptionPath(
+        EntityType.TABLE,
+        entityFqn as string,
+        field,
+        value
+      )
     );
+    // onEntityFieldSelect?.(
+    //   `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
+    // );
   };
 
   const prepareConstraintIcon = (

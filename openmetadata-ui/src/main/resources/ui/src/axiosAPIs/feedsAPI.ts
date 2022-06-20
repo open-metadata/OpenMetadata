@@ -109,3 +109,7 @@ export const updatePost: Function = (
     configOptions
   );
 };
+
+export const getTask: Function = (taskID: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed/task/${taskID}`);
+};

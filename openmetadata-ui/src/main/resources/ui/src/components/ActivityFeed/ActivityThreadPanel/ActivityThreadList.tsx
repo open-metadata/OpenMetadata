@@ -12,7 +12,7 @@
  */
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
@@ -81,6 +81,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           isThread
                           entityLink={thread.about}
                           feed={mainFeed}
+                          feedType={thread.type || ThreadType.Conversation}
                           updateThreadHandler={updateThreadHandler}
                           onReply={() => onThreadSelect(thread.id)}
                         />
@@ -111,6 +112,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               isEntityFeed
                               className="tw-ml-9"
                               feed={lastPost as Post}
+                              feedType={thread.type || ThreadType.Conversation}
                               threadId={thread.id}
                               updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}

@@ -12,7 +12,7 @@
  */
 
 import React, { FC, Fragment } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import Loader from '../../Loader/Loader';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -47,6 +47,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                 isThread
                 className="tw-mb-3"
                 feed={mainThread as Post}
+                feedType={threadData.type || ThreadType.Conversation}
                 updateThreadHandler={updateThreadHandler}
               />
             </div>
@@ -66,6 +67,7 @@ const FeedPanelBody: FC<FeedPanelBodyProp> = ({
                   isEntityFeed
                   className="tw-mb-3"
                   feed={reply}
+                  feedType={threadData.type || ThreadType.Conversation}
                   key={key}
                   threadId={threadData.id}
                   updateThreadHandler={updateThreadHandler}

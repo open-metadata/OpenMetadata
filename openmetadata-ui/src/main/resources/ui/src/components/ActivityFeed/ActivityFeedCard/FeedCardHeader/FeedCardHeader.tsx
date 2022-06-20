@@ -33,7 +33,10 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../../utils/CommonUtils';
-import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
+import {
+  getEntityFieldDisplay,
+  getFeedAction,
+} from '../../../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import { getEntityLink } from '../../../../utils/TableUtils';
 import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
@@ -52,6 +55,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityType,
   entityField,
   isEntityFeed,
+  feedType,
 }) => {
   const history = useHistory();
   const [userData, setUserData] = useState<User>({} as User);
@@ -228,7 +232,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
       return (
         <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
-          posted on{' '}
+          {getFeedAction(feedType)}{' '}
           {isEntityFeed ? (
             <span className="tw-heading" data-testid="headerText-entityField">
               {getEntityFieldDisplay(entityField)}

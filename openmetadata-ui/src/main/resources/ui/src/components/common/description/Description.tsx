@@ -15,11 +15,13 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
+import { useHistory } from 'react-router-dom';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { getRequestDescriptionPath } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
@@ -63,7 +65,21 @@ const Description = ({
   entityType,
   entityFqn,
 }: Props) => {
+  const history = useHistory();
+
   const descriptionThread = entityFieldThreads?.[0];
+
+  const handleRequestDescription = () => {
+    history.push(
+      getRequestDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  // const handleUpdateDescription = () => {
+  //   history.push(
+  //     getUpdateDescriptionPath(entityType as string, entityFqn as string)
+  //   );
+  // };
 
   return (
     <div className="schema-description tw-relative">
@@ -127,7 +143,7 @@ const Description = ({
               <button
                 className="focus:tw-outline-none tw-ml-2 tw--mt-6"
                 data-testid="request-description"
-                onClick={() => onEntityFieldSelect?.('description')}>
+                onClick={handleRequestDescription}>
                 <PopOver
                   position="top"
                   title="Request description"

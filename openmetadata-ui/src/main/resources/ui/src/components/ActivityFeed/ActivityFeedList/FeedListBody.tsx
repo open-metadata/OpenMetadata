@@ -13,7 +13,7 @@
 
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -117,6 +117,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}
+                  feedType={feed.type || ThreadType.Conversation}
                   isEntityFeed={isEntityFeed}
                   updateThreadHandler={updateThreadHandler}
                   onReply={() => onReplyThread(feed.id)}
@@ -134,6 +135,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                       className="tw-ml-9"
                       data-testid="latest-message"
                       feed={lastPost as Post}
+                      feedType={feed.type || ThreadType.Conversation}
                       isEntityFeed={isEntityFeed}
                       threadId={feed.id}
                       updateThreadHandler={updateThreadHandler}

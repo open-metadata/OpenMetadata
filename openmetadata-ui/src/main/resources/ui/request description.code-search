@@ -1,0 +1,34 @@
+# Query: request description
+
+11 results - 10 files
+
+src/components/common/description/Description.tsx:
+  133:                   title="Request description"
+
+src/components/common/description/DescriptionV1.tsx:
+  144:                 title="Request description"
+
+src/components/DashboardDetails/DashboardDetails.component.tsx:
+  733:           header="Request description"
+
+src/components/DatasetDetails/DatasetDetails.component.tsx:
+  804:               header="Request description"
+
+src/components/EntityTable/EntityTable.component.tsx:
+  682:                                         title="Request description"
+
+src/components/EntityTable/EntityTable.test.tsx:
+  303:   it('should render request description button', async () => {
+  338:     // should not be in the document, as request description button is present
+
+src/components/PipelineDetails/PipelineDetails.component.tsx:
+  505:           header="Request description"
+
+src/components/TopicDetails/TopicDetails.component.tsx:
+  500:               header="Request description"
+
+src/pages/database-details/index.tsx:
+  860:                 header="Request description"
+
+src/pages/DatabaseSchemaPage/DatabaseSchemaPage.component.tsx:
+  744:                 header="Request description"

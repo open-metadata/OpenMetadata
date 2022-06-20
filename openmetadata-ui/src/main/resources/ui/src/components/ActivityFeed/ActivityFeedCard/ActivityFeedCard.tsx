@@ -35,6 +35,7 @@ import PopoverContent from './PopoverContent';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
+  feedType,
   className,
   replies,
   repliedUsers,
@@ -153,6 +154,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               entityFQN={entityFQN as string}
               entityField={entityField as string}
               entityType={entityType as string}
+              feedType={feedType}
               isEntityFeed={isEntityFeed}
               timeStamp={feedDetail.postTs}
             />

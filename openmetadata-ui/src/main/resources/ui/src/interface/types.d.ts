@@ -603,4 +603,10 @@ declare module 'Models' {
     readonly label: string;
     readonly value: string;
   }
+
+  export interface Diff {
+    removed: boolean;
+    added: boolean;
+    value: string;
+  }
 }
