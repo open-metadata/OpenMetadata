@@ -1,13 +1,28 @@
 {
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
     "properties": {
       "name": {
-        "type":"text"
+        "type": "text"
       },
       "display_name": {
         "type": "text"
       },
       "fqdn": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "algorithm": {
         "type": "keyword"
@@ -83,16 +98,16 @@
       "service_suggest": {
         "type": "completion"
       },
-      "monthly_stats":{
+      "monthly_stats": {
         "type": "long"
       },
-      "monthly_percentile_rank":{
+      "monthly_percentile_rank": {
         "type": "long"
       },
-      "weekly_stats":{
+      "weekly_stats": {
         "type": "long"
       },
-      "weekly_percentile_rank":{
+      "weekly_percentile_rank": {
         "type": "long"
       },
       "daily_percentile_rank": {
@@ -102,4 +117,5 @@
         "type": "long"
       }
     }
-}
+  }
+},
