@@ -43,7 +43,11 @@ config = """
         "sampleDataFolder": "./examples/sample_data"
       }
     },
-    "sourceConfig": {}
+    "sourceConfig": {
+        "config":{
+          "type": "DatabaseUsage"
+        }
+      }
   },
   "processor": {
     "type": "query-parser",
