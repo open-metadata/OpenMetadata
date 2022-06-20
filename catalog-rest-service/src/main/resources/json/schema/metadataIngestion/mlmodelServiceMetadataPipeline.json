@@ -15,7 +15,7 @@
     "type": {
       "description": "Pipeline type",
       "$ref": "#/definitions/mlModelMetadataConfigType",
-      "default": "DashboardMetadata"
+      "default": "MlModelMetadata"
     }
   },
   "additionalProperties": false
