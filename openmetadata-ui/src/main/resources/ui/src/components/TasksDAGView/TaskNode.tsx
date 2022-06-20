@@ -23,11 +23,17 @@ const handleStyles = {
   top: 10,
 };
 
-const renderHandle = (
-  position: Position,
-  styles: CSSProperties,
-  type: HandleType
-) => {
+const renderHandle = (position: Position) => {
+  const styles = { ...handleStyles } as CSSProperties;
+  let type: HandleType;
+  if (position === Position.Left) {
+    styles.left = '-14px';
+    type = 'target';
+  } else {
+    styles.right = '-14px';
+    type = 'source';
+  }
+
   return (
     <Handle isConnectable position={position} style={styles} type={type} />
   );
@@ -35,30 +41,14 @@ const renderHandle = (
 
 const getHandle = (nodeType: string) => {
   if (nodeType === 'output') {
-    return renderHandle(
-      Position.Left,
-      { ...handleStyles, left: '-14px' } as CSSProperties,
-      'target'
-    );
+    return renderHandle(Position.Left);
   } else if (nodeType === 'input') {
-    return renderHandle(
-      Position.Right,
-      { ...handleStyles, right: '-14px' } as CSSProperties,
-      'source'
-    );
+    return renderHandle(Position.Right);
   } else {
     return (
       <Fragment>
-        {renderHandle(
-          Position.Left,
-          { ...handleStyles, left: '-14px' } as CSSProperties,
-          'target'
-        )}
-        {renderHandle(
-          Position.Right,
-          { ...handleStyles, right: '-14px' } as CSSProperties,
-          'source'
-        )}
+        {renderHandle(Position.Left)}
+        {renderHandle(Position.Right)}
       </Fragment>
     );
   }
