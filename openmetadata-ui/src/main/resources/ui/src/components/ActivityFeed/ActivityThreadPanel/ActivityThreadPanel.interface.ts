@@ -22,10 +22,24 @@ export interface ActivityThreadPanelProp
   threadLink: string;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
-  onCancel: () => void;
   createThread: (data: CreateThread) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  onCancel?: () => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
+}
+
+export interface ActivityThreadPanelBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<
+      ActivityThreadPanelProp,
+      | 'threadLink'
+      | 'updateThreadHandler'
+      | 'postFeedHandler'
+      | 'onCancel'
+      | 'createThread'
+      | 'deletePostHandler'
+    > {
+  showHeader?: boolean;
 }
 
 export interface ActivityThreadListProp
