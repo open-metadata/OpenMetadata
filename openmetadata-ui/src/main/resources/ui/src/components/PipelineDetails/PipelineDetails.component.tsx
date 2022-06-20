@@ -95,7 +95,6 @@ const PipelineDetails = ({
   paging,
   fetchFeedHandler,
   pipelineStatus,
-  isPipelineStatusLoading,
   updateThreadHandler,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
@@ -421,7 +420,6 @@ const PipelineDetails = ({
                   <hr className="tw-my-3" />
                   <div>
                     <PipelineStatusList
-                      isLoading={isPipelineStatusLoading}
                       pipelineStatus={pipelineStatus}
                       selectedExec={selectedExecution}
                       onSelectExecution={(exec) => {

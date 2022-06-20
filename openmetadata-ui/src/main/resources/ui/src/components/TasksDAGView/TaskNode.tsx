@@ -13,7 +13,7 @@
 
 import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
-import { Handle, NodeProps, Position } from 'react-flow-renderer';
+import { Handle, HandleType, NodeProps, Position } from 'react-flow-renderer';
 
 const handleStyles = {
   width: '8px',
@@ -23,50 +23,42 @@ const handleStyles = {
   top: 10,
 };
 
+const renderHandle = (
+  position: Position,
+  styles: CSSProperties,
+  type: HandleType
+) => {
+  return (
+    <Handle isConnectable position={position} style={styles} type={type} />
+  );
+};
+
 const getHandle = (nodeType: string) => {
   if (nodeType === 'output') {
-    return (
-      <Handle
-        isConnectable
-        position={Position.Left}
-        style={{ ...handleStyles, left: '-14px' } as CSSProperties}
-        type="target"
-      />
+    return renderHandle(
+      Position.Left,
+      { ...handleStyles, left: '-14px' } as CSSProperties,
+      'target'
     );
   } else if (nodeType === 'input') {
-    return (
-      <Handle
-        isConnectable
-        position={Position.Right}
-        style={{ ...handleStyles, right: '-14px' } as CSSProperties}
-        type="source"
-      />
+    return renderHandle(
+      Position.Right,
+      { ...handleStyles, right: '-14px' } as CSSProperties,
+      'source'
     );
   } else {
     return (
       <Fragment>
-        <Handle
-          isConnectable
-          position={Position.Left}
-          style={
-            {
-              ...handleStyles,
-              left: '-14px',
-            } as CSSProperties
-          }
-          type="target"
-        />
-        <Handle
-          isConnectable
-          position={Position.Right}
-          style={
-            {
-              ...handleStyles,
-              right: '-14px',
-            } as CSSProperties
-          }
-          type="source"
-        />
+        {renderHandle(
+          Position.Left,
+          { ...handleStyles, left: '-14px' } as CSSProperties,
+          'target'
+        )}
+        {renderHandle(
+          Position.Right,
+          { ...handleStyles, right: '-14px' } as CSSProperties,
+          'source'
+        )}
       </Fragment>
     );
   }

@@ -18,6 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import _ from 'lodash';
+import { ScrollHandle } from 'Models';
 import moment from 'moment';
 import React, {
   HTMLAttributes,
@@ -42,7 +43,10 @@ const ExecutionStrip = ({
   const tableRef = useRef<HTMLDivElement>(null);
   const [scrollOffset, setScrollOffSet] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [scrollHandle, setScrollHandle] = useState({ left: true, right: true });
+  const [scrollHandle, setScrollHandle] = useState<ScrollHandle>({
+    left: true,
+    right: true,
+  });
 
   const scrollHandler = (scrlOffset: number) => {
     if (tableRef.current) {

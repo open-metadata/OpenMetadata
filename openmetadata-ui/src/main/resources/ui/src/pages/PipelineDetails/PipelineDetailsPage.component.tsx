@@ -95,7 +95,6 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
-  const [isPipelineStatusLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -309,15 +308,9 @@ const PipelineDetailsPage = () => {
           setPipelineUrl(pipelineUrl);
           setTasks(tasks);
 
-          let statuses = (pipelineStatus as Pipeline['pipelineStatus']) || [];
-          if (statuses?.length) {
-            statuses = statuses.map((st) => {
-              const execDate = st.executionDate;
-
-              return { ...st, executionDate: execDate };
-            });
-          }
-          setPipelineStatus(statuses);
+          setPipelineStatus(
+            (pipelineStatus as Pipeline['pipelineStatus']) || []
+          );
 
           fetchServiceDetails(service.type, service.name)
             .then((hostPort: string) => {
@@ -723,7 +716,6 @@ const PipelineDetailsPage = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
-          isPipelineStatusLoading={isPipelineStatusLoading}
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

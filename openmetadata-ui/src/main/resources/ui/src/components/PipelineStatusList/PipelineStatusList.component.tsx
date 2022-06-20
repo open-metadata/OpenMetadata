@@ -19,7 +19,6 @@ import {
   PipelineStatus,
   StatusType,
 } from '../../generated/entity/data/pipeline';
-import { withLoader } from '../../hoc/withLoader';
 import {
   getFilteredPipelineStatus,
   STATUS_OPTIONS,
@@ -96,9 +95,7 @@ const PipelineStatusList: FC<Prop> = ({
             <ExecutionStrip
               executions={executions}
               selectedExecution={selectedExec}
-              onSelectExecution={(e: PipelineStatus) => {
-                onSelectExecution(e);
-              }}
+              onSelectExecution={onSelectExecution}
             />
           ) : (
             <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
@@ -111,4 +108,4 @@ const PipelineStatusList: FC<Prop> = ({
   }
 };
 
-export default withLoader<Prop>(PipelineStatusList);
+export default PipelineStatusList;
