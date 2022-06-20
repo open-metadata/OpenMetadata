@@ -64,7 +64,6 @@ class GlueSource(Source[Entity]):
             },
             metadata_config,
         )
-        self.task_id_mapping = {}
 
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client

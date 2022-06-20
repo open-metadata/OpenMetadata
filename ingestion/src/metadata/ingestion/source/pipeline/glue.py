@@ -41,6 +41,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+GRAPH = "Graph"
+NODES = "Nodes"
+NAME = "Name"
+
 
 class GlueSource(Source[Entity]):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
@@ -86,17 +90,14 @@ class GlueSource(Source[Entity]):
 
     def get_tasks(self, tasks):
         task_list = []
-        for task in tasks["Graph"]["Nodes"]:
-            task_name = task["Name"][:128]
-            self.task_id_mapping[task_name] = task["UniqueId"]
-        for task in tasks["Graph"]["Nodes"]:
+        for task in tasks[GRAPH][NODES]:
             task_list.append(
                 Task(
-                    name=task["Name"],
-                    displayName=task["Name"],
+                    name=task[NAME],
+                    displayName=task[NAME],
                     taskType=task["Type"],
                     downstreamTasks=self.get_downstream_tasks(
-                        task["UniqueId"], tasks["Graph"]
+                        task["UniqueId"], tasks[GRAPH]
                     ),
                 )
             )
@@ -111,8 +112,8 @@ class GlueSource(Source[Entity]):
                 tasks = self.get_tasks(jobs)
                 pipeline_ev = Pipeline(
                     id=uuid.uuid4(),
-                    name=jobs["Name"],
-                    displayName=jobs["Name"],
+                    name=jobs[NAME],
+                    displayName=jobs[NAME],
                     description="",
                     tasks=tasks,
                     service=EntityReference(

@@ -69,7 +69,7 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
     DynamoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
-    GlueConnection,
+    GlueConnection as GlueDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
@@ -91,7 +91,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.backendConne
     BackendConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection as GlueConnectionPipeline,
+    GlueConnection as GluePipelineConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
@@ -99,7 +99,8 @@ from metadata.utils.connection_clients import (
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
-    GlueClient,
+    GlueDBClient,
+    GluePipelineClient,
     KafkaClient,
     LookerClient,
     MetabaseClient,
@@ -144,7 +145,14 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient, KafkaClient]:
+) -> Union[
+    Engine,
+    DynamoClient,
+    GlueDBClient,
+    GluePipelineClient,
+    SalesforceClient,
+    KafkaClient,
+]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -216,18 +224,20 @@ def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
 
 
 @get_connection.register
-def _(connection: GlueConnection, verbose: bool = False) -> GlueClient:
+def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
     from metadata.utils.aws_client import AWSClient
 
-    glue_connection = AWSClient(connection.awsConfig).get_glue_client()
+    glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
     return glue_connection
 
 
 @get_connection.register
-def _(connection: GlueConnectionPipeline, verbose: bool = False) -> GlueClient:
+def _(
+    connection: GluePipelineConnection, verbose: bool = False
+) -> GluePipelineConnection:
     from metadata.utils.aws_client import AWSClient
 
-    glue_connection = AWSClient(connection.awsConfig).get_glue_client()
+    glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
 
 
@@ -372,7 +382,28 @@ def _(connection: DynamoClient) -> None:
 
 
 @test_connection.register
-def _(connection: GlueClient) -> None:
+def _(connection: GlueDBClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto cliet to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.list_workflows()
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: GluePipelineClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
     :param engine: boto cliet to test

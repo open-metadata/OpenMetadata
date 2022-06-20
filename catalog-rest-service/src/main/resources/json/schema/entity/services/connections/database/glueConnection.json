@@ -29,11 +29,6 @@
       "description": "AWS storageServiceName Name.",
       "type": "string"
     },
-    "pipelineServiceName": {
-      "title": "Pipeline Service Name",
-      "description": "AWS pipelineServiceName Name.",
-      "type": "string"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -48,7 +43,5 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "awsConfig", "storageServiceName", "pipelineServiceName"
-  ]
+  "required": ["awsConfig", "storageServiceName"]
 }
