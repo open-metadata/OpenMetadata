@@ -91,9 +91,9 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <div className="tw-w-1/2 tw-flex tw-nowrap" key={key}>
+          <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
             <div className="tw-w-1/3 tw-flex">
-              <p className="tw-text-gray-400">
+              <p className="tw-text-gray-400 tw-m-0">
                 {title ? `${title}:` : `${key}:`}
               </p>
               <PopOver
@@ -102,14 +102,19 @@ const ServiceConnectionDetails = ({
                 title={description}
                 trigger="mouseenter">
                 <FontAwesomeIcon
-                  className="tw-m-1"
+                  className="tw-mx-1"
                   color="#C4C4C4"
                   icon={{ ...faInfoCircle }}
                 />
               </PopOver>
             </div>
             <div className="tw-w-2/3">
-              {format !== 'password' ? <p>{value}</p> : <p>**********</p>}
+              <input
+                readOnly
+                className="tw-w-full tw-outline-none"
+                type={format !== 'password' ? 'text' : 'password'}
+                value={value}
+              />
             </div>
           </div>
         );
