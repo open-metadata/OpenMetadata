@@ -1077,13 +1077,22 @@ code {
 }
 
 .ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
   display: none;
 }
 .ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
   border-radius: 6px;
   border: 1px solid #dde3ea;
+}
+
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
 }
 
 /* Feed popover CSS end */
