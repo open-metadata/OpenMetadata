@@ -71,7 +71,6 @@ class QueryParserTest(TestCase):
             "fact_order": 2,
             "shopify.fact_sale": 3,
             "shopify.raw_customer": 10,
-
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()
