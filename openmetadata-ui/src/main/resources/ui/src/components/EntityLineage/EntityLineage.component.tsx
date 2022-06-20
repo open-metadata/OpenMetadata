@@ -542,6 +542,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const onConnect = useCallback(
     (params: Edge | Connection) => {
       const { target, source, sourceHandle, targetHandle } = params;
+
+      if (target === source) return;
+
       const columnConnection = !isNil(sourceHandle) && !isNil(targetHandle);
       const normalConnection = isNil(sourceHandle) && isNil(targetHandle);
       const mainEntity = updatedLineageData.entity;

@@ -16,8 +16,8 @@ export const entityData = [
 export const positionX = 150;
 export const positionY = 60;
 
-export const nodeWidth = 300;
-export const nodeHeight = 40;
+export const nodeWidth = 400;
+export const nodeHeight = 50;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,

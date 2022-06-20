@@ -84,7 +84,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(1);
+  reactFlowInstance.zoomTo(0.7);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -407,8 +407,8 @@ export const getLayoutedElementsV1 = (
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
+      x: nodeWithPosition.x,
+      y: nodeWithPosition.y,
     };
 
     return el;
