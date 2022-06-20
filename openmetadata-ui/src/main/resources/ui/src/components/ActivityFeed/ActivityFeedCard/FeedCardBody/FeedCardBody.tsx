@@ -27,7 +27,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   return (
     <Fragment>
       <div className={classNames('tw-group', className)}>
-        <div className="tw-mt-2">
+        <div className="tw-mt-0.5 feed-meesage">
           <RichTextEditorPreviewer
             className="activity-feed-card-text"
             enableSeeMoreVariant={false}

@@ -920,6 +920,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -969,6 +973,10 @@ code {
 
 .ant-card-body {
   padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
 }
 
 .ant-card-head-title {

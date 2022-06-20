@@ -144,7 +144,8 @@ const UserPopOverCard: FC<Props> = ({ children, userName }) => {
       content={<PopoverContent />}
       overlayClassName="ant-popover-card"
       title={<PopoverTitle />}
-      trigger="hover">
+      trigger="hover"
+      zIndex={9999}>
       <div onMouseOver={getData}>{children}</div>
     </Popover>
   );

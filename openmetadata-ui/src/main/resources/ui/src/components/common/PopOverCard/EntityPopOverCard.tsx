@@ -223,7 +223,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       content={<PopoverContent />}
       overlayClassName="ant-popover-card"
       title={<PopoverTitle />}
-      trigger="hover">
+      trigger="hover"
+      zIndex={9999}>
       <div onMouseOver={getData}>{children}</div>
     </Popover>
   );
