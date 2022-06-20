@@ -54,7 +54,13 @@ import { cardStyles } from './TaskPage.styles';
 import TaskPageLayout from './TaskPageLayout';
 import { EntityData, Option } from './TasksPage.interface';
 
-const DescriptionTabs = ({ description }: { description: string }) => {
+export const DescriptionTabs = ({
+  description,
+  suggestion,
+}: {
+  description: string;
+  suggestion: string;
+}) => {
   const { TabPane } = Tabs;
   const markdownRef = useRef<EditorContentRef>();
 
@@ -94,7 +100,7 @@ const DescriptionTabs = ({ description }: { description: string }) => {
     });
 
     return (
-      <div className="tw-w-full tw-border tw-border-main tw-p-2 tw-rounded tw-my-3 tw-max-h-96 tw-overflow-y-auto">
+      <div className="tw-w-full tw-border tw-border-main tw-p-2 tw-rounded tw-my-3 tw-max-h-52 tw-overflow-y-auto">
         <pre className="tw-whitespace-pre-wrap">
           {diffArr.length ? (
             elements
@@ -117,6 +123,7 @@ const DescriptionTabs = ({ description }: { description: string }) => {
         <RichTextEditor
           readonly
           className="tw-my-0"
+          height="208px"
           initialValue={description}
         />
       </TabPane>
@@ -124,7 +131,12 @@ const DescriptionTabs = ({ description }: { description: string }) => {
         <DiffView diffArr={diffs} />
       </TabPane>
       <TabPane key="3" tab="New">
-        <RichTextEditor className="tw-my-0" initialValue="" ref={markdownRef} />
+        <RichTextEditor
+          className="tw-my-0"
+          height="208px"
+          initialValue={suggestion}
+          ref={markdownRef}
+        />
       </TabPane>
     </Tabs>
   );
@@ -272,7 +284,10 @@ const UpdateDescription = () => {
           </div>
           <div data-testid="description-tabs">
             <span>Description:</span>{' '}
-            <DescriptionTabs description={entityData.description || ''} />
+            <DescriptionTabs
+              description={entityData.description || ''}
+              suggestion=""
+            />
           </div>
 
           <div className="tw-flex tw-justify-end" data-testid="cta-buttons">

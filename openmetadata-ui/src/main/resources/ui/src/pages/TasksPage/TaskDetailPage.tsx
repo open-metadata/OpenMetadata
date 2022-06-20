@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Layout, Tabs } from 'antd';
+import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower } from 'lodash';
@@ -51,6 +51,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
 import { background, cardStyles, contentStyles } from './TaskPage.styles';
 import { EntityData, Option } from './TasksPage.interface';
+import { DescriptionTabs } from './UpdateDescriptionPage';
 
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
@@ -203,8 +204,8 @@ const TaskDetailPage = () => {
   };
 
   return (
-    <Layout style={background}>
-      <Content style={contentStyles}>
+    <Layout style={{ ...background, height: '100vh' }}>
+      <Content style={{ ...contentStyles, overflowY: 'auto' }}>
         <TitleBreadcrumb titleLinks={getBreadCrumb()} />
 
         <div className="tw-flex tw-ml-6">
@@ -238,7 +239,7 @@ const TaskDetailPage = () => {
         <p className="tw-ml-6" data-testid="tags">
           {entityTags}
         </p>
-        <Card key="task-details" style={{ ...cardStyles, marginTop: '32px' }}>
+        <Card key="task-details" style={{ ...cardStyles, marginTop: '16px' }}>
           <h6>
             {`#${taskId}`} {taskDetail.message}
           </h6>
@@ -277,6 +278,21 @@ const TaskDetailPage = () => {
               {toLower(getDayTimeByTimeStamp(taskDetail.threadTs as number))}
             </span>
           </p>
+          <div data-testid="description-tabs">
+            <span>Description:</span>{' '}
+            <DescriptionTabs
+              description={entityData.description || ''}
+              suggestion={taskDetail.task?.suggestion || ''}
+            />
+          </div>
+          <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
+            <Button className="ant-btn-link-custom" type="link">
+              Reject
+            </Button>
+            <Button className="ant-btn-primary-custom" type="primary">
+              Submit
+            </Button>
+          </div>
         </Card>
       </Content>
       <Sider className="ant-layout-sider-task-detail" width={600}>
