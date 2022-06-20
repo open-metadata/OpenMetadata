@@ -54,7 +54,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.mlmodelService import MlmodelService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -344,7 +344,7 @@ class SampleDataSource(Source[Entity]):
             )
         )
         self.model_service = self.metadata.get_service_or_create(
-            entity=MlmodelService,
+            entity=MlModelService,
             config=WorkflowSource(**self.model_service_json),
         )
         self.models = json.load(
@@ -640,7 +640,7 @@ class SampleDataSource(Source[Entity]):
                     ],
                     service=EntityReference(
                         id=self.model_service.id,
-                        type=self.model_service.serviceType.value,
+                        type="mlmodelService",
                     ),
                 )
                 yield model_ev
