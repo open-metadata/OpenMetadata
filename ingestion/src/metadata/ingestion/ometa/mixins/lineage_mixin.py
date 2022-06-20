@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 
@@ -148,51 +148,117 @@ class OMetaLineageMixin(Generic[T]):
             database_schema = None
         return {"database": database, "database_schema": database_schema, "name": table}
 
+    def get_table_entities_from_query(
+        self,
+        service_name: str,
+        database_name: str,
+        database_schema: str,
+        table_name: str,
+    ) -> List[Table]:
+        """
+        Fetch data from API and ES with a fallback strategy.
+
+        If the sys data is incorrect, use the table name ingredients.
+
+        :param service_name: Service being ingested.
+        :param database_name: Name of the database informed on db sys results
+        :param database_schema: Name of the schema informed on db sys results
+        :param table_name: Table name extracted from query. Can be `table`, `schema.table` or `db.schema.table`
+        :return: List of tables matching the criteria
+        """
+
+        # First try to find the data from the given db and schema
+        # Otherwise, pick it up from the table_name str
+        # Finally, try with upper case
+
+        split_table = table_name.split(".")
+
+        database_query, schema_query, table = (
+            [None] * (3 - len(split_table))
+        ) + split_table
+
+        # First search by the information schema data
+        table_entities = self._fetch_tables_from_api_or_es(
+            service_name=service_name,
+            database_name=database_name,
+            database_schema=database_schema,
+            table_name=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+        # Otherwise, try to use the info from the names embedded in the query
+        table_entities = self._fetch_tables_from_api_or_es(
+            service_name=service_name,
+            database_name=database_query,
+            database_schema=schema_query,
+            table_name=table,
+        )
+
+        if table_entities:
+            return table_entities
+
+    def _fetch_tables_from_api_or_es(
+        self,
+        service_name: str,
+        database_name: str,
+        database_schema: str,
+        table_name: str,
+    ) -> List[Table]:
+
+        table_fqn = get_fqdn(
+            Table, service_name, database_name, database_schema, table_name
+        )
+        table_fqn = _get_formmated_table_name(table_fqn)
+        table_entity = self.get_by_name(Table, fqdn=table_fqn)
+        if table_entity:
+            return [table_entity]
+        es_result = self.search_entities_using_es(
+            service_name=service_name,
+            table_name=table_name,
+            database_name=database_name,
+            schema_name=database_schema,
+            search_index="table_search_index",
+        )
+
+        return es_result
+
     def _create_lineage_by_table_name(
-        self, from_table: str, to_table: str, service_name: str, database: str
+        self,
+        from_table: str,
+        to_table: str,
+        service_name: str,
+        database_name: str,
+        schema_name: str,
     ):
         """
         This method is to create a lineage between two tables
         """
+
         try:
-            from_table = str(from_table).replace("<default>", "")
-            to_table = str(to_table).replace("<default>", "")
-            from_fqdn = get_fqdn(
-                AddLineageRequest,
-                service_name,
-                database,
-                _get_formmated_table_name(str(from_table)),
+
+            from_table_entities = self.get_table_entities_from_query(
+                service_name=service_name,
+                database_name=database_name,
+                database_schema=schema_name,
+                table_name=from_table,
             )
-            from_entity: Table = self.get_by_name(entity=Table, fqdn=from_fqdn)
-            if not from_entity:
-                table_obj = self._separate_fqn(database=database, fqn=from_fqdn)
-                multiple_from_fqns = self.search_entities_using_es(
-                    service_name=service_name,
-                    table_obj=table_obj,
-                    search_index="table_search_index",
-                )
-            else:
-                multiple_from_fqns = [from_entity]
-            to_fqdn = get_fqdn(
-                AddLineageRequest,
-                service_name,
-                database,
-                _get_formmated_table_name(str(to_table)),
+
+            to_table_entities = self.get_table_entities_from_query(
+                service_name=service_name,
+                database_name=database_name,
+                database_schema=schema_name,
+                table_name=to_table,
             )
-            to_entity: Table = self.get_by_name(entity=Table, fqdn=to_fqdn)
-            if not to_entity:
-                table_obj = self._separate_fqn(database=database, fqn=to_fqdn)
-                multiple_to_fqns = self.search_entities_using_es(
-                    service_name=service_name,
-                    table_obj=table_obj,
-                    search_index="table_search_index",
+
+            if not from_table_entities or not to_table_entities:
+                logger.error(
+                    f"Cannot find nodes for lineage between {from_table} -> {to_table}"
                 )
-            else:
-                multiple_to_fqns = [to_entity]
-            if not multiple_to_fqns or not multiple_from_fqns:
-                return None
-            for from_entity in multiple_from_fqns:
-                for to_entity in multiple_to_fqns:
+
+            for from_entity in from_table_entities:
+                for to_entity in to_table_entities:
                     lineage = AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
@@ -214,7 +280,7 @@ class OMetaLineageMixin(Generic[T]):
             logger.error(err)
 
     def ingest_lineage_by_query(
-        self, query: str, database: str, service_name: str
+        self, query: str, schema_name: str, database_name: str, service_name: str
     ) -> bool:
         """
         This method parses the query to get source, target and intermediate table names to create lineage,
@@ -229,20 +295,32 @@ class OMetaLineageMixin(Generic[T]):
             for intermediate_table in result.intermediate_tables:
                 for source_table in result.source_tables:
                     self._create_lineage_by_table_name(
-                        source_table, intermediate_table, service_name, database
+                        str(source_table),
+                        str(intermediate_table),
+                        service_name,
+                        database_name,
+                        schema_name,
                     )
                 for target_table in result.target_tables:
                     self._create_lineage_by_table_name(
-                        intermediate_table, target_table, service_name, database
+                        str(intermediate_table),
+                        str(target_table),
+                        service_name,
+                        database_name,
+                        schema_name,
                     )
             if not result.intermediate_tables:
                 for target_table in result.target_tables:
                     for source_table in result.source_tables:
                         self._create_lineage_by_table_name(
-                            source_table, target_table, service_name, database
+                            str(source_table),
+                            str(target_table),
+                            service_name,
+                            database_name,
+                            schema_name,
                         )
             return True
         except Exception as err:
             logger.debug(str(err))
-            logger.warning(f"Ingesting lineage failed")
+            logger.warning(f"Ingesting lineage failed for {query}")
         return False

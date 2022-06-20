@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.fqdn_generator import get_fqdn
 
 logger = ometa_logger()
 
@@ -38,24 +39,29 @@ T = TypeVar("T", bound=BaseModel)  # pylint: disable=invalid-name
 class ESMixin(Generic[T]):
     client: REST
 
-    es_url: str = "/search/query?q=service:{} AND {}&from={}&size={}&index={}"
+    es_url: str = "/search/query?q=fqdn:{}&from={}&size={}&index={}"
 
     def search_entities_using_es(
-        self, service_name, table_obj, search_index, from_count: int = 0, size: int = 10
+        self,
+        search_index: str,
+        service_name: str,
+        table_name: str,
+        database_name: str = "*",
+        schema_name: str = "*",
+        from_count: int = 0,
+        size: int = 10,
     ):
-        generate_es_string = " AND ".join(
-            [
-                "%s:%s" % (key, value)
-                for (key, value) in table_obj.items()
-                if value is not None
-            ]
+        table_fqn = get_fqdn(
+            entity_type=Table,
+            service_name=service_name,
+            table_name=table_name,
+            database_name=database_name or "*",
+            schema_name=schema_name or "*",
         )
         multiple_entities = []
         try:
             resp_es = self.client.get(
-                self.es_url.format(
-                    service_name, generate_es_string, from_count, size, search_index
-                )
+                self.es_url.format(table_fqn, from_count, size, search_index)
             )
 
             if resp_es:
@@ -66,5 +72,5 @@ class ESMixin(Generic[T]):
                         )
                     )
         except Exception as err:
-            logger.warning(f"Elasticsearch failed for query: {generate_es_string}")
+            logger.warning(f"Elasticsearch failed fetching fqn: {table_fqn} - {err}")
         return multiple_entities

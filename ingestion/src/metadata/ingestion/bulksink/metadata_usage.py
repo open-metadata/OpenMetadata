@@ -11,7 +11,6 @@
 
 import json
 from datetime import datetime
-from typing import List
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -69,10 +68,13 @@ class MetadataUsageBulkSink(BulkSink):
     def handle_work_unit_end(self, wu):
         pass
 
-    def ingest_sql_queries_lineage(self, queries, database):
+    def ingest_sql_queries_lineage(self, queries, database, schema_name):
         for query in queries:
             self.metadata.ingest_lineage_by_query(
-                query=query.query, service_name=self.service_name, database=database
+                query=query.query,
+                service_name=self.service_name,
+                database_name=database,
+                schema_name=schema_name,
             )
 
     def write_records(self) -> None:
@@ -83,7 +85,8 @@ class MetadataUsageBulkSink(BulkSink):
 
             self.service_name = table_usage.service_name
 
-            table_entities = self.__get_table_entities(
+            table_entities = self.metadata.get_table_entities_from_query(
+                self.service_name,
                 table_usage.database,
                 table_usage.schema_name,
                 table_usage.table,
@@ -104,6 +107,7 @@ class MetadataUsageBulkSink(BulkSink):
                             "sql_queries": table_usage.sql_queries,
                             "usage_date": table_usage.date,
                             "database": table_usage.database,
+                            "schema_name": table_usage.schema_name,
                         }
                     else:
                         table_usage_map[table_entity.id.__root__][
@@ -112,7 +116,9 @@ class MetadataUsageBulkSink(BulkSink):
                         table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
                             table_usage.sql_queries
                         )
-                    table_join_request = self.__get_table_joins(table_usage)
+                    table_join_request = self.__get_table_joins(
+                        table_entity, table_usage
+                    )
 
                     logger.debug("table join request {}".format(table_join_request))
                     try:
@@ -145,7 +151,9 @@ class MetadataUsageBulkSink(BulkSink):
                 table_queries=value_dict["sql_queries"],
             )
             self.ingest_sql_queries_lineage(
-                value_dict["sql_queries"], value_dict["database"]
+                value_dict["sql_queries"],
+                value_dict["database"],
+                value_dict["schema_name"],
             )
             table_usage_request = TableUsageRequest(
                 date=value_dict["usage_date"], count=value_dict["usage_count"]
@@ -178,7 +186,7 @@ class MetadataUsageBulkSink(BulkSink):
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
-    def __get_table_joins(self, table_usage):
+    def __get_table_joins(self, table_entity: Table, table_usage: TableUsageCount):
         table_joins: TableJoins = TableJoins(columnJoins=[], startDate=table_usage.date)
         column_joins_dict = {}
         for column_join in table_usage.joins:
@@ -209,86 +217,33 @@ class MetadataUsageBulkSink(BulkSink):
             column_joins_dict[column_join.table_column.column] = joined_with
 
         for key, value in column_joins_dict.items():
+            # Fetch real key (column) name from the Entity
+            key_name = self.__fetch_column_in_entity(key, table_entity).split(".")[-1]
             table_joins.columnJoins.append(
-                ColumnJoins(columnName=key, joinedWith=list(value.values()))
+                ColumnJoins(columnName=key_name, joinedWith=list(value.values()))
             )
+
         return table_joins
 
     def __get_column_fqdn(
         self, database: str, database_schema: str, table_column: TableColumn
     ):
-        table_entities = self.__get_table_entities(
-            database, database_schema, table_column.table
+        table_entities = self.metadata.get_table_entities_from_query(
+            self.service_name, database, database_schema, table_column.table
         )
         if not table_entities:
             return None
         for table_entity in table_entities:
-            for tbl_column in table_entity.columns:
-                if table_column.column.lower() == tbl_column.name.__root__.lower():
-                    return tbl_column.fullyQualifiedName.__root__.__root__
+            return self.__fetch_column_in_entity(table_column.column, table_entity)
 
-    def __get_table_entities(
-        self, database_name: str, database_schema: str, table_name: str
-    ) -> List[Table]:
-
-        # First try to find the data from the given db and schema
-        # Otherwise, pick it up from the table_name str
-        # Finally, try with upper case
-
-        split_table = table_name.split(".")
-
-        database_query, schema_query, table = (
-            [None] * (3 - len(split_table))
-        ) + split_table
-
-        table_entities = self.__fetch_table_entities(
-            database_name=(database_name or database_query),
-            database_schema=(database_schema or schema_query),
-            table_name=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        table_entities = self.__fetch_table_entities(
-            database_name=(database_query or database_name),
-            database_schema=(schema_query or database_schema),
-            table_name=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        table_entities = self.__fetch_table_entities(
-            database_name=(database_query or database_name).upper(),
-            database_schema=(schema_query or database_schema).upper(),
-            table_name=table.upper(),
-        )
-
-        if table_entities:
-            return table_entities
-
-    def __fetch_table_entities(
-        self, database_name: str, database_schema: str, table_name: str
-    ) -> List[Table]:
-
-        table_fqn = get_fqdn(
-            Table, self.service_name, database_name, database_schema, table_name
-        )
-        table_fqn = _get_formmated_table_name(table_fqn)
-        table_entity = self.metadata.get_by_name(Table, fqdn=table_fqn)
-        if table_entity:
-            return [table_entity]
-        es_result = self.metadata.search_entities_using_es(
-            service_name=self.service_name,
-            table_obj={
-                "database": database_name,
-                "database_schema": database_schema,
-                "name": table_name,
-            },
-            search_index="table_search_index",
-        )
-        return es_result
+    @staticmethod
+    def __fetch_column_in_entity(column: str, table: Table) -> str:
+        """
+        Find the column in the table that matches the incoming name
+        """
+        for tbl_column in table.columns:
+            if column.lower() == tbl_column.name.__root__.lower():
+                return tbl_column.fullyQualifiedName.__root__.__root__
 
     def get_status(self):
         return self.status

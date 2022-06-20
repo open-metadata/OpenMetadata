@@ -1,4 +1,18 @@
 {
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
     "properties": {
       "name": {
         "type":"text"
@@ -44,7 +58,8 @@
         }
       },
       "fqdn": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "boolean"
@@ -105,4 +120,5 @@
         "type": "long"
       }
     }
+  }
 }

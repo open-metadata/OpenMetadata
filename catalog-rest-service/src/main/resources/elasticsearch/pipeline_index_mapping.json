@@ -1,7 +1,21 @@
 {
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
     "properties": {
       "name": {
-        "type":"text"
+        "type": "text"
       },
       "display_name": {
         "type": "text"
@@ -57,10 +71,11 @@
         "type": "text"
       },
       "fqdn": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "task_names": {
-        "type":"text"
+        "type": "text"
       },
       "task_descriptions": {
         "type": "text"
@@ -87,4 +102,5 @@
         "type": "completion"
       }
     }
+  }
 }

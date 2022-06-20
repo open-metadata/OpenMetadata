@@ -1,32 +1,34 @@
 {
-  "properties": {
-    "name": {
-      "type":"text"
-    },
-    "display_name": {
-      "type": "text"
-    },
-    "email": {
-      "type": "text"
-    },
-    "last_updated_timestamp": {
-      "type": "date",
-      "format": "epoch_second"
-    },
-    "entity_type": {
-      "type": "keyword"
-    },
-    "teams": {
-      "type": "keyword"
-    },
-    "roles": {
-      "type": "keyword"
-    },
-    "deleted": {
-      "type": "boolean"
-    },
-    "suggest": {
-      "type": "completion"
+  "mappings": {
+    "properties": {
+      "name": {
+        "type": "text"
+      },
+      "display_name": {
+        "type": "text"
+      },
+      "email": {
+        "type": "text"
+      },
+      "last_updated_timestamp": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "entity_type": {
+        "type": "keyword"
+      },
+      "teams": {
+        "type": "keyword"
+      },
+      "roles": {
+        "type": "keyword"
+      },
+      "deleted": {
+        "type": "boolean"
+      },
+      "suggest": {
+        "type": "completion"
+      }
     }
   }
 }

@@ -114,7 +114,7 @@ public class ElasticSearchIndexDefinition {
       if (!exists) {
         String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType);
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
@@ -140,7 +140,7 @@ public class ElasticSearchIndexDefinition {
         LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
       } else {
         CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.mapping(elasticSearchIndexMapping, XContentType.JSON);
+        request.source(elasticSearchIndexMapping, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
       }
