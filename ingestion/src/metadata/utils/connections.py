@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
+    ModeConnection,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -77,8 +80,15 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
+    AirbyteConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
+    AirByteClient,
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
@@ -86,6 +96,7 @@ from metadata.utils.connection_clients import (
     KafkaClient,
     LookerClient,
     MetabaseClient,
+    ModeClient,
     PowerBiClient,
     RedashClient,
     SalesforceClient,
@@ -437,6 +448,43 @@ def _(connection: MetabaseClient) -> None:
         )
 
 
+@test_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        test_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        return get_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirbyteConnection, verbose: bool = False):
+    from metadata.utils.airbyte_client import AirbyteClient
+
+    return AirByteClient(AirbyteClient(connection))
+
+
+@test_connection.register
+def _(connection: AirByteClient) -> None:
+    try:
+        connection.client.list_workspaces()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
 @get_connection.register
 def _(connection: RedashConnection, verbose: bool = False):
 
@@ -632,3 +680,20 @@ def _(config: GCSConfig):
     set_google_credentials(gcs_credentials=config.securityConfig)
     gcs_client = storage.Client()
     return gcs_client
+
+
+@get_connection.register
+def _(connection: ModeConnection, verbose: bool = False):
+    from metadata.utils.mode_client import ModeApiClient
+
+    return ModeClient(ModeApiClient(connection))
+
+
+@test_connection.register
+def _(connection: ModeClient) -> None:
+    try:
+        connection.client.get_user_account()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
