@@ -105,6 +105,14 @@ Next, deploy OpenMetadata by running the following command.
 helm install openmetadata open-metadata/openmetadata
 ```
 
+{% hint style="info" %}
+Note - The above command uses configurations defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml). You can modify any configuration and deploy by passing your own `values.yaml`
+
+```
+helm install openmetadata open-metadata/openmetadata --values <values.yaml>
+```
+{% endhint %}
+
 Values in [values.yaml](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/openmetadata/values.yaml) are preset to match with dependencies deployed using [openmetadata-dependencies](https://github.com/open-metadata/openmetadata-helm-charts/tree/main/charts/deps) with release name "openmetadata-dependencies". If you deployed helm chart using different release name, make sure to update values.yaml accordingly before installing.
 
 Run `kubectl get pods` to check the status of pods running. You should get a result similar to the output below.

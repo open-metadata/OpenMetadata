@@ -6,8 +6,6 @@ description: >-
 
 # Upgrade OpenMetadata on Kubernetes
 
->
-
 > **The 0.10 Release consists of backward-incompatible changes. We do not support database migration from the 0.9.0 release. Please follow the steps carefully and backup your database before proceeding.**
 >
 > **0.10.0 installations require brand new installation and we have a migration tool to transfer all your entity descriptions, tags, owners, etc.. to the 0.10.0 release**
@@ -16,14 +14,14 @@ description: >-
 
 ## Requirements
 
-This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run OpenMetadata](broken-reference) guide.
+This guide assumes that you have an OpenMetadata deployment that you installed and configured following the [Run OpenMetadata](broken-reference/) guide.
 
 ## Procedure
 
 {% hint style="info" %}
 **Backup your metadata**
 
-Follow the [Backup Metadata](https://github.com/open-metadata/OpenMetadata/blob/docs/upgrade/upgrade-on-kubernetes/broken-reference/README.md) guide to ensure you have a restorable copy of your metadata before proceeding further.
+Follow the [Backup Metadata](broken-reference/) guide to ensure you have a restorable copy of your metadata before proceeding further.
 {% endhint %}
 
 {% hint style="danger" %}
@@ -31,7 +29,7 @@ At this moment, OpenMetadata does not support Rollbacks as part of Database Migr
 {% endhint %}
 
 {% hint style="success" %}
-This guide assumes your helm chart release names are _openmetadata_ and _openmetadata-dependencies._
+This guide assumes your helm chart release names are _openmetadata_ and _openmetadata-dependencies_ and namespace used is _default._
 {% endhint %}
 
 ### Upgrade Helm Repository with a new release
@@ -100,6 +98,14 @@ We upgrade OpenMetadata Dependencies with the below command
 helm upgrade openmetadata-dependencies open-metadata/openmetadata-dependencies
 ```
 
+{% hint style="info" %}
+Note - The above command uses configurations defined [here](https://raw.githubusercontent.com/open-metadata/openmetadata-helm-charts/main/charts/deps/values.yaml). You can modify any configuration and deploy by passing your own `values.yaml`
+
+```
+helm upgrade -i openmetadata-dependencies open-metadata/openmetadata-dependencies
+```
+{% endhint %}
+
 ### Upgrade OpenMetdata
 
 We upgrade OpenMetadata with the below command
@@ -107,6 +113,14 @@ We upgrade OpenMetadata with the below command
 ```
 helm upgrade openmetadata open-metadata/openmetadata
 ```
+
+{% hint style="info" %}
+Note - The above command uses configurations defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml). You can modify any configuration and deploy by passing your own `values.yaml`
+
+```
+helm upgrade -i openmetadata open-metadata/openmetadata --values <values.yaml>
+```
+{% endhint %}
 
 {% hint style="info" %}
 Starting from `0.0.6` open-metadata helm release, we support automatic repair and migration of databases. This will **ONLY** be handled on Helm chart upgrades to the latest versions going-forward.
