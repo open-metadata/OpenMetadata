@@ -134,37 +134,37 @@ function EditConnectionFormPage() {
       });
   }, [serviceFQN, serviceCategory]);
 
+  const renderPage = () => {
+    return isError ? (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(serviceCategory, serviceFQN)}
+      </ErrorPlaceHolder>
+    ) : (
+      <PageLayout
+        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+        layout={PageLayoutType['2ColRTL']}
+        rightPanel={fetchRightPanel()}>
+        <div className="tw-form-container">
+          <h6 className="tw-heading tw-text-base">
+            {`Edit ${serviceFQN} Service Connection`}
+          </h6>
+          <ServiceConfig
+            data={serviceDetails as ServicesData}
+            handleUpdate={handleConfigUpdate}
+            serviceCategory={serviceCategory as ServiceCategory}
+            serviceFQN={serviceFQN}
+            serviceType={serviceDetails?.serviceType || ''}
+          />
+        </div>
+      </PageLayout>
+    );
+  };
+
   return (
     <PageContainerV1>
       <div className="tw-self-center">
-        <>
-          {isLoading ? (
-            <Loader />
-          ) : isError ? (
-            <ErrorPlaceHolder>
-              {getEntityMissingError(serviceCategory as string, serviceFQN)}
-            </ErrorPlaceHolder>
-          ) : (
-            <PageLayout
-              classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-              header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-              layout={PageLayoutType['2ColRTL']}
-              rightPanel={fetchRightPanel()}>
-              <div className="tw-form-container">
-                <h6 className="tw-heading tw-text-base">
-                  {`Edit ${serviceFQN} Service Connection`}
-                </h6>
-                <ServiceConfig
-                  data={serviceDetails as ServicesData}
-                  handleUpdate={handleConfigUpdate}
-                  serviceCategory={serviceCategory as ServiceCategory}
-                  serviceFQN={serviceFQN}
-                  serviceType={serviceDetails?.serviceType || ''}
-                />
-              </div>
-            </PageLayout>
-          )}
-        </>
+        <>{isLoading ? <Loader /> : renderPage()}</>
       </div>
     </PageContainerV1>
   );
