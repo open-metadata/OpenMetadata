@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 
 
 class OMetaESTest(TestCase):
@@ -121,10 +122,14 @@ class OMetaESTest(TestCase):
         """
         We can fetch tables from a service
         """
-        res = self.metadata.es_search_from_service(
+
+        fqn_search_string = fqn._build(
+            self.service.name.__root__, "*", "*", self.entity.name.__root__
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={"name": self.entity.name.__root__},
+            fqn_search_string=fqn_search_string,
             size=100,
             retries=10,
         )
@@ -133,13 +138,16 @@ class OMetaESTest(TestCase):
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
-        res = self.metadata.es_search_from_service(
+        fqn_search_string = fqn._build(
+            self.service.name.__root__,
+            self.db_reference.name,
+            "*",
+            self.entity.name.__root__,
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={
-                "name": self.entity.name.__root__,
-                "database": self.db_reference.name,
-            },
+            fqn_search_string=fqn_search_string,
             size=100,
             retries=10,
         )
@@ -147,14 +155,16 @@ class OMetaESTest(TestCase):
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
-        res = self.metadata.es_search_from_service(
+        fqn_search_string = fqn._build(
+            self.service.name.__root__,
+            self.db_reference.name,
+            self.schema_reference.name,
+            self.entity.name.__root__,
+        )
+
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={
-                "name": self.entity.name.__root__,
-                "database": self.db_reference.name,
-                "database_schema": self.schema_reference.name,
-            },
+            fqn_search_string=fqn_search_string,
             size=100,
             retries=10,
         )
@@ -166,10 +176,9 @@ class OMetaESTest(TestCase):
         """
         Wrong filters return none
         """
-        res = self.metadata.es_search_from_service(
+        res = self.metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=self.service.name.__root__,
-            filters={"name": "random"},
+            fqn_search_string="random",
             retries=1,
         )
 

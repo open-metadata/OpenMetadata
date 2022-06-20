@@ -14,13 +14,13 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import time
-from typing import Dict, Generic, List, Optional, Type, TypeVar
+from typing import Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
-from metadata.utils.elasticsearch import ES_INDEX_MAP, get_query_from_dict
+from metadata.utils.elasticsearch import ES_INDEX_MAP
 
 logger = ometa_logger()
 
@@ -36,7 +36,7 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    search_from_service_url = "/search/query?q=fqdn:{}&from={}&size={}&index={}"
+    fqdn_search = "/search/query?q=fqdn:{fqn}&from={from}&size={size}&index={index}"
 
     def _search_es_entity(
         self, entity_type: Type[T], query_string: str
@@ -89,11 +89,10 @@ class ESMixin(Generic[T]):
 
         return None
 
-    def es_search_from_service(
+    def es_search_from_fqn(
         self,
         entity_type: Type[T],
-        service_name: str,
-        filters: Dict[str, Optional[str]],
+        fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
         retries: int = 3,
@@ -102,23 +101,21 @@ class ESMixin(Generic[T]):
         Given a service_name and some filters, search for entities using ES
 
         :param entity_type: Entity to look for
-        :param service_name: Filter by service_name
-        :param filters: Set of extra filters to apply. It should at least be {"name": <entity name>}
+        :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
         :param from_count: Records to expect
         :param size: Number of records
         :param retries: Number of retries for the ES query
         :return: List of entities
         """
-        try:
-            filter_query = get_query_from_dict(filters)
-            query_string = self.search_from_service_url.format(
-                service=service_name,
-                filters=filter_query,
-                from_=from_count,
-                size=size,
-                index=ES_INDEX_MAP[entity_type.__name__],  # Fail if not exists
-            )
 
+        query_string = self.fqdn_search.format(
+            fqn=fqn_search_string,
+            from_=from_count,
+            size=size,
+            index=ES_INDEX_MAP[entity_type.__name__],  # Fail if not exists
+        )
+
+        try:
             return self._search_es_entity_retry(
                 entity_type=entity_type, query_string=query_string, retries=retries
             )

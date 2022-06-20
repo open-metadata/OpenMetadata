@@ -13,7 +13,7 @@ Helper functions to handle SQL lineage operations
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -56,7 +56,7 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
 def search_table_entities(
     metadata: OpenMetadata,
     service_name: str,
-    database: str,
+    database: Optional[str],
     database_schema: Optional[str],
     table: str,
 ) -> Optional[List[Table]]:
@@ -86,6 +86,60 @@ def search_table_entities(
         logger.error(err)
 
 
+def get_table_entities_from_query(
+    metadata: OpenMetadata,
+    service_name: str,
+    database_name: str,
+    database_schema: str,
+    table_name: str,
+) -> List[Table]:
+    """
+    Fetch data from API and ES with a fallback strategy.
+
+    If the sys data is incorrect, use the table name ingredients.
+
+    :param metadata: OpenMetadata client
+    :param service_name: Service being ingested.
+    :param database_name: Name of the database informed on db sys results
+    :param database_schema: Name of the schema informed on db sys results
+    :param table_name: Table name extracted from query. Can be `table`, `schema.table` or `db.schema.table`
+    :return: List of tables matching the criteria
+    """
+
+    # First try to find the data from the given db and schema
+    # Otherwise, pick it up from the table_name str
+    # Finally, try with upper case
+
+    split_table = table_name.split(".")
+    empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat
+
+    database_query, schema_query, table = (
+        empty_list * (3 - len(split_table))
+    ) + split_table
+
+    table_entities = search_table_entities(
+        metadata=metadata,
+        service_name=service_name,
+        database=database_name,
+        database_schema=database_schema,
+        table=table,
+    )
+
+    if table_entities:
+        return table_entities
+
+    table_entities = search_table_entities(
+        metadata=metadata,
+        service_name=service_name,
+        database=database_query,
+        database_schema=schema_query,
+        table=table,
+    )
+
+    if table_entities:
+        return table_entities
+
+
 def get_column_lineage(
     to_entity: Table,
     from_entity: Table,
@@ -113,7 +167,8 @@ def _create_lineage_by_table_name(
     from_table: str,
     to_table: str,
     service_name: str,
-    database: str,
+    database_name: Optional[str],
+    schema_name: Optional[str],
     query: str,
 ):
     """
@@ -121,28 +176,27 @@ def _create_lineage_by_table_name(
     """
 
     try:
-        from_raw_name = get_formatted_entity_name(str(from_table))
-        from_table_obj = split_raw_table_name(database=database, raw_name=from_raw_name)
-        from_entities = search_table_entities(
-            table=from_table_obj.get("table"),
-            database_schema=from_table_obj.get("database_schema"),
-            database=from_table_obj.get("database"),
+
+        from_table_entities = get_table_entities_from_query(
             metadata=metadata,
             service_name=service_name,
+            database_name=database_name,
+            database_schema=schema_name,
+            table_name=from_table,
         )
-        to_raw_name = get_formatted_entity_name(str(to_table))
-        to_table_obj = split_raw_table_name(database=database, raw_name=to_raw_name)
-        to_entities = search_table_entities(
-            table=to_table_obj.get("table"),
-            database_schema=to_table_obj.get("database_schema"),
-            database=to_table_obj.get("database"),
+
+        to_table_entities = get_table_entities_from_query(
             metadata=metadata,
             service_name=service_name,
+            database_name=database_name,
+            database_schema=schema_name,
+            table_name=to_table,
         )
-        if not to_entities or not from_entities:
+
+        if not to_table_entities or not from_table_entities:
             return None
-        for from_entity in from_entities:
-            for to_entity in to_entities:
+        for from_entity in from_table_entities:
+            for to_entity in to_table_entities:
                 col_lineage = get_column_lineage(
                     to_entity=to_entity,
                     to_table_raw_name=str(to_table),
@@ -201,7 +255,11 @@ def populate_column_lineage_map(raw_column_lineage):
 
 
 def ingest_lineage_by_query(
-    metadata: OpenMetadata, query: str, database: str, service_name: str
+    metadata: OpenMetadata,
+    service_name: str,
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    query: str,
 ) -> bool:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -221,25 +279,29 @@ def ingest_lineage_by_query(
         result = LineageRunner(query)
         if not result.target_tables:
             return False
+
         raw_column_lineage = result.get_column_lineage()
         column_lineage_map.update(populate_column_lineage_map(raw_column_lineage))
+
         for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
                 _create_lineage_by_table_name(
                     metadata,
-                    from_table=source_table,
-                    to_table=intermediate_table,
+                    from_table=str(source_table),
+                    to_table=str(intermediate_table),
                     service_name=service_name,
-                    database=database,
+                    database_name=database_name,
+                    schema_name=schema_name,
                     query=query,
                 )
             for target_table in result.target_tables:
                 _create_lineage_by_table_name(
                     metadata,
-                    from_table=intermediate_table,
-                    to_table=target_table,
+                    from_table=str(intermediate_table),
+                    to_table=str(target_table),
                     service_name=service_name,
-                    database=database,
+                    database_name=database_name,
+                    schema_name=schema_name,
                     query=query,
                 )
         if not result.intermediate_tables:
@@ -247,10 +309,11 @@ def ingest_lineage_by_query(
                 for source_table in result.source_tables:
                     _create_lineage_by_table_name(
                         metadata,
-                        from_table=source_table,
-                        to_table=target_table,
+                        from_table=str(source_table),
+                        to_table=str(target_table),
                         service_name=service_name,
-                        database=database,
+                        database_name=database_name,
+                        schema_name=schema_name,
                         query=query,
                     )
         return True

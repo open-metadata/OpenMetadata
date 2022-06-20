@@ -262,12 +262,16 @@ class MetadataRestSink(Sink[Entity]):
                     table_queries=db_schema_and_table.table.tableQueries,
                 )
 
-            if db_schema_and_table.table.viewDefinition is not None:
+            if (
+                db_schema_and_table.table.viewDefinition is not None
+                and db_schema_and_table.table.viewDefinition.__root__
+            ):
                 lineage_status = ingest_lineage_by_query(
                     self.metadata,
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
-                    database=db_schema_and_table.database.name.__root__,
+                    database_name=db_schema_and_table.database.name.__root__,
+                    schema_name=db_schema_and_table.database_schema.name.__root__,
                 )
                 if not lineage_status:
                     self.create_lineage_via_es(db_schema_and_table, db_schema, db)
@@ -590,16 +594,17 @@ class MetadataRestSink(Sink[Entity]):
             to_table_name = db_schema_and_table.table.name.__root__
 
             for from_table_name in parser.source_tables:
-                if "." not in from_table_name:
-                    from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
+
                 _create_lineage_by_table_name(
-                    self.metadata,
-                    from_table_name,
-                    f"{db_schema.name.__root__}.{to_table_name}",
-                    db.service.name,
-                    db_schema_and_table.database.name.__root__,
-                    db_schema_and_table.table.viewDefinition.__root__,
+                    metadata=self.metadata,
+                    from_table=str(from_table_name),
+                    to_table=f"{db_schema.name.__root__}.{to_table_name}",
+                    service_name=db.service.name,
+                    database_name=db_schema_and_table.database.name.__root__,
+                    schema_name=db_schema_and_table.table.viewDefinition.__root__,
+                    query=db_schema_and_table.table.viewDefinition.__root__,
                 )
+
         except Exception as e:
             logger.error("Failed to create view lineage")
             logger.debug(f"Query : {db_schema_and_table.table.viewDefinition.__root__}")

@@ -12,7 +12,7 @@
 Helper methods for ES
 """
 
-from typing import Dict, List, Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -37,18 +37,6 @@ ES_INDEX_MAP = {
     Pipeline.__name__: "pipeline_search_index",
     Glossary.__name__: "glossary_search_index",
 }
-
-
-def get_query_from_dict(data: Dict[str, Optional[str]]) -> str:
-    """
-    Prepare a query to be passed to ES based on incoming
-    key-value pairs in a dict
-    :param data: key-value pairs to use for searching in ES
-    :return: query string
-    """
-    return " AND ".join(
-        [f"{key}:{value}" for key, value in data.items() if value is not None]
-    )
 
 
 def get_entity_from_es_result(

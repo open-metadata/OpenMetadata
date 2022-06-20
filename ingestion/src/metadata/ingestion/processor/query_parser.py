@@ -18,7 +18,6 @@ from collections import defaultdict
 from logging.config import DictConfigurator
 from typing import Dict, List, Optional, Tuple
 
-from sql_metadata import Parser
 from sqllineage.exceptions import SQLLineageException
 from sqlparse.sql import Comparison, Identifier, Statement
 

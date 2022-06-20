@@ -11,7 +11,7 @@
 
 import json
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
@@ -33,8 +33,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     get_column_fqn,
+    get_table_entities_from_query,
     ingest_lineage_by_query,
-    search_table_entities,
 )
 
 logger = ingestion_logger()
@@ -70,7 +70,7 @@ class MetadataUsageBulkSink(BulkSink):
         return cls(config, metadata_config)
 
     def ingest_sql_queries_lineage(
-        self, queries: List[SqlQuery], database: str
+        self, queries: List[SqlQuery], database_name: str, schema_name: str
     ) -> None:
         """
         Method to ingest lineage by sql queries
@@ -80,7 +80,8 @@ class MetadataUsageBulkSink(BulkSink):
                 self.metadata,
                 query=query.query,
                 service_name=self.service_name,
-                database=database,
+                database_name=database_name,
+                schema_name=schema_name,
             )
 
     def __populate_table_usage_map(
@@ -117,7 +118,9 @@ class MetadataUsageBulkSink(BulkSink):
                 table_queries=value_dict["sql_queries"],
             )
             self.ingest_sql_queries_lineage(
-                value_dict["sql_queries"], value_dict["database"]
+                queries=value_dict["sql_queries"],
+                database_name=value_dict["database"],
+                schema_name=value_dict["database_schema"],
             )
             table_usage_request = UsageRequest(
                 date=self.today, count=value_dict["usage_count"]
@@ -153,10 +156,12 @@ class MetadataUsageBulkSink(BulkSink):
 
             self.service_name = table_usage.serviceName
 
-            table_entities = self._get_table_entities(
-                table_usage.databaseName,
-                table_usage.schemaName,
-                table_usage.table,
+            table_entities = get_table_entities_from_query(
+                metadata=self.metadata,
+                service_name=self.service_name,
+                database_name=table_usage.databaseName,
+                database_schema=table_usage.schemaName,
+                table_name=table_usage.table,
             )
 
             if not table_entities:
@@ -170,7 +175,9 @@ class MetadataUsageBulkSink(BulkSink):
                     self.__populate_table_usage_map(
                         table_usage=table_usage, table_entity=table_entity
                     )
-                    table_join_request = self.__get_table_joins(table_usage)
+                    table_join_request = self.__get_table_joins(
+                        table_entity=table_entity, table_usage=table_usage
+                    )
                     logger.debug("table join request {}".format(table_join_request))
                     try:
                         if (
@@ -201,7 +208,9 @@ class MetadataUsageBulkSink(BulkSink):
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
-    def __get_table_joins(self, table_usage: TableUsageCount) -> TableJoins:
+    def __get_table_joins(
+        self, table_entity: Table, table_usage: TableUsageCount
+    ) -> TableJoins:
         table_joins: TableJoins = TableJoins(
             columnJoins=[], directTableJoins=[], startDate=table_usage.date
         )
@@ -238,8 +247,11 @@ class MetadataUsageBulkSink(BulkSink):
             column_joins_dict[column_join.tableColumn.column] = joined_with
 
         for key, value in column_joins_dict.items():
+            key_name = get_column_fqn(table_entity=table_entity, column=key).split(".")[
+                -1
+            ]
             table_joins.columnJoins.append(
-                ColumnJoins(columnName=key, joinedWith=list(value.values()))
+                ColumnJoins(columnName=key_name, joinedWith=list(value.values()))
             )
         return table_joins
 
@@ -249,73 +261,18 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to get column fqn
         """
-        table_entities = self._get_table_entities(
-            database,
-            database_schema,
-            table_column.table,
+        table_entities = get_table_entities_from_query(
+            metadata=self.metadata,
+            service_name=self.service_name,
+            database_name=database,
+            database_schema=database_schema,
+            table_name=table_column.table,
         )
         if not table_entities:
             return None
 
         for table_entity in table_entities:
-            return get_column_fqn(table_entity, table_column.column)
-
-    def _get_table_entities(
-        self, database_name: str, database_schema: str, table_name: str
-    ) -> Optional[List[Table]]:
-        """
-        Tries 3 different ES queries to pick up the data:
-            1. Uses the data from tableUsage for db and schema info
-            2. Uses the data, if exists, from the table name in the query about db and schema
-            3. Tries to use the table data info in uppercase
-        :param database_name: table usage informed database
-        :param database_schema: table usage informed schema
-        :param table_name: query table name. Could be `table` or `schema.table` or `db.schema.table`.
-        :return: Tables matching the criteria, if any
-        """
-
-        split_table = table_name.split(".")
-        empty_list: List[Any] = [
-            None
-        ]  # Otherwise, there's a typing error in the concat
-
-        database_query, schema_query, table = (
-            empty_list * (3 - len(split_table))
-        ) + split_table
-
-        table_entities = search_table_entities(
-            metadata=self.metadata,
-            service_name=self.service_name,
-            database=(database_name or database_query),
-            database_schema=(database_schema or schema_query),
-            table=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        table_entities = search_table_entities(
-            metadata=self.metadata,
-            service_name=self.service_name,
-            database=(database_query or database_name),
-            database_schema=(schema_query or database_schema),
-            table=table,
-        )
-
-        if table_entities:
-            return table_entities
-
-        # Handle snowflake having uppercase and LineageRunner storing in lowercase
-        table_entities = search_table_entities(
-            metadata=self.metadata,
-            service_name=self.service_name,
-            database=(database_query or database_name).upper(),
-            database_schema=(schema_query or database_schema).upper(),
-            table=table.upper(),
-        )
-
-        if table_entities:
-            return table_entities
+            return get_column_fqn(table_entity=table_entity, column=table_column.column)
 
     def get_status(self):
         return self.status
