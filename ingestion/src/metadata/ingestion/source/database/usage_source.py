@@ -129,7 +129,6 @@ class UsageSource(Source[TableQuery], ABC):
                         )
                     else:
                         self.report.scanned(f"{table_query.databaseName}")
-                    yield table_query
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(str(err))

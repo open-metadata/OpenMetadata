@@ -321,15 +321,13 @@ class QueryParserProcessor(Processor):
         return cls(config, metadata_config)
 
     def process(self, record: TableQuery) -> Optional[QueryParserData]:
-        query_parser_data = None
         try:
-            query_parser_data = parse_sql_statement(record)
+            return parse_sql_statement(record)
         except Exception as err:  # pylint: disable=broad-except
             if hasattr(record, "sql"):
                 logger.debug(record.sql)
             logger.debug(traceback.format_exc())
             logger.error(err)
-        return query_parser_data
 
     def close(self):
         pass
