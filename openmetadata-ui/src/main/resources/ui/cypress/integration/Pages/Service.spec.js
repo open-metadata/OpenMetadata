@@ -59,12 +59,6 @@ describe('Services page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="menu-item-Services"]').should('be.visible').click();
-    // Todo: need to remove below uncaught exception once tree-view error resolves
-    cy.on('uncaught:exception', () => {
-      // return false to prevent the error from
-      // failing this test
-      return false;
-    });
   });
 
   it('Update service description', () => {
@@ -78,6 +72,8 @@ describe('Services page should work properly', () => {
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
+    cy.intercept('GET', '/**').as('serviceApi');
+    cy.wait('@serviceApi');
     updateOwner();
     //Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
