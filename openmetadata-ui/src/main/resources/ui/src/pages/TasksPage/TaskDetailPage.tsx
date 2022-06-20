@@ -14,13 +14,17 @@
 import { Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, toLower } from 'lodash';
+import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getFeedById, getTask } from '../../axiosAPIs/feedsAPI';
+import AppState from '../../AppState';
+import { getFeedById, getTask, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import ActivityFeedEditor from '../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
+import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -41,9 +45,12 @@ import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityFQN } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { fetchOptions } from '../../utils/TasksUtils';
+import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Assignees from './Assignees';
 import { background, cardStyles, contentStyles } from './TaskPage.styles';
-import { EntityData } from './TasksPage.interface';
+import { EntityData, Option } from './TasksPage.interface';
 
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
@@ -55,6 +62,8 @@ const TaskDetailPage = () => {
   const [taskFeedDetail, setTaskFeedDetail] = useState<Thread>({} as Thread);
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [options, setOptions] = useState<Option[]>([]);
+  const [assignees, setAssignees] = useState<Array<Option>>([]);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -126,6 +135,16 @@ const TaskDetailPage = () => {
     ];
   };
 
+  const onSearch = (query: string) => {
+    fetchOptions(query, setOptions);
+  };
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
 
@@ -135,8 +154,23 @@ const TaskDetailPage = () => {
   const entityTags = useMemo(() => {
     const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
 
-    return tags.map((tag) => `#${tag.tagFQN}`).join(' ');
+    return tags.map((tag) => `#${tag.tagFQN}`).join('  ');
   }, [entityData.tags]);
+
+  const onPostReply = (value: string) => {
+    const data = {
+      message: value,
+      from: currentUser?.name,
+    };
+    postFeedById(taskFeedDetail.id, data)
+      .then((res: AxiosResponse) => {
+        const { posts } = res.data;
+        setTaskFeedDetail((prev) => ({ ...prev, posts }));
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+      });
+  };
 
   useEffect(() => {
     fetchTaskDetail();
@@ -150,6 +184,23 @@ const TaskDetailPage = () => {
       fetchTaskFeed(taskDetail.id);
     }
   }, [taskDetail]);
+
+  useEffect(() => {
+    const owner = entityData.owner;
+    if (owner) {
+      setAssignees([
+        {
+          label: getEntityName(owner),
+          value: owner.name || '',
+          type: owner.type,
+        },
+      ]);
+    }
+  }, [entityData]);
+
+  const fn = () => {
+    return;
+  };
 
   return (
     <Layout style={background}>
@@ -191,6 +242,15 @@ const TaskDetailPage = () => {
           <h6>
             {`#${taskId}`} {taskDetail.message}
           </h6>
+          <div data-testid="assignees">
+            <span className="tw-text-grey-muted">Assignees:</span>{' '}
+            <Assignees
+              assignees={assignees}
+              options={options}
+              onChange={setAssignees}
+              onSearch={onSearch}
+            />
+          </div>
           <p>
             <span
               className={classNames(
@@ -206,6 +266,16 @@ const TaskDetailPage = () => {
               )}
             />
             <span className="tw-ml-1">{taskDetail.task?.status}</span>
+            <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+              |
+            </span>
+            <span>
+              <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
+                {taskDetail.createdBy}
+              </span>{' '}
+              created this task{' '}
+              {toLower(getDayTimeByTimeStamp(taskDetail.threadTs as number))}
+            </span>
           </p>
         </Card>
       </Content>
@@ -213,17 +283,34 @@ const TaskDetailPage = () => {
         <Tabs className="ant-tabs-task-detail">
           <TabPane key="1" tab="Task">
             {!isEmpty(taskFeedDetail) ? (
-              <FeedPanelBody
-                isLoading={isLoading}
-                threadData={taskFeedDetail}
-                updateThreadHandler={() => {
-                  return;
-                }}
-              />
+              <div id="task-feed">
+                <FeedPanelBody
+                  isLoading={isLoading}
+                  threadData={taskFeedDetail}
+                  updateThreadHandler={() => {
+                    return;
+                  }}
+                />
+                <ActivityFeedEditor
+                  buttonClass="tw-mr-4"
+                  className="tw-ml-5 tw-mr-2 tw-mb-2"
+                  onSave={onPostReply}
+                />
+              </div>
             ) : null}
           </TabPane>
           <TabPane key="2" tab="Conversations">
-            Content of Tab Pane 2
+            {!isEmpty(taskFeedDetail) ? (
+              <ActivityThreadPanelBody
+                className="tw-p-0"
+                createThread={() => fn()}
+                deletePostHandler={() => fn()}
+                postFeedHandler={() => fn()}
+                showHeader={false}
+                threadLink={taskFeedDetail.about}
+                updateThreadHandler={() => fn()}
+              />
+            ) : null}
           </TabPane>
         </Tabs>
       </Sider>
@@ -231,4 +318,4 @@ const TaskDetailPage = () => {
   );
 };
 
-export default TaskDetailPage;
+export default observer(TaskDetailPage);

@@ -1168,6 +1168,7 @@ code {
   height: 100vh;
   padding: 16px;
   padding-top: 0px;
+  overflow-y: auto;
 }
 
 /* Task Detail Side CSS */
