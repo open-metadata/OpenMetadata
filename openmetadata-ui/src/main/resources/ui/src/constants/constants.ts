@@ -76,6 +76,7 @@ export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
+export const PLACEHOLDER_ROUTE_SETTING_OPTION = ':settingOption';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -223,6 +224,7 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+  SETTINGS_SUB_TYPE: `/settings/${PLACEHOLDER_ROUTE_SETTING_OPTION}`,
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

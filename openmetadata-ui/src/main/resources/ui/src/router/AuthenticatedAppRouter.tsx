@@ -18,6 +18,7 @@ import AppState from '../AppState';
 import AddCustomProperty from '../components/CustomEntityDetail/AddCustomProperty/AddCustomProperty';
 import { ROUTES } from '../constants/constants';
 import withSuspenseFallback from './withSuspenseFallback';
+import SettingsPage from '../pages/SettingsPage/Settings.Page';
 
 const MyDataPage = withSuspenseFallback(
   React.lazy(() => import('../pages/MyDataPage/MyDataPage.component'))
@@ -288,7 +289,16 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddCustomProperty}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
-
+      <AdminProtectedRoute
+        exact
+        component={SettingsPage}
+        path={ROUTES.SETTINGS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={SettingsPage}
+        path={ROUTES.SETTINGS_SUB_TYPE}
+      />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

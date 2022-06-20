@@ -62,27 +62,29 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
-        <div
-          className={classNames(
-            'page-layout-container l3-col tw-gap-x-3 tw-px-6 centered-layout',
-            classes,
-            {
-              'page-layout-container-left-center-right':
-                leftPanel && children && rightPanel,
-            },
-            {
-              'page-layout-container-left-center': !rightPanel,
-            },
-            {
-              'page-layout-container-center-right': !leftPanel,
-            },
-            {
-              'page-layout-container-center': !leftPanel && !rightPanel,
-            }
-          )}>
-          {getLeftPanel()}
-          <div id="center">{children}</div>
-          {getRightPanel()}
+        <div align="center">
+          <div
+            className={classNames(
+              'page-layout-container l3-col tw-gap-x-3 tw-px-6 centered-layout',
+              classes,
+              {
+                'page-layout-container-left-center-right':
+                  leftPanel && children && rightPanel,
+              },
+              {
+                'page-layout-container-left-center': !rightPanel,
+              },
+              {
+                'page-layout-container-center-right': !leftPanel,
+              },
+              {
+                'page-layout-container-center': !leftPanel && !rightPanel,
+              }
+            )}>
+            {getLeftPanel()}
+            <div id="center">{children}</div>
+            {getRightPanel()}
+          </div>
         </div>
       </Fragment>
     );
@@ -92,21 +94,23 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       <Fragment>
         {header && <div className="tw-px-6">{header}</div>}
-        <div
-          className={classNames(
-            'page-layout-container l2-ltr-col tw-gap-x-3 tw-px-6 centered-layout',
-            classes,
-            leftPanel
-              ? 'page-layout-container-left-center'
-              : 'page-layout-container-center'
-          )}>
-          {getLeftPanel()}
+        <div align="center">
           <div
-            className={classNames('tw-py-1', {
-              'tw-pl-8': leftPanel,
-            })}
-            id="center">
-            {children}
+            className={classNames(
+              'page-layout-container l2-ltr-col tw-gap-x-3 tw-px-6 centered-layout',
+              classes,
+              leftPanel
+                ? 'page-layout-container-left-center'
+                : 'page-layout-container-center'
+            )}>
+            {getLeftPanel()}
+            <div
+              className={classNames('tw-py-1', {
+                'tw-pl-8': leftPanel,
+              })}
+              id="center">
+              {children}
+            </div>
           </div>
         </div>
       </Fragment>
@@ -121,22 +125,24 @@ const PageLayout: FC<PageLayoutProp> = ({
             {header}
           </div>
         )}
-        <div
-          className={classNames(
-            'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 centered-layout',
-            classes,
-            rightPanel
-              ? 'page-layout-container-center-right'
-              : 'page-layout-container-center'
-          )}>
+        <div align="center">
           <div
-            className={classNames('tw-py-1', {
-              'tw-pr-10': rightPanel,
-            })}
-            id="center">
-            {children}
+            className={classNames(
+              'page-layout-container l2-rtl-col tw-gap-x-3 tw-px-6 centered-layout',
+              classes,
+              rightPanel
+                ? 'page-layout-container-center-right'
+                : 'page-layout-container-center'
+            )}>
+            <div
+              className={classNames('tw-py-1', {
+                'tw-pr-10': rightPanel,
+              })}
+              id="center">
+              {children}
+            </div>
+            {getRightPanel()}
           </div>
-          {getRightPanel()}
         </div>
       </Fragment>
     );

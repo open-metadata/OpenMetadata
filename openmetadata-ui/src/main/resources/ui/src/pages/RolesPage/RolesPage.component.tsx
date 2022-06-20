@@ -17,7 +17,14 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormErrorData } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -42,6 +49,7 @@ import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import AddRoleModal from '../../components/Modals/RoleModal/AddRoleModal';
 import AddRuleModal from '../../components/Modals/RulesModal/AddRuleModal';
+import { getItem } from '../../components/Setting/Setting.component';
 import {
   getUserPath,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -74,7 +82,9 @@ const getActiveTabClass = (tab: number, currentTab: number) => {
   return tab === currentTab ? 'active' : '';
 };
 
-const RolesPage = () => {
+export type editorRef = ReactNode | HTMLElement | string;
+
+const RolesPage = forwardRef<editorRef, any>(({}, ref) => {
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
   const { isAdminUser } = useAuth();
@@ -109,6 +119,35 @@ const RolesPage = () => {
   const [isAddingTeams, setIsAddingTeams] = useState<boolean>(false);
 
   const [defaultPolicies, setDefaultPolicies] = useState<Array<Policy>>([]);
+
+  const fetchLeftPanel2 = () => {
+    return roles
+      ? roles.map((role) => getItem(role.displayName, role.displayName || ''))
+      : [];
+  };
+
+  useImperativeHandle(ref, () => ({
+    getLeftPanel() {
+      return fetchLeftPanel2();
+    },
+    roles: roles,
+  }));
+
+  // <div
+  //         className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+  //           role.name,
+  //           currentRole?.name
+  //         )}`}
+  //         data-testid="role-name-container"
+  //         key={role.name}
+  //         onClick={() => setCurrentRole(role)}>
+  //         <p
+  //           className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+  //           title={role.displayName}>
+  //           <span>{role.displayName}</span>{' '}
+  //         </p>
+  //         {role.defaultRole ? getDefaultBadge() : null}
+  //       </div>
 
   const onNewDataChange = (data: Role, forceSet = false) => {
     if (errorData || forceSet) {
@@ -1134,6 +1173,6 @@ const RolesPage = () => {
       )}
     </Fragment>
   );
-};
+});
 
 export default observer(RolesPage);
