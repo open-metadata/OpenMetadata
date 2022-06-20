@@ -10,29 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-package org.openmetadata.catalog.airflow;
-
-import lombok.Getter;
-import lombok.Setter;
-import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
-import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
-import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
-import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
-import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
-import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
-
-public class AuthConfiguration {
-
-  @Getter @Setter private GoogleSSOClientConfig google;
-
-  @Getter @Setter private OktaSSOClientConfig okta;
-
-  @Getter @Setter private Auth0SSOClientConfig auth0;
-
-  @Getter @Setter private AzureSSOClientConfig azure;
-
-  @Getter @Setter private CustomOIDCSSOClientConfig customOidc;
-
-  @Getter @Setter private OpenMetadataJWTClientConfig openmetadata;
-}
+//
+// package org.openmetadata.catalog.airflow;
+//
+// import lombok.Getter;
+// import lombok.Setter;
+// import org.openmetadata.catalog.security.client.Auth0SSOClientConfig;
+// import org.openmetadata.catalog.security.client.AzureSSOClientConfig;
+// import org.openmetadata.catalog.security.client.CustomOIDCSSOClientConfig;
+// import org.openmetadata.catalog.security.client.GoogleSSOClientConfig;
+// import org.openmetadata.catalog.security.client.OktaSSOClientConfig;
+// import org.openmetadata.catalog.security.client.OpenMetadataJWTClientConfig;
+//
+// public class AuthConfiguration {
+//
+//  @Getter @Setter private GoogleSSOClientConfig google;
+//
+//  @Getter @Setter private OktaSSOClientConfig okta;
+//
+//  @Getter @Setter private Auth0SSOClientConfig auth0;
+//
+//  @Getter @Setter private AzureSSOClientConfig azure;
+//
+//  @Getter @Setter private CustomOIDCSSOClientConfig customOidc;
+//
+//  @Getter @Setter private OpenMetadataJWTClientConfig openmetadata;
+// }

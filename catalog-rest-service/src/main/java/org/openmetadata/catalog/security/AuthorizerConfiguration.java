@@ -11,31 +11,31 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.security;
-
-import java.util.Set;
-import javax.validation.constraints.NotEmpty;
-import lombok.Getter;
-import lombok.Setter;
-
-public class AuthorizerConfiguration {
-  @NotEmpty @Getter @Setter private String className;
-  @NotEmpty @Getter @Setter private String containerRequestFilter;
-  @NotEmpty @Getter @Setter private Set<String> adminPrincipals;
-  @NotEmpty @Getter @Setter private Set<String> botPrincipals;
-  @NotEmpty @Getter @Setter private String principalDomain;
-  @NotEmpty @Getter @Setter private Boolean enforcePrincipalDomain;
-  @NotEmpty @Getter @Setter private Boolean enableSecureSocketConnection;
-
-  @Override
-  public String toString() {
-    return "AuthorizerConfiguration{"
-        + "className='"
-        + className
-        + '\''
-        + ", containerRequestFilter='"
-        + containerRequestFilter
-        + '\''
-        + '}';
-  }
-}
+// package org.openmetadata.catalog.security;
+//
+// import java.util.Set;
+// import javax.validation.constraints.NotEmpty;
+// import lombok.Getter;
+// import lombok.Setter;
+//
+// public class AuthorizerConfiguration {
+//  @NotEmpty @Getter @Setter private String className;
+//  @NotEmpty @Getter @Setter private String containerRequestFilter;
+//  @NotEmpty @Getter @Setter private Set<String> adminPrincipals;
+//  @NotEmpty @Getter @Setter private Set<String> botPrincipals;
+//  @NotEmpty @Getter @Setter private String principalDomain;
+//  @NotEmpty @Getter @Setter private Boolean enforcePrincipalDomain;
+//  @NotEmpty @Getter @Setter private Boolean enableSecureSocketConnection;
+//
+//  @Override
+//  public String toString() {
+//    return "AuthorizerConfiguration{"
+//        + "className='"
+//        + className
+//        + '\''
+//        + ", containerRequestFilter='"
+//        + containerRequestFilter
+//        + '\''
+//        + '}';
+//  }
+// }

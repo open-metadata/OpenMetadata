@@ -17,6 +17,7 @@ import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
 import io.dropwizard.jdbi3.JdbiFactory;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
@@ -96,33 +98,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
           InvocationTargetException, IOException {
-    final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
-    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
-
-    SqlLogger sqlLogger =
-        new SqlLogger() {
-          @Override
-          public void logAfterExecution(StatementContext context) {
-            LOG.debug(
-                "sql {}, parameters {}, timeTaken {} ms",
-                context.getRenderedSql(),
-                context.getBinding(),
-                context.getElapsedTime(ChronoUnit.MILLIS));
-          }
-        };
-    if (LOG.isDebugEnabled()) {
-      jdbi.setSqlLogger(sqlLogger);
-    }
+    final Jdbi jdbi = createandSetupJDBI(environment, catalogConfig.getDataSourceFactory());
+    catalogConfig.fetchConfigurationFromDB(jdbi);
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
-
-    // Set the Database type for choosing correct queries from annotations
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(catalogConfig.getDataSourceFactory().getDriverClass()));
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig.getMigrationConfiguration());
@@ -299,6 +282,30 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     } catch (ServletException ex) {
       LOG.error("Websocket Upgrade Filter error : ", ex.getMessage());
     }
+  }
+
+  private Jdbi createandSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
+
+    SqlLogger sqlLogger =
+        new SqlLogger() {
+          @Override
+          public void logAfterExecution(StatementContext context) {
+            LOG.debug(
+                "sql {}, parameters {}, timeTaken {} ms",
+                context.getRenderedSql(),
+                context.getBinding(),
+                context.getElapsedTime(ChronoUnit.MILLIS));
+          }
+        };
+    if (LOG.isDebugEnabled()) {
+      jdbi.setSqlLogger(sqlLogger);
+    }
+    // Set the Database type for choosing correct queries from annotations
+    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+
+    return jdbi;
   }
 
   public static void main(String[] args) throws Exception {

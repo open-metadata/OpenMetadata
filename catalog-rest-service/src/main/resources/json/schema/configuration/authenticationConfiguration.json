@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/authenticationConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthenticationConfiguration",
+  "description": "This schema defines the Authentication Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.security.AuthenticationConfiguration",
+  "properties": {
+    "provider": {
+      "description": "SSO provider , no-auth, okta, google , azure etc.",
+      "type": "string"
+    },
+    "providerName": {
+      "description": "Custom OIDC Authentication Provider Name",
+      "type": "string"
+    },
+    "publicKeyUrls": {
+      "description": "Display Name that identifies this Chart. It could be title or label from the source services.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authority": {
+      "description": "Authentication Authority",
+      "type": "string"
+    },
+    "clientId": {
+      "description": "Client ID",
+      "type": "string"
+    },
+    "callbackUrl": {
+      "description": "Callback URL",
+      "type": "string"
+    },
+    "jwtPrincipalClaims": {
+      "description": "Jwt Principal Claim",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],
+  "additionalProperties": false
+}
