@@ -14,6 +14,7 @@
 import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { getReplyText } from '../../../../utils/FeedUtils';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { FeedFooterProp } from '../ActivityFeedCard.interface';
 
 const FeedCardFooter: FC<FeedFooterProp> = ({
@@ -32,30 +33,22 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
       !isUndefined(replies) &&
       isFooterVisible ? (
         <div className="tw-flex tw-group">
-          {/* {repliedUsers?.map((u, i) => (
+          {repliedUsers?.map((u, i) => (
             <ProfilePicture
               className="tw-mt-0.5 tw-mx-0.5"
               data-testid="replied-user"
               id=""
               key={i}
               name={u}
-              width="22"
+              width="18"
             />
-          ))} */}
-          <p
-            className="tw-ml-1 tw-text-info tw-text-xs tw-mt-1.5 tw-underline"
+          ))}
+          <span
+            className="tw-ml-1 tw-text-info tw-text-xs tw-underline tw-self-center"
             data-testid="reply-count"
             onClick={() => onThreadSelect?.(threadId as string)}>
             {`View ${getReplyText(repliesCount)}`}
-          </p>
-          {/* {lastReplyTimeStamp && repliesCount > 0 ? (
-            <span
-              className="tw-text-grey-muted tw-pl-2 tw-text-xs tw-font-medium tw-mt-1.5"
-              data-testid="last-reply">
-              Last reply{' '}
-              {toLower(getDayTimeByTimeStamp(lastReplyTimeStamp as number))}
-            </span>
-          ) : null} */}
+          </span>
         </div>
       ) : null}
     </div>

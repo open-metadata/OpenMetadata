@@ -68,9 +68,7 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
 export const getGlossaryTermlist = (
   terms: Array<FormattedGlossaryTermData> = []
 ): Array<string> => {
-  return terms.map(
-    (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-  );
+  return terms.map((term: FormattedGlossaryTermData) => term.fqdn || '');
 };
 
 /**

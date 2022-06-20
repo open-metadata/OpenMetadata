@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/table.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table",
-  "$comment" : "@om-entity-type",
+  "$comment": "@om-entity-type",
   "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Table",
@@ -18,7 +18,8 @@
         "View",
         "SecureView",
         "MaterializedView",
-        "Iceberg"
+        "Iceberg",
+        "Local"
       ],
       "javaEnums": [
         {
@@ -38,6 +39,9 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "Local"
         }
       ]
     },
@@ -476,6 +480,10 @@
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
         },
+        "columnNames": {
+          "description": "List of column names",
+          "type": "array"
+        },
         "columnProfile": {
           "description": "List of local column profiles of the table.",
           "type": "array",
@@ -736,9 +744,9 @@
       "type": "boolean",
       "default": false
     },
-    "extension" : {
+    "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
-      "$ref" : "../../type/basic.json#/definitions/entityExtension"
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name", "columns"],

@@ -12,6 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
@@ -41,7 +42,11 @@ import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -355,6 +360,15 @@ const MyDataPage = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const fetchOMDMode = () => {
     fetchSandboxConfig()
       .then((res) => {
@@ -424,6 +438,7 @@ const MyDataPage = () => {
             ownedDataCount={ownedDataCount}
             paging={paging}
             postFeedHandler={postFeedHandler}
+            updateThreadHandler={updateThreadHandler}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

@@ -382,8 +382,19 @@ public class FeedRepository {
     return new ResultList<>(threads, beforeCursor, afterCursor, total);
   }
 
+  private void storeReactions(Thread thread, String user) {
+    // Reactions are captured at the thread level. If the user reacted to a post of a thread,
+    // it will still be tracked as "user reacted to thread" since this will only be used to filter
+    // threads in the activity feed. Actual reactions are stored in thread.json or post.json itself.
+    // Multiple reactions by the same user on same thread or post is handled by
+    // field relationship table constraint (primary key)
+    dao.fieldRelationshipDAO()
+        .insert(user, thread.getId().toString(), Entity.USER, Entity.THREAD, Relationship.REACTED_TO.ordinal(), null);
+  }
+
   @Transaction
-  public final PatchResponse<Post> patchPost(Thread thread, Post post, JsonPatch patch) throws IOException {
+  public final PatchResponse<Post> patchPost(Thread thread, Post post, String user, JsonPatch patch)
+      throws IOException {
     // Apply JSON patch to the original post to get the updated post
     Post updated = JsonUtils.applyPatch(post, patch, Post.class);
 
@@ -396,13 +407,24 @@ public class FeedRepository {
     List<Post> posts = thread.getPosts();
     posts = posts.stream().filter(p -> !p.getId().equals(post.getId())).collect(Collectors.toList());
     posts.add(updated);
-    thread.setPosts(posts);
+    thread.withPosts(posts).withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
+
+    if (!updated.getReactions().isEmpty()) {
+      updated
+          .getReactions()
+          .forEach(
+              reaction -> {
+                storeReactions(thread, reaction.getUser().getName());
+              });
+    }
+
     String change = patchUpdate(thread, post, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PatchResponse<>(Status.OK, updated, change);
   }
 
   @Transaction
-  public final PatchResponse<Thread> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException {
+  public final PatchResponse<Thread> patchThread(UriInfo uriInfo, UUID id, String user, JsonPatch patch)
+      throws IOException {
     // Get all the fields in the original thread that can be updated during PATCH operation
     Thread original = get(id.toString());
 
@@ -412,6 +434,15 @@ public class FeedRepository {
     updated.withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
 
     restorePatchAttributes(original, updated);
+
+    if (!updated.getReactions().isEmpty()) {
+      updated
+          .getReactions()
+          .forEach(
+              reaction -> {
+                storeReactions(updated, reaction.getUser().getName());
+              });
+    }
 
     // Update the attributes
     String change = patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;

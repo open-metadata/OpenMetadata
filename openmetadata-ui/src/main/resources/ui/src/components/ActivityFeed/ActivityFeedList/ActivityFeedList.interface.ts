@@ -13,6 +13,7 @@
 
 import { HTMLAttributes } from 'react';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export type UpdatedFeedList = Array<Thread & { relativeDay: string }>;
@@ -24,6 +25,7 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   entityName?: string;
   postFeedHandler?: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }
 
 export interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
@@ -35,7 +37,10 @@ export interface FeedListBodyProp
     Pick<FeedListSeparatorProp, 'relativeDay'>,
     Pick<
       ActivityFeedListProp,
-      'isEntityFeed' | 'withSidePanel' | 'deletePostHandler'
+      | 'isEntityFeed'
+      | 'withSidePanel'
+      | 'deletePostHandler'
+      | 'updateThreadHandler'
     > {
   updatedFeedList: UpdatedFeedList;
   selectedThreadId: string;

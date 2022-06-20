@@ -39,6 +39,7 @@ import {
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
@@ -75,7 +76,11 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -291,6 +296,27 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const fetchServiceDetails = (type: string, fqn: string) => {
+    return new Promise<string>((resolve, reject) => {
+      getServiceByFQN(type + 's', fqn, ['owner'])
+        .then((resService: AxiosResponse) => {
+          if (resService?.data) {
+            const hostPort = resService.data.connection?.config?.hostPort || '';
+            resolve(hostPort);
+          } else {
+            throw null;
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-dashboard-details-error']
+          );
+          reject(err);
+        });
+    });
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, defaultFields)
@@ -306,12 +332,13 @@ const DashboardDetailsPage = () => {
             tags,
             owner,
             displayName,
+            name,
             charts: ChartIds,
             dashboardUrl,
             serviceType,
             version,
           } = res.data;
-          setDisplayName(displayName);
+          setDisplayName(displayName || name);
           setDashboardDetails(res.data);
           setCurrentVersion(version);
           setDashboardId(id);
@@ -348,14 +375,30 @@ const DashboardDetailsPage = () => {
             timestamp: 0,
           });
 
-          setDashboardUrl(dashboardUrl);
-          fetchCharts(ChartIds)
-            .then((chart) => setCharts(chart))
-            .catch((error: AxiosError) => {
-              showErrorToast(
-                error,
-                jsonData['api-error-messages']['fetch-chart-error']
-              );
+          fetchServiceDetails(service.type, service.name)
+            .then((hostPort: string) => {
+              setDashboardUrl(hostPort + dashboardUrl);
+              fetchCharts(ChartIds)
+                .then((chart) => {
+                  const updatedCharts = (chart as ChartType[]).map(
+                    (chartItem) => ({
+                      ...chartItem,
+                      chartUrl: hostPort + chartItem.chartUrl,
+                    })
+                  );
+                  setCharts(updatedCharts);
+                })
+                .catch((error: AxiosError) => {
+                  showErrorToast(
+                    error,
+                    jsonData['api-error-messages']['fetch-chart-error']
+                  );
+                });
+
+              setLoading(false);
+            })
+            .catch((err: AxiosError) => {
+              throw err;
             });
         } else {
           setIsError(true);
@@ -372,8 +415,6 @@ const DashboardDetailsPage = () => {
             jsonData['api-error-messages']['fetch-dashboard-details-error']
           );
         }
-      })
-      .finally(() => {
         setLoading(false);
       });
   };
@@ -693,6 +734,15 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   useEffect(() => {
     fetchTabSpecificData(dashboardDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -759,6 +809,7 @@ const DashboardDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

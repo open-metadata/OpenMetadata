@@ -101,12 +101,12 @@ public final class EntityUtil {
 
   public static final BiPredicate<Column, Column> columnMatch =
       (column1, column2) ->
-          column1.getName().equals(column2.getName())
+          column1.getName().equalsIgnoreCase(column2.getName())
               && column1.getDataType() == column2.getDataType()
               && column1.getArrayDataType() == column2.getArrayDataType();
 
   public static final BiPredicate<Column, Column> columnNameMatch =
-      (column1, column2) -> column1.getName().equals(column2.getName());
+      (column1, column2) -> column1.getName().equalsIgnoreCase(column2.getName());
 
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->

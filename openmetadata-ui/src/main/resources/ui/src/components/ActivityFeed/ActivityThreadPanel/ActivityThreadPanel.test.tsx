@@ -24,6 +24,7 @@ const mockActivityThreadPanelProp = {
   postFeedHandler: jest.fn(),
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({

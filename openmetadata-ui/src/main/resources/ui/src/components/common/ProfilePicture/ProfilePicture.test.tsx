@@ -48,7 +48,15 @@ afterAll(() => {
 
 describe('Test ProfilePicture component', () => {
   it('ProfilePicture component should render with Avatar', async () => {
-    const { container } = render(<ProfilePicture {...mockData} />);
+    const { container } = render(
+      <ProfilePicture
+        {...mockData}
+        className=""
+        textClass=""
+        type="square"
+        width="36"
+      />
+    );
 
     const avatar = await findByText(container, 'Avatar');
 

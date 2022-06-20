@@ -18,7 +18,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
-type Item = {
+export type Item = {
   displayName: string;
   name: string;
   id?: string;
@@ -28,7 +28,7 @@ type Item = {
   teamCount?: string | JSX.Element;
 };
 
-type Props = {
+export type Props = {
   item: Item;
   showTeams?: boolean;
   onClick?: (value: string) => void;
@@ -42,9 +42,9 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
       data-testid="user-card-container">
       <div className="tw-flex tw-gap-1">
         <ProfilePicture
-          displayName={item?.displayName}
-          id={item?.id || ''}
-          name={item?.name || ''}
+          displayName={item.displayName}
+          id={item.id || ''}
+          name={item.name || ''}
         />
 
         <div
@@ -60,7 +60,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
               }}>
               {item.displayName}
             </p>
-            {!item?.isActiveUser && (
+            {!item.isActiveUser && (
               <span className="tw-text-xs tw-bg-badge tw-border tw-px-2 tw-py-0.5 tw-rounded">
                 Inactive
               </span>
@@ -81,7 +81,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onDelete(item.id as string, item.displayName);
+                onDelete?.(item.id as string, item.displayName);
               }}>
               <SVGIcons
                 alt="delete"

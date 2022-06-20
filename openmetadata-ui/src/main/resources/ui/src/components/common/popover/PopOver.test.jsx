@@ -35,7 +35,16 @@ global.document.createRange = () => ({
 describe('Test Popover Component', () => {
   it('Component should render', () => {
     const { container } = render(
-      <PopOver position="bottom" trigger="click">
+      <PopOver
+        arrow
+        className=""
+        delay={500}
+        hideDelay={0}
+        position="bottom"
+        size="regular"
+        sticky={false}
+        theme="dark"
+        trigger="click">
         <span>Hello World</span>
       </PopOver>
     );

@@ -41,6 +41,6 @@ describe('Glue Ingestion', () => {
       // no filters
     };
 
-    testServiceCreationAndIngestion('Glue', connectionInput, addIngestionInput);
+    testServiceCreationAndIngestion('Glue', connectionInput, addIngestionInput, 'database', false);
   });
 });

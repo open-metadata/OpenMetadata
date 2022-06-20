@@ -27,6 +27,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   selectedThread,
   postFeed,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
@@ -58,6 +59,7 @@ const ActivityThread: FC<ActivityThreadProp> = ({
               isThread
               className="tw-mb-3"
               feed={mainThread as Post}
+              updateThreadHandler={updateThreadHandler}
             />
           </div>
         ) : null}
@@ -78,17 +80,18 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 feed={reply}
                 key={key}
                 threadId={threadData.id}
+                updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}
               />
             ))}
           </div>
         ) : null}
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-my-6"
-          onSave={postFeed}
-        />
       </div>
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2 tw-my-6"
+        onSave={postFeed}
+      />
     </Fragment>
   );
 };
