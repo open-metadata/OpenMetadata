@@ -21,8 +21,8 @@ from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
-    ColumnValuesToBeNotInSet,
+from metadata.generated.schema.tests.column.columnValuesToBeInSet import (
+    ColumnValuesToBeInSet,
 )
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
@@ -32,8 +32,8 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-def column_values_not_in_set(
-    test_case: ColumnValuesToBeNotInSet,
+def column_values_in_set(
+    test_case: ColumnValuesToBeInSet,
     col_profile: ColumnProfile,
     execution_date: datetime,
     session: Optional[Session] = None,
@@ -51,7 +51,7 @@ def column_values_not_in_set(
     :return: TestCaseResult with status and results
     """
 
-    set_count = add_props(values=test_case.forbiddenValues)(Metrics.COUNT_IN_SET.value)
+    set_count = add_props(values=test_case.allowedValues)(Metrics.COUNT_IN_SET.value)
 
     try:
         set_count_res = run_col_metric(
@@ -72,8 +72,8 @@ def column_values_not_in_set(
             result=msg,
         )
 
-    status = TestCaseStatus.Success if set_count_res == 0 else TestCaseStatus.Failed
-    result = f"Found countInSet={set_count_res}. It should be 0."
+    status = TestCaseStatus.Success if set_count_res >= 1 else TestCaseStatus.Failed
+    result = f"Found countInSet={set_count_res}"
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result

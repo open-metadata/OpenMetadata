@@ -480,6 +480,10 @@
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
         },
+        "columnNames": {
+          "description": "List of column names",
+          "type": "array"
+        },
         "columnProfile": {
           "description": "List of local column profiles of the table.",
           "type": "array",

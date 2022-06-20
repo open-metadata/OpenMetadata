@@ -30,6 +30,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -421,6 +422,7 @@ class Profiler(Generic[TMetric]):
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                columnNames=self._table_results.get(ColumnNames.name()).split(","),
                 columnProfile=computed_profiles,
             )
 

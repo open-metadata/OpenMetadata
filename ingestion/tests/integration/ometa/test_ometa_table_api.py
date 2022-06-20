@@ -310,6 +310,7 @@ class OMetaTableTest(TestCase):
                 profileDate=datetime(2021, 10, 12),
                 columnCount=1.0,
                 rowCount=3.0,
+                columnNames=[],
                 columnProfile=[
                     ColumnProfile(
                         name="id",
