@@ -407,8 +407,8 @@ export const getLayoutedElementsV1 = (
     el.targetPosition = isHorizontal ? Position.Left : Position.Top;
     el.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     el.position = {
-      x: nodeWithPosition.x,
-      y: nodeWithPosition.y,
+      x: nodeWithPosition.x - nodeWidth / 2,
+      y: nodeWithPosition.y - nodeHeight / 2,
     };
 
     return el;

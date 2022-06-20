@@ -1226,7 +1226,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     );
 
     setNodes((els) => {
-      return els.map((el) => {
+      return (els || []).map((el) => {
         if (el.id === newlyAddedNode?.id) {
           return {
             ...el,
