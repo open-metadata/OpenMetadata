@@ -11,6 +11,7 @@
 
 import json
 import ssl
+import traceback
 from datetime import datetime
 from typing import List, Optional
 
@@ -322,7 +323,7 @@ class ElasticsearchSink(Sink[Entity]):
             name=table.name.__root__,
             suggest=suggest,
             database_schema=str(database_schema_entity.name.__root__),
-            description=str(table.description.__root__),
+            description=str(table.description) if table.description else "",
             table_type=table_type,
             last_updated_timestamp=timestamp,
             column_names=column_names,
@@ -372,7 +373,7 @@ class ElasticsearchSink(Sink[Entity]):
             service_category="messagingService",
             name=topic.name.__root__,
             suggest=suggest,
-            description=topic.description.__root__,
+            description=topic.description,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -406,7 +407,7 @@ class ElasticsearchSink(Sink[Entity]):
         for chart in charts:
             chart_names.append(chart.displayName)
             if chart.description is not None:
-                chart_descriptions.append(chart.description.__root__)
+                chart_descriptions.append(chart.description)
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN.__root__)
@@ -421,7 +422,7 @@ class ElasticsearchSink(Sink[Entity]):
             chart_names=chart_names,
             chart_descriptions=chart_descriptions,
             suggest=suggest,
-            description=dashboard.description.__root__,
+            description=dashboard.description,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -462,7 +463,7 @@ class ElasticsearchSink(Sink[Entity]):
         for task in tasks:
             task_names.append(task.displayName)
             if task.description:
-                task_descriptions.append(task.description.__root__)
+                task_descriptions.append(task.description)
             if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
@@ -477,7 +478,7 @@ class ElasticsearchSink(Sink[Entity]):
             task_names=task_names,
             task_descriptions=task_descriptions,
             suggest=suggest,
-            description=pipeline.description.__root__,
+            description=pipeline.description,
             last_updated_timestamp=timestamp,
             tier=tier,
             tags=list(tags),
@@ -554,9 +555,7 @@ class ElasticsearchSink(Sink[Entity]):
             {"input": [glossary_term.name], "weight": 10},
         ]
         timestamp = glossary_term.updatedAt.__root__
-        description = (
-            glossary_term.description.__root__ if glossary_term.description else ""
-        )
+        description = glossary_term.description if glossary_term.description else ""
         glossary_term_doc = GlossaryTermESDocument(
             glossary_term_id=str(glossary_term.id.__root__),
             deleted=glossary_term.deleted,
@@ -599,7 +598,7 @@ class ElasticsearchSink(Sink[Entity]):
             )
             column_names.append(col_name)
             if column.description:
-                column_descriptions.append(column.description.__root__)
+                column_descriptions.append(column.description)
             if len(column.tags) > 0:
                 for col_tag in column.tags:
                     tags.add(col_tag.tagFQN.__root__)
