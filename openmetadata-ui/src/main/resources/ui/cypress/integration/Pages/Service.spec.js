@@ -14,7 +14,8 @@
 import { service } from '../../constants/constants';
 
 const updateService = () => {
-  cy.get('[data-testid="edit-description"] > [data-testid="image"]')
+  cy.get('[data-testid="edit-description"]')
+    .should('exist')
     .should('be.visible')
     .click();
   cy.get('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
