@@ -2,8 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/policies/accessControl/operation.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Operation",
-  "description": "Schema for Operation used in authoring policies. A policy allows or denies an `opeartion` on specified set of `resources`.",
-  "type": "object",
+  "description": "Schema for Operation used in authoring policies. A policy allows or denies an `operation` on specified set of `resources`.",
   "javaType": "org.openmetadata.catalog.entity.policies.accessControl.Operation",
   "type": "object",
   "properties": {

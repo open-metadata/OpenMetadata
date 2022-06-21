@@ -16,7 +16,10 @@ package org.openmetadata.catalog.resources.policies;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.compareOperation;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,7 +30,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -48,6 +54,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
@@ -62,8 +70,11 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/policies")
 @Api(value = "Policies collection", tags = "Policies collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -71,6 +82,9 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "policies")
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
+  public static final List<org.openmetadata.catalog.entity.policies.accessControl.Operation> OPERATIONS =
+      new ArrayList<>();
+  public static final List<String> RESOURCES = new ArrayList<>();
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -84,9 +98,28 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
+    // Load operations supported in policy authoring from JSON data file
+    String operationsFile = EntityUtil.getJsonDataResources(".*json/data/policy/Operations.json$").get(0);
+    try {
+      String json =
+          IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(operationsFile)));
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode root =
+          mapper.readTree(Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(operationsFile)));
+      JsonNode operationsNode = root.findValue("operations");
+      OPERATIONS.addAll(
+          JsonUtils.readObjects(
+              operationsNode.toString(), org.openmetadata.catalog.entity.policies.accessControl.Operation.class));
+      OPERATIONS.sort(compareOperation);
+      LOG.info("Loaded from file {} policy operations {}", operationsFile, OPERATIONS);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize the policy operations {}", operationsFile, e);
+    }
+
     // Set up the PolicyEvaluator, before loading seed data.
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
     policyEvaluator.setPolicyRepository(dao);
+
     // Load any existing rules from database, before loading seed data.
     policyEvaluator.load();
     dao.initSeedDataFromResources();
@@ -99,6 +132,22 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class OperationList
+      extends ResultList<org.openmetadata.catalog.entity.policies.accessControl.Operation> {
+    @SuppressWarnings("unused")
+    OperationList() {
+      // Empty constructor needed for deserialization
+    }
+
+    public OperationList(
+        List<org.openmetadata.catalog.entity.policies.accessControl.Operation> data,
+        String beforeCursor,
+        String afterCursor,
+        int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -271,8 +320,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   @GET
   @Path("/operations")
   @Operation(
-      operationId = "getPolicyOperation",
-      summary = "Get operations to author a policy",
+      operationId = "listPolicyOperations",
+      summary = "Get a list of policy operations used in policy authoring",
       tags = "policies",
       description = "Get all the operations used in policy authoring",
       responses = {
@@ -284,17 +333,16 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             responseCode = "404",
             description = "Policy for instance {id} and version {version} is" + " " + "not found")
       })
-  public List<org.openmetadata.catalog.entity.policies.accessControl.Operation> getOperations(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
-    // TODO
-    return dao.getVersion(id, version);
+  public OperationList getOperations(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    return new OperationList(OPERATIONS, null, null, OPERATIONS.size());
   }
 
   @GET
   @Path("/resources")
   @Operation(
-      operationId = "getPolicyResources",
-      summary = "Get resources to author a policy policy",
+      operationId = "listPolicyResources",
+      summary = "Get list of policy resources used in authoring a policy.",
       tags = "policies",
       description = "Get all the resources used in policy authoring",
       responses = {
@@ -303,10 +351,15 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
             responseCode = "404",
             description = "Policy for instance {id} and version {version} is" + " " + "not found")
       })
-  public List<String> getResources(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+  public List<String> listPolicyResources(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
       throws IOException {
-    // TODO
-    return dao.getVersion(id, version);
+    if (RESOURCES.isEmpty()) {
+      // Load set of resource types
+      RESOURCES.addAll(Entity.listEntities());
+      RESOURCES.add("lineage");
+      Collections.sort(RESOURCES);
+    }
+    return RESOURCES;
   }
 
   @POST

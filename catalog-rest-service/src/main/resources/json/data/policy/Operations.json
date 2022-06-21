@@ -1,0 +1,24 @@
+{
+  "operations": [
+    {
+      "name": "create",
+      "displayName": "Create",
+      "description": "Create a new entity."
+    },
+    {
+      "name": "delete",
+      "displayName": "Delete",
+      "description": "Delete an existing entity."
+    },
+    {
+      "name": "editAll",
+      "displayName": "Edit All",
+      "description": "Edit an existing entity. This operation can edit an entire entity and is superset of all the granular edit operations."
+    },
+    {
+      "name": "viewAll",
+      "displayName": "View",
+      "description": "View an entity. This operation can view the entire entity and is superset of all the granular view operations."
+    }
+  ]
+}

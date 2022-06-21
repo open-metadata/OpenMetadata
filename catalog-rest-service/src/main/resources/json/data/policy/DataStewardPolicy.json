@@ -4,8 +4,6 @@
   "fullyQualifiedName": "DataStewardPolicy",
   "description": "Policy for Data Steward Role to perform operations on metadata entities",
   "policyType": "AccessControl",
-  "enabled": true,
-  "deleted": false,
   "rules": [
     {
       "name": "DataStewardPolicy-UpdateDescription",

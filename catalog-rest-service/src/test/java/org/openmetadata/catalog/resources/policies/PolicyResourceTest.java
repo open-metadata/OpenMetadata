@@ -15,7 +15,9 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.util.EntityUtil.operationMatch;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -30,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.ws.rs.client.WebTarget;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -40,18 +44,22 @@ import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
+import org.openmetadata.catalog.entity.policies.accessControl.Operation;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
+import org.openmetadata.catalog.resources.policies.PolicyResource.OperationList;
 import org.openmetadata.catalog.resources.policies.PolicyResource.PolicyList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -77,8 +85,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Override
+  @SneakyThrows
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
+    assertEquals(createRequest.getPolicyType(), policy.getPolicyType());
+    if (createRequest.getLocation() != null) {
+      assertEquals(createRequest.getLocation(), policy.getLocation().getId());
+    }
+    assertEquals(createRequest.getRules(), EntityUtil.resolveRules(policy.getRules()));
   }
 
   @Override
@@ -160,37 +173,36 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
     Policy policy = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS).withLocation(null);
 
-    URI uri = null;
-    try {
-      uri = new URI("http://www.example.com/policy1");
-    } catch (URISyntaxException e) {
-      fail("could not construct URI for test");
-    }
-
-    // Add policyUrl which was previously null and set enabled to false
-    String origJson = JsonUtils.pojoToJson(policy);
-    policy.setPolicyUrl(uri);
-    policy.setEnabled(false);
-    ChangeDescription change = getChangeDescription(policy.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("policyUrl").withNewValue(uri));
-    change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Remove policyUrl
-    origJson = JsonUtils.pojoToJson(policy);
-    policy.setPolicyUrl(null);
-    change = getChangeDescription(policy.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("policyUrl").withOldValue(uri));
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
     EntityReference locationReference = location.getEntityReference();
 
     // Add new field location
-    origJson = JsonUtils.pojoToJson(policy);
+    String origJson = JsonUtils.pojoToJson(policy);
     policy.setLocation(locationReference);
-    change = getChangeDescription(policy.getVersion());
+    ChangeDescription change = getChangeDescription(policy.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationReference));
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void get_policyResources() throws HttpResponseException {
+    // Get list of policy resources and make sure it has all the entities and other resources
+    List<String> resources = getPolicyResources(ADMIN_AUTH_HEADERS);
+    List<String> entities = Entity.listEntities();
+    assertTrue(resources.containsAll(entities));
+    assertTrue(resources.contains("lineage"));
+  }
+
+  @Test
+  public void get_policyOperations() throws HttpResponseException {
+    // Get list of policy operations and make sure it has common operations expected
+    ResultList<Operation> operations = getPolicyOperations(ADMIN_AUTH_HEADERS);
+    List<String> expectedOperations = List.of("create", "delete", "editAll", "viewAll");
+    for (String expected : expectedOperations) {
+      Operation expectedOperation = new Operation().withName(expected);
+      assertNotNull(
+          operations.getData().stream().filter(c -> operationMatch.test(c, expectedOperation)).findAny().orElse(null),
+          "Expected " + expected + " operation not found");
+    }
   }
 
   @Override
@@ -227,5 +239,15 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     CreateLocation createLocation = locationResourceTest.createRequest(LOCATION_NAME, "", "", null);
     return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
+  }
+
+  public final List<String> getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(collectionName + "/resources");
+    return (List<String>) TestUtils.get(target, List.class, authHeaders);
+  }
+
+  public final OperationList getPolicyOperations(Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(collectionName + "/operations");
+    return TestUtils.get(target, OperationList.class, authHeaders);
   }
 }
