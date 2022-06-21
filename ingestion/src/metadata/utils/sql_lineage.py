@@ -13,7 +13,7 @@ Helper functions to handle SQL lineage operations
 """
 import traceback
 from logging.config import DictConfigurator
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -170,7 +170,7 @@ def _create_lineage_by_table_name(
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
-):
+) -> Optional[Iterable[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
     """
@@ -193,10 +193,8 @@ def _create_lineage_by_table_name(
             table_name=to_table,
         )
 
-        if not to_table_entities or not from_table_entities:
-            return None
-        for from_entity in from_table_entities:
-            for to_entity in to_table_entities:
+        for from_entity in from_table_entities or []:
+            for to_entity in to_table_entities or []:
                 col_lineage = get_column_lineage(
                     to_entity=to_entity,
                     to_table_raw_name=str(to_table),
@@ -223,8 +221,7 @@ def _create_lineage_by_table_name(
                     )
                     if lineage_details:
                         lineage.edge.lineageDetails = lineage_details
-                    created_lineage = metadata.add_lineage(lineage)
-                    logger.info(f"Successfully added Lineage {created_lineage}")
+                    yield lineage
 
     except Exception as err:
         logger.debug(traceback.format_exc())
@@ -234,7 +231,7 @@ def _create_lineage_by_table_name(
 def populate_column_lineage_map(raw_column_lineage):
     lineage_map = {}
     if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
-        return
+        return lineage_map
     for source, target in raw_column_lineage:
         if lineage_map.get(str(target.parent)):
             ele = lineage_map.get(str(target.parent))
@@ -254,13 +251,13 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
-def ingest_lineage_by_query(
+def get_lineage_by_query(
     metadata: OpenMetadata,
     service_name: str,
     database_name: Optional[str],
     schema_name: Optional[str],
     query: str,
-) -> bool:
+) -> Optional[Iterable[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
@@ -277,15 +274,13 @@ def ingest_lineage_by_query(
 
     try:
         result = LineageRunner(query)
-        if not result.target_tables:
-            return False
 
         raw_column_lineage = result.get_column_lineage()
         column_lineage_map.update(populate_column_lineage_map(raw_column_lineage))
 
         for intermediate_table in result.intermediate_tables:
             for source_table in result.source_tables:
-                _create_lineage_by_table_name(
+                yield from _create_lineage_by_table_name(
                     metadata,
                     from_table=str(source_table),
                     to_table=str(intermediate_table),
@@ -295,7 +290,7 @@ def ingest_lineage_by_query(
                     query=query,
                 )
             for target_table in result.target_tables:
-                _create_lineage_by_table_name(
+                yield from _create_lineage_by_table_name(
                     metadata,
                     from_table=str(intermediate_table),
                     to_table=str(target_table),
@@ -307,7 +302,7 @@ def ingest_lineage_by_query(
         if not result.intermediate_tables:
             for target_table in result.target_tables:
                 for source_table in result.source_tables:
-                    _create_lineage_by_table_name(
+                    yield from _create_lineage_by_table_name(
                         metadata,
                         from_table=str(source_table),
                         to_table=str(target_table),
@@ -316,8 +311,43 @@ def ingest_lineage_by_query(
                         schema_name=schema_name,
                         query=query,
                     )
-        return True
     except Exception as err:
         logger.debug(str(err))
         logger.warning(f"Ingesting lineage failed")
-    return False
+
+
+def get_lineage_via_table_entity(
+    metadata: OpenMetadata,
+    table_entity: Table,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    query: str,
+) -> Optional[Iterable[AddLineageRequest]]:
+    # Prevent sqllineage from modifying the logger config
+    # Disable the DictConfigurator.configure method while importing LineageRunner
+    configure = DictConfigurator.configure
+    DictConfigurator.configure = lambda _: None
+    from sqllineage.runner import LineageRunner
+
+    # Reverting changes after import is done
+    DictConfigurator.configure = configure
+    column_lineage_map.clear()
+    try:
+        parser = LineageRunner(query)
+        to_table_name = table_entity.name.__root__
+
+        for from_table_name in parser.source_tables:
+            yield from _create_lineage_by_table_name(
+                metadata,
+                from_table=str(from_table_name),
+                to_table=f"{schema_name}.{to_table_name}",
+                service_name=service_name,
+                database_name=database_name,
+                schema_name=schema_name,
+                query=query,
+            ) or []
+    except Exception as e:
+        logger.error("Failed to create view lineage")
+        logger.debug(f"Query : {query}")
+        logger.debug(traceback.format_exc())

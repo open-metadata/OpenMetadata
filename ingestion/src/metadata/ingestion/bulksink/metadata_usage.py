@@ -33,8 +33,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     get_column_fqn,
+    get_lineage_by_query,
     get_table_entities_from_query,
-    ingest_lineage_by_query,
 )
 
 logger = ingestion_logger()
@@ -75,14 +75,18 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to ingest lineage by sql queries
         """
+
         for query in queries:
-            ingest_lineage_by_query(
+            lineages = get_lineage_by_query(
                 self.metadata,
                 query=query.query,
                 service_name=self.service_name,
                 database_name=database_name,
                 schema_name=schema_name,
             )
+            for lineage in lineages or []:
+                created_lineage = self.metadata.add_lineage(lineage)
+                logger.info(f"Successfully added Lineage {created_lineage}")
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount
