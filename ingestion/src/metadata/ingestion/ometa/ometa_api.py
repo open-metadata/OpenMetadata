@@ -46,6 +46,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
@@ -323,6 +324,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/storageServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[MlModelService, self.get_create_entity_type(MlModelService)]
+            ),
+        ):
+            return "/services/mlmodelServices"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"

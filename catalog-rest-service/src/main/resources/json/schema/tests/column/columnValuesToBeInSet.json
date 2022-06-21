@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/column/columnValuesToBeInSet.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ColumnValuesToBeInSet",
+  "description": "This schema defines the test ColumnValuesToBeInSet. Test the column values are in the set.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.column.ColumnValuesToBeInSet",
+  "properties": {
+    "allowedValues": {
+      "description": "An Array of values.",
+      "type": "array",
+      "items": {
+        "type": ["string", "number"]
+      }
+    }
+  },
+  "required": ["allowedValues"],
+  "additionalProperties": false
+}
