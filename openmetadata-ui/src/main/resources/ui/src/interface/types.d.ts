@@ -603,4 +603,9 @@ declare module 'Models' {
     readonly label: string;
     readonly value: string;
   }
+
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
+  }
 }

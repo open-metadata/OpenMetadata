@@ -171,9 +171,5 @@ class ModeApiClient:
         Returns:
             dict
         """
-        try:
-            response = self.client.get(f"/account")
-            return response
-        except Exception as err:  # pylint: disable=broad-except
-            logger.error(err)
-            logger.debug(traceback.format_exc())
+        response = self.client.get(f"/account")
+        return response
