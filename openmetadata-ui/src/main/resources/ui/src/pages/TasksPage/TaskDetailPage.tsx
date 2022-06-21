@@ -16,8 +16,8 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags } from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { EditorContentRef, EntityTags } from 'Models';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getFeedById, getTask, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -56,6 +56,8 @@ import { EntityData, Option } from './TasksPage.interface';
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
+
+  const markdownRef = useRef<EditorContentRef>();
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
@@ -292,6 +294,7 @@ const TaskDetailPage = () => {
             {!isEmpty(taskDetail) && (
               <DescriptionTabs
                 description={entityData.description || ''}
+                markdownRef={markdownRef}
                 suggestion={taskDetail.task?.suggestion || ''}
               />
             )}

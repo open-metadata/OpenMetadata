@@ -14,9 +14,17 @@
 import { Button, Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize, isNil } from 'lodash';
-import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { EditorContentRef, EntityTags } from 'Models';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import { postThread } from '../../axiosAPIs/feedsAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -28,16 +36,29 @@ import {
 } from '../../constants/constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import {
+  CreateThread,
+  TaskType,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
 import { EntityReference } from '../../generated/type/entityReference';
 import {
   getEntityName,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import { defaultFields as tableFields } from '../../utils/DatasetDetailsUtils';
+import {
+  ENTITY_LINK_SEPARATOR,
+  getEntityFeedLink,
+} from '../../utils/EntityUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { fetchOptions, getColumnObject } from '../../utils/TasksUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  fetchOptions,
+  getColumnObject,
+  getTaskDetailPath,
+} from '../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
 import { DescriptionTabs } from './DescriptionTabs';
 import { cardStyles } from './TaskPage.styles';
@@ -47,6 +68,8 @@ import { EntityData, Option } from './TasksPage.interface';
 const UpdateDescription = () => {
   const location = useLocation();
   const history = useHistory();
+
+  const markdownRef = useRef<EditorContentRef>();
 
   const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
   const queryParams = new URLSearchParams(location.search);
@@ -71,6 +94,14 @@ const UpdateDescription = () => {
   }, [entityData.tags]);
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const message = `Update description for ${getSanitizeValue || entityType}`;
 
   const fetchTableDetails = () => {
     getTableDetailsByFQN(entityFQN, tableFields)
@@ -149,6 +180,41 @@ const UpdateDescription = () => {
     fetchOptions(query, setOptions);
   };
 
+  const getTaskAbout = () => {
+    if (field && value) {
+      return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
+    } else {
+      return 'description';
+    }
+  };
+
+  const onCreateTask = () => {
+    if (assignees.length) {
+      const data: CreateThread = {
+        from: currentUser?.name as string,
+        message,
+        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+        taskDetails: {
+          assignees: assignees.map((assignee) => ({
+            id: assignee.value,
+            type: assignee.type,
+          })),
+          suggestion: markdownRef.current?.getEditorContent(),
+          type: TaskType.UpdateDescription,
+        },
+        type: ThreadType.Task,
+      };
+      postThread(data)
+        .then((res: AxiosResponse) => {
+          showSuccessToast('Task Created Successfully');
+          history.push(getTaskDetailPath(res.data.task.id));
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+    } else {
+      showErrorToast('Cannot create a task without assignee');
+    }
+  };
+
   useEffect(() => {
     fetchTableDetails();
   }, [entityFQN, entityType]);
@@ -188,6 +254,7 @@ const UpdateDescription = () => {
             <span>Description:</span>{' '}
             <DescriptionTabs
               description={entityData.description || ''}
+              markdownRef={markdownRef}
               suggestion=""
             />
           </div>
@@ -196,7 +263,10 @@ const UpdateDescription = () => {
             <Button className="ant-btn-link-custom" type="link" onClick={back}>
               Back
             </Button>
-            <Button className="ant-btn-primary-custom" type="primary">
+            <Button
+              className="ant-btn-primary-custom"
+              type="primary"
+              onClick={onCreateTask}>
               Submit
             </Button>
           </div>

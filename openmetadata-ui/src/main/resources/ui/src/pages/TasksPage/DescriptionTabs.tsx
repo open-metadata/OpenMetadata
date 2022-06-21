@@ -14,18 +14,22 @@
 import { Tabs } from 'antd';
 import { isEqual, uniqueId } from 'lodash';
 import { Diff, EditorContentRef } from 'Models';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import { getDescriptionDiff } from '../../utils/TasksUtils';
 
 interface Props {
   description: string;
   suggestion: string;
+  markdownRef: React.MutableRefObject<EditorContentRef | undefined>;
 }
 
-export const DescriptionTabs = ({ description, suggestion }: Props) => {
+export const DescriptionTabs = ({
+  description,
+  suggestion,
+  markdownRef,
+}: Props) => {
   const { TabPane } = Tabs;
-  const markdownRef = useRef<EditorContentRef>();
 
   const [diffs, setDiffs] = useState<Diff[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');

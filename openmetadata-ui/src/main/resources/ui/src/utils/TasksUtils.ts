@@ -22,6 +22,7 @@ import {
   PLACEHOLDER_TASK_ID,
   ROUTES,
 } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { Option } from '../pages/TasksPage/TasksPage.interface';
 import { showErrorToast } from './ToastUtils';
@@ -116,3 +117,11 @@ export const getColumnObject = (
 
   return columnObject;
 };
+
+export const TASK_ENTITIES = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD,
+  EntityType.TOPIC,
+  EntityType.PIPELINE,
+  EntityType.MLMODEL,
+];

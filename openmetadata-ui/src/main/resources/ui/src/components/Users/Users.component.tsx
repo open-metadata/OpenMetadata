@@ -263,7 +263,7 @@ const Users = ({
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
-            hasEditAccess={isAdminUser}
+            hasEditAccess={isAdminUser || isLoggedinUser}
             isEdit={isDescriptionEdit}
             onCancel={() => setIsDescriptionEdit(false)}
             onDescriptionEdit={() => setIsDescriptionEdit(true)}
