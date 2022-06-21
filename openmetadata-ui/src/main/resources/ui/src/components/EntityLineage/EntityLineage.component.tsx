@@ -1308,10 +1308,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
-  if (nodes.length > 0) {
-    return <Loader />;
-  }
-
   return deleted ? (
     getDeletedLineagePlaceholder()
   ) : (
