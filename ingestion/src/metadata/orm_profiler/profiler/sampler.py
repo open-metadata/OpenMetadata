@@ -38,11 +38,13 @@ class Sampler:
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
         partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None, 
     ):
         self.profile_sample = profile_sample
         self.session = session
         self.table = table
         self._partition_details = partition_details
+        self._profile_sample_query = profile_sample_query
 
         self.sample_limit = 100
 
@@ -75,6 +77,8 @@ class Sampler:
         Use the sampler to retrieve 100 sample data rows
         :return: TableData to be added to the Table Entity
         """
+        if self._profile_sample_query:
+            return self._fetch_sample_data_from_query()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
@@ -90,4 +94,12 @@ class Sampler:
         return TableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
+        )
+
+    def _fetch_sample_data_from_query(self) -> TableData:
+        """..."""
+        rnd = self.session.execute(f"""{self._profile_sample_query}""")
+        return TableData(
+            columns=[col.name for col in rnd.cursor.description],
+            rows=[list(row) for row in rnd.all()]
         )

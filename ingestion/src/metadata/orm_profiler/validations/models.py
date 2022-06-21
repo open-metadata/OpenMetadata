@@ -42,6 +42,7 @@ class TestDef(ConfigModel):
     partition_field: Optional[str] = None
     partition_query_duration: Optional[int] = 1
     partition_values: Optional[List] = None
+    profile_sample_query: Optional[str] = None
 
 
 class TestSuite(ConfigModel):

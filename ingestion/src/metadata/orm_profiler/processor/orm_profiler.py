@@ -536,6 +536,11 @@ class OrmProfilerProcessor(Processor[Table]):
                     orm,
                     table,
                 ),
+                profile_sample_query=(
+                    self.get_record_test_def(table).profile_sample_query
+                    if self.config.test_suite
+                    else None
+                )
             )
             return sampler.fetch_sample_data()
         except Exception as err:
