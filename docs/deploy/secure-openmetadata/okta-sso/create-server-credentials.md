@@ -75,7 +75,17 @@ It is recommended to create a separate authorization server for different applic
 
 This will generate the Issuer URL.
 
-## Step 5: Create a Default Scope
+## Step 5: Change the Issuer URL from Dynamic to Okta URL
+
+Once the Authorization Server has been added, navigate to Security >> API >> Authorization Servers and click on the authorization server created in the previous step.
+
+![](../../../../.gitbook/assets/image.png)
+
+The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL and save the changes.
+
+![](<../../../../.gitbook/assets/image (1).png>)
+
+## Step 6: Create a Default Scope
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
@@ -90,7 +100,7 @@ This will generate the Issuer URL.
 
 ![](<../../../.gitbook/assets/image (73).png>)
 
-## Step 6: Add New Access Policy and Rule
+## Step 7: Add New Access Policy and Rule
 
 * From **Security -> API**, click on the required **Authorization Server**
 * Navigate to the **Access Policies Tab**
@@ -108,7 +118,7 @@ This will generate the Issuer URL.
 
 ![](<../../../.gitbook/assets/image (40) (1).png>)
 
-## Step 7: Where to Find the Credentials
+## Step 8: Where to Find the Credentials
 
 * Once the app is configured, the **Client ID** can be used.
 * You can also go to **Application -> Application** as in step 2.
