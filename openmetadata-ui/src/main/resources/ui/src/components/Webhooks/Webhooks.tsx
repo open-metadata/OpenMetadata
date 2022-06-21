@@ -26,7 +26,7 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import WebhookDataCard from '../common/webhook-data-card/WebhookDataCard';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { WebhooksProps } from './Webhooks.interface';
 
 const statuses = [
@@ -87,16 +87,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-          marginTop: '20px',
-        }}>
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
         <>
           <h6 className="tw-heading tw-text-base">Webhooks</h6>
           <div className="tw-flex tw-justify-between tw-flex-col">
@@ -139,24 +130,13 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   const fetchRightPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-          marginTop: '20px',
-        }}>
-        <>
-          <div className="tw-mb-5 tw-mt-11">
-            The webhook allows external services to be notified of the metadata
-            change events happening in your organization through APIs. Register
-            callback URLs with webhook integration to receive metadata event
-            notifications. You can add, list, update, and delete webhooks.
-          </div>
-        </>
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
+        <div className="tw-my-2">
+          The webhook allows external services to be notified of the metadata
+          change events happening in your organization through APIs. Register
+          callback URLs with webhook integration to receive metadata event
+          notifications. You can add, list, update, and delete webhooks.
+        </div>
       </Card>
     );
   };

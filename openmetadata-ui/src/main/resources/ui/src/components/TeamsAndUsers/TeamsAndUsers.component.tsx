@@ -23,7 +23,7 @@ import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
@@ -89,16 +89,7 @@ const TeamsAndUsers = ({
    */
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-          marginTop: '20px',
-        }}>
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
         <>
           <div className="tw-mb-8">
             <div

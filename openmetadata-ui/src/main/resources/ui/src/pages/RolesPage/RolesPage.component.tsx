@@ -38,7 +38,9 @@ import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import AddRoleModal from '../../components/Modals/RoleModal/AddRoleModal';
@@ -582,22 +584,17 @@ const RolesPage = () => {
     return (
       <Card
         data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-          marginTop: '20px',
-        }}>
-        <Fragment>
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+        style={leftPanelAntCardStyle}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
             <h6
               className="tw-heading tw-text-base"
               data-testid="left-panel-title">
               Roles
             </h6>
           </div>
+        }>
+        <Fragment>
           {roles &&
             roles.map((role) => (
               <div
@@ -1126,7 +1123,7 @@ const RolesPage = () => {
               <Loader />
             ) : (
               <div
-                className="tw-pb-3 tw-bg-white "
+                className="tw-pb-3 tw-bg-white"
                 data-testid="role-container"
                 style={{ padding: '14px' }}>
                 {getRolesContainer()}

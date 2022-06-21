@@ -240,13 +240,13 @@ const ServicesPage = () => {
           boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
           marginRight: '4px',
           marginLeft: '4px',
-          marginTop: '20px',
-        }}>
-        <>
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
+        }}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
             <h6 className="tw-heading tw-text-base">Services</h6>
           </div>
-
+        }>
+        <>
           {getServiceTabs()?.map((tab, index) => {
             return (
               <div
@@ -418,53 +418,64 @@ const ServicesPage = () => {
           className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
           data-testid="data-container">
           {serviceList.map((service, index) => (
-            <div
-              className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
-              data-testid="service-card"
-              key={index}>
-              <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                <div>
-                  <Link to={getServiceDetailsPath(service.name, serviceName)}>
-                    <button>
-                      <h6
-                        className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                        data-testid={`service-name-${getEntityName(
-                          service as EntityReference
-                        )}`}
-                        title={getEntityName(service as EntityReference)}>
-                        {getEntityName(service as EntityReference)}
-                      </h6>
-                    </button>
-                  </Link>
-                  <div
-                    className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                    data-testid="service-description">
-                    {service.description ? (
-                      <RichTextEditorPreviewer
-                        enableSeeMoreVariant={false}
-                        markdown={service.description}
-                      />
-                    ) : (
-                      <span className="tw-no-description">No description</span>
-                    )}
+            <Card
+              key={index}
+              style={{
+                border: '1px rgb(221, 227, 234) solid',
+                borderRadius: '8px',
+                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+                marginRight: '4px',
+                marginLeft: '4px',
+              }}>
+              <div
+                className="tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
+                data-testid="service-card">
+                <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                  <div>
+                    <Link to={getServiceDetailsPath(service.name, serviceName)}>
+                      <button>
+                        <h6
+                          className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                          data-testid={`service-name-${getEntityName(
+                            service as EntityReference
+                          )}`}
+                          title={getEntityName(service as EntityReference)}>
+                          {getEntityName(service as EntityReference)}
+                        </h6>
+                      </button>
+                    </Link>
+                    <div
+                      className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                      data-testid="service-description">
+                      {service.description ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={false}
+                          markdown={service.description}
+                        />
+                      ) : (
+                        <span className="tw-no-description">
+                          No description
+                        </span>
+                      )}
+                    </div>
+                    {getOptionalFields(service)}
                   </div>
-                  {getOptionalFields(service)}
+                  <div className="" data-testid="service-type">
+                    <label className="tw-mb-0">Type:</label>
+                    <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                      {service.serviceType}
+                    </span>
+                  </div>
                 </div>
-                <div className="" data-testid="service-type">
-                  <label className="tw-mb-0">Type:</label>
-                  <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                    {service.serviceType}
-                  </span>
+                <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                  <div
+                    className="tw-flex tw-justify-end"
+                    data-testid="service-icon">
+                    {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                  </div>
                 </div>
               </div>
-              <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                <div
-                  className="tw-flex tw-justify-end"
-                  data-testid="service-icon">
-                  {getServiceLogo(service.serviceType || '', 'tw-h-8')}
-                </div>
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
       </Fragment>
@@ -502,10 +513,7 @@ const ServicesPage = () => {
       <ErrorPlaceHolder>{errorMessage}</ErrorPlaceHolder>
     ) : (
       <PageLayout leftPanel={fetchLeftPanel()}>
-        <div
-          className="tw-bg-white"
-          data-testid="services-container"
-          style={{ padding: '14px' }}>
+        <div data-testid="services-container" style={{ padding: '14px' }}>
           {getServiceList()}
 
           {getPagination()}
