@@ -93,6 +93,13 @@ class DatalakeClient:
         self.config = config
 
 
+@dataclass
 class AirByteClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class ModeClient:
     def __init__(self, client) -> None:
         self.client = client

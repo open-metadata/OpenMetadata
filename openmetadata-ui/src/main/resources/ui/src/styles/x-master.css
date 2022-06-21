@@ -1171,3 +1171,54 @@ code {
 }
 
 /* Task Detail Side CSS */
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #07a35a;
+}
+
+.data-box.Failed {
+  background-color: #e54937;
+}
+
+.data-box.Pending {
+  background-color: #276ef1;
+}
+
+.data-box.Successful.selected,
+.data-box.Failed.selected,
+.data-box.Pending.selected {
+  background-color: #7147e8;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful {
+  border-color: #07a35a;
+}
+
+.leaf-node.Failed {
+  border-color: #e54937;
+}
+
+.leaf-node.Pending {
+  border-color: #276ef1;
+}

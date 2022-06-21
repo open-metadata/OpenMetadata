@@ -89,6 +89,9 @@ const AddIngestion = ({
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
   );
+  const [ingestSampleData, setIngestSampleData] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
+  );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
@@ -408,6 +411,7 @@ const AddIngestion = ({
             topicFilterPattern,
             showTopicFilter
           ),
+          generateSampleData: ingestSampleData,
           type: ConfigType.MessagingMetadata,
         };
       }
@@ -608,6 +612,7 @@ const AddIngestion = ({
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
+            handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
             handleMarkDeletedTables={() => setMarkDeletedTables((pre) => !pre)}
             handleQueryLogDuration={(val) => setQueryLogDuration(val)}
@@ -616,6 +621,7 @@ const AddIngestion = ({
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeLineage={includeLineage}
             includeView={includeView}
+            ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
             pipelineFilterPattern={pipelineFilterPattern}

@@ -84,6 +84,12 @@ const AddIngestionPage = withSuspenseFallback(
 const AddServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/AddServicePage/AddServicePage.component'))
 );
+const EditConnectionFormPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/EditConnectionFormPage/EditConnectionFormPage.component')
+  )
+);
 const AddWebhookPage = withSuspenseFallback(
   React.lazy(() => import('../pages/AddWebhookPage/AddWebhookPage.component'))
 );
@@ -171,6 +177,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
+      />
+      <Route
+        exact
+        component={EditConnectionFormPage}
+        path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />

@@ -42,6 +42,7 @@ const ConfigureIngestion = ({
   serviceCategory,
   pipelineType,
   showDatabaseFilter,
+  ingestSampleData,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
@@ -62,6 +63,7 @@ const ConfigureIngestion = ({
   handleIncludeLineage,
   handleIncludeView,
   handleMarkDeletedTables,
+  handleIngestSampleData,
   handleQueryLogDuration,
   handleStageFileLocation,
   handleResultLimit,
@@ -69,6 +71,27 @@ const ConfigureIngestion = ({
   onNext,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
+
+  const getIngestSampleToggle = () => {
+    return (
+      <>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>Ingest Sample Data</label>
+            <ToggleSwitchV1
+              checked={ingestSampleData}
+              handleCheck={handleIngestSampleData}
+              testId="ingest-sample-data"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            Extract sample data from each topic
+          </p>
+        </Field>
+        {getSeparator('')}
+      </>
+    );
+  };
 
   const getDebugLogToggle = () => {
     return (
@@ -244,6 +267,7 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.TOPIC}
             />
             {getSeparator('')}
+            {getIngestSampleToggle()}
             {getDebugLogToggle()}
           </Fragment>
         );

@@ -36,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
+    ModeConnection,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -93,6 +96,7 @@ from metadata.utils.connection_clients import (
     KafkaClient,
     LookerClient,
     MetabaseClient,
+    ModeClient,
     PowerBiClient,
     RedashClient,
     SalesforceClient,
@@ -676,3 +680,20 @@ def _(config: GCSConfig):
     set_google_credentials(gcs_credentials=config.securityConfig)
     gcs_client = storage.Client()
     return gcs_client
+
+
+@get_connection.register
+def _(connection: ModeConnection, verbose: bool = False):
+    from metadata.utils.mode_client import ModeApiClient
+
+    return ModeClient(ModeApiClient(connection))
+
+
+@test_connection.register
+def _(connection: ModeClient) -> None:
+    try:
+        connection.client.get_user_account()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )

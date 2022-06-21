@@ -192,7 +192,7 @@ describe('MyData page should work', () => {
     });
   });
 
-  it('My data and following section, CTA should work properly', () => {
+  it.skip('My data and following section, CTA should work properly', () => {
     const totalCount =
       tables.length + pipelines.length + dashboards.length + topics.length;
 

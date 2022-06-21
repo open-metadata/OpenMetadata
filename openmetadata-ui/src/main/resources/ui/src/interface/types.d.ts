@@ -609,4 +609,8 @@ declare module 'Models' {
     added: boolean;
     value: string;
   }
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
+  }
 }

@@ -38,6 +38,7 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 });
 
 const TasksDAGViewProps = {
+  selectedExec: {},
   tasks: [
     {
       name: 'task1',
