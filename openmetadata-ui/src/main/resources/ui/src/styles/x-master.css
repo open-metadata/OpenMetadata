@@ -32,6 +32,10 @@ a:focus {
   margin: 0;
 }
 
+pre {
+  font-family: 'Inter', sans-serif;
+}
+
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,

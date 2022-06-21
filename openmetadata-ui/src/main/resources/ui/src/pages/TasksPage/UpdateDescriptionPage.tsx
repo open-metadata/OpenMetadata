@@ -11,21 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Tabs } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize, isEqual, isNil, uniqueId } from 'lodash';
-import { Diff, EditorContentRef, EntityTags } from 'Models';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { capitalize, isNil } from 'lodash';
+import { EntityTags } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -43,104 +36,13 @@ import {
 import { defaultFields as tableFields } from '../../utils/DatasetDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import {
-  fetchOptions,
-  getColumnObject,
-  getDescriptionDiff,
-} from '../../utils/TasksUtils';
+import { fetchOptions, getColumnObject } from '../../utils/TasksUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
+import { DescriptionTabs } from './DescriptionTabs';
 import { cardStyles } from './TaskPage.styles';
 import TaskPageLayout from './TaskPageLayout';
 import { EntityData, Option } from './TasksPage.interface';
-
-export const DescriptionTabs = ({
-  description,
-  suggestion,
-}: {
-  description: string;
-  suggestion: string;
-}) => {
-  const { TabPane } = Tabs;
-  const markdownRef = useRef<EditorContentRef>();
-
-  const [diffs, setDiffs] = useState<Diff[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('3');
-
-  const onChange = (key: string) => {
-    setActiveTab(key);
-    if (isEqual(key, '2')) {
-      const newDescription = markdownRef.current?.getEditorContent();
-      if (newDescription) {
-        setDiffs(getDescriptionDiff(description, newDescription));
-      }
-    }
-  };
-
-  const DiffView = ({ diffArr }: { diffArr: Diff[] }) => {
-    const elements = diffArr.map((diff) => {
-      if (diff.added) {
-        return (
-          <ins className="diff-added" key={uniqueId()}>
-            {diff.value}
-          </ins>
-        );
-      }
-      if (diff.removed) {
-        return (
-          <del
-            key={uniqueId()}
-            style={{ color: '#b30000', background: '#fadad7' }}>
-            {diff.value}
-          </del>
-        );
-      }
-
-      return <div key={uniqueId()}>{diff.value}</div>;
-    });
-
-    return (
-      <div className="tw-w-full tw-border tw-border-main tw-p-2 tw-rounded tw-my-3 tw-max-h-52 tw-overflow-y-auto">
-        <pre className="tw-whitespace-pre-wrap">
-          {diffArr.length ? (
-            elements
-          ) : (
-            <span className="tw-text-grey-muted">No diff available</span>
-          )}
-        </pre>
-      </div>
-    );
-  };
-
-  return (
-    <Tabs
-      activeKey={activeTab}
-      className="ant-tabs-description"
-      size="small"
-      type="card"
-      onChange={onChange}>
-      <TabPane key="1" tab="Current">
-        <RichTextEditor
-          readonly
-          className="tw-my-0"
-          height="208px"
-          initialValue={description}
-        />
-      </TabPane>
-      <TabPane key="2" tab="Diff">
-        <DiffView diffArr={diffs} />
-      </TabPane>
-      <TabPane key="3" tab="New">
-        <RichTextEditor
-          className="tw-my-0"
-          height="208px"
-          initialValue={suggestion}
-          ref={markdownRef}
-        />
-      </TabPane>
-    </Tabs>
-  );
-};
 
 const UpdateDescription = () => {
   const location = useLocation();

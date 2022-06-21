@@ -49,9 +49,9 @@ import { fetchOptions } from '../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
+import { DescriptionTabs } from './DescriptionTabs';
 import { background, cardStyles, contentStyles } from './TaskPage.styles';
 import { EntityData, Option } from './TasksPage.interface';
-import { DescriptionTabs } from './UpdateDescriptionPage';
 
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
@@ -289,10 +289,12 @@ const TaskDetailPage = () => {
 
           <div data-testid="task-description-tabs">
             <span>Description:</span>{' '}
-            <DescriptionTabs
-              description={entityData.description || ''}
-              suggestion={taskDetail.task?.suggestion || ''}
-            />
+            {!isEmpty(taskDetail) && (
+              <DescriptionTabs
+                description={entityData.description || ''}
+                suggestion={taskDetail.task?.suggestion || ''}
+              />
+            )}
           </div>
 
           <div
