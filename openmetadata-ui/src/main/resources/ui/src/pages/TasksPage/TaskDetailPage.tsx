@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isEmpty, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getFeedById, getTask, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -203,6 +203,25 @@ const TaskDetailPage = () => {
     return;
   };
 
+  const TaskStatusElement = ({ status }: { status: TaskStatus }) => {
+    return (
+      <Fragment>
+        <span
+          className={classNames(
+            'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
+            {
+              'tw-bg-green-500': status === TaskStatus.Open,
+            },
+            {
+              'tw-bg-red-500': status === TaskStatus.Closed,
+            }
+          )}
+        />
+        <span className="tw-ml-1">{status}</span>
+      </Fragment>
+    );
+  };
+
   return (
     <Layout style={{ ...background, height: '100vh' }}>
       <Content style={{ ...contentStyles, overflowY: 'auto' }}>
@@ -240,10 +259,11 @@ const TaskDetailPage = () => {
           {entityTags}
         </p>
         <Card key="task-details" style={{ ...cardStyles, marginTop: '16px' }}>
-          <h6>
+          <h6 data-testid="task-title">
             {`#${taskId}`} {taskDetail.message}
           </h6>
-          <div data-testid="assignees">
+
+          <div data-testid="task-assignees">
             <span className="tw-text-grey-muted">Assignees:</span>{' '}
             <Assignees
               assignees={assignees}
@@ -252,21 +272,9 @@ const TaskDetailPage = () => {
               onSearch={onSearch}
             />
           </div>
-          <p>
-            <span
-              className={classNames(
-                'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
-                {
-                  'tw-bg-green-500':
-                    taskDetail.task?.status === TaskStatus.Open,
-                },
-                {
-                  'tw-bg-red-500':
-                    taskDetail.task?.status === TaskStatus.Closed,
-                }
-              )}
-            />
-            <span className="tw-ml-1">{taskDetail.task?.status}</span>
+
+          <p data-testid="task-metadata">
+            <TaskStatusElement status={taskDetail.task?.status as TaskStatus} />
             <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
               |
             </span>
@@ -278,14 +286,18 @@ const TaskDetailPage = () => {
               {toLower(getDayTimeByTimeStamp(taskDetail.threadTs as number))}
             </span>
           </p>
-          <div data-testid="description-tabs">
+
+          <div data-testid="task-description-tabs">
             <span>Description:</span>{' '}
             <DescriptionTabs
               description={entityData.description || ''}
               suggestion={taskDetail.task?.suggestion || ''}
             />
           </div>
-          <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
+
+          <div
+            className="tw-flex tw-justify-end"
+            data-testid="task-cta-buttons">
             <Button className="ant-btn-link-custom" type="link">
               Reject
             </Button>
@@ -295,7 +307,11 @@ const TaskDetailPage = () => {
           </div>
         </Card>
       </Content>
-      <Sider className="ant-layout-sider-task-detail" width={600}>
+
+      <Sider
+        className="ant-layout-sider-task-detail"
+        data-testid="task-right-sider"
+        width={600}>
         <Tabs className="ant-tabs-task-detail">
           <TabPane key="1" tab="Task">
             {!isEmpty(taskFeedDetail) ? (
@@ -315,6 +331,7 @@ const TaskDetailPage = () => {
               </div>
             ) : null}
           </TabPane>
+
           <TabPane key="2" tab="Conversations">
             {!isEmpty(taskFeedDetail) ? (
               <ActivityThreadPanelBody
