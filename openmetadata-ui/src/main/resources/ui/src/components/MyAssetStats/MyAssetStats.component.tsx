@@ -118,6 +118,7 @@ const MyAssetStats: FunctionComponent<Props> = ({
   return (
     <Card
       data-testid="data-summary-container"
+      id="assetStatsCount"
       style={{
         border: '1px rgb(221, 227, 234) solid',
         borderRadius: '8px',
