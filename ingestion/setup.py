@@ -102,7 +102,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser==0.0.2",
     },
     "kafka": {
-        "confluent_kafka>=1.5.0",
+        "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         "avro-python3",
         "confluent_avro",
