@@ -10,7 +10,7 @@
     "mlModelServiceType": {
       "description": "Type of MlModel service",
       "type": "string",
-      "enum": ["Mlflow"],
+      "enum": ["Mlflow", "Sklearn"],
       "javaEnums": [
         {
           "name": "Mlflow"
