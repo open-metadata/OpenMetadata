@@ -8,8 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
+import os
 from datetime import datetime
 from typing import List, Optional
 
@@ -271,4 +271,5 @@ class MetadataUsageBulkSink(BulkSink):
 
     def close(self):
         self.file_handler.close()
+        os.remove(self.config.filename)
         self.metadata.close()
