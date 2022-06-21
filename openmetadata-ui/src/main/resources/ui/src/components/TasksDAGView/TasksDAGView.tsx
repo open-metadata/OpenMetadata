@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Edge,
@@ -19,16 +20,19 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'react-flow-renderer';
-import { Task } from '../../generated/entity/data/pipeline';
+import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElementsV1, onLoad } from '../../utils/EntityLineageUtils';
+import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
+import TaskNode from './TaskNode';
 
 export interface Props {
   tasks: Task[];
+  selectedExec?: PipelineStatus;
 }
 
-const TasksDAGView = ({ tasks }: Props) => {
+const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   const [nodesData, setNodesData, onNodesChange] = useNodesState([]);
   const [edgesData, setEdgesData, onEdgesChange] = useEdgesState([]);
 
@@ -43,6 +47,15 @@ const TasksDAGView = ({ tasks }: Props) => {
     [tasks]
   );
 
+  const nodeTypes = useMemo(
+    () => ({
+      output: TaskNode,
+      input: TaskNode,
+      default: TaskNode,
+    }),
+    []
+  );
+
   const nodes: Node[] = useMemo(() => {
     const posY = 0;
     let posX = 0;
@@ -50,16 +63,22 @@ const TasksDAGView = ({ tasks }: Props) => {
 
     return tasks.map((task, index) => {
       posX += deltaX;
+      const taskStatus = getTaskExecStatus(
+        task.name,
+        selectedExec?.taskStatus || []
+      );
 
       return {
-        className: 'leaf-node',
+        className: classNames('leaf-node', taskStatus),
         id: replaceSpaceWith_(task.name),
         type: getNodeType(index),
-        data: { label: getEntityName(task as EntityReference) },
+        data: {
+          label: getEntityName(task as EntityReference),
+        },
         position: { x: posX, y: posY },
       };
     });
-  }, [tasks]);
+  }, [tasks, selectedExec]);
 
   const edges: Edge[] = useMemo(() => {
     return tasks.reduce((prev, task) => {
@@ -72,7 +91,7 @@ const TasksDAGView = ({ tasks }: Props) => {
             type: MarkerType.ArrowClosed,
           },
           id: `${src}-${dest}`,
-          type: 'straight',
+          type: 'custom',
           source: src,
           target: dest,
           label: '',
@@ -98,6 +117,7 @@ const TasksDAGView = ({ tasks }: Props) => {
       edges={edgesData}
       maxZoom={2}
       minZoom={0.5}
+      nodeTypes={nodeTypes}
       nodes={nodesData}
       selectNodesOnDrag={false}
       zoomOnDoubleClick={false}
