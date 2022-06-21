@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
+    DataType,
     Table,
     TableData,
     TableType,
@@ -62,6 +63,8 @@ from metadata.utils.s3_utils import (
 )
 
 logger = ingestion_logger()
+
+DATALAKE_INT_TYPES = {"int64", "INT"}
 
 
 class DatalakeSource(Source[Entity]):
@@ -260,13 +263,14 @@ class DatalakeSource(Source[Entity]):
         for column in df_columns:
             try:
 
-                if hasattr(df[column], "dtypes"):
+                if (
+                    hasattr(df[column], "dtypes")
+                    and df[column].dtypes.name in DATALAKE_INT_TYPES
+                ):
                     if df[column].dtypes.name == "int64":
-                        data_type = "INT"
-                    if df[column].dtypes.name == "object":
-                        data_type = "INT"
+                        data_type = DataType.INT.value
                 else:
-                    data_type = "STRING"
+                    data_type = DataType.STRING.value
                 parsed_string = {}
                 parsed_string["dataTypeDisplay"] = data_type
                 parsed_string["dataType"] = data_type
