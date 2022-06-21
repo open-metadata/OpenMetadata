@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
 import logging
+import shutil
 import traceback
 from datetime import datetime
 
@@ -672,4 +672,5 @@ class MigrateBulkSink(BulkSink):
         return self.status
 
     def close(self):
+        shutil.rmtree(self.config.dirPath)
         self.metadata.close()
