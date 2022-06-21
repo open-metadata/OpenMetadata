@@ -12,7 +12,6 @@
 Snowflake usage module
 """
 
-from datetime import timedelta
 from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -34,6 +33,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 # This import verifies that the dependencies are available.
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
@@ -57,7 +57,11 @@ class SnowflakeUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.end = self.end + timedelta(days=1)
+
+        # Snowflake does not allow retrieval of data older than 7 days
+        duration = min(self.source_config.queryLogDuration, 7)
+        self.start, self.end = get_start_and_end(duration)
+
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
             start_date=self.start,
             end_date=self.end,
@@ -67,7 +71,7 @@ class SnowflakeUsageSource(UsageSource):
         self._database = "Snowflake"
 
     @classmethod
-    def create(cls, config_dict, metadata_config: WorkflowConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
@@ -98,7 +102,7 @@ class SnowflakeUsageSource(UsageSource):
                         endTime=str(row["end_time"]),
                         analysisDate=self.analysis_date,
                         aborted=self.get_aborted_status(row),
-                        database=self.get_database_name(row),
+                        databaseName=self.get_database_name(row),
                         serviceName=self.config.serviceName,
                         databaseSchema=row["schema_name"],
                     )

@@ -126,7 +126,7 @@ def _(
     table_name: str,
     retries: int = 3,
     fetch_multiple_entities: bool = False,
-) -> Optional[str]:
+) -> Union[Optional[str], Optional[List[str]]]:
     """
     Building logic for tables
     :param metadata: OMeta client
@@ -143,14 +143,14 @@ def _(
         )
 
     if not database_name or not schema_name:
-        es_result = metadata.es_search_from_service(
+
+        fqn_search_string = _build(
+            service_name, database_name or "*", schema_name or "*", table_name
+        )
+
+        es_result = metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=service_name,
-            filters={
-                "database": database_name,
-                "database_schema": schema_name,
-                "name": table_name,
-            },
+            fqn_search_string=fqn_search_string,
             retries=retries,
         )
         entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
