@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
-import { ExtraInfo, ServicesData } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -31,6 +31,7 @@ import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
+import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -43,7 +44,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
-import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
@@ -74,7 +75,10 @@ import {
   pluralize,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
   getServiceCategoryFromType,
@@ -115,6 +119,7 @@ const ServicePage: FunctionComponent = () => {
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+  const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -333,43 +338,6 @@ const ServicePage: FunctionComponent = () => {
           reject();
         });
     }).finally(() => setIsloading(false));
-  };
-
-  const handleConfigUpdate = (updatedData: ConfigData) => {
-    const configData = {
-      name: serviceDetails?.name,
-      serviceType: serviceDetails?.serviceType,
-      description: serviceDetails?.description,
-      owner: serviceDetails?.owner,
-      connection: {
-        config: updatedData,
-      },
-    };
-
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id, configData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setServiceDetails({
-              ...res.data,
-              owner: res.data?.owner ?? serviceDetails?.owner,
-            });
-          } else {
-            showErrorToast(
-              `${jsonData['api-error-messages']['update-service-config-error']}`
-            );
-          }
-
-          resolve();
-        })
-        .catch((error: AxiosError) => {
-          reject();
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-service-config-error']}`
-          );
-        });
-    });
   };
 
   const fetchDatabases = (paging?: string) => {
@@ -675,6 +643,7 @@ const ServicePage: FunctionComponent = () => {
         if (resService.data) {
           const { description, serviceType } = resService.data;
           setServiceDetails(resService.data);
+          setConnectionDetails(resService.data.connection.config);
           setDescription(description);
           setSlashedTableName([
             {
@@ -850,6 +819,14 @@ const ServicePage: FunctionComponent = () => {
     }
   }, [tab]);
 
+  const goToEditConnection = () => {
+    history.push(getEditConnectionPath(serviceName || '', serviceFQN || ''));
+  };
+
+  const handleEditConnection = () => {
+    goToEditConnection();
+  };
+
   return (
     <>
       {isLoading ? (
@@ -977,12 +954,29 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 2 && getIngestionTab()}
 
                 {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
-                  <ServiceConfig
-                    data={serviceDetails as ServicesData}
-                    handleUpdate={handleConfigUpdate}
-                    serviceCategory={serviceName as ServiceCategory}
-                    serviceType={serviceDetails?.serviceType || ''}
-                  />
+                  <>
+                    <div className="tw-my-4 tw-flex tw-justify-end">
+                      <Button
+                        className={classNames(
+                          'tw-h-8 tw-rounded tw-px-4 tw-py-1',
+                          {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          }
+                        )}
+                        data-testid="add-new-service-button"
+                        size="small"
+                        theme="primary"
+                        variant="outlined"
+                        onClick={handleEditConnection}>
+                        Edit Connection
+                      </Button>
+                    </div>
+                    <ServiceConnectionDetails
+                      connectionDetails={connectionDetails as ConfigData}
+                      serviceCategory={serviceCategory}
+                      serviceFQN={serviceDetails?.serviceType || ''}
+                    />
+                  </>
                 )}
 
                 {activeTab === 4 && (
