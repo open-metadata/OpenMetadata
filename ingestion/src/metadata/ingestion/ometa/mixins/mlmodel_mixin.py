@@ -22,17 +22,25 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlModel,
 )
-from metadata.generated.schema.entity.services.connections.mlmodel.sklearnConnection import SklearnConnection
-from metadata.generated.schema.entity.services.mlmodelService import MlModelConnection, MlModelService
-from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline import MlModelServiceMetadataPipeline
+from metadata.generated.schema.entity.services.connections.mlmodel.sklearnConnection import (
+    SklearnConnection,
+)
+from metadata.generated.schema.entity.services.mlmodelService import (
+    MlModelConnection,
+    MlModelService,
+)
+from metadata.generated.schema.metadataIngestion.mlmodelServiceMetadataPipeline import (
+    MlModelServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 from metadata.ingestion.ometa.utils import format_name, ometa_logger
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource, SourceConfig,
-)
 
 logger = ometa_logger()
 
@@ -83,7 +91,11 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         return mlmodel_lineage
 
     def get_mlmodel_sklearn(
-        self, name: str, model, description: Optional[str] = None, service_name: str = "scikit-learn"
+        self,
+        name: str,
+        model,
+        description: Optional[str] = None,
+        service_name: str = "scikit-learn",
     ) -> CreateMlModelRequest:
         """
         Get an MlModel Entity instance from a scikit-learn model.
@@ -115,15 +127,13 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         source_config = WorkflowSource(
             type="sklearn",
             serviceName=service_name,
-            serviceConnection=MlModelConnection(
-                config=SklearnConnection()
-            ),
-            sourceConfig=SourceConfig(
-                config=MlModelServiceMetadataPipeline()
-            )
+            serviceConnection=MlModelConnection(config=SklearnConnection()),
+            sourceConfig=SourceConfig(config=MlModelServiceMetadataPipeline()),
         )
 
-        service = self.get_service_or_create(entity=MlModelService, config=source_config)
+        service = self.get_service_or_create(
+            entity=MlModelService, config=source_config
+        )
 
         return CreateMlModelRequest(
             name=name,
@@ -140,7 +150,5 @@ class OMetaMlModelMixin(OMetaLineageMixin):
                 )
                 for key, value in model.get_params().items()
             ],
-            service=EntityReference(
-                id=service.id, type="mlmodelService"
-            ),
+            service=EntityReference(id=service.id, type="mlmodelService"),
         )
