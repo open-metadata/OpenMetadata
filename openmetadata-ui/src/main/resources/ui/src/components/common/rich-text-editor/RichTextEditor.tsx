@@ -77,7 +77,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
           <div data-testid="editor">
             <Editor
               extendedAutolinks={extendedAutolinks}
-              height={height}
+              height={height ?? '280px'}
               hideModeSwitch={hideModeSwitch}
               initialEditType={editorType}
               initialValue={editorValue}
