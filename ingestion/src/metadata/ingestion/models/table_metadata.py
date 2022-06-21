@@ -156,11 +156,13 @@ class MlModelESDocument(BaseModel):
     ml_model_id: str
     deleted: bool
     entity_type: str = "mlmodel"
+    service: ESEntityReference
     name: str
     suggest: List[dict]
     service_suggest: List[dict] = None
     description: Optional[str] = None
     last_updated_timestamp: Optional[int]
+    service_suggest: List[dict]
     algorithm: str
     ml_features: List[str]
     ml_hyper_parameters: List[str]

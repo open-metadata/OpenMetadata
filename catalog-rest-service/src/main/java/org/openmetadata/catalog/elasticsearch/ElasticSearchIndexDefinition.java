@@ -930,6 +930,7 @@ class MlModelESIndex extends ElasticSearchIndex {
     List<ElasticSearchSuggest> suggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(mlModel.getDisplayName()).weight(10).build());
+    List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
 
     if (mlModel.getTags() != null) {
       mlModel.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
@@ -976,6 +977,13 @@ class MlModelESIndex extends ElasticSearchIndex {
 
     if (mlModel.getOwner() != null) {
       mlModelESIndexBuilder.owner(mlModel.getOwner());
+    }
+
+    if (mlModel.getService() != null) {
+      mlModelESIndexBuilder.service(mlModel.getService());
+      mlModelESIndexBuilder.serviceType(mlModel.getServiceType().toString());
+      serviceSuggest.add(ElasticSearchSuggest.builder().input(mlModel.getService().getName()).weight(5).build());
+      mlModelESIndexBuilder.serviceSuggest(serviceSuggest);
     }
     return mlModelESIndexBuilder;
   }

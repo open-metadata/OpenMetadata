@@ -18,9 +18,9 @@ import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
-  id: 'b2374223-3725-4b05-abe7-d51566e5c317',
+  id: '1b561c2d-f449-4640-b893-94077cf1c35b',
   name: 'eta_predictions',
-  fullyQualifiedName: 'eta_predictions',
+  fullyQualifiedName: 'mlflow_svc.eta_predictions',
   displayName: 'ETA Predictions',
   description: 'ETA Predictions Model',
   algorithm: 'Neural Network',
@@ -29,19 +29,18 @@ const mockData = {
       name: 'sales',
       dataType: 'numerical',
       description: 'Sales amount',
-      fullyQualifiedName: 'eta_predictions.sales',
+      fullyQualifiedName: 'mlflow_svc.eta_predictions.sales',
       featureSources: [
         {
           name: 'gross_sales',
           dataType: 'integer',
           fullyQualifiedName: 'null.gross_sales',
           dataSource: {
-            id: '848ab847-6346-45d4-b8ee-838f72cf80af',
+            id: '1cad4f03-b4a9-4d26-b01e-1a2a17166a07',
             type: 'table',
             name: 'sample_data.ecommerce_db.shopify.fact_sale',
-            description:
-              'The fact table captures the value of products sold or returned.',
-            href: 'http://localhost:8585/api/v1/tables/848ab847-6346-45d4-b8ee-838f72cf80af',
+            description: '',
+            href: 'http://localhost:8585/api/v1/tables/1cad4f03-b4a9-4d26-b01e-1a2a17166a07',
           },
         },
       ],
@@ -50,19 +49,18 @@ const mockData = {
       name: 'persona',
       dataType: 'categorical',
       description: 'type of buyer',
-      fullyQualifiedName: 'eta_predictions.persona',
+      fullyQualifiedName: 'mlflow_svc.eta_predictions.persona',
       featureSources: [
         {
           name: 'membership',
           dataType: 'string',
           fullyQualifiedName: 'null.membership',
           dataSource: {
-            id: '682eeaf6-87b1-4cd1-8373-8720ca180932',
+            id: '534a2b21-24e6-4bd3-970e-d0944f66faee',
             type: 'table',
             name: 'sample_data.ecommerce_db.shopify.raw_customer',
-            description:
-              'This is a raw customers table as represented in our online DB. This contains personal.',
-            href: 'http://localhost:8585/api/v1/tables/682eeaf6-87b1-4cd1-8373-8720ca180932',
+            description: '',
+            href: 'http://localhost:8585/api/v1/tables/534a2b21-24e6-4bd3-970e-d0944f66faee',
           },
         },
         {
@@ -70,12 +68,11 @@ const mockData = {
           dataType: 'string',
           fullyQualifiedName: 'null.platform',
           dataSource: {
-            id: '682eeaf6-87b1-4cd1-8373-8720ca180932',
+            id: '534a2b21-24e6-4bd3-970e-d0944f66faee',
             type: 'table',
             name: 'sample_data.ecommerce_db.shopify.raw_customer',
-            description:
-              'This is a raw customers table as represented in our online DB.',
-            href: 'http://localhost:8585/api/v1/tables/682eeaf6-87b1-4cd1-8373-8720ca180932',
+            description: '',
+            href: 'http://localhost:8585/api/v1/tables/534a2b21-24e6-4bd3-970e-d0944f66faee',
           },
         },
       ],
@@ -94,26 +91,35 @@ const mockData = {
   ],
   target: 'ETA_time',
   dashboard: {
-    id: '3c20648f-373d-4ce4-8678-8058f06c6969',
+    id: '2323c1b1-1b0a-446a-946c-693339f49d71',
     type: 'dashboard',
     name: 'eta_predictions_performance',
     fullyQualifiedName: 'sample_superset.eta_predictions_performance',
     description: '',
     displayName: 'ETA Predictions Performance',
     deleted: false,
-    href: 'http://localhost:8585/api/v1/dashboards/3c20648f-373d-4ce4-8678-8058f06c6969',
+    href: 'http://localhost:8585/api/v1/dashboards/2323c1b1-1b0a-446a-946c-693339f49d71',
   },
   mlStore: {
     storage: 's3://path-to-pickle',
     imageRepository: 'https://docker.hub.com/image',
   },
   server: 'http://my-server.ai',
-  href: 'http://localhost:8585/api/v1/mlmodels/b2374223-3725-4b05-abe7-d51566e5c317',
+  href: 'http://localhost:8585/api/v1/mlmodels/1b561c2d-f449-4640-b893-94077cf1c35b',
   followers: [],
   tags: [],
   version: 0.1,
-  updatedAt: 1653370236642,
+  updatedAt: 1655795270330,
   updatedBy: 'anonymous',
+  service: {
+    id: '5a8ab96f-3508-4f7f-95a4-8919d509321c',
+    type: 'mlmodelService',
+    name: 'mlflow_svc',
+    fullyQualifiedName: 'mlflow_svc',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/services/mlmodelServices/5a8ab96f-3508-4f7f-95a4-8919d509321c',
+  },
+  serviceType: 'Mlflow',
   deleted: false,
 };
 
