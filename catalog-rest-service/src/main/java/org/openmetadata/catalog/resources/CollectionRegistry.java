@@ -32,7 +32,9 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.config.ConfigDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.resources.applicationConfig.AppConfigResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -143,6 +145,17 @@ public final class CollectionRegistry {
           LOG.info("Registering test resource {}", object);
           environment.jersey().register(object);
         });
+
+    // register appConfig Resources
+    try {
+      ConfigDAO configDAO = jdbi.onDemand(ConfigDAO.class);
+      Objects.requireNonNull(configDAO, "CollectionDAO must not be null");
+      AppConfigResource resource = new AppConfigResource(configDAO);
+      environment.jersey().register(resource);
+      LOG.info("Registered Application Configuration Resource");
+    } catch (Exception ex) {
+      LOG.warn("Failed to register Application Configuration Resource");
+    }
   }
 
   /** Get collection details based on annotations in Resource classes */

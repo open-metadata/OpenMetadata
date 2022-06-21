@@ -13,12 +13,14 @@ public interface ConfigDAO {
   CatalogConfigDAO getCatalogConfiguration();
 
   interface CatalogConfigDAO {
-    @SqlQuery("SELECT config_type, json FROM openmetadata_config_resource WHERE config_type = :configType")
-    String getConfigByType(@Bind("configType") String configType) throws StatementException;
-
     @SqlQuery("SELECT config_type, json FROM openmetadata_config_resource")
     @KeyColumn("config_type")
     @ValueColumn("json")
     Map<String, String> getAllConfig() throws StatementException;
+
+    @SqlQuery("SELECT config_type, json FROM openmetadata_config_resource WHERE config_type = :config_type")
+    @KeyColumn("config_type")
+    @ValueColumn("json")
+    Map<String, String> getConfigWithKey(@Bind("config_type") String config_type) throws StatementException;
   }
 }
