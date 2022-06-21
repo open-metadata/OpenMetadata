@@ -24,21 +24,11 @@
       "description": "Owner of this Policy.",
       "$ref": "../../type/entityReference.json"
     },
-    "policyUrl": {
-      "description": "Link to a well documented definition of this Policy.",
-      "type": "string",
-      "format": "uri"
-    },
     "policyType": {
       "$ref": "../../entity/policies/policy.json#/definitions/policyType"
     },
     "rules": {
       "$ref": "../../entity/policies/policy.json#/definitions/rules"
-    },
-    "enabled": {
-      "description": "Is the policy enabled.",
-      "type": "boolean",
-      "default": true
     },
     "location": {
       "description": "UUID of Location where this policy is applied",

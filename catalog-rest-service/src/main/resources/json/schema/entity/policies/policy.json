@@ -62,23 +62,12 @@
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "policyUrl": {
-      "description": "Link to a well documented definition of this Policy.",
-      "type": "string",
-      "format": "uri",
-      "default": null
-    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "policyType": {
       "$ref": "#/definitions/policyType"
-    },
-    "enabled": {
-      "description": "Is the policy enabled.",
-      "type": "boolean",
-      "default": true
     },
     "version": {
       "description": "Metadata version of the Policy.",
@@ -97,7 +86,7 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
     "rules": {
-      "description": "Rules that the policy has.",
+      "description": "Set of rules that the policy contains.",
       "$ref": "#/definitions/rules"
     },
     "location": {

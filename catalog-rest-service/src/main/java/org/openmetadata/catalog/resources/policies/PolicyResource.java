@@ -268,6 +268,47 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return dao.getVersion(id, version);
   }
 
+  @GET
+  @Path("/operations")
+  @Operation(
+      operationId = "getPolicyOperation",
+      summary = "Get operations to author a policy",
+      tags = "policies",
+      description = "Get all the operations used in policy authoring",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "policy",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Operation.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+      })
+  public List<org.openmetadata.catalog.entity.policies.accessControl.Operation> getOperations(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) throws IOException {
+    // TODO
+    return dao.getVersion(id, version);
+  }
+
+  @GET
+  @Path("/resources")
+  @Operation(
+      operationId = "getPolicyResources",
+      summary = "Get resources to author a policy policy",
+      tags = "policies",
+      description = "Get all the resources used in policy authoring",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+      })
+  public List<String> getResources(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    // TODO
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(
       operationId = "createPolicy",
@@ -366,11 +407,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   private Policy getPolicy(CreatePolicy create, String user) {
     Policy policy =
-        copy(new Policy(), create, user)
-            .withPolicyUrl(create.getPolicyUrl())
-            .withPolicyType(create.getPolicyType())
-            .withRules(create.getRules())
-            .withEnabled(create.getEnabled());
+        copy(new Policy(), create, user).withPolicyType(create.getPolicyType()).withRules(create.getRules());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }
