@@ -89,11 +89,13 @@ const Reactions = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="tw-ml-8 tw-mb-4">
+    <div className="tw-mt-2">
       <div className="tw-flex">
         {emojis}
         <Popover
+          align={{ targetOffset: [0, -10] }}
           content={reactionList}
+          overlayClassName="ant-popover-feed-reactions"
           placement="topLeft"
           trigger="click"
           visible={visible}

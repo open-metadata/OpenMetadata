@@ -14,17 +14,17 @@ Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
 
+from typing import Optional
+
 import sqlalchemy
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.registry import CustomTypes
-from metadata.utils import fqn
 
 Base = declarative_base()
 
@@ -68,7 +68,22 @@ _TYPE_MAP = {
 }
 
 
-def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
+    """Check whether column or table name are not uppercase for snowflake table.
+    If so, then force quoting, If not return None to let engine backend handle the logic.
+
+    Args:
+        table_or_col: a table or a column name
+    Return:
+        None or True
+    """
+    if table_service_type == databaseService.DatabaseServiceType.Snowflake:
+        return True if not str(table_or_col).isupper() else None
+
+    return None
+
+
+def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -84,6 +99,7 @@ def build_orm_col(idx: int, col: Column) -> sqlalchemy.Column:
         name=str(col.name.__root__),
         type_=_TYPE_MAP.get(col.dataType),
         primary_key=not bool(idx),  # The first col seen is used as PK
+        quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
     )
 
 
@@ -99,7 +115,7 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
     """
 
     cols = {
-        str(col.name.__root__): build_orm_col(idx, col)
+        str(col.name.__root__): build_orm_col(idx, col, table.serviceType)
         for idx, col in enumerate(table.columns)
     }
 
@@ -115,6 +131,9 @@ def ometa_to_orm(table: Table, metadata: OpenMetadata) -> DeclarativeMeta:
             "__table_args__": {
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
+                "quote": check_snowflake_case_sensitive(
+                    table.serviceType, table.name.__root__
+                ),
             },
             **cols,
         },
@@ -144,17 +163,5 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
     schema: DatabaseSchema = metadata.get_by_id(
         entity=DatabaseSchema, entity_id=table.databaseSchema.id
     )
-
-    service: DatabaseService = metadata.get_by_id(
-        entity=DatabaseService, entity_id=table.service.id
-    )
-
-    connection = service.connection.config
-
-    if hasattr(connection, "supportsDatabase"):
-        database: Database = metadata.get_by_id(
-            entity=Database, entity_id=table.database.id
-        )
-        return fqn._build(str(database.name.__root__), str(schema.name.__root__))
 
     return str(schema.name.__root__)

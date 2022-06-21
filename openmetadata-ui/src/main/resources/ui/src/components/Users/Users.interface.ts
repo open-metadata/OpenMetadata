@@ -14,6 +14,7 @@
 import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface Option {
   label: string;
@@ -42,4 +43,5 @@ export interface Props {
   fetchFeedHandler: (after?: string) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

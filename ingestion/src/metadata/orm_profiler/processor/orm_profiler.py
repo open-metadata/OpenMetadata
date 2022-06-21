@@ -18,7 +18,7 @@ and run the validations.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta, Session
 
@@ -27,6 +27,9 @@ from metadata.generated.schema.api.tests.createTableTest import CreateTableTestR
 from metadata.generated.schema.entity.data.table import Table, TableData, TableProfile
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.columnTest import ColumnTestCase
@@ -38,9 +41,14 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.orm.converter import ometa_to_orm
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.default import DefaultProfiler, get_default_metrics
+from metadata.orm_profiler.profiler.handle_partition import (
+    get_partition_cols,
+    is_partitioned,
+)
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.orm_profiler.validations.core import validate
 from metadata.orm_profiler.validations.models import TestDef
+from metadata.utils.helpers import get_start_and_end
 
 logger = logging.getLogger("ORM Profiler Workflow")
 
@@ -124,9 +132,49 @@ class OrmProfilerProcessor(Processor[Table]):
             if my_record_tests and my_record_tests.profile_sample:
                 return my_record_tests.profile_sample
 
-        return table.profileSample
+        return table.profileSample or 100.0
 
-    def build_profiler(self, orm: DeclarativeMeta, table: Table) -> Profiler:
+    def get_partition_details(
+        self,
+        orm: DeclarativeMeta,
+        table: Table,
+    ) -> Optional[Dict]:
+        """Get partition details for the profiler if working with
+        bigquery table
+
+        Args:
+            table: table entity
+        Returns:
+            None or Dict
+        """
+
+        if table.serviceType == DatabaseServiceType.BigQuery:
+            if is_partitioned(self.session, orm):
+                my_record_profile = (
+                    self.get_record_test_def(table)
+                    if self.config.test_suite
+                    else TestDef(table=table.fullyQualifiedName.__root__)
+                )
+                start, end = get_start_and_end(
+                    my_record_profile.partition_query_duration
+                )
+                partition_details = {
+                    "partition_field": my_record_profile.partition_field
+                    or get_partition_cols(self.session, orm),
+                    "partition_start": start,
+                    "partition_end": end,
+                    "partition_values": my_record_profile.partition_values,
+                }
+
+                return partition_details
+
+        return None
+
+    def build_profiler(
+        self,
+        orm: DeclarativeMeta,
+        table: Table,
+    ) -> Profiler:
         """
         Given a column from the entity, build the profiler.
 
@@ -142,6 +190,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 session=self.session,
                 table=orm,
                 profile_sample=profile_sample,
+                partition_details=self.get_partition_details(orm, table),
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
@@ -158,9 +207,14 @@ class OrmProfilerProcessor(Processor[Table]):
             profile_date=self.execution_date,
             profile_sample=profile_sample,
             timeout_seconds=self.config.profiler.timeout_seconds,
+            partition_details=self.get_partition_details(orm, table),
         )
 
-    def profile_entity(self, orm: DeclarativeMeta, table: Table) -> TableProfile:
+    def profile_entity(
+        self,
+        orm: DeclarativeMeta,
+        table: Table,
+    ) -> TableProfile:
         """
         Given a table, we will prepare the profiler for
         all its columns and return all the run profilers
@@ -282,7 +336,7 @@ class OrmProfilerProcessor(Processor[Table]):
             self.status.failure(msg)
             return TestCaseResult(
                 executionTime=self.execution_date.timestamp(),
-                status=TestCaseStatus.Aborted,
+                testCaseStatus=TestCaseStatus.Aborted,
                 result=msg,
             )
 
@@ -464,14 +518,25 @@ class OrmProfilerProcessor(Processor[Table]):
 
         return record_tests
 
-    def fetch_sample_data(self, orm: DeclarativeMeta) -> TableData:
+    def fetch_sample_data(
+        self,
+        orm: DeclarativeMeta,
+        table: Table,
+    ) -> TableData:
         """
         Fetch the table data from a real sample
         :param orm: SQA ORM table
         :return: TableData
         """
         try:
-            sampler = Sampler(session=self.session, table=orm)
+            sampler = Sampler(
+                session=self.session,
+                table=orm,
+                partition_details=self.get_partition_details(
+                    orm,
+                    table,
+                ),
+            )
             return sampler.fetch_sample_data()
         except Exception as err:
             logger.error(
@@ -479,7 +544,9 @@ class OrmProfilerProcessor(Processor[Table]):
             )
 
     def process(
-        self, record: Table, generate_sample_data: bool = True
+        self,
+        record: Table,
+        generate_sample_data: bool = True,
     ) -> ProfilerResponse:
         """
         Run the profiling and tests
@@ -503,7 +570,9 @@ class OrmProfilerProcessor(Processor[Table]):
         )
 
         sample_data = (
-            self.fetch_sample_data(orm=orm_table) if generate_sample_data else None
+            self.fetch_sample_data(orm=orm_table, table=record)
+            if generate_sample_data
+            else None
         )
 
         res = ProfilerResponse(
@@ -520,7 +589,6 @@ class OrmProfilerProcessor(Processor[Table]):
         Close all connections
         """
         self.metadata.close()
-        self.session.close()
 
     def get_status(self) -> OrmProfilerStatus:
         return self.status

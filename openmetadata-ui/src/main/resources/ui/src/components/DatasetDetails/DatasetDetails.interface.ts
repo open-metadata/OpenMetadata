@@ -39,6 +39,7 @@ import {
   DatasetTestModeType,
   ModifiedTableColumn,
 } from '../../interface/dataQuality.interface';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
@@ -110,4 +111,5 @@ export interface DatasetDetailsProps {
   deletePostHandler: (threadId: string, postId: string) => void;
   fetchFeedHandler: (after?: string) => void;
   handleExtentionUpdate: (updatedTable: Table) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

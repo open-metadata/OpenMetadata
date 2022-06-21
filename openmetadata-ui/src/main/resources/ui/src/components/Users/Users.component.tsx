@@ -81,6 +81,7 @@ const Users = ({
   isAdminUser,
   isLoggedinUser,
   isAuthDisabled,
+  updateThreadHandler,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(1);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -564,6 +565,7 @@ const Users = ({
             deletePostHandler={deletePostHandler}
             feedList={feedData}
             postFeedHandler={postFeedHandler}
+            updateThreadHandler={updateThreadHandler}
           />
         </div>
         <div

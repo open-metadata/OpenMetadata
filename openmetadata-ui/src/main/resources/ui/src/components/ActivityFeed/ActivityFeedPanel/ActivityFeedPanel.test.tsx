@@ -52,6 +52,7 @@ const mockFeedPanelProp = {
 
   postFeed: jest.fn(),
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../utils/FeedUtils', () => ({

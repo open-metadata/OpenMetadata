@@ -35,6 +35,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   className,
   postFeed,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
   const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -83,7 +84,8 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
           }
-        )}>
+        )}
+        id="feed-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
@@ -95,6 +97,7 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           deletePostHandler={deletePostHandler}
           isLoading={isLoading}
           threadData={threadData as Thread}
+          updateThreadHandler={updateThreadHandler}
           onConfirmation={onConfirmation}
         />
         <ActivityFeedEditor

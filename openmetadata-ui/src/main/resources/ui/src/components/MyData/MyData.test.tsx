@@ -342,6 +342,7 @@ const mockProp: MyDataProps = {
   paging: mockPaging,
   postFeedHandler: postFeed,
   userDetails: mockUserDetails as unknown as User,
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();

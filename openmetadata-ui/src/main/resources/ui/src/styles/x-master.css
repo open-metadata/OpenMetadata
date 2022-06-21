@@ -781,7 +781,7 @@ body .profiler-graph .recharts-active-dot circle {
 #left-panel {
   position: fixed;
   overflow-y: scroll;
-  width: 300px;
+  width: 304px;
   height: calc(100vh - 90px);
 }
 
@@ -819,7 +819,7 @@ body .profiler-graph .recharts-active-dot circle {
   position: relative;
 }
 .page-layout-container.l3-col {
-  grid-template-columns: 300px auto 300px;
+  grid-template-columns: 304px auto 304px;
 }
 .page-layout-container.l2-ltr-col {
   grid-template-columns: 350px auto auto;
@@ -968,7 +968,7 @@ code {
 }
 
 .ant-card-body {
-  padding: 12px;
+  padding: 14px;
 }
 
 .ant-card-head-title {
@@ -985,6 +985,7 @@ code {
 }
 
 .ant-card-head {
+  padding: 0 14px;
   font-size: 14px;
   min-height: 20px;
 }
@@ -992,7 +993,8 @@ code {
 .ant-card-extra {
   padding: 0px;
 }
-
+/* 
+*/
 /* Reaction CSS Start */
 .ant-btn-add-reactions:hover,
 .ant-btn-add-reactions:focus {
@@ -1004,7 +1006,7 @@ code {
 .ant-btn-popover-reaction {
   height: auto;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   background-color: transparent;
 }
@@ -1029,9 +1031,6 @@ code {
   background-color: #7147e860;
 }
 
-.ant-popover-inner-content {
-  padding: 8px;
-}
 /* Reaction CSS End */
 .ant-advaced-field-select {
   color: #7147e8;
@@ -1050,4 +1049,93 @@ code {
 
 .ant-select-single .ant-select-selector .ant-select-selection-search {
   left: 4px;
+}
+
+@media only screen and (max-width: 1440px) {
+  #left-panel {
+    width: 256px;
+  }
+
+  .page-layout-container.l3-col {
+    grid-template-columns: 256px auto 256px;
+  }
+}
+
+/* Description CSS */
+
+.description {
+  word-break: break-all;
+}
+
+/* Feed popover CSS start */
+
+.ant-popover-inner-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
+  display: none;
+}
+.ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
+  border-radius: 6px;
+  border: 1px solid #dde3ea;
+}
+
+/* Feed popover CSS end */
+
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #07a35a;
+}
+
+.data-box.Failed {
+  background-color: #e54937;
+}
+
+.data-box.Pending {
+  background-color: #276ef1;
+}
+
+.data-box.Successful.selected,
+.data-box.Failed.selected,
+.data-box.Pending.selected {
+  background-color: #7147e8;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful {
+  border-color: #07a35a;
+}
+
+.leaf-node.Failed {
+  border-color: #e54937;
+}
+
+.leaf-node.Pending {
+  border-color: #276ef1;
 }

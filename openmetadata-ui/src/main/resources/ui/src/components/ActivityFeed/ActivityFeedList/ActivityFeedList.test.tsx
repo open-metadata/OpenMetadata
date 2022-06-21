@@ -100,6 +100,7 @@ const mockFeedListProp = {
   postFeedHandler: jest.fn(),
   entityName: 'entity1',
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test FeedList Component', () => {

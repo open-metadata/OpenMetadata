@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, EntityTags } from 'Models';
@@ -56,7 +56,11 @@ import {
   getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -515,6 +519,15 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
       setActiveTab(getCurrentTopicTab(tab));
@@ -576,6 +589,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           topicFQN={topicFQN}
           topicTags={tags}
           unfollowTopicHandler={unfollowTopic}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion}
           versionHandler={versionHandler}
         />

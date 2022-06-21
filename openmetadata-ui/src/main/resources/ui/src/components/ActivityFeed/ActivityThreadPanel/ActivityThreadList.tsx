@@ -28,6 +28,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   onThreadIdSelect,
   onThreadSelect,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
@@ -78,19 +79,22 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         <ActivityFeedCard
                           isEntityFeed
                           isThread
-                          className="tw-mb-6"
                           entityLink={thread.about}
                           feed={mainFeed}
+                          updateThreadHandler={updateThreadHandler}
+                          onReply={() => onThreadSelect(thread.id)}
                         />
                       </div>
                       {postLength > 0 ? (
                         <div data-testid="replies-container">
                           {postLength > 1 ? (
-                            <div className="tw-mb-6">
-                              <div className="tw-ml-9 tw-flex tw-mb-6">
+                            <div className="tw-ml-9 tw-my-2">
+                              {Boolean(lastPost) && (
+                                <div className="tw-filter-seperator" />
+                              )}
+                              <div className="tw-flex tw-my-4">
                                 <FeedCardFooter
                                   isFooterVisible
-                                  className="tw--mt-4"
                                   lastReplyTimeStamp={lastPost?.postTs}
                                   repliedUsers={repliedUsers}
                                   replies={replies}
@@ -105,30 +109,16 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           <div data-testid="latest-reply">
                             <ActivityFeedCard
                               isEntityFeed
-                              className="tw-mb-6 tw-ml-9"
+                              className="tw-ml-9"
                               feed={lastPost as Post}
                               threadId={thread.id}
+                              updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}
+                              onReply={() => toggleReplyEditor(thread.id)}
                             />
                           </div>
-
-                          <p
-                            className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw-mt-4 tw-mb-2"
-                            data-testid="quick-reply-button"
-                            onClick={() => {
-                              toggleReplyEditor(thread.id);
-                            }}>
-                            Reply
-                          </p>
                         </div>
-                      ) : (
-                        <p
-                          className="link-text tw-text-xs tw-underline tw-ml-9 tw-mt-4 tw-mb-2"
-                          data-testid="main-message-reply-button"
-                          onClick={() => onThreadSelect(thread.id)}>
-                          Reply
-                        </p>
-                      )}
+                      ) : null}
                       {selectedThreadId === thread.id ? (
                         <div data-testid="quick-reply-editor">
                           <ActivityFeedEditor

@@ -310,8 +310,8 @@ describe('Glossary page should work properly', () => {
       .contains(term2)
       .should('be.visible');
   });
-  // Todo: remove skip once glossary term deletion bug is fixed
-  it.skip('Assets Tab should work properly', () => {
+
+  it('Assets Tab should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     goToAssetsTab(term);
@@ -334,7 +334,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.skip('Remove Glossary term from entity should work properly', () => {
+  it('Remove Glossary term from entity should work properly', () => {
     const term = NEW_GLOSSARY_TERMS.term_1.name;
     const entity = SEARCH_ENTITY_TABLE.table_3.term;
     // go assets tab
@@ -345,36 +345,36 @@ describe('Glossary page should work properly', () => {
       .click();
     cy.wait(500);
     // redirect to entity detail page
-    cy.get(
-      '[data-testid="tags-wrapper"] > [data-testid="tag-container"] > .tw-flex > .tw-ml-1 > [data-testid="image"]'
-    )
+    cy.get('[data-testid="entity-tags"]')
+      .find('[data-testid="edit-button"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get(':nth-child(1) > [data-testid="remove"]')
+    cy.get(':nth-child(1) > .css-xb97g8')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get(':nth-child(1) > [data-testid="remove"]')
+    cy.get(':nth-child(1) > .css-xb97g8')
       .scrollIntoView()
       .should('be.visible')
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
 
     cy.get(
-      '[data-testid="tag-container"] > .tw-flex > .tw-opacity-0 > [data-testid="image"]'
+      ':nth-child(1) > :nth-child(5) > [data-testid="tags-wrapper"] > :nth-child(1) > :nth-child(1) > [data-testid="tag-container"] > div'
     )
       .scrollIntoView()
-      .should('exist')
-      .click();
-    cy.get(':nth-child(1) > [data-testid="remove"]')
-      .scrollIntoView()
-      .should('exist')
+      .should('be.visible')
       .click();
 
-    cy.get(':nth-child(1) > [data-testid="remove"]')
+    cy.get(':nth-child(1) > .css-xb97g8')
       .scrollIntoView()
-      .should('exist')
+      .should('be.visible')
+      .click();
+
+    cy.get(':nth-child(1) > .css-xb97g8')
+      .scrollIntoView()
+      .should('be.visible')
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get(

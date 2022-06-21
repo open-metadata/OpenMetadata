@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import traceback
+from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
@@ -35,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
+from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
+    ModeConnection,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
 )
@@ -52,6 +56,11 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    GCSConfig,
+    S3Config,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
@@ -71,14 +80,23 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
+    AirbyteConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
+    AirByteClient,
+    DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
     GlueClient,
     KafkaClient,
     LookerClient,
     MetabaseClient,
+    ModeClient,
     PowerBiClient,
     RedashClient,
     SalesforceClient,
@@ -430,6 +448,43 @@ def _(connection: MetabaseClient) -> None:
         )
 
 
+@test_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        test_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        return get_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirbyteConnection, verbose: bool = False):
+    from metadata.utils.airbyte_client import AirbyteClient
+
+    return AirByteClient(AirbyteClient(connection))
+
+
+@test_connection.register
+def _(connection: AirByteClient) -> None:
+    try:
+        connection.client.list_workspaces()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
 @get_connection.register
 def _(connection: RedashConnection, verbose: bool = False):
 
@@ -561,6 +616,83 @@ def _(connection: LookerConnection, verbose: bool = False):
 def _(connection: LookerClient) -> None:
     try:
         connection.client.me()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: DatalakeClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        config = connection.config.configSource
+        if isinstance(config, GCSConfig):
+            if connection.config.bucketName:
+                connection.client.get_bucket(connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+        if isinstance(config, S3Config):
+            if connection.config.bucketName:
+                connection.client.list_objects(Bucket=connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+
+
+@singledispatch
+def get_datalake_client(config):
+    if config:
+        raise NotImplementedError(
+            f"Config not implemented for type {type(config)}: {config}"
+        )
+
+
+@get_connection.register
+def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+    datalake_connection = get_datalake_client(connection.configSource)
+    return DatalakeClient(client=datalake_connection, config=connection)
+
+
+@get_datalake_client.register
+def _(config: S3Config):
+    from metadata.utils.aws_client import AWSClient
+
+    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
+    return s3_client
+
+
+@get_datalake_client.register
+def _(config: GCSConfig):
+    from google.cloud import storage
+
+    set_google_credentials(gcs_credentials=config.securityConfig)
+    gcs_client = storage.Client()
+    return gcs_client
+
+
+@get_connection.register
+def _(connection: ModeConnection, verbose: bool = False):
+    from metadata.utils.mode_client import ModeApiClient
+
+    return ModeClient(ModeApiClient(connection))
+
+
+@test_connection.register
+def _(connection: ModeClient) -> None:
+    try:
+        connection.client.get_user_account()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

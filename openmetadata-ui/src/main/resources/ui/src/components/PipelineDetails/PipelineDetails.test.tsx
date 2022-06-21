@@ -22,6 +22,15 @@ import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
 import PipelineDetails from './PipelineDetails.component';
 
+/**
+ * mock implementation of ResizeObserver
+ */
+window.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -93,6 +102,7 @@ const PipelineDetailsProps = {
   fetchFeedHandler: jest.fn(),
   pipelineStatus: [],
   isPipelineStatusLoading: false,
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -148,6 +158,10 @@ jest.mock('../PipelineStatusList/PipelineStatusList.component', () => {
     .mockReturnValue(<p data-testid="pipeline-status-list">Pipeline Status</p>);
 });
 
+jest.mock('../TasksDAGView/TasksDAGView', () => {
+  return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
+});
+
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
   getCountBadge: jest.fn(),
@@ -191,9 +205,14 @@ describe('Test PipelineDetails component', () => {
         wrapper: MemoryRouter,
       }
     );
-    const taskDetail = await findByTestId(container, 'tasks-table');
+    const taskDetail = await findByTestId(container, 'tasks-dag');
+    const pipelineStatus = await findByTestId(
+      container,
+      'pipeline-status-list'
+    );
 
     expect(taskDetail).toBeInTheDocument();
+    expect(pipelineStatus).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
@@ -208,24 +227,9 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is executions', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const pipelineStatus = await findByTestId(
-      container,
-      'pipeline-status-list'
-    );
-
-    expect(pipelineStatus).toBeInTheDocument();
-  });
-
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -237,7 +241,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }

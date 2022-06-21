@@ -117,6 +117,8 @@ class ProfilerWorkflowTest(TestCase):
         assert isinstance(orm_table.created_date.type, sqlalchemy.DATE)
         assert isinstance(orm_table.group.type, sqlalchemy.CHAR)
         assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)
+        assert isinstance(orm_table.savings.type, sqlalchemy.DECIMAL)
+        assert orm_table.id.compile().string == '"one-schema".table1.id'
 
         self.metadata.delete(
             entity=DatabaseService,
@@ -163,7 +165,7 @@ class ProfilerWorkflowTest(TestCase):
 
         table = self.metadata.create_or_update(
             CreateTableRequest(
-                name="table1",
+                name="table1-snflk",
                 databaseSchema=EntityReference(id=schema.id, type="databaseSchema"),
                 columns=[
                     Column(name="id", dataType=DataType.BIGINT),
@@ -173,10 +175,11 @@ class ProfilerWorkflowTest(TestCase):
 
         orm_table = ometa_to_orm(table=table, metadata=self.metadata)
 
-        assert orm_table.__tablename__ == "table1"
+        assert orm_table.__tablename__ == "table1-snflk"
         assert (
-            orm_table.__table_args__.get("schema") == "one-db.one-schema"
+            orm_table.__table_args__.get("schema") == "one-schema"
         )  # Schema gets generated correctly
+        assert orm_table.id.compile().string == '"one-schema"."table1-snflk"."id"'
 
         self.metadata.delete(
             entity=DatabaseService,

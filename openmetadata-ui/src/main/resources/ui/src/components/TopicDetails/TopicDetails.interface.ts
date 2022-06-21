@@ -18,6 +18,7 @@ import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
@@ -58,4 +59,5 @@ export interface TopicDetailsProps {
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

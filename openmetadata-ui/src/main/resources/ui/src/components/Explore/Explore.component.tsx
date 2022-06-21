@@ -16,6 +16,7 @@ import {
   faSortAmountUpAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
@@ -465,7 +466,7 @@ const Explore: React.FC<ExploreProps> = ({
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
           )}>
           <div className="tw-flex">
-            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            {/* <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button
                 className={classNames('tw-underline tw-mt-5', {
                   'tw-invisible': !getFilterCount(filters),
@@ -476,7 +477,7 @@ const Explore: React.FC<ExploreProps> = ({
                 onClick={() => resetFilters(true)}>
                 Clear All
               </Button>
-            </div>
+            </div> */}
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
@@ -656,17 +657,43 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Fragment>
-        {!error && (
-          <FacetFilter
-            aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
-            filters={getFacetedFilter()}
-            showDeletedOnly={showDeleted}
-            onSelectDeleted={handleShowDeleted}
-            onSelectHandler={handleSelectedFilter}
-          />
-        )}
-      </Fragment>
+      <Card
+        data-testid="data-summary-container"
+        style={{
+          border: '1px rgb(221, 227, 234) solid',
+          borderRadius: '8px',
+          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+          marginRight: '4px',
+          marginLeft: '4px',
+          marginTop: '20px',
+        }}>
+        <Fragment>
+          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            <Button
+              className={classNames('tw-underline tw-pb-4')}
+              disabled={!getFilterCount(filters)}
+              size="custom"
+              theme="primary"
+              variant="link"
+              onClick={() => resetFilters(true)}>
+              Clear All
+            </Button>
+          </div>
+          <div className="tw-filter-seperator" />
+          {!error && (
+            <FacetFilter
+              aggregations={getAggrWithDefaultValue(
+                aggregations,
+                visibleFilters
+              )}
+              filters={getFacetedFilter()}
+              showDeletedOnly={showDeleted}
+              onSelectDeleted={handleShowDeleted}
+              onSelectHandler={handleSelectedFilter}
+            />
+          )}
+        </Fragment>
+      </Card>
     );
   };
 
@@ -675,34 +702,34 @@ const Explore: React.FC<ExploreProps> = ({
 
   return (
     <Fragment>
-      {!connectionError && getTabs()}
-      <PageLayout
-        leftPanel={Boolean(!error) && fetchLeftPanel()}
-        rightPanel={Boolean(!error) && <></>}>
-        {advanceFieldCheck && (
-          <AdvancedFields
-            fields={selectedAdvancedFields}
-            index={searchIndex}
-            onClear={onAdvancedFieldClear}
-            onFieldRemove={onAdvancedFieldRemove}
-            onFieldValueSelect={onAdvancedFieldValueSelect}
-          />
-        )}
+      <PageLayout leftPanel={Boolean(!error) && fetchLeftPanel()}>
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
-          <SearchedData
-            showResultCount
-            currentPage={currentPage}
-            data={data}
-            isFilterSelected={isFilterSelected}
-            isLoading={
-              !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
-            }
-            paginate={paginate}
-            searchText={searchText}
-            totalValue={totalNumberOfValue}
-          />
+          <>
+            {!connectionError && getTabs()}
+            {advanceFieldCheck && (
+              <AdvancedFields
+                fields={selectedAdvancedFields}
+                index={searchIndex}
+                onClear={onAdvancedFieldClear}
+                onFieldRemove={onAdvancedFieldRemove}
+                onFieldValueSelect={onAdvancedFieldValueSelect}
+              />
+            )}
+            <SearchedData
+              showResultCount
+              currentPage={currentPage}
+              data={data}
+              isFilterSelected={isFilterSelected}
+              isLoading={
+                !location.pathname.includes(ROUTES.TOUR) && isEntityLoading
+              }
+              paginate={paginate}
+              searchText={searchText}
+              totalValue={totalNumberOfValue}
+            />
+          </>
         )}
       </PageLayout>
     </Fragment>

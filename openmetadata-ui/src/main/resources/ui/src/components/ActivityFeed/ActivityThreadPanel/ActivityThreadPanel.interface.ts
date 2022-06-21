@@ -14,6 +14,7 @@
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityThreadPanelProp
@@ -24,11 +25,12 @@ export interface ActivityThreadPanelProp
   onCancel: () => void;
   createThread: (data: CreateThread) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }
 
 export interface ActivityThreadListProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
+    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
   threads: Thread[];
   selectedThreadId: string;
   postFeed: (value: string) => void;
@@ -38,7 +40,7 @@ export interface ActivityThreadListProp
 }
 export interface ActivityThreadProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
+    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
   selectedThread: Thread;
   postFeed: (value: string) => void;
   onConfirmation?: (data: ConfirmState) => void;

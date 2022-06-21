@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityFieldThreadCount, ExtraInfo } from 'Models';
@@ -90,6 +90,7 @@ import {
   deletePost,
   getEntityFieldThreadCounts,
   getUpdatedThread,
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import {
   getExplorePathWithInitFilters,
@@ -537,6 +538,15 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const fetchTablesCount = () => {
     // limit=0 will fetch empty data list with total count
     getAllTables('', 0, databaseFQN)
@@ -799,6 +809,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       entityName={databaseName}
                       feedList={entityThread}
                       postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
                     />
                     <div />
                   </div>
@@ -836,6 +847,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
               />
             ) : null}

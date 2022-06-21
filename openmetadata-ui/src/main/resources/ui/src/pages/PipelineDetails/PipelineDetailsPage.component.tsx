@@ -39,6 +39,7 @@ import {
   patchPipelineDetails,
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
+import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
@@ -69,7 +70,11 @@ import {
   getEntityName,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import {
   defaultFields,
   getCurrentPipelineTab,
@@ -90,8 +95,6 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
-  const [isPipelineStatusLoading, setIsPipelineStatusLoading] =
-    useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -222,26 +225,25 @@ const PipelineDetailsPage = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
-  const getPipeLineStatus = () => {
-    setIsPipelineStatusLoading(true);
-    getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { pipelineStatus: status } = res.data;
-          setPipelineStatus(status);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-pipeline-status-error']
-        );
-      })
-      .finally(() => {
-        setIsPipelineStatusLoading(false);
-      });
+  const fetchServiceDetails = (type: string, fqn: string) => {
+    return new Promise<string>((resolve, reject) => {
+      getServiceByFQN(type + 's', fqn, ['owner'])
+        .then((resService: AxiosResponse) => {
+          if (resService?.data) {
+            const hostPort = resService.data.connection?.config?.hostPort || '';
+            resolve(hostPort);
+          } else {
+            throw null;
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-pipeline-details-error']
+          );
+          reject(err);
+        });
+    });
   };
 
   const fetchPipelineDetail = (pipelineFQN: string) => {
@@ -260,11 +262,13 @@ const PipelineDetailsPage = () => {
             tags,
             owner,
             displayName,
+            name,
             tasks,
             pipelineUrl,
+            pipelineStatus,
             version,
           } = res.data;
-          setDisplayName(displayName);
+          setDisplayName(displayName || name);
           setPipelineDetails(res.data);
           setCurrentVersion(version);
           setPipelineId(id);
@@ -303,6 +307,24 @@ const PipelineDetailsPage = () => {
 
           setPipelineUrl(pipelineUrl);
           setTasks(tasks);
+
+          setPipelineStatus(
+            (pipelineStatus as Pipeline['pipelineStatus']) || []
+          );
+
+          fetchServiceDetails(service.type, service.name)
+            .then((hostPort: string) => {
+              setPipelineUrl(hostPort + pipelineUrl);
+              const updatedTasks = (tasks as Task[]).map((task) => ({
+                ...task,
+                taskUrl: hostPort + task.taskUrl,
+              }));
+              setTasks(updatedTasks);
+              setLoading(false);
+            })
+            .catch((err: AxiosError) => {
+              throw err;
+            });
         } else {
           setIsError(true);
 
@@ -318,8 +340,8 @@ const PipelineDetailsPage = () => {
             jsonData['api-error-messages']['fetch-pipeline-details-error']
           );
         }
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
   };
 
   const fetchTabSpecificData = (tabField = '') => {
@@ -337,11 +359,6 @@ const PipelineDetailsPage = () => {
       }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
-
-        break;
-      }
-      case TabSpecificField.PIPELINE_STATUS: {
-        getPipeLineStatus();
 
         break;
       }
@@ -645,6 +662,15 @@ const PipelineDetailsPage = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   useEffect(() => {
     fetchTabSpecificData(pipelineDetailsTabs[activeTab - 1].field);
   }, [activeTab]);
@@ -690,7 +716,6 @@ const PipelineDetailsPage = () => {
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
-          isPipelineStatusLoading={isPipelineStatusLoading}
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}
@@ -712,6 +737,7 @@ const PipelineDetailsPage = () => {
           tasks={tasks}
           tier={tier as TagLabel}
           unfollowPipelineHandler={unfollowPipeline}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />
