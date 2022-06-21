@@ -12,17 +12,21 @@
         "type": "string"
       }
     },
-    "tableAliases": {
-      "description": "Table names mapped with alias used in query",
-      "type": "object"
-    },
-    "columns": {
-      "description": "Table columns used in query",
-      "type": "object"
-    },
-    "database": {
-      "description": "Database of the associated with query",
+    "databaseName": {
+      "description": "Database associated with the table in the query",
       "type": "string"
+    },
+    "joins": {
+      "description": "Maps each parsed table name of a query to the join information",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "array",
+          "items": {
+            "$ref": "tableUsageCount.json#/definitions/tableColumnJoin"
+          }
+        }
+      }
     },
     "sql": {
       "description": "SQL query",
@@ -41,6 +45,6 @@
       "type": "string"
     }
   },
-  "required": ["sql", "serviceName", "tables", "database"],
+  "required": ["sql", "serviceName", "tables", "databaseName"],
   "additionalProperties": false
 }
