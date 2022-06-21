@@ -12,7 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import {
   isEmpty,
@@ -66,6 +66,7 @@ import { withLoader } from '../../hoc/withLoader';
 import { useAuth } from '../../hooks/authHooks';
 import {
   dragHandle,
+  getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
   getLayoutedElementsV1,
@@ -81,6 +82,7 @@ import {
 } from '../../utils/EntityLineageUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import Loader from '../Loader/Loader';
@@ -94,6 +96,7 @@ import {
   EdgeData,
   ElementLoadingState,
   EntityLineageProp,
+  ModifiedColumn,
   SelectedEdge,
   SelectedNode,
 } from './EntityLineage.interface';
@@ -113,7 +116,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [isTableLoading, setIsTableLoading] = useState(false);
   const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
@@ -241,12 +243,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    * @param node
    * @returns label for given node
    */
-  const getNodeLabel = (node: EntityReference) => {
+  const getNodeLabel = (node: EntityReference, isExpanded = false) => {
     return (
       <Fragment>
-        {/* {node.type === 'table' ? (
+        {node.type === 'table' ? (
           <button
-            className="tw-absolute tw--top-4 tw--left-5 tw-cursor-pointer tw-z-9999"
+            className="tw-absolute tw--top-3.5 tw--left-2 tw-cursor-pointer tw-z-9999"
             onClick={(e) => {
               expandButton.current = expandButton.current
                 ? null
@@ -261,8 +263,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               width="16px"
             />
           </button>
-        ) : null} */}
-        <p className="tw-flex">
+        ) : null}
+        <p className="tw-flex tw-m-0 tw-py-3">
           <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
           {getDataLabel(
             node.displayName,
@@ -489,6 +491,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       node: [],
       edge: [],
     };
+    const currentData = {
+      nodes,
+      edges,
+    };
     if (!isEmpty(updatedLineageData)) {
       const graphElements = getLineageDataV1(
         updatedLineageData,
@@ -502,7 +508,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         onEdgeClick,
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         removeNodeHandler,
-        tableColumnsRef.current
+        tableColumnsRef.current,
+        currentData
       ) as CustomeElement;
 
       uniqueElements = {
@@ -815,82 +822,100 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   //   ToDo: remove below code once design flow finalized for column expand and colaps
 
-  //   const updateColumnsToNode = (columns: Column[], id: string) => {
-  //     setNodes((node) => {
-  //       const updatedNode = node.map((n) => {
-  //         if (n.id === id) {
-  //           n.data.columns = columns;
-  //         }
+  const updateColumnsToNode = (columns: Column[], id: string) => {
+    setNodes((node) => {
+      const updatedNode = node.map((n) => {
+        if (n.id === id) {
+          const cols: { [key: string]: ModifiedColumn } = {};
+          columns.forEach((col) => {
+            cols[col.fullyQualifiedName || col.name] = {
+              ...col,
+              type: isEditMode
+                ? 'default'
+                : getColumnType(edges, col.fullyQualifiedName || col.name),
+            };
+          });
+          n.data.columns = cols;
+        }
 
-  //         return n;
-  //       });
+        return n;
+      });
 
-  //       return updatedNode;
-  //     });
-  //   };
+      return updatedNode;
+    });
+  };
 
-  //   /**
-  //    * take node and get the columns for that node
-  //    * @param expandNode
-  //    */
-  //   const getTableColumns = (expandNode?: EntityReference) => {
-  //     if (expandNode) {
-  //       getTableDetails(expandNode.id, ['columns'])
-  //         .then((res: AxiosResponse) => {
-  //           const tableId = expandNode.id;
-  //           const { columns } = res.data;
-  //           tableColumnsRef.current[tableId] = columns;
-  //           updateColumnsToNode(columns, tableId);
-  //         })
-  //         .catch((error: AxiosError) => {
-  //           showErrorToast(
-  //             error,
-  //             `Error while fetching ${getDataLabel(
-  //               expandNode.displayName,
-  //               expandNode.name,
-  //               true
-  //             )} columns`
-  //           );
-  //         });
-  //     }
-  //   };
+  /**
+   * take node and get the columns for that node
+   * @param expandNode
+   */
+  const getTableColumns = (expandNode?: EntityReference) => {
+    if (expandNode) {
+      getTableDetails(expandNode.id, ['columns'])
+        .then((res: AxiosResponse) => {
+          const tableId = expandNode.id;
+          const { columns } = res.data;
+          tableColumnsRef.current[tableId] = columns;
+          updateColumnsToNode(columns, tableId);
+        })
+        .catch((error: AxiosError) => {
+          showErrorToast(
+            error,
+            `Error while fetching ${getDataLabel(
+              expandNode.displayName,
+              expandNode.name,
+              true
+            )} columns`
+          );
+        });
+    }
+  };
 
-  //   const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
-  //     if (isExpanded) {
-  //       setNodes((prevState) => {
-  //         const newNodes = prevState.map((n) => {
-  //           if (n.id === node.id) {
-  //             const nodeId = node.id;
-  //             n.data.label = getNodeLabel(node, true);
-  //             n.data.isExpanded = true;
-  //             if (isUndefined(tableColumnsRef.current[nodeId])) {
-  //               getTableColumns(node);
-  //             } else {
-  //               n.data.columns = tableColumnsRef.current[nodeId];
-  //             }
-  //           }
+  const handleNodeExpand = (isExpanded: boolean, node: EntityReference) => {
+    if (isExpanded) {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((n) => {
+          if (n.id === node.id) {
+            const nodeId = node.id;
+            n.data.label = getNodeLabel(node, true);
+            n.data.isExpanded = true;
+            if (isUndefined(tableColumnsRef.current[nodeId])) {
+              getTableColumns(node);
+            } else {
+              const cols: { [key: string]: ModifiedColumn } = {};
+              tableColumnsRef.current[nodeId]?.forEach((col) => {
+                cols[col.fullyQualifiedName || col.name] = {
+                  ...col,
+                  type: isEditMode
+                    ? 'default'
+                    : getColumnType(edges, col.fullyQualifiedName || col.name),
+                };
+              });
+              n.data.columns = cols;
+            }
+          }
 
-  //           return n;
-  //         });
+          return n;
+        });
 
-  //         return newNodes;
-  //       });
-  //     } else {
-  //       setNodes((prevState) => {
-  //         const newNodes = prevState.map((n) => {
-  //           if (n.id === node.id) {
-  //             n.data.label = getNodeLabel(node);
-  //             n.data.isExpanded = false;
-  //             n.data.columns = undefined;
-  //           }
+        return newNodes;
+      });
+    } else {
+      setNodes((prevState) => {
+        const newNodes = prevState.map((n) => {
+          if (n.id === node.id) {
+            n.data.label = getNodeLabel(node);
+            n.data.isExpanded = false;
+            n.data.columns = undefined;
+          }
 
-  //           return n;
-  //         });
+          return n;
+        });
 
-  //         return newNodes;
-  //       });
-  //     }
-  //   };
+        return newNodes;
+      });
+    }
+  };
 
   /**
    * take node and remove it from the graph
@@ -1245,32 +1270,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setEdges(edge);
 
     resetViewEditState();
-  }, [lineageData, isNodeLoading, isEditMode, tableColumnsRef.current]);
-
-  useEffect(() => {
-    if (!isEmpty(entityLineage)) {
-      setIsTableLoading(true);
-      const allNodes = [...(entityLineage.nodes || []), entityLineage.entity];
-      const tableNode = allNodes.filter((n) => n.type === 'table');
-
-      const promises = tableNode.map((n) => {
-        return getTableDetails(n.id, ['columns']);
-      });
-
-      Promise.allSettled(promises).then((results) => {
-        const data: { [key: string]: Column[] } = {};
-        results.forEach((result) => {
-          if (result.status === 'fulfilled') {
-            const { columns, id } = result.value.data;
-
-            data[id] = columns;
-          }
-        });
-        tableColumnsRef.current = data;
-        setIsTableLoading(false);
-      });
-    }
-  }, []);
+  }, [lineageData, isNodeLoading, isEditMode]);
 
   useEffect(() => {
     const newNodes = updatedLineageData.nodes?.filter(
@@ -1308,7 +1308,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
-  if (isTableLoading) {
+  if (nodes.length > 0) {
     return <Loader />;
   }
 

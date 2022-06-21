@@ -747,6 +747,12 @@ body .profiler-graph .recharts-active-dot circle {
   pointer-events: all;
   cursor: pointer;
 }
+.react-flow__node-default .react-flow__handle,
+.react-flow__node-group .react-flow__handle,
+.react-flow__node-input .react-flow__handle,
+.react-flow__node-output .react-flow__handle {
+  background-color: #7147e8 !important;
+}
 
 .react-flow__edge .react-flow__edge-path {
   stroke-width: 2px;
@@ -754,6 +760,14 @@ body .profiler-graph .recharts-active-dot circle {
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 2px solid rgb(229, 231, 235) !important;
 }
 
 /* EntityVersion  */

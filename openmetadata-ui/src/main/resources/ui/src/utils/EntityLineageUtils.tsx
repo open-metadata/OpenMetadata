@@ -17,7 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -37,7 +37,11 @@ import {
 } from '../components/EntityLineage/EntityLineage.interface';
 import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { nodeHeight, nodeWidth } from '../constants/Lineage.constants';
+import {
+  nodeHeight,
+  nodeWidth,
+  zoomValue,
+} from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
   EntityType,
@@ -84,7 +88,7 @@ export const getHeaderLabel = (
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(0.7);
+  reactFlowInstance.zoomTo(zoomValue);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -128,13 +132,28 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   return 'default';
 };
 
+export const getColumnType = (edges: Edge[], id: string) => {
+  const sourceEdge = edges.find((edge) => edge.sourceHandle === id);
+  const targetEdge = edges.find((edge) => edge.targetHandle === id);
+
+  if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
+    return 'default';
+  if (sourceEdge?.sourceHandle === id) return 'input';
+  if (targetEdge?.targetHandle === id) return 'output';
+
+  return 'not-connected';
+};
+
 export const getLineageDataV1 = (
   entityLineage: EntityLineage,
   onSelect: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
   lineageLeafNodes: LeafNodes,
   isNodeLoading: LoadingNodeState,
-  getNodeLabel: (node: EntityReference) => React.ReactNode,
+  getNodeLabel: (
+    node: EntityReference,
+    isExpanded?: boolean
+  ) => React.ReactNode,
   isEditMode: boolean,
   edgeType: string,
   onEdgeClick: (
@@ -142,7 +161,8 @@ export const getLineageDataV1 = (
     data: CustomEdgeData
   ) => void,
   removeNodeHandler: (node: Node) => void,
-  columns: { [key: string]: Column[] }
+  columns: { [key: string]: Column[] },
+  currentData: { nodes: Node[]; edges: Edge[] }
 ) => {
   const [x, y] = [0, 0];
   const nodes = [
@@ -156,110 +176,6 @@ export const getLineageDataV1 = (
 
   const lineageEdgesV1: Edge[] = [];
   const mainNode = entityLineage['entity'];
-
-  const makeNode = (node: EntityReference) => {
-    const type = getNodeType(entityLineage, node.id);
-    const cols: { [key: string]: Column } = {};
-    columns[node.id]?.forEach((col) => {
-      cols[col.fullyQualifiedName || col.name] = col;
-    });
-
-    return {
-      id: `${node.id}`,
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
-      type: isEditMode ? 'default' : type,
-      className: 'leaf-node',
-      data: {
-        label: (
-          <div className="tw-flex">
-            {type === 'input' && (
-              <div
-                className="tw-pr-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(node, 'from');
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-mr-2"
-                    icon={faChevronLeft}
-                  />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-
-            <div>{getNodeLabel(node)}</div>
-
-            {type === 'output' && (
-              <div
-                className="tw-pl-2 tw-self-center tw-cursor-pointer "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(false, {} as SelectedNode);
-                  if (node) {
-                    loadNodeHandler(node, 'to');
-                  }
-                }}>
-                {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
-                !node.id.includes(isNodeLoading.id as string) ? (
-                  <FontAwesomeIcon
-                    className="tw-text-primary tw-ml-2"
-                    icon={faChevronRight}
-                  />
-                ) : null}
-                {isNodeLoading.state &&
-                node.id.includes(isNodeLoading.id as string) ? (
-                  <Loader size="small" type="default" />
-                ) : null}
-              </div>
-            )}
-          </div>
-        ),
-        entityType: node.type,
-        removeNodeHandler,
-        isEditMode,
-        isExpanded: false,
-        columns: cols,
-      },
-      position: {
-        x: x,
-        y: y,
-      },
-    };
-  };
-
-  const mainCols: { [key: string]: Column } = {};
-  columns[mainNode.id]?.forEach((col) => {
-    mainCols[col.fullyQualifiedName || col.name] = col;
-  });
-
-  const lineageData = [
-    {
-      id: `${mainNode.id}`,
-      sourcePosition: 'right',
-      targetPosition: 'left',
-      type: getNodeType(entityLineage, mainNode.id),
-      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
-      data: {
-        label: getNodeLabel(mainNode),
-        isEditMode,
-        removeNodeHandler,
-        columns: mainCols,
-      },
-      position: { x: x, y: y },
-    },
-  ];
-
-  (entityLineage.nodes || []).forEach((n) => lineageData.push(makeNode(n)));
 
   edgesV1.forEach((edge) => {
     const sourceType = nodes.find((n) => edge.fromEntity === n.id);
@@ -314,6 +230,116 @@ export const getLineageDataV1 = (
       },
     });
   });
+
+  const makeNode = (node: EntityReference) => {
+    const type = getNodeType(entityLineage, node.id);
+    const cols: { [key: string]: Column } = {};
+    columns[node.id]?.forEach((col) => {
+      cols[col.fullyQualifiedName || col.name] = col;
+    });
+    const currentNode = currentData?.nodes?.find((n) => n.id === node.id);
+
+    return {
+      ...currentNode,
+      id: `${node.id}`,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+      type: isEditMode ? 'default' : type,
+      className: 'leaf-node',
+      data: {
+        label: (
+          <div className="tw-flex">
+            {type === 'input' && (
+              <div
+                className="tw-pr-2 tw-self-center tw-cursor-pointer "
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(false, {} as SelectedNode);
+                  if (node) {
+                    loadNodeHandler(node, 'from');
+                  }
+                }}>
+                {!isLeafNode(lineageLeafNodes, node?.id as string, 'from') &&
+                !node.id.includes(isNodeLoading.id as string) ? (
+                  <FontAwesomeIcon
+                    className="tw-text-primary tw-mr-2"
+                    icon={faChevronLeft}
+                  />
+                ) : null}
+                {isNodeLoading.state &&
+                node.id.includes(isNodeLoading.id as string) ? (
+                  <Loader size="small" type="default" />
+                ) : null}
+              </div>
+            )}
+
+            <div>{getNodeLabel(node, !isEmpty(cols))}</div>
+
+            {type === 'output' && (
+              <div
+                className="tw-pl-2 tw-self-center tw-cursor-pointer "
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(false, {} as SelectedNode);
+                  if (node) {
+                    loadNodeHandler(node, 'to');
+                  }
+                }}>
+                {!isLeafNode(lineageLeafNodes, node?.id as string, 'to') &&
+                !node.id.includes(isNodeLoading.id as string) ? (
+                  <FontAwesomeIcon
+                    className="tw-text-primary tw-ml-2"
+                    icon={faChevronRight}
+                  />
+                ) : null}
+                {isNodeLoading.state &&
+                node.id.includes(isNodeLoading.id as string) ? (
+                  <Loader size="small" type="default" />
+                ) : null}
+              </div>
+            )}
+          </div>
+        ),
+        entityType: node.type,
+        removeNodeHandler,
+        isEditMode,
+        isExpanded: !isEmpty(cols),
+        columns: cols,
+      },
+      position: {
+        x: x,
+        y: y,
+      },
+    };
+  };
+
+  const mainCols: { [key: string]: Column } = {};
+  columns[mainNode.id]?.forEach((col) => {
+    mainCols[col.fullyQualifiedName || col.name] = col;
+  });
+  const currentMainNode =
+    currentData?.nodes?.find((n) => n.id === mainNode.id) || {};
+
+  const lineageData = [
+    {
+      ...currentMainNode,
+      id: `${mainNode.id}`,
+      sourcePosition: 'right',
+      targetPosition: 'left',
+      type: getNodeType(entityLineage, mainNode.id),
+      className: `leaf-node ${!isEditMode ? 'core' : ''}`,
+      data: {
+        label: getNodeLabel(mainNode, !isEmpty(mainCols)),
+        isEditMode,
+        removeNodeHandler,
+        columns: mainCols,
+        isExpanded: !isEmpty(mainCols),
+      },
+      position: { x: x, y: y },
+    },
+  ];
+
+  (entityLineage.nodes || []).forEach((n) => lineageData.push(makeNode(n)));
 
   return { node: lineageData, edge: lineageEdgesV1 };
 };
@@ -468,7 +494,7 @@ export const getUniqueFlowElements = (elements: CustomeFlow[]) => {
 export const getNodeRemoveButton = (onClick: () => void) => {
   return (
     <button
-      className="tw-absolute tw--top-4 tw--right-6 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
+      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
       onClick={() => onClick()}>
       <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
     </button>

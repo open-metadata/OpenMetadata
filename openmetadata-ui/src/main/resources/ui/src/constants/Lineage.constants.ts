@@ -3,6 +3,7 @@ import { ElementLoadingState } from '../components/EntityLineage/EntityLineage.i
 import { EntityType } from '../enums/entity.enum';
 
 export const foreignObjectSize = 40;
+export const zoomValue = 0.7;
 
 export const entityData = [
   {
