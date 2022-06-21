@@ -284,6 +284,7 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
+    case DataType.Decimal:
       return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:
