@@ -213,7 +213,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
           }
-        )}>
+        )}
+        id="thread-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
@@ -234,7 +235,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               {'< Back'}
             </p>
             <ActivityThread
-              className="tw-pb-6 tw-pl-5"
+              className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}
               selectedThread={selectedThread}
               updateThreadHandler={onUpdateThread}

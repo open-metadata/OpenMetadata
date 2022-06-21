@@ -296,7 +296,7 @@ describe('Test MyDataDetailsPage page', () => {
         wrapper: MemoryRouter,
       }
     );
-    const tableQueries = await findByTestId(container, 'table-queries');
+    const tableQueries = await findByTestId(container, 'no-queries');
 
     expect(tableQueries).toBeInTheDocument();
   });

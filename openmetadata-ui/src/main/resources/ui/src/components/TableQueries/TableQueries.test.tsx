@@ -140,10 +140,8 @@ describe('Test TableQueries Component', () => {
       }
     );
     const queryCards = queryAllByText(container, /QueryCard/i);
-    const noQueries = await findByTestId(container, 'no-queries');
 
     expect(queryCards).toHaveLength(0);
-    expect(noQueries).toBeInTheDocument();
   });
 
   it('Check if TableQueries component has queries as empty list', async () => {
@@ -154,9 +152,7 @@ describe('Test TableQueries Component', () => {
       }
     );
     const queryCards = queryAllByText(container, /QueryCard/i);
-    const noQueries = await findByTestId(container, 'no-queries');
 
     expect(queryCards).toHaveLength(0);
-    expect(noQueries).toBeInTheDocument();
   });
 });

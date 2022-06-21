@@ -248,6 +248,7 @@ declare module 'Models' {
     name: string;
     displayName: string;
     fullyQualifiedName: string;
+    fqdn?: string;
     type: string;
     id: string;
     description?: string;
@@ -601,5 +602,10 @@ declare module 'Models' {
   export interface SelectableOption {
     readonly label: string;
     readonly value: string;
+  }
+
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
   }
 }

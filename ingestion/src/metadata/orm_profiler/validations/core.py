@@ -23,6 +23,15 @@ of logging these issues.
 from functools import singledispatch
 
 from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.orm_profiler.validations.column.column_value_max_to_be_between import (
+    column_value_max_to_be_between,
+)
+from metadata.orm_profiler.validations.column.column_value_min_to_be_between import (
+    column_value_min_to_be_between,
+)
+from metadata.orm_profiler.validations.column.column_values_in_set import (
+    column_values_in_set,
+)
 from metadata.orm_profiler.validations.column.column_values_length_to_be_between import (
     column_value_length_to_be_between,
 )
@@ -31,6 +40,9 @@ from metadata.orm_profiler.validations.column.column_values_missing_count_to_be_
 )
 from metadata.orm_profiler.validations.column.column_values_not_in_set import (
     column_values_not_in_set,
+)
+from metadata.orm_profiler.validations.column.column_values_sum_to_be_between import (
+    column_values_sum_to_be_between,
 )
 from metadata.orm_profiler.validations.column.column_values_to_be_between import (
     column_values_to_be_between,
@@ -44,8 +56,17 @@ from metadata.orm_profiler.validations.column.column_values_to_be_unique import 
 from metadata.orm_profiler.validations.column.column_values_to_match_regex import (
     column_values_to_match_regex,
 )
+from metadata.orm_profiler.validations.table.table_column_count_to_be_between import (
+    table_column_count_to_be_between,
+)
 from metadata.orm_profiler.validations.table.table_column_count_to_equal import (
     table_column_count_to_equal,
+)
+from metadata.orm_profiler.validations.table.table_column_name_to_exist import (
+    table_column_name_to_exist,
+)
+from metadata.orm_profiler.validations.table.table_column_to_match_set import (
+    table_column_to_match_set,
 )
 from metadata.orm_profiler.validations.table.table_row_count_to_be_between import (
     table_row_count_to_be_between,
@@ -74,14 +95,21 @@ def validate(test_case, **__) -> TestCaseResult:
 validate.register(table_row_count_to_equal)
 validate.register(table_row_count_to_be_between)
 validate.register(table_column_count_to_equal)
+validate.register(table_column_count_to_be_between)
+validate.register(table_column_to_match_set)
+validate.register(table_column_name_to_exist)
 
 # Column Tests
 validate.register(column_values_to_be_between)
 validate.register(column_values_to_be_unique)
 validate.register(column_values_to_be_not_null)
 validate.register(column_value_length_to_be_between)
+validate.register(column_value_max_to_be_between)
+validate.register(column_value_min_to_be_between)
+validate.register(column_values_sum_to_be_between)
 
 # Column Session Tests
 validate.register(column_values_not_in_set)
+validate.register(column_values_in_set)
 validate.register(column_values_to_match_regex)
 validate.register(column_values_missing_count_to_be_equal)

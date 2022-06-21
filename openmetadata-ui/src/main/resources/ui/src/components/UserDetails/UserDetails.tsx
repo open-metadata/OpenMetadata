@@ -26,7 +26,7 @@ import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
-type UserDetailsProps = {
+export type UserDetailsProps = {
   selectedUserList: User[];
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;

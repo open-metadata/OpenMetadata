@@ -341,7 +341,8 @@
     box-shadow: 0 0 0 0.5px #7147e8;
   }
   .tw-filter-seperator {
-    @apply tw-border-b tw-border-separator tw-mb-4;
+    @apply tw-mb-1;
+    border-bottom: 1px solid #dce3ec80;
   }
 
   /* Cron editor css */

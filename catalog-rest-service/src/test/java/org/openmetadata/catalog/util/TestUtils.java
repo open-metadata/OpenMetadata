@@ -57,11 +57,13 @@ import org.openmetadata.catalog.services.connections.database.MysqlConnection;
 import org.openmetadata.catalog.services.connections.database.RedshiftConnection;
 import org.openmetadata.catalog.services.connections.database.SnowflakeConnection;
 import org.openmetadata.catalog.services.connections.messaging.KafkaConnection;
+import org.openmetadata.catalog.services.connections.mlModel.MlflowConnection;
 import org.openmetadata.catalog.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.catalog.services.connections.pipeline.GlueConnection;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MessagingConnection;
+import org.openmetadata.catalog.type.MlModelConnection;
 import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.Source;
@@ -91,6 +93,8 @@ public final class TestUtils {
 
   public static MessagingConnection KAFKA_CONNECTION;
   public static DashboardConnection SUPERSET_CONNECTION;
+
+  public static MlModelConnection MLFLOW_CONNECTION;
 
   public static URI PIPELINE_URL;
 
@@ -143,6 +147,15 @@ public final class TestUtils {
       SUPERSET_CONNECTION = null;
       e.printStackTrace();
     }
+  }
+
+  static {
+    MLFLOW_CONNECTION =
+        new MlModelConnection()
+            .withConfig(
+                new MlflowConnection()
+                    .withRegistryUri("http://localhost:8080")
+                    .withTrackingUri("http://localhost:5000"));
   }
 
   static {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { isUndefined } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
@@ -21,19 +20,13 @@ interface TableQueriesProp extends HTMLAttributes<HTMLDivElement> {
   queries: Table['tableQueries'];
 }
 
-const TableQueries: FC<TableQueriesProp> = ({ queries, className }) => {
+const TableQueries: FC<TableQueriesProp> = ({ queries = [], className }) => {
   return (
     <div className={className} data-testid="table-queries">
       <div className="tw-my-6" data-testid="queries-container">
-        {!isUndefined(queries) && queries.length > 0 ? (
-          queries.map((query, index) => <QueryCard key={index} query={query} />)
-        ) : (
-          <div
-            className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
-            data-testid="no-queries">
-            <span>No queries data available.</span>
-          </div>
-        )}
+        {queries.map((query, index) => (
+          <QueryCard key={index} query={query} />
+        ))}
       </div>
     </div>
   );

@@ -8,11 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
-
-from sql_metadata import Parser
+from logging.config import DictConfigurator
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -31,44 +28,33 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
-from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import search_table_entities
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
+
 
 logger = ingestion_logger()
 
 
-@dataclass
-class RedashSourceStatus(SourceStatus):
-    items_scanned: int = 0
-    filtered: List[str] = field(default_factory=list)
-
-    def item_scanned_status(self) -> None:
-        self.items_scanned += 1
-
-    def item_dropped_status(self, item: str) -> None:
-        self.filtered.append(item)
-
-
-class RedashSource(DashboardSourceService):
-    config: WorkflowSource
-    metadata_config: OpenMetadataConnection
-    status: RedashSourceStatus
-    platform = "redash"
-    dashboards_to_charts: Dict[str, List[str]]
-
+class RedashSource(DashboardServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.status = RedashSourceStatus()
-        self.dashboards_to_charts = {}
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -99,28 +85,32 @@ class RedashSource(DashboardSourceService):
         """
         return self.client.get_dashboard(dashboard["slug"])
 
-    def get_dashboard_entity(self, dashboard_details: dict) -> CreateDashboardRequest:
+    def yield_dashboard(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
         """
-        self.status.item_scanned_status()
+
         dashboard_description = ""
         for widgets in dashboard_details.get("widgets", []):
             dashboard_description = widgets.get("text")
         yield CreateDashboardRequest(
             name=dashboard_details.get("id"),
             displayName=dashboard_details["name"],
-            description=dashboard_description if dashboard_details else "",
-            charts=get_chart_entities_from_id(
-                chart_ids=self.dashboards_to_charts[dashboard_details.get("id")],
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
+            description=dashboard_description,
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
-            service=EntityReference(id=self.service.id, type="dashboardService"),
             dashboardUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
         )
+        self.status.scanned(dashboard_details["name"])
 
-    def get_lineage(
+    def yield_dashboard_lineage(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -128,23 +118,25 @@ class RedashSource(DashboardSourceService):
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
+        if not self.source_config.dbServiceName:
+            return
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
             if not visualization.get("query"):
                 continue
-            table_list = []
             if visualization.get("query", {}).get("query"):
-                table_list = Parser(visualization["query"]["query"])
-            for table in table_list.tables:
-                dataabase_schema = None
+                parser = LineageRunner(visualization["query"]["query"])
+            for table in parser.source_tables:
+                table_name = str(table)
+                database_schema = None
                 if "." in table:
-                    dataabase_schema, table = fqn.split(table)[-2:]
+                    database_schema, table = fqn.split(table_name)[-2:]
                 table_entities = search_table_entities(
                     metadata=self.metadata,
                     database=None,
                     service_name=self.source_config.dbServiceName,
-                    database_schema=dataabase_schema,
-                    table=table,
+                    database_schema=database_schema,
+                    table=table_name,
                 )
                 for from_entity in table_entities:
                     to_entity = self.metadata.get_by_name(
@@ -169,16 +161,14 @@ class RedashSource(DashboardSourceService):
                         )
                         yield lineage
 
-    def fetch_dashboard_charts(
+    def yield_dashboard_chart(
         self, dashboard_details: dict
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
         """
-        self.dashboards_to_charts[dashboard_details.get("id")] = []
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
-            self.dashboards_to_charts[dashboard_details.get("id")].append(widgets["id"])
             yield CreateChartRequest(
                 name=widgets["id"],
                 displayName=visualization["query"]["name"]
@@ -187,7 +177,10 @@ class RedashSource(DashboardSourceService):
                 chartType=get_standard_chart_type(
                     visualization["type"] if visualization else ""
                 ),
-                service=EntityReference(id=self.service.id, type="dashboardService"),
+                service=EntityReference(
+                    id=self.context.dashboard_service.id.__root__,
+                    type="dashboardService",
+                ),
                 chartUrl=f"/dashboard/{dashboard_details.get('slug', '')}",
                 description=visualization["description"] if visualization else "",
             )

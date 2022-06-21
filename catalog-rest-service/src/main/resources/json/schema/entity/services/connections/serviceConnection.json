@@ -22,6 +22,9 @@
         },
         {
           "$ref": "../pipelineService.json#/definitions/pipelineConnection"
+        },
+        {
+          "$ref": "../mlmodelService.json#/definitions/mlModelConnection"
         }
       ]
     }

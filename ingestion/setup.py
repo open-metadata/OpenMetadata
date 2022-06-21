@@ -37,7 +37,6 @@ base_requirements = {
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
-    "sql-metadata~=2.0.0",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
@@ -51,12 +50,6 @@ base_requirements = {
 }
 
 
-base_plugins = {
-    "query-parser",
-    "metadata-usage",
-    "file-stage",
-    "sql-metadata~=2.5.0",
-}
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         "apache-airflow==2.1.4"
@@ -80,6 +73,15 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
+    "datalake": {
+        "google-cloud-storage==1.43.0",
+        "pandas==1.3.5",
+        "gcsfs==2022.5.0",
+        "s3fs==0.4.2",
+        "dask==2022.2.0",
+        "pyarrow==6.0.1",
+        "boto3~=1.19.12",
+    },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch==7.13.1"},
@@ -93,7 +95,7 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser==0.0.2",
     },
     "kafka": {
-        "confluent_kafka>=1.5.0",
+        "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         "avro-python3",
         "confluent_avro",

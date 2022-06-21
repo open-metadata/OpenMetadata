@@ -23,6 +23,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
@@ -130,6 +131,13 @@ class DatabaseServiceTopology(ServiceTopology):
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+            ),
+            NodeStage(
+                type_=AddLineageRequest,
+                context="view_lineage",
+                processor="yield_view_lineage",
+                ack_sink=False,
+                nullable=True,
             ),
             NodeStage(
                 type_=DataModelLink,
@@ -245,6 +253,15 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
     def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
         """
         From topology. To be run for each schema
+        """
+
+    @abstractmethod
+    def yield_view_lineage(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        From topology.
+        Parses view definition to get lineage information
         """
 
     @abstractmethod

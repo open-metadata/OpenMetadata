@@ -42,7 +42,14 @@ class SqlColumnHandlerMixin:
         col_type: str,
         col_data_length: str,
         arr_data_type: str,
+        precision: Optional[Tuple[str, str]],
     ) -> str:
+        if precision:
+            return (
+                data_type_display
+                if data_type_display
+                else f"{col_type}({precision[0]},{precision[1]})"
+            )
         dataTypeDisplay = (
             f"{data_type_display}"
             if data_type_display
@@ -162,6 +169,9 @@ class SqlColumnHandlerMixin:
                             )
                         ]
                     col_data_length = self._check_col_length(col_type, column["type"])
+                    precision = ColumnTypeParser.check_col_precision(
+                        col_type, column["type"]
+                    )
                     if col_type == "NULL" or col_type is None:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
@@ -171,7 +181,11 @@ class SqlColumnHandlerMixin:
                             )
                         )
                     dataTypeDisplay = self._get_display_datatype(
-                        data_type_display, col_type, col_data_length, arr_data_type
+                        data_type_display,
+                        col_type,
+                        col_data_length,
+                        arr_data_type,
+                        precision,
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
@@ -184,6 +198,10 @@ class SqlColumnHandlerMixin:
                         children=children,
                         arrayDataType=arr_data_type,
                     )
+                    if precision:
+                        om_column.precision = precision[0]
+                        om_column.scale = precision[1]
+
                 else:
                     col_obj = self._process_complex_col_type(
                         column=column, parsed_string=parsed_string

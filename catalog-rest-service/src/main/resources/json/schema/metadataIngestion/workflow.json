@@ -29,6 +29,9 @@
             },
             {
               "$ref": "pipelineServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "mlmodelServiceMetadataPipeline.json"
             }
           ]
         }

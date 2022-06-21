@@ -14,42 +14,33 @@
 import classNames from 'classnames';
 import React, { FC, Fragment } from 'react';
 import { getFrontEndFormat } from '../../../../utils/FeedUtils';
-import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEditorPreviewer';
 import Reactions from '../../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
-  isAuthor,
   message,
   className,
-  threadId,
-  postId,
-  onConfirmation,
   reactions,
   onReactionSelect,
 }) => {
   return (
     <Fragment>
       <div className={classNames('tw-group', className)}>
-        <RichTextEditorPreviewer
-          className="activity-feed-card-text"
-          enableSeeMoreVariant={false}
-          markdown={getFrontEndFormat(message)}
-        />
-        {threadId && postId && onConfirmation && isAuthor ? (
-          <span
-            className="tw-opacity-0 group-hover:tw-opacity-100 tw-cursor-pointer"
-            data-testid="delete-button"
-            onClick={() => onConfirmation({ state: true, postId, threadId })}>
-            <SVGIcons alt="delete" icon={Icons.DELETE} width="12px" />
-          </span>
-        ) : null}
+        <div className="tw-mt-0.5 feed-meesage">
+          <RichTextEditorPreviewer
+            className="activity-feed-card-text"
+            enableSeeMoreVariant={false}
+            markdown={getFrontEndFormat(message)}
+          />
+        </div>
+        {Boolean(reactions?.length) && (
+          <Reactions
+            reactions={reactions || []}
+            onReactionSelect={onReactionSelect}
+          />
+        )}
       </div>
-      <Reactions
-        reactions={reactions || []}
-        onReactionSelect={onReactionSelect}
-      />
     </Fragment>
   );
 };
