@@ -605,11 +605,11 @@ const RolesPage = () => {
                 data-testid="role-name-container"
                 key={role.name}
                 onClick={() => setCurrentRole(role)}>
-                <p
+                <span
                   className="tag-category label-category tw-self-center tw-truncate tw-w-52"
                   title={role.displayName}>
                   <span>{role.displayName}</span>{' '}
-                </p>
+                </span>
                 {role.defaultRole ? getDefaultBadge() : null}
               </div>
             ))}
