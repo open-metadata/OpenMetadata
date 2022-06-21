@@ -17,7 +17,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import dagre from 'dagre';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -32,6 +32,7 @@ import {
   CustomEdgeData,
   CustomeElement,
   CustomeFlow,
+  ModifiedColumn,
   SelectedEdge,
   SelectedNode,
 } from '../components/EntityLineage/EntityLineage.interface';
@@ -233,14 +234,18 @@ export const getLineageDataV1 = (
 
   const makeNode = (node: EntityReference) => {
     const type = getNodeType(entityLineage, node.id);
-    const cols: { [key: string]: Column } = {};
+    const cols: { [key: string]: ModifiedColumn } = {};
     columns[node.id]?.forEach((col) => {
-      cols[col.fullyQualifiedName || col.name] = col;
+      cols[col.fullyQualifiedName || col.name] = {
+        ...col,
+        type: isEditMode
+          ? 'default'
+          : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+      };
     });
     const currentNode = currentData?.nodes?.find((n) => n.id === node.id);
 
     return {
-      ...currentNode,
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
@@ -273,7 +278,9 @@ export const getLineageDataV1 = (
               </div>
             )}
 
-            <div>{getNodeLabel(node, !isEmpty(cols))}</div>
+            <div>
+              {getNodeLabel(node, currentNode?.data?.isExpanded || false)}
+            </div>
 
             {type === 'output' && (
               <div
@@ -303,7 +310,7 @@ export const getLineageDataV1 = (
         entityType: node.type,
         removeNodeHandler,
         isEditMode,
-        isExpanded: !isEmpty(cols),
+        isExpanded: currentNode?.data?.isExpanded || false,
         columns: cols,
       },
       position: {
@@ -313,27 +320,31 @@ export const getLineageDataV1 = (
     };
   };
 
-  const mainCols: { [key: string]: Column } = {};
+  const mainCols: { [key: string]: ModifiedColumn } = {};
   columns[mainNode.id]?.forEach((col) => {
-    mainCols[col.fullyQualifiedName || col.name] = col;
+    mainCols[col.fullyQualifiedName || col.name] = {
+      ...col,
+      type: isEditMode
+        ? 'default'
+        : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
+    };
   });
-  const currentMainNode =
-    currentData?.nodes?.find((n) => n.id === mainNode.id) || {};
+  const currentNode = currentData?.nodes?.find((n) => n.id === mainNode.id)
+    ?.data.isExpanded;
 
   const lineageData = [
     {
-      ...currentMainNode,
       id: `${mainNode.id}`,
       sourcePosition: 'right',
       targetPosition: 'left',
       type: getNodeType(entityLineage, mainNode.id),
       className: `leaf-node ${!isEditMode ? 'core' : ''}`,
       data: {
-        label: getNodeLabel(mainNode, !isEmpty(mainCols)),
+        label: getNodeLabel(mainNode, currentNode || false),
         isEditMode,
         removeNodeHandler,
         columns: mainCols,
-        isExpanded: !isEmpty(mainCols),
+        isExpanded: currentNode || false,
       },
       position: { x: x, y: y },
     },

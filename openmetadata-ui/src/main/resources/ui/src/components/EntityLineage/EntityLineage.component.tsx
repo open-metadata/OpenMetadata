@@ -189,43 +189,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
    */
   const selectedEntityHandler = (entity: EntityReference) => {
     setSelectedEntity(entity);
-    if (
-      entity.type === 'table' &&
-      isUndefined(tableColumnsRef.current[entity.id])
-    ) {
-      getTableDetails(entity.id, ['columns']).then((res: AxiosResponse) => {
-        const { columns } = res.data;
-
-        const mainCols: { [key: string]: Column } = {};
-        columns?.forEach((col: Column) => {
-          mainCols[col.fullyQualifiedName || col.name] = col;
-        });
-        tableColumnsRef.current[entity.id] = columns;
-        setNewAddedNode((preNode) => ({
-          ...preNode,
-          data: {
-            ...preNode.data,
-            columns: mainCols,
-          },
-        }));
-
-        setNodes((preNodes) => {
-          return preNodes.map((node) => {
-            if (node.data?.isNewNode) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  columns: mainCols,
-                },
-              };
-            }
-
-            return node;
-          });
-        });
-      });
-    }
   };
 
   /**
@@ -492,8 +455,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       edge: [],
     };
     const currentData = {
-      nodes,
-      edges,
+      nodes: [...nodes],
+      edges: [...edges],
     };
     if (!isEmpty(updatedLineageData)) {
       const graphElements = getLineageDataV1(

@@ -96,6 +96,7 @@ const mockCustomNodeProp = {
     label: <p>label</p>,
     columns: mockTableColumns,
     isNewNode: undefined,
+    isExpanded: true,
   },
 };
 
@@ -129,11 +130,9 @@ describe('Test CustomNode Component', () => {
     );
 
     const nodeLabel = await findByTestId(container, 'node-label');
-    const labelSeparator = await findByTestId(container, 'label-separator');
     const tableColumns = await findAllByTestId(container, 'column');
 
     expect(nodeLabel).toBeInTheDocument();
-    expect(labelSeparator).toBeInTheDocument();
     expect(tableColumns).toHaveLength(mockTableColumns.length);
   });
 
