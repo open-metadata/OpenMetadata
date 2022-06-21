@@ -66,6 +66,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 return (
                   <Fragment key={index}>
                     <Card
+                      className="ant-card-feed"
                       key={`${index} - card`}
                       style={{
                         border: '1px rgb(221, 227, 234) solid',

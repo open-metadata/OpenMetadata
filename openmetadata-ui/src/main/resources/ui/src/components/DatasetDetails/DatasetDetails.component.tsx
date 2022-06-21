@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -682,12 +682,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
                   id="tablequeries">
-                  <div />
-                  <TableQueries
-                    isLoading={isQueriesLoading}
-                    queries={tableQueries}
-                  />
-                  <div />
+                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
+                    <Fragment>
+                      <div />
+                      <TableQueries
+                        isLoading={isQueriesLoading}
+                        queries={tableQueries}
+                      />
+                      <div />
+                    </Fragment>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      data-testid="no-queries">
+                      <span>No queries data available.</span>
+                    </div>
+                  )}
                 </div>
               )}
               {activeTab === 5 && (
