@@ -12,6 +12,7 @@
  */
 
 import {
+  findByTestId,
   findByText,
   getByTestId,
   queryByTestId,
@@ -55,9 +56,15 @@ describe('Test QueryCard Component', () => {
       /CopyToClipboardButton/i
     );
 
+    const expandButton = await findByTestId(
+      container,
+      'expand-collapse-button'
+    );
+
     expect(queryHeader).toBeInTheDocument();
     expect(query).toBeInTheDocument();
     expect(copyQueryButton).toBeInTheDocument();
+    expect(expandButton).toBeInTheDocument();
   });
 
   it('Should not render header if user is undefined', async () => {
