@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData } from 'Models';
 import React, {
   Fragment,
   RefObject,
@@ -23,13 +22,11 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { Link } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { Ownership } from '../../enums/mydata.enum';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
@@ -38,7 +35,6 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
 import {
   getEntityName,
-  getExploreLinkByFilter,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
@@ -51,21 +47,30 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
-import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
-
+import UserCard from '../../pages/teams/UserCard';
+import {
+  getUserCurrentTab,
+  profileInfo,
+} from '../../constants/usersprofile.constants';
+import { useHistory } from 'react-router-dom';
+import { getUserPath } from '../../constants/constants';
 const tabs = [
   {
-    name: 'Activity Feed',
-    icon: {
-      alt: 'activity_feed',
-      name: 'activity_feed',
-      title: 'Activity Feed',
-      selectedName: 'activity-feed-color',
-    },
+    name: 'Activity',
     isProtected: false,
     position: 1,
+  },
+  {
+    name: 'My Data',
+    isProtected: false,
+    position: 2,
+  },
+  {
+    name: 'Following',
+    isProtected: false,
+    position: 3,
   },
 ];
 
@@ -82,8 +87,10 @@ const Users = ({
   isLoggedinUser,
   isAuthDisabled,
   updateThreadHandler,
+  username,
+  tab,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
@@ -94,6 +101,7 @@ const Users = ({
   const [selectedTeams, setSelectedTeams] = useState<Array<Option>>([]);
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const history = useHistory();
 
   const fetchTeams = () => {
     getTeams(['users'])
@@ -116,8 +124,14 @@ const Users = ({
     setDisplayName(e.target.value);
   };
 
-  const activeTabHandler = (tab: number) => {
-    setActiveTab(tab);
+  const activeTabHandler = (tabNum: number) => {
+    setActiveTab(tabNum);
+    if (profileInfo[tabNum - 1].path !== tab) {
+      history.push({
+        pathname: getUserPath(username, profileInfo[tabNum - 1].path),
+        search: location.search,
+      });
+    }
   };
 
   const handleDisplayNameChange = () => {
@@ -189,6 +203,10 @@ const Users = ({
       setSelectedTeams(value as Option[]);
     }
   };
+
+  useEffect(() => {
+    setActiveTab(getUserCurrentTab(tab));
+  }, [tab]);
 
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
@@ -630,82 +648,46 @@ const Users = ({
     prepareSelectedTeams();
   }, [userData]);
 
-  const getRightPanel = useCallback(() => {
-    const ownData = filterEntityAssets(userData?.owns || []);
+  const getEntityData = useCallback((entityData: EntityReference[]) => {
+    const updatedEntityData = filterEntityAssets(entityData || []);
 
     return (
-      <div className="tw-mt-4" data-testid="right-pannel">
-        <EntityListWithAntd
-          entityList={ownData as unknown as FormatedTableData[]}
-          headerText={
-            <>
-              {ownData.length ? (
-                <Link
-                  className="tw-ml-1"
-                  data-testid="my-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.OWNER,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({ownData.length})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </>
-          }
-          headerTextLabel="My Data"
-          noDataPlaceholder={<>You have not owned anything yet.</>}
-          testIDText="My data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <EntityListWithAntd
-          entityList={userData?.follows as unknown as FormatedTableData[]}
-          headerText={
-            <>
-              Following
-              {userData?.follows?.length ? (
-                <Link
-                  className="tw-ml-1"
-                  data-testid="following-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.FOLLOWERS,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({userData?.follows?.length})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </>
-          }
-          headerTextLabel="Following"
-          noDataPlaceholder={<>You have not followed anything yet.</>}
-          testIDText="Following data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
-      </div>
+      <>
+        <div
+          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          data-testid="dataset-card">
+          {' '}
+          {updatedEntityData.map((dataset, index) => {
+            const Dataset = {
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName || '',
+              id: dataset.id,
+              name: dataset.name,
+            };
+
+            return (
+              <UserCard isDataset isIconVisible item={Dataset} key={index} />
+            );
+          })}
+        </div>
+      </>
     );
-  }, [userData?.owns, userData?.follows]);
+  }, []);
 
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={fetchLeftPanel()}
-      rightPanel={getRightPanel()}>
-      {userData?.isBot && isAdminUser && (
-        <div className="tw-mb-10">
-          <TabsPane
-            activeTab={activeTab}
-            className="tw-flex-initial"
-            setActiveTab={activeTabHandler}
-            tabs={tabs}
-          />
-        </div>
-      )}
+    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+      <div className="tw-mb-10">
+        <TabsPane
+          activeTab={activeTab}
+          className="tw-flex-initial"
+          setActiveTab={activeTabHandler}
+          tabs={tabs}
+        />
+      </div>
       <div>{activeTab === 1 && getFeedTabData()}</div>
+      <div>{activeTab === 2 && getEntityData(userData.owns || [])}</div>
+      <div>{activeTab === 3 && getEntityData(userData.follows || [])}</div>
     </PageLayout>
   );
 };

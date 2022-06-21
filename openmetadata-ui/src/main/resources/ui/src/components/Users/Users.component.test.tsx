@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByText,
-  findByTestId,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
+import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -184,6 +179,8 @@ const mockPaging = {
 };
 
 const mockProp = {
+  username: 'test',
+  tab: 'following',
   feedData: [],
   feedFilter: FeedFilter.ALL,
   feedFilterHandler: feedFilterHandler,
@@ -209,12 +206,8 @@ describe('Test User Component', () => {
     );
 
     const leftPanel = await findByTestId(container, 'left-panel');
-    const rightPanel = await findByTestId(container, 'right-pannel');
-    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(leftPanel).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
-    expect(EntityLists.length).toBe(2);
   });
 
   it('Only admin can able to see tab for bot page', async () => {
@@ -231,13 +224,9 @@ describe('Test User Component', () => {
 
     const tabs = await findByTestId(container, 'tabs');
     const leftPanel = await findByTestId(container, 'left-panel');
-    const rightPanel = await findByTestId(container, 'right-pannel');
-    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(tabs).toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
-    expect(EntityLists.length).toBe(2);
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -248,7 +237,7 @@ describe('Test User Component', () => {
       }
     );
 
-    const tabs = queryByTestId(container, 'tabs');
+    const tabs = queryByTestId(container, 'tab');
     const leftPanel = await findByTestId(container, 'left-panel');
 
     expect(tabs).not.toBeInTheDocument();
@@ -285,7 +274,7 @@ describe('Test User Component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
+      <Users userData={mockUserData} {...mockProp} tab="activity" />,
       {
         wrapper: MemoryRouter,
       }
@@ -296,6 +285,19 @@ describe('Test User Component', () => {
     expect(obServerElement).toBeInTheDocument();
 
     expect(mockObserve).toHaveBeenCalled();
+  });
+
+  it('Should check if cards are rendered', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} tab="mydata" />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const obServerElement = await findByTestId(container, 'dataset-card');
+
+    expect(obServerElement).toBeInTheDocument();
   });
 
   it('Should render inherited roles', async () => {
