@@ -26,7 +26,9 @@ import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import {
   getServiceDetailsPath,
@@ -234,13 +236,7 @@ const ServicesPage = () => {
     return (
       <Card
         data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-        }}
+        style={leftPanelAntCardStyle}
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
             <h6 className="tw-heading tw-text-base">Services</h6>
@@ -418,15 +414,7 @@ const ServicesPage = () => {
           className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
           data-testid="data-container">
           {serviceList.map((service, index) => (
-            <Card
-              key={index}
-              style={{
-                border: '1px rgb(221, 227, 234) solid',
-                borderRadius: '8px',
-                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-                marginRight: '4px',
-                marginLeft: '4px',
-              }}>
+            <Card key={index} style={leftPanelAntCardStyle}>
               <div
                 className="tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                 data-testid="service-card">

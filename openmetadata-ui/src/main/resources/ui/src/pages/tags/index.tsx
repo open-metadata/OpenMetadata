@@ -35,7 +35,9 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
@@ -398,16 +400,7 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <Card
-        data-testid="data-summary-container"
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-          marginTop: '20px',
-        }}>
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
         <>
           <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
             <h6 className="tw-heading tw-text-base">Tag Categories</h6>
