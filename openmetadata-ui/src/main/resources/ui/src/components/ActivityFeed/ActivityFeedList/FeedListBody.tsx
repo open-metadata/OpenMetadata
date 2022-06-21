@@ -102,6 +102,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
           return (
             <Card
+              className="ant-card-feed"
               key={`${index} - card`}
               style={{
                 border: '1px rgb(221, 227, 234) solid',
