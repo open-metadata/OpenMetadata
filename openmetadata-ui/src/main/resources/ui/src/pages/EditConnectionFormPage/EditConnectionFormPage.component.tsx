@@ -24,6 +24,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import PageLayout from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import { addServiceGuide } from '../../constants/service-guide.constant';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
@@ -46,13 +47,15 @@ function EditConnectionFormPage() {
   >([]);
 
   const fetchRightPanel = () => {
+    const guide = addServiceGuide.find((sGuide) => sGuide.step === 3);
+
     return (
-      <div>
-        Lorem ipsum, dolor sit amet consectetur adipisicing elit. Nihil quisquam
-        veritatis facere, similique et assumenda ad. Nihil nesciunt repudiandae
-        inventore, consequuntur ex dolorum assumenda dolorem perspiciatis
-        architecto ad necessitatibus optio nostrum iusto.
-      </div>
+      guide && (
+        <>
+          <h6 className="tw-heading tw-text-base">{guide.title}</h6>
+          <div className="tw-mb-5">{guide.description}</div>
+        </>
+      )
     );
   };
 
