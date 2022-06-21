@@ -1,0 +1,172 @@
+{
+  "$id": "https://open-metadata.org/schema/entityMetrics/tableProfileResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableProfileResult",
+  "description": "This schema defines the TableProfileResult",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entityMetrics.TableProfileResult",
+  "definitions": {
+    "customMetricProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.CustomMetricProfile",
+      "description": "Profiling results of a Custom Metric.",
+      "properties": {
+        "name": {
+          "description": "Custom metric name.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Profiling results for the metric.",
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "columnProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ColumnProfile",
+      "description": "This schema defines the type to capture the table's column profile.",
+      "properties": {
+        "name": {
+          "description": "Column Name.",
+          "type": "string"
+        },
+        "valuesCount": {
+          "description": "Total count of the values in this column.",
+          "type": "number"
+        },
+        "valuesPercentage": {
+          "description": "Percentage of values in this column with respect to rowcount.",
+          "type": "number"
+        },
+        "validCount": {
+          "description": "Total count of valid values in this column.",
+          "type": "number"
+        },
+        "duplicateCount": {
+          "description": "No.of Rows that contain duplicates in a column.",
+          "type": "number"
+        },
+        "nullCount": {
+          "description": "No.of null values in a column.",
+          "type": "number"
+        },
+        "nullProportion": {
+          "description": "No.of null value proportion in columns.",
+          "type": "number"
+        },
+        "missingPercentage": {
+          "description": "Missing Percentage is calculated by taking percentage of validCount/valuesCount.",
+          "type": "number"
+        },
+        "missingCount": {
+          "description": "Missing count is calculated by subtracting valuesCount - validCount.",
+          "type": "number"
+        },
+        "uniqueCount": {
+          "description": "No. of unique values in the column.",
+          "type": "number"
+        },
+        "uniqueProportion": {
+          "description": "Proportion of number of unique values in a column.",
+          "type": "number"
+        },
+        "distinctCount": {
+          "description": "Number of values that contain distinct values.",
+          "type": "number"
+        },
+        "distinctProportion": {
+          "description": "Proportion of distinct values in a column.",
+          "type": "number"
+        },
+        "min": {
+          "description": "Minimum value in a column.",
+          "type": ["number", "integer", "string"]
+        },
+        "max": {
+          "description": "Maximum value in a column.",
+          "type": ["number", "integer", "string"]
+        },
+        "minLength": {
+          "description": "Minimum string length in a column.",
+          "type": "number"
+        },
+        "maxLength": {
+          "description": "Maximum string length in a column.",
+          "type": "number"
+        },
+        "mean": {
+          "description": "Avg value in a column.",
+          "type": "number"
+        },
+        "sum": {
+          "description": "Median value in a column.",
+          "type": "number"
+        },
+        "stddev": {
+          "description": "Standard deviation of a column.",
+          "type": "number"
+        },
+        "variance": {
+          "description": "Variance of a column.",
+          "type": "number"
+        },
+        "histogram": {
+          "description": "Histogram of a column.",
+          "properties": {
+            "boundaries": {
+              "description": "Boundaries of Histogram.",
+              "type": "array"
+            },
+            "frequencies": {
+              "description": "Frequencies of Histogram.",
+              "type": "array"
+            }
+          },
+          "additionalProperties": false
+        },
+        "customMetricsProfile": {
+          "description": "Custom Metrics profile list bound to a column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/customMetricProfile"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "profileDate": {
+      "description": "Date on which profile is taken.",
+      "$ref": "../type/basic.json#/definitions/date"
+    },
+    "profileSample": {
+      "description": "Percentage of data used to compute this profiler execution. Represented in the range (0, 100].",
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100
+    },
+    "columnCount": {
+      "description": "No.of columns in the table.",
+      "type": "number"
+    },
+    "rowCount": {
+      "description": "No.of rows in the table. This is always executed on the whole table.",
+      "type": "number"
+    },
+    "columnNames": {
+      "description": "List of column names",
+      "type": "array"
+    },
+    "columnProfile": {
+      "description": "List of local column profiles of the table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/columnProfile"
+      }
+    }
+  },
+  "additionalProperties": false
+}

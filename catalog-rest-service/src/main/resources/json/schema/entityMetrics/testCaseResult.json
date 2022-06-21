@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/entityMetrics/tableCaseResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TableCaseResult",
+  "description": "This schema defines the TestCaseResult",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entityMetrics.TestCaseResult",
+  "properties": {
+    "executionTime": {
+      "description": "Data one which profile is taken.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "javaType": "org.openmetadata.catalog.tests.type.TestCaseStatus",
+      "type": "string",
+      "enum": ["Success", "Failed", "Aborted"],
+      "javaEnums": [
+        {
+          "name": "Success"
+        },
+        {
+          "name": "Failed"
+        },
+        {
+          "name": "Aborted"
+        }
+      ]
+    },
+    "result": {
+      "description": "Details of test case results.",
+      "type": "string"
+    },
+    "sampleData": {
+      "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

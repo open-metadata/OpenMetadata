@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entityMetrics/entityMetric.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityMetric",
+  "description": "EntityMetric is a way to capture health metrics such as profiler/ test result around a entity in time-series fashion.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entitymetrics.EntityMetric",
+  "definitions": {
+    "metricResult": {
+      "description": "Entity Metric Definition.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.entityMetric.EntityMetricResult",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./tableProfileResult.json"
+            },
+            {
+              "$ref": "./testCaseResult.json"
+            }
+          ]
+        },
+        "metricType": {
+          "enum": ["tableProfileResult", "testCaseResult", "pipelineResult"]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "entityType": {
+      "description": "EntityType.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "metricResult": {
+      "$ref": "#/definitions/metricResult"
+    },
+    "metricName": {
+      "$ref": "#/definitions/metricType"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "timestamp": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": ["type", "metricResult"],
+  "additionalProperties": false
+}

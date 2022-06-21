@@ -77,7 +77,7 @@ import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
-import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.type.TableProfileResult;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -122,7 +122,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
+    table.setTableProfileResult(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
@@ -213,29 +213,29 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addTableProfileData(UUID tableId, TableProfile tableProfile) throws IOException {
+  public Table addTableProfileData(UUID tableId, TableProfileResult tableProfileResult) throws IOException {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
 
-    List<TableProfile> storedTableProfiles = getTableProfile(table);
-    Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
+    List<TableProfileResult> storedTableProfiles = getTableProfile(table);
+    Map<String, TableProfileResult> storedMapTableProfiles = new HashMap<>();
     if (storedTableProfiles != null) {
-      for (TableProfile profile : storedTableProfiles) {
+      for (TableProfileResult profile : storedTableProfiles) {
         storedMapTableProfiles.put(profile.getProfileDate(), profile);
       }
     }
     // validate all the columns
-    for (ColumnProfile columnProfile : tableProfile.getColumnProfile()) {
+    for (ColumnProfile columnProfile : tableProfileResult.getColumnProfile()) {
       validateColumn(table, columnProfile.getName());
     }
-    storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
-    List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
+    storedMapTableProfiles.put(tableProfileResult.getProfileDate(), tableProfileResult);
+    List<TableProfileResult> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
 
     daoCollection
         .entityExtensionDAO()
         .insert(tableId.toString(), "table.tableProfile", "tableProfile", JsonUtils.pojoToJson(updatedProfiles));
     setFields(table, Fields.EMPTY_FIELDS);
-    return table.withTableProfile(getTableProfile(table));
+    return table.withTableProfileResult(getTableProfile(table));
   }
 
   @Transaction
@@ -880,11 +880,11 @@ public class TableRepository extends EntityRepository<Table> {
         daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"), TableData.class);
   }
 
-  private List<TableProfile> getTableProfile(Table table) throws IOException {
-    List<TableProfile> tableProfiles =
+  private List<TableProfileResult> getTableProfile(Table table) throws IOException {
+    List<TableProfileResult> tableProfiles =
         JsonUtils.readObjects(
             daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), "table.tableProfile"),
-            TableProfile.class);
+            TableProfileResult.class);
     if (tableProfiles != null) {
       tableProfiles.sort(
           Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT), Comparator.reverseOrder()));

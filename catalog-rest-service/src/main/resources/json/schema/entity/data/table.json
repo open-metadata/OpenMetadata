@@ -457,9 +457,28 @@
       },
       "additionalProperties": false
     },
-    "tableProfile": {
+    "tableProfileConfig": {
       "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TableProfile",
+      "javaType": "org.openmetadata.catalog.type.TableProfileConfig",
+      "description": "This schema defines the configuration to enable/disable and to exclude columns' from table's profile data.",
+      "properties": {
+        "enableTableProfiler": {
+          "description": "Enables Data profiler for a Table.",
+          "type": "boolean",
+          "default": true
+        },
+        "excludeColumns": {
+          "description": "Exclude columsn from profiler.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnName"
+          }
+        }
+      }
+    },
+    "tableProfileResult": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableProfileResult",
       "description": "This schema defines the type to capture the table's data profile.",
       "properties": {
         "profileDate": {
@@ -707,11 +726,16 @@
       "maximum": 100,
       "default": null
     },
-    "tableProfile": {
-      "description": "Data profile for a table.",
+    "tableProfileConfig": {
+      "description": "Data profile result for a table.",
+      "$ref": "#/definitions/tableProfileConfig",
+      "default": null
+    },
+    "tableProfileResult": {
+      "description": "Data profile result for a table.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/tableProfile"
+        "$ref": "#/definitions/tableProfileResult"
       },
       "default": null
     },
