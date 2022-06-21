@@ -56,7 +56,6 @@ export interface PipeLineDetailsProp {
   entityFieldThreadCount: EntityFieldThreadCount[];
   paging: Paging;
   pipelineStatus: Pipeline['pipelineStatus'];
-  isPipelineStatusLoading: boolean;
   fetchFeedHandler: (after?: string) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
