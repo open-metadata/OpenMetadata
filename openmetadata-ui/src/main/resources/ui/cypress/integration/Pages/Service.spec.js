@@ -62,6 +62,8 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
+    cy.intercept('GET', '/**').as('serviceApi');
+    cy.wait('@serviceApi');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
