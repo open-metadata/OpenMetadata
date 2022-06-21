@@ -29,6 +29,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -38,6 +39,8 @@ import org.apache.commons.cli.Options;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
@@ -129,15 +132,25 @@ public final class TablesInitializer {
             new SubstitutingSourceProvider(
                 new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
             confFilePath);
-    Fernet.getInstance().setFernetKey(config);
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
-    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
+    if (schemaMigrationOptionSpecified == SchemaMigrationOption.DROP) {
+      try {
+        final Jdbi jdbi = Jdbi.create(jdbcUrl, user, password);
+        jdbi.installPlugin(new SqlObjectPlugin());
+        Map<String, String> dbConfigs = config.fetchConfigurationFromDB(jdbi);
+      } catch (Exception ex) {
+        // it might happen table openmetadata_config_resource is not present
+        // it's fine we create again
+      }
+    }
+    Fernet.getInstance().setFernetKey(config);
+    ElasticSearchConfiguration esConfig = config.getElasticSearchConfiguration();
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       System.out.println("Disabling validation on schema migrate");

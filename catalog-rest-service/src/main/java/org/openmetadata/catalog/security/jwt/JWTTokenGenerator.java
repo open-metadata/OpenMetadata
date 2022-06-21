@@ -48,19 +48,19 @@ public class JWTTokenGenerator {
 
   public void init(JWTTokenConfiguration jwtTokenConfiguration) {
     try {
-      if (jwtTokenConfiguration.getRSAPrivateKeyFilePath() != null
-          && !jwtTokenConfiguration.getRSAPrivateKeyFilePath().isEmpty()
-          && jwtTokenConfiguration.getRSAPublicKeyFilePath() != null
-          && !jwtTokenConfiguration.getRSAPublicKeyFilePath().isEmpty()) {
-        byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPrivateKeyFilePath()));
+      if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null
+          && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
+          && jwtTokenConfiguration.getRsapublicKeyFilePath() != null
+          && !jwtTokenConfiguration.getRsapublicKeyFilePath().isEmpty()) {
+        byte[] privateKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsaprivateKeyFilePath()));
         PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
         KeyFactory privateKF = KeyFactory.getInstance("RSA");
         privateKey = (RSAPrivateKey) privateKF.generatePrivate(privateSpec);
-        byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRSAPublicKeyFilePath()));
+        byte[] publicKeyBytes = Files.readAllBytes(Paths.get(jwtTokenConfiguration.getRsapublicKeyFilePath()));
         X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKeyBytes);
         KeyFactory kf = KeyFactory.getInstance("RSA");
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
-        issuer = jwtTokenConfiguration.getJWTIssuer();
+        issuer = jwtTokenConfiguration.getJwtissuer();
         kid = jwtTokenConfiguration.getKeyId();
       }
     } catch (Exception ex) {

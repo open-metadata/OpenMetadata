@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/slackEventPubConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthenticationConfiguration",
+  "description": "This schema defines the Authentication Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.slack.SlackPublisherConfiguration",
+  "properties": {
+    "name": {
+      "description": "Publisher Name",
+      "type": "string"
+    },
+    "webhookUrl": {
+      "description": "Webhook URL",
+      "type": "string"
+    },
+    "openMetadataUrl": {
+      "description": "OpenMetadata URL",
+      "type": "string"
+    },
+    "filters": {
+      "description": "Filters",
+      "type": "array",
+      "items": {
+        "$ref": "../type/changeEvent.json#/definitions/eventFilter"
+      },
+      "default": null
+    },
+    "batchSize": {
+      "description": "Batch Size",
+      "type": "integer",
+      "default": 10
+    }
+  },
+  "required": ["name", "filters"],
+  "additionalProperties": false
+}

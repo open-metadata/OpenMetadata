@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/fernetConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthenticationConfiguration",
+  "description": "This schema defines the Fernet Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.fernet.FernetConfiguration",
+  "properties": {
+    "fernetKey": {
+      "description": "Fernet Key",
+      "type": "string"
+    }
+  },
+  "required": ["eventHandlerClassNames"],
+  "additionalProperties": false
+}
