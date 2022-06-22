@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -62,9 +63,11 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.CreateTaskDetails;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -171,16 +174,51 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether they are resolved or not. By default resolved is false")
           @DefaultValue("false")
           @QueryParam("resolved")
-          boolean resolved)
+          boolean resolved,
+      @Parameter(
+              description =
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+              schema = @Schema(implementation = ThreadType.class))
+          @DefaultValue("Conversation")
+          @QueryParam("type")
+          ThreadType threadType,
+      @Parameter(
+              description =
+                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when threadType is set to Task",
+              schema = @Schema(implementation = TaskStatus.class))
+          @DefaultValue("Open")
+          @QueryParam("taskStatus")
+          TaskStatus taskStatus)
       throws IOException {
     RestUtil.validateCursors(before, after);
 
     ResultList<Thread> threads;
     if (before != null) { // Reverse paging
       threads =
-          dao.list(entityLink, limitPosts, userId, filterType, limitParam, before, resolved, PaginationType.BEFORE);
+          dao.list(
+              entityLink,
+              limitPosts,
+              userId,
+              filterType,
+              limitParam,
+              before,
+              resolved,
+              PaginationType.BEFORE,
+              threadType,
+              taskStatus);
     } else { // Forward paging or first page
-      threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
+      threads =
+          dao.list(
+              entityLink,
+              limitPosts,
+              userId,
+              filterType,
+              limitParam,
+              after,
+              resolved,
+              PaginationType.AFTER,
+              threadType,
+              taskStatus);
     }
     addHref(uriInfo, threads.getData());
     return threads;
@@ -432,11 +470,21 @@ public class FeedResource {
   private TaskDetails getTaskDetails(CreateTaskDetails create) {
     if (create != null) {
       return new TaskDetails()
-          .withAssignees(create.getAssignees())
+          .withAssignees(formatAssignees(create.getAssignees()))
           .withType(create.getType())
           .withStatus(TaskStatus.Open)
+          .withOldValue(create.getOldValue())
           .withSuggestion(create.getSuggestion());
     }
     return null;
+  }
+
+  private List<EntityReference> formatAssignees(List<EntityReference> assignees) {
+    List<EntityReference> result = new ArrayList<>();
+    assignees.forEach(
+        assignee -> {
+          result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType()));
+        });
+    return result;
   }
 }

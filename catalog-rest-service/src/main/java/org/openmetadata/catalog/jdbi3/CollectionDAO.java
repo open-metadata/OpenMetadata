@@ -69,6 +69,7 @@ import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Webhook;
@@ -514,8 +515,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity ORDER BY updatedAt DESC")
     List<String> list();
 
-    @SqlQuery("SELECT count(id) FROM thread_entity WHERE resolved = :resolved")
-    int listCount(@Bind("resolved") boolean resolved);
+    @SqlQuery("SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND type = :type")
+    int listCount(@Bind("resolved") boolean resolved, @Bind("type") ThreadType type);
 
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=(id+1) RETURNING id", connectionType = POSTGRES)
@@ -529,17 +530,107 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
-            + "WHERE updatedAt > :before AND resolved = :resolved "
+            + "WHERE updatedAt > :before AND resolved = :resolved AND type = :type "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
-    List<String> listBefore(@Bind("limit") int limit, @Bind("before") long before, @Bind("resolved") boolean resolved);
+    List<String> listBefore(
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("resolved") boolean resolved,
+        @Bind("type") ThreadType type);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
-            + "WHERE updatedAt < :after AND resolved = :resolved "
+            + "WHERE updatedAt < :after AND resolved = :resolved AND type = :type "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
-    List<String> listAfter(@Bind("limit") int limit, @Bind("after") long after, @Bind("resolved") boolean resolved);
+    List<String> listAfter(
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("resolved") boolean resolved,
+        @Bind("type") ThreadType type);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity WHERE updatedAt > :before AND taskStatus = :status AND "
+                + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity WHERE updatedAt > :before AND taskStatus = :status AND "
+                + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    List<String> listTasksAssignedToBefore(
+        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("status") String status);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity WHERE updatedAt < :after AND taskStatus = :status AND "
+                + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM thread_entity WHERE updatedAt < :after AND taskStatus = :status AND "
+                + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) "
+                + "ORDER BY updatedAt DESC "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    List<String> listTasksAssignedToAfter(
+        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("status") String status);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(id) FROM thread_entity WHERE taskStatus = :status AND "
+                + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[])",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(id) FROM thread_entity WHERE taskStatus = :status AND "
+                + "JSON_OVERLAPS(taskAssignees, :userTeamJsonMysql) ",
+        connectionType = MYSQL)
+    int listCountTasksAssignedTo(
+        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
+        @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt > :before AND taskStatus = :status AND "
+            + "createdBy = :username "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listTasksAssignedByBefore(
+        @Bind("username") String username,
+        @Bind("limit") int limit,
+        @Bind("before") long before,
+        @Bind("status") String status);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity WHERE updatedAt < :after AND taskStatus = :status AND "
+            + "createdBy = :username "
+            + "ORDER BY updatedAt DESC "
+            + "LIMIT :limit")
+    List<String> listTasksAssignedByAfter(
+        @Bind("username") String username,
+        @Bind("limit") int limit,
+        @Bind("after") long after,
+        @Bind("status") String status);
+
+    @SqlQuery("SELECT count(id) FROM thread_entity WHERE taskStatus = :status AND " + "createdBy = :username")
+    int listCountTasksAssignedBy(@Bind("username") String username, @Bind("status") String status);
 
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND "

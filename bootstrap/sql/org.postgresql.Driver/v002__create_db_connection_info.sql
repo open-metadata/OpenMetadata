@@ -27,11 +27,18 @@ CREATE TABLE IF NOT EXISTS mlmodel_service_entity (
     UNIQUE (name)
 );
 
+UPDATE thread_entity
+SET json = jsonb_set(json, '{type}', '"Conversation"', true);
+
 ALTER TABLE thread_entity
+    ADD type VARCHAR(64) GENERATED ALWAYS AS (json ->> 'type') STORED NOT NULL,
     ADD taskId INT GENERATED ALWAYS AS ((json#>'{task,id}')::integer) STORED,
-    ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json#>'{task,status}') STORED,
+    ADD taskStatus VARCHAR(64) GENERATED ALWAYS AS (json#>>'{task,status}') STORED,
+    ADD taskAssignees JSONB GENERATED ALWAYS AS (json#>'{task,assignees}') STORED,
     ADD CONSTRAINT task_id_constraint UNIQUE(taskId);
 
+CREATE INDEX IF NOT EXISTS thread_entity_type_index ON thread_entity(type);
+CREATE INDEX IF NOT EXISTS thread_entity_task_assignees_index ON thread_entity(taskAssignees);
 CREATE INDEX IF NOT EXISTS thread_entity_task_status_index ON thread_entity(taskStatus);
 CREATE INDEX IF NOT EXISTS thread_entity_created_by_index ON thread_entity(createdBy);
 CREATE INDEX IF NOT EXISTS thread_entity_updated_at_index ON thread_entity(updatedAt);

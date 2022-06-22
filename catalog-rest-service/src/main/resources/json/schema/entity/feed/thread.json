@@ -62,8 +62,16 @@
           "description": "Timestamp when the task was closed in Unix epoch time milliseconds.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
         },
+        "oldValue": {
+          "description": "The value of old object for which the task is created.",
+          "type": "string"
+        },
         "suggestion": {
-          "description": "The suggestion object for the task provided by the creator.",
+          "description": "The suggestion object to replace the old value for which the task is created.",
+          "type": "string"
+        },
+        "newValue": {
+          "description": "The new value object that was accepted to complete the task.",
           "type": "string"
         }
       },
@@ -74,13 +82,10 @@
       "javaType": "org.openmetadata.catalog.type.TaskStatus",
       "type": "string",
       "description": "Status of a task.",
-      "enum": ["Open", "Resolved", "Closed"],
+      "enum": ["Open", "Closed"],
       "javaEnums": [
         {
           "name": "Open"
-        },
-        {
-          "name": "Resolved"
         },
         {
           "name": "Closed"

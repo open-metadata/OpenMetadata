@@ -17,6 +17,10 @@
           "description": "List of users or teams the task is assigned to",
           "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
         },
+        "oldValue": {
+          "description": "The value of old object for which the task is created.",
+          "type": "string"
+        },
         "suggestion": {
           "description": "The suggestion object for the task provided by the creator.",
           "type": "string"

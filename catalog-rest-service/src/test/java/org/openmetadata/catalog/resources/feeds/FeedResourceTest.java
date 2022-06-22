@@ -300,9 +300,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void post_validTaskAndList_200() throws IOException {
-
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
+            .withOldValue("old description")
             .withAssignees(List.of(USER2.getEntityReference()))
             .withType(TaskType.RequestDescription)
             .withSuggestion("new description");
@@ -311,11 +311,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
     createAndCheck(create, userAuthHeaders);
-    ThreadList threads = listThreads(null, null, userAuthHeaders);
-    TaskDetails task = threads.getData().get(0).getTask();
+    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
     assertNotNull(task.getId());
-    assertEquals(List.of(USER2.getEntityReference()), task.getAssignees());
+    int task1Id = task.getId();
+    assertEquals(1, task.getAssignees().size());
+    assertEquals(USER2.getEntityReference().getId(), task.getAssignees().get(0).getId());
     assertEquals("new description", task.getSuggestion());
+    assertEquals(1, tasks.getPaging().getTotal());
+    assertEquals(1, tasks.getData().size());
 
     Thread taskThread = getTask(task.getId(), userAuthHeaders);
     TaskDetails task2 = taskThread.getTask();
@@ -323,6 +327,50 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(task.getAssignees(), task2.getAssignees());
     assertEquals(task.getSuggestion(), task2.getSuggestion());
     assertEquals(TaskStatus.Open, task2.getStatus());
+
+    // Now User2 creates a task for user on TABLE2
+    userAuthHeaders = authHeaders(USER2.getEmail());
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE2.getFullyQualifiedName());
+    taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old value")
+            .withAssignees(List.of(USER.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description2");
+    create =
+        new CreateThread()
+            .withAbout(about)
+            .withFrom(USER2.getName())
+            .withType(ThreadType.Task)
+            .withMessage("Request Description for " + TABLE2.getName())
+            .withTaskDetails(taskDetails);
+    createAndCheck(create, userAuthHeaders);
+    tasks = listTasks(null, null, null, null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int task2Id = task.getId();
+    assertEquals(1, task.getAssignees().size());
+    assertEquals(USER.getId(), task.getAssignees().get(0).getId());
+    assertEquals("new description2", task.getSuggestion());
+    assertEquals("old value", task.getOldValue());
+    assertEquals(2, tasks.getPaging().getTotal());
+    assertEquals(2, tasks.getData().size());
+
+    // try to list tasks with filters
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertEquals(task1Id, task.getId());
+    assertEquals("new description", task.getSuggestion());
+    assertEquals(1, tasks.getPaging().getTotal());
+    assertEquals(1, tasks.getData().size());
+
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertEquals(task2Id, task.getId());
+    assertEquals(USER.getFullyQualifiedName(), task.getAssignees().get(0).getFullyQualifiedName());
+    assertEquals("new description2", task.getSuggestion());
+    assertEquals(1, tasks.getPaging().getTotal());
+    assertEquals(1, tasks.getData().size());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -356,7 +404,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     }
 
     // Get the first page
-    ThreadList threads = listThreads(entityLink, null, userAuthHeaders, limit, null, null);
+    ThreadList threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, null);
     assertEquals(limit, threads.getData().size());
     assertEquals(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
@@ -367,7 +415,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // From the second page till last page, after and before cursors should not be null
     while (afterCursor != null && pageCount < totalPages - 1) {
-      threads = listThreads(entityLink, null, userAuthHeaders, limit, null, afterCursor);
+      threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, afterCursor);
       assertNotNull(threads.getPaging().getAfter());
       assertNotNull(threads.getPaging().getBefore());
       pageCount++;
@@ -379,12 +427,12 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(totalPages - 1, pageCount);
 
     // Get the last page
-    threads = listThreads(entityLink, null, userAuthHeaders, limit, null, afterCursor);
+    threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, afterCursor);
     assertEquals(lastPageCount, threads.getData().size());
     assertNull(threads.getPaging().getAfter());
 
     // beforeCursor should point to the first page
-    threads = listThreads(entityLink, null, userAuthHeaders, limit, beforeCursor, null);
+    threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, beforeCursor, null);
     assertEquals(limit, threads.getData().size());
     // since threads are always returned to the order of updated timestamp
     // the first message should read "Thread 10"
@@ -526,11 +574,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void list_threadsWithOwnerFilter() throws HttpResponseException {
     // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    String ownerId = TABLE.getOwner().getId().toString();
+    int user1ThreadCount =
+        listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS).getPaging().getTotal();
     int user2ThreadCount =
         listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    String ownerId = TABLE.getOwner().getId().toString();
 
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
@@ -543,7 +593,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertNotEquals(ownerId, ownerId2);
 
     ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
-    assertEquals(totalThreadCount, threads.getPaging().getTotal());
+    assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
     // This should return 0 since the table is owned by a team
     // and for the filter we are passing team id instead of user id
@@ -802,20 +852,34 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 
+  public static ThreadList listTasks(
+      String entityLink, String userId, String filterType, Integer limitPosts, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreads(
+        entityLink, limitPosts, authHeaders, userId, filterType, ThreadType.Task.toString(), null, null, null);
+  }
+
   public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return listThreads(entityLink, limitPosts, authHeaders, null, null, null);
+    return listThreads(
+        entityLink, limitPosts, authHeaders, null, null, ThreadType.Conversation.toString(), null, null, null);
   }
 
   public static ThreadList listThreads(
       String entityLink,
       Integer limitPosts,
       Map<String, String> authHeaders,
+      String userId,
+      String filterType,
+      String threadType,
       Integer limitParam,
       String before,
       String after)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    target = filterType != null ? target.queryParam("filterType", filterType) : target;
+    target = threadType != null ? target.queryParam("type", threadType) : target;
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
