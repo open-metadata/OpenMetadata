@@ -180,13 +180,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to fetch dashboard tags
         """
-        return  # Dashboard does not supports fetching tags except Tableau
+        return  # Dashboard does not support fetching tags except Tableau
 
     def yield_owner(self, *args, **kwargs) -> Optional[CreateUserRequest]:
         """
         Method to fetch dashboard owner
         """
-        return  # Dashboard does not supports fetching owner details except Tableau
+        return  # Dashboard does not support fetching owner details except Tableau
 
     status: DashboardSourceStatus
     source_config: DashboardServiceMetadataPipeline

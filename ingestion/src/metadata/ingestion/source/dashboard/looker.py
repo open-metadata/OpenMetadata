@@ -13,7 +13,8 @@ from typing import Any, Iterable, List, Optional, Set
 
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
-from looker_sdk.sdk.api40.models import LookmlModelExplore
+from looker_sdk.sdk.api40.models import LookmlModelExplore, DashboardBase
+from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -34,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
@@ -43,7 +44,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class LookerSource(DashboardSourceService):
+class LookerSource(DashboardServiceSource):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
 
@@ -53,7 +54,6 @@ class LookerSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.charts = []
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -65,19 +65,19 @@ class LookerSource(DashboardSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_dashboards_list(self) -> Optional[List[Any]]:
+    def get_dashboards_list(self) -> Optional[List[DashboardBase]]:
         """
         Get List of all dashboards
         """
         return self.client.all_dashboards(fields="id")
 
-    def get_dashboard_name(self, dashboard_details: object) -> str:
+    def get_dashboard_name(self, dashboard_details: DashboardBase) -> str:
         """
         Get Dashboard Name
         """
         return dashboard_details.id
 
-    def get_dashboard_details(self, dashboard: object) -> dict:
+    def get_dashboard_details(self, dashboard: DashboardBase) -> LookerDashboard:
         """
         Get Dashboard Details
         """
@@ -92,7 +92,7 @@ class LookerSource(DashboardSourceService):
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
-    def get_dashboard_entity(self, dashboard_details: Any) -> CreateDashboardRequest:
+    def get_dashboard_entity(self, dashboard_details: LookerDashboard) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
@@ -165,7 +165,7 @@ class LookerSource(DashboardSourceService):
 
         return dashboard_sources
 
-    def get_lineage(self, dashboard_details) -> Optional[Iterable[AddLineageRequest]]:
+    def get_lineage(self, dashboard_details: LookerDashboard) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
 
@@ -224,7 +224,7 @@ class LookerSource(DashboardSourceService):
                 logger.error(f"Error building lineage - {err}")
 
     def fetch_dashboard_charts(
-        self, dashboard_details
+        self, dashboard_details: LookerDashboard
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
         Metod to fetch charts linked to dashboard
