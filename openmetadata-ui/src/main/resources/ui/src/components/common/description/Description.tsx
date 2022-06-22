@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
@@ -53,7 +54,7 @@ const Description: FC<DescriptionProps> = ({
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
 
-  const descriptionThread = entityFieldThreads?.[0];
+  const thread = entityFieldThreads?.[0];
 
   const handleRequestDescription = () => {
     history.push(
@@ -81,7 +82,11 @@ const Description: FC<DescriptionProps> = ({
     }
   };
 
-  const RequestDescriptionEl = () => {
+  const RequestDescriptionEl = ({
+    descriptionThread,
+  }: {
+    descriptionThread?: EntityFieldThreads;
+  }) => {
     return isUndefined(descriptionThread) &&
       onEntityFieldSelect &&
       !description?.trim() ? (
@@ -103,7 +108,11 @@ const Description: FC<DescriptionProps> = ({
     ) : null;
   };
 
-  const DescriptionThreadEl = () => {
+  const DescriptionThreadEl = ({
+    descriptionThread,
+  }: {
+    descriptionThread?: EntityFieldThreads;
+  }) => {
     return !isUndefined(descriptionThread) ? (
       <p
         className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
@@ -149,8 +158,8 @@ const Description: FC<DescriptionProps> = ({
           <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
         </button>
 
-        <RequestDescriptionEl />
-        <DescriptionThreadEl />
+        <RequestDescriptionEl descriptionThread={thread} />
+        <DescriptionThreadEl descriptionThread={thread} />
       </div>
     ) : null;
   };
