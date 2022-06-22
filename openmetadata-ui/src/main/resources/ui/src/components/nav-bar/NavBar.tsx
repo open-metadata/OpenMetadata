@@ -91,8 +91,8 @@ const NavBar = ({
               />
               <NavLink
                 className="tw-nav focus:tw-no-underline"
-                data-testid="appbar-item"
-                id="explore"
+                data-testid="appbar-item-glossary"
+                id="glossary"
                 style={navStyle(pathname.startsWith('/glossary'))}
                 to={{
                   pathname: '/glossary',
@@ -101,8 +101,8 @@ const NavBar = ({
               </NavLink>
               <NavLink
                 className="tw-nav focus:tw-no-underline"
-                data-testid="appbar-item"
-                id="explore"
+                data-testid="appbar-item-tags"
+                id="tags"
                 style={navStyle(pathname.startsWith('/tags'))}
                 to={{
                   pathname: '/tags',
