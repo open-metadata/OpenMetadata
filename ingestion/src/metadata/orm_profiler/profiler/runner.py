@@ -59,7 +59,7 @@ class QueryRunner:
 
     def _select_from_user_query(self, *entities, **kwargs):
         user_query = self._session.query(self.table).from_statement(
-            text(f"""{self._profile_sample_query}""")
+            text(f"{self._profile_sample_query}")
         )
         return self._build_query(*entities, **kwargs).select_from(user_query)
 

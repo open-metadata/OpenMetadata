@@ -175,11 +175,25 @@ class OrmProfilerProcessor(Processor[Table]):
         return None
 
     def get_profile_sample_query(self, table: Table) -> Optional[str]:
-        """..."""
+        """Get sample query from the test definition. We first check
+        if the profiler workflow config file contains a `profile_sample_query`
+        in one of the test case. If not we'll check the table entity itself,
+        first checking if the table entity has a tableProfile object and then
+        if it has a `profileQuery` field.
+
+        Args:
+            table: table object
+        Returns
+            Optional[str]
+        """
         if self.config.test_suite:
             test_record = self.get_record_test_def(table)
             if test_record:
                 return test_record.profile_sample_query
+
+        if table.tableProfile:
+            return table.tableProfile.profileQuery
+
         return None
 
     def build_profiler(

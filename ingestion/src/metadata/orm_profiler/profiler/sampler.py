@@ -14,7 +14,6 @@ for the profiler
 """
 from typing import Dict, Optional, Union
 
-import sqlalchemy
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
@@ -103,7 +102,7 @@ class Sampler:
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
-        rnd = self.session.execute(f"""{self._profile_sample_query}""")
+        rnd = self.session.execute(f"{self._profile_sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
@@ -116,5 +115,5 @@ class Sampler:
     def _fetch_sample_data_with_query_object(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
         return self.session.query(self.table).from_statement(
-            text(f"""{self._profile_sample_query}""")
+            text(f"{self._profile_sample_query}")
         )

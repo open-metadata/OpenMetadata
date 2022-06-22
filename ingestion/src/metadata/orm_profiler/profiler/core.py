@@ -428,6 +428,7 @@ class Profiler(Generic[TMetric]):
                 rowCount=self._table_results.get(RowCount.name()),
                 columnNames=self._table_results.get(ColumnNames.name(), "").split(","),
                 columnProfile=computed_profiles,
+                profileQuery=self._profile_sample_query,
             )
 
             return profile

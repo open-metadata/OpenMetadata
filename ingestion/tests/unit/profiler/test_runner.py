@@ -165,7 +165,6 @@ class RunnerTest(TestCase):
         assert len(res) == 30
 
         res = self.raw_runner.select_first_from_table(Column(User.name.name))
-        print(res)
         assert len(res) == 1
 
         stmt = "SELECT id FROM users"

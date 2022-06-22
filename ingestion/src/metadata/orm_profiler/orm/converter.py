@@ -100,7 +100,9 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
         type_=_TYPE_MAP.get(col.dataType),
         primary_key=not bool(idx),  # The first col seen is used as PK
         quote=check_snowflake_case_sensitive(table_service_type, col.name.__root__),
-        key=str(col.name.__root__).lower(),
+        key=str(
+            col.name.__root__
+        ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
     )
 
 
