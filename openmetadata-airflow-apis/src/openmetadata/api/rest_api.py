@@ -23,6 +23,12 @@ from flask import Response, request
 from flask_admin import expose as admin_expose
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose as app_builder_expose
+from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
+    TestServiceConnectionRequest,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from openmetadata.api.apis_metadata import APIS_METADATA, get_metadata_api
 from openmetadata.api.config import (
     AIRFLOW_VERSION,
@@ -39,13 +45,6 @@ from openmetadata.operations.status import status
 from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
-
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
-    TestServiceConnectionRequest,
-)
-from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
-    IngestionPipeline,
-)
 
 
 class REST_API(AppBuilderBaseView):
@@ -201,13 +200,13 @@ class REST_API(AppBuilderBaseView):
         except ValidationError as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload {json_request}. (Workflow)Source expected - {err}",
+                error=f"Request Validation Error parsing payload. (Workflow)Source expected - {err}",
             )
 
         except Exception as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Internal error testing connection {json_request} - {err} - {traceback.format_exc()}",
+                error=f"Internal error testing connection {err} - {traceback.format_exc()}",
             )
 
     @staticmethod
