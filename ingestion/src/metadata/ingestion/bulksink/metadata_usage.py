@@ -13,6 +13,8 @@ import os
 from datetime import datetime
 from typing import List, Optional
 
+from pydantic import ValidationError
+
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -117,19 +119,20 @@ class MetadataUsageBulkSink(BulkSink):
         Method to publish SQL Queries, Table Usage & Lineage
         """
         for _, value_dict in self.table_usage_map.items():
-            self.metadata.ingest_table_queries_data(
-                table=value_dict["table_entity"],
-                table_queries=value_dict["sql_queries"],
-            )
-            self.ingest_sql_queries_lineage(
-                queries=value_dict["sql_queries"],
-                database_name=value_dict["database"],
-                schema_name=value_dict["database_schema"],
-            )
-            table_usage_request = UsageRequest(
-                date=self.today, count=value_dict["usage_count"]
-            )
+            table_usage_request = None
             try:
+                table_usage_request = UsageRequest(
+                    date=self.today, count=value_dict["usage_count"]
+                )
+                self.metadata.ingest_table_queries_data(
+                    table=value_dict["table_entity"],
+                    table_queries=value_dict["sql_queries"],
+                )
+                self.ingest_sql_queries_lineage(
+                    queries=value_dict["sql_queries"],
+                    database_name=value_dict["database"],
+                    schema_name=value_dict["database_schema"],
+                )
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request
                 )
@@ -141,6 +144,8 @@ class MetadataUsageBulkSink(BulkSink):
                 self.status.records_written(
                     "Table: {}".format(value_dict["table_entity"].name.__root__)
                 )
+            except ValidationError as err:
+                logger.error(f"Cannot construct UsageRequest from {value_dict['table_entity']} - {err}")
             except Exception as err:
                 self.status.failures.append(table_usage_request)
                 logger.error(
