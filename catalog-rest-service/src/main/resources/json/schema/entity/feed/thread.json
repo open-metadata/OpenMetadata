@@ -52,7 +52,7 @@
           "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
         },
         "status": {
-          "$ref": "#/definitions/taskStatus"
+          "$ref": "#/definitions/threadTaskStatus"
         },
         "closedBy": {
           "description": "The user that closed the task.",
@@ -78,7 +78,7 @@
       "required": ["id", "assignees", "type"],
       "additionalProperties": false
     },
-    "taskStatus": {
+    "threadTaskStatus": {
       "javaType": "org.openmetadata.catalog.type.TaskStatus",
       "type": "string",
       "description": "Status of a task.",
