@@ -14,6 +14,7 @@ Usage Souce Module
 import csv
 import traceback
 from abc import ABC
+from datetime import datetime
 from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -46,7 +47,7 @@ class UsageSource(Source[TableQuery], ABC):
         self.connection = config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.analysis_date = self.start
+        self.analysis_date = self.end
         self.report = SQLSourceStatus()
         self.engine = get_connection(self.connection)
 
@@ -74,12 +75,19 @@ class UsageSource(Source[TableQuery], ABC):
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
+                    analysis_date = (
+                        datetime.utcnow()
+                        if not query_dict.get("start_time")
+                        else datetime.strptime(
+                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S"
+                        )
+                    )
                     yield TableQuery(
                         query=query_dict["query_text"],
                         userName=query_dict.get("user_name", ""),
                         startTime=query_dict.get("start_time", ""),
                         endTime=query_dict.get("end_time", ""),
-                        analysisDate=self.analysis_date,
+                        analysisDate=analysis_date.date(),
                         aborted=self.get_aborted_status(query_dict),
                         databaseName=self.get_database_name(query_dict),
                         serviceName=self.config.serviceName,
@@ -94,7 +102,7 @@ class UsageSource(Source[TableQuery], ABC):
                     userName=row["user_name"],
                     startTime=str(row["start_time"]),
                     endTime=str(row["end_time"]),
-                    analysisDate=self.analysis_date,
+                    analysisDate=row["start_time"],
                     aborted=self.get_aborted_status(row),
                     databaseName=self.get_database_name(row),
                     serviceName=self.config.serviceName,

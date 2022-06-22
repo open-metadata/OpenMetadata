@@ -45,7 +45,7 @@ logger = ingestion_logger()
 
 
 class MetadataUsageSinkConfig(ConfigModel):
-    filename: str
+    dirPath: str
 
 
 class MetadataUsageBulkSink(BulkSink):
@@ -61,7 +61,6 @@ class MetadataUsageBulkSink(BulkSink):
         self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
-        self.file_handler = open(self.config.filename, "r")
         self.metadata = OpenMetadata(self.metadata_config)
         self.status = BulkSinkStatus()
         self.table_join_dict = {}
@@ -124,7 +123,7 @@ class MetadataUsageBulkSink(BulkSink):
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
-                    date=self.today, count=value_dict["usage_count"]
+                    date=value_dict["usage_date"], count=value_dict["usage_count"]
                 )
                 self.metadata.ingest_table_queries_data(
                     table=value_dict["table_entity"],
@@ -161,14 +160,27 @@ class MetadataUsageBulkSink(BulkSink):
                     "Table: {}".format(value_dict["table_entity"].name.__root__)
                 )
 
+    def iterate_files(self):
+        """
+        Iterate through files in the given directory
+        """
+        check_dir = os.path.isdir(self.config.dirPath)
+        if check_dir:
+            for filename in os.listdir(self.config.dirPath):
+                full_file_name = os.path.join(self.config.dirPath, filename)
+                if not os.path.isfile(full_file_name):
+                    continue
+                with open(full_file_name) as file:
+                    yield file
+
     # Check here how to properly pick up ES and/or table query data
     def write_records(self) -> None:
-        for usage_record in self.file_handler.readlines():
-            record = json.loads(usage_record)
-            table_usage = TableUsageCount(**json.loads(record))
+        for file_handler in self.iterate_files():
+            for usage_record in file_handler.readlines():
+                record = json.loads(usage_record)
+                table_usage = TableUsageCount(**json.loads(record))
 
-            self.service_name = table_usage.serviceName
-
+                self.service_name = table_usage.serviceName
             table_entities = None
             try:
                 table_entities = get_table_entities_from_query(
@@ -187,8 +199,8 @@ class MetadataUsageBulkSink(BulkSink):
             if not table_entities:
                 logger.warning(
                     f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
+
                 )
-                continue
 
             for table_entity in table_entities:
                 if table_entity is not None:
@@ -223,9 +235,7 @@ class MetadataUsageBulkSink(BulkSink):
                         logger.debug(traceback.format_exc())
                 else:
                     logger.warning(
-                        "Table does not exist, skipping usage publish {}, {}".format(
-                            table_usage.table, table_usage.databaseName
-                        )
+                        f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
                     )
                     self.status.warnings.append(f"Table: {table_usage.table}")
 
@@ -311,6 +321,11 @@ class MetadataUsageBulkSink(BulkSink):
         return self.status
 
     def close(self):
-        self.file_handler.close()
-        os.remove(self.config.filename)
+        for filename in os.listdir(self.config.dirPath):
+            if (
+                filename
+                and self.service_name
+                and filename.startswith(self.service_name)
+            ):
+                os.remove(os.path.join(self.config.dirPath, filename))
         self.metadata.close()

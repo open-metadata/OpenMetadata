@@ -10,65 +10,33 @@
 #  limitations under the License.
 
 import json
-import pathlib
+import os
 import traceback
 
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.type.queryParserData import QueryParserData
-from metadata.generated.schema.type.tableUsageCount import (
-    TableColumn,
-    TableColumnJoin,
-    TableUsageCount,
-)
+from metadata.generated.schema.type.tableUsageCount import TableUsageCount
 from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.stage.file import FileStageConfig
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-def get_table_column_join(table, table_aliases, joins, database):
-    table_column = None
-    joined_with = []
-    for join in joins:
-        try:
-            if "." not in join:
-                continue
-            jtable, column = join.split(".")[-2:]
-            if (
-                table == jtable
-                or jtable == table.split(".")[-1]
-                or table == f"{database}.{jtable}"
-                or jtable in table_aliases
-            ):
-                table_column = TableColumn(
-                    table=table_aliases[jtable] if jtable in table_aliases else jtable,
-                    column=column,
-                )
-            else:
-                joined_with.append(
-                    TableColumn(
-                        table=table_aliases[jtable]
-                        if jtable in table_aliases
-                        else jtable,
-                        column=column,
-                    )
-                )
-        except ValueError as err:
-            logger.error("Error in parsing sql query joins {}".format(err))
-    return TableColumnJoin(tableColumn=table_column, joinedWith=joined_with)
+class TableStageConfig(ConfigModel):
+    dirPath: str
 
 
 class TableUsageStage(Stage[QueryParserData]):
-    config: FileStageConfig
+    config: TableStageConfig
     status: StageStatus
 
     def __init__(
         self,
-        config: FileStageConfig,
+        config: TableStageConfig,
         metadata_config: OpenMetadataConnection,
     ):
 
@@ -77,13 +45,14 @@ class TableUsageStage(Stage[QueryParserData]):
         self.status = StageStatus()
         self.table_usage = {}
         self.table_queries = {}
-        fpath = pathlib.Path(self.config.filename)
-        self.file = fpath.open("w")
+        isdir = os.path.isdir(self.config.dirPath)
+        if not isdir:
+            os.mkdir(self.config.dirPath)
         self.wrote_something = False
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
-        config = FileStageConfig.parse_obj(config_dict)
+        config = TableStageConfig.parse_obj(config_dict)
         return cls(config, metadata_config)
 
     def _add_sql_query(self, record, table):
@@ -122,8 +91,7 @@ class TableUsageStage(Stage[QueryParserData]):
             except Exception as exc:
                 logger.error("Error in staging record - {}".format(exc))
                 logger.error(traceback.format_exc())
-
-            self.table_usage[table] = table_usage_count
+            self.table_usage[(table, record.date)] = table_usage_count
             logger.info(f"Successfully record staged for {table}")
 
     def get_status(self):
@@ -134,6 +102,9 @@ class TableUsageStage(Stage[QueryParserData]):
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
                 data = value.json()
-                self.file.write(json.dumps(data))
-                self.file.write("\n")
-        self.file.close()
+                with open(
+                    os.path.join(self.config.dirPath, f"{value.serviceName}_{key[1]}"),
+                    "w+",
+                ) as file:
+                    file.write(json.dumps(data))
+                    file.write("\n")
