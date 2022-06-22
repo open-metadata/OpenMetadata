@@ -26,14 +26,17 @@ import React, {
 import AppState from '../../AppState';
 import {
   getDashboardDetailsPath,
+  getServiceDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -83,8 +86,19 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const mlModelTags = useMemo(() => {
     return getTagsWithoutTier(mlModelDetail.tags || []);
   }, [mlModelDetail.tags]);
-
   const slashedMlModelName: TitleBreadcrumbProps['titleLinks'] = [
+    {
+      name: mlModelDetail.service.name || '',
+      url: mlModelDetail.service.name
+        ? getServiceDetailsPath(
+            mlModelDetail.service.name,
+            ServiceCategory.ML_MODAL_SERVICES
+          )
+        : '',
+      imgSrc: mlModelDetail.service
+        ? serviceTypeLogo(mlModelDetail.service.type)
+        : undefined,
+    },
     {
       name: getEntityName(mlModelDetail as unknown as EntityReference),
       url: '',

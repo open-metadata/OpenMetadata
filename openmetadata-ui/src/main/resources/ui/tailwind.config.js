@@ -173,6 +173,7 @@ module.exports = {
         'screen-xxl': '2160px',
         'full-hd': '1080px',
         600: '600px',
+        700: '700px',
       },
       minWidth: {
         badgeCount: '30px',

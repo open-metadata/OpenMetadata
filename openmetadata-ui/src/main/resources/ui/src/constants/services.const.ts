@@ -30,6 +30,7 @@ import kafka from '../assets/img/service-icon-kafka.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
+import mlflow from '../assets/img/service-icon-mlflow.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -41,6 +42,7 @@ import query from '../assets/img/service-icon-query.png';
 import redash from '../assets/img/service-icon-redash.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
+import scikit from '../assets/img/service-icon-scikit.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
@@ -91,6 +93,8 @@ export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
+export const MLFLOW = mlflow;
+export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
 
@@ -104,7 +108,7 @@ export const PIPELINE_DEFAULT = pipelineDefault;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
-
+export const excludedService = [MlModelServiceType.Sklearn];
 export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   databaseServices: Object.values(DatabaseServiceType),
   messagingServices: Object.values(MessagingServiceType),
