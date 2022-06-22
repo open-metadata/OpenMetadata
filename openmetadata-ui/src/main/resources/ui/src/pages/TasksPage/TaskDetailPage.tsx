@@ -28,24 +28,13 @@ import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThrea
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-} from '../../constants/constants';
-import { FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { TaskStatus, Thread } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
-import {
-  getEntityName,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import { getEntityFQN } from '../../utils/FeedUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { fetchOptions } from '../../utils/TasksUtils';
+import { fetchOptions, getBreadCrumbList } from '../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
@@ -67,6 +56,28 @@ const TaskDetailPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
+
+  // get current user details
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const entityTier = useMemo(() => {
+    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
+
+    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
+  }, [entityData.tags]);
+
+  const entityTags = useMemo(() => {
+    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
+
+    return tags.map((tag) => `#${tag.tagFQN}`).join('  ');
+  }, [entityData.tags]);
+
+  const entityType = useMemo(() => {
+    return getEntityType(taskDetail.about);
+  }, [taskDetail]);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -98,68 +109,6 @@ const TaskDetailPage = () => {
       });
   };
 
-  const getBreadCrumb = () => {
-    return [
-      {
-        name: getEntityName(entityData.service),
-        url: getEntityName(entityData.service)
-          ? getServiceDetailsPath(
-              entityData.service.name || '',
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: entityData.serviceType
-          ? serviceTypeLogo(entityData.serviceType || '')
-          : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(
-          entityData.database?.fullyQualifiedName || '',
-          [FqnPart.Database]
-        ),
-        url: getDatabaseDetailsPath(
-          entityData.database?.fullyQualifiedName || ''
-        ),
-      },
-      {
-        name: getPartialNameFromTableFQN(
-          entityData.databaseSchema?.fullyQualifiedName || '',
-          [FqnPart.Schema]
-        ),
-        url: getDatabaseSchemaDetailsPath(
-          entityData.databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
-      {
-        name: getEntityName(entityData as unknown as EntityReference),
-        url: '',
-        activeTitle: true,
-      },
-    ];
-  };
-
-  const onSearch = (query: string) => {
-    fetchOptions(query, setOptions);
-  };
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
-
-  const entityTier = useMemo(() => {
-    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
-
-    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [entityData.tags]);
-
-  const entityTags = useMemo(() => {
-    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
-
-    return tags.map((tag) => `#${tag.tagFQN}`).join('  ');
-  }, [entityData.tags]);
-
   const onPostReply = (value: string) => {
     const data = {
       message: value,
@@ -173,6 +122,10 @@ const TaskDetailPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(err);
       });
+  };
+
+  const onSearch = (query: string) => {
+    fetchOptions(query, setOptions);
   };
 
   useEffect(() => {
@@ -227,7 +180,9 @@ const TaskDetailPage = () => {
   return (
     <Layout style={{ ...background, height: '100vh' }}>
       <Content style={{ ...contentStyles, overflowY: 'auto' }}>
-        <TitleBreadcrumb titleLinks={getBreadCrumb()} />
+        <TitleBreadcrumb
+          titleLinks={getBreadCrumbList(entityData, entityType as EntityType)}
+        />
 
         <div className="tw-flex tw-ml-6">
           <span className="tw-text-grey-muted">Owner:</span>{' '}

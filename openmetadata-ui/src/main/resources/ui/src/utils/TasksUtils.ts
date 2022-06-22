@@ -17,14 +17,21 @@ import { isEqual, isUndefined } from 'lodash';
 import { Diff } from 'Models';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
 import {
+  getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
+  getServiceDetailsPath,
   PLACEHOLDER_ROUTE_ENTITY_FQN,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_TASK_ID,
   ROUTES,
 } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
+import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
-import { Option } from '../pages/TasksPage/TasksPage.interface';
+import { EntityReference } from '../generated/type/entityReference';
+import { EntityData, Option } from '../pages/TasksPage/TasksPage.interface';
+import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
+import { serviceTypeLogo } from './ServiceUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -123,5 +130,71 @@ export const TASK_ENTITIES = [
   EntityType.DASHBOARD,
   EntityType.TOPIC,
   EntityType.PIPELINE,
-  EntityType.MLMODEL,
 ];
+
+export const getBreadCrumbList = (
+  entityData: EntityData,
+  entityType: EntityType
+) => {
+  const activeEntity = {
+    name: getEntityName(entityData as unknown as EntityReference),
+    url: '',
+    activeTitle: true,
+  };
+
+  const database = {
+    name: getPartialNameFromTableFQN(
+      entityData.database?.fullyQualifiedName || '',
+      [FqnPart.Database]
+    ),
+    url: getDatabaseDetailsPath(entityData.database?.fullyQualifiedName || ''),
+  };
+
+  const databaseSchema = {
+    name: getPartialNameFromTableFQN(
+      entityData.databaseSchema?.fullyQualifiedName || '',
+      [FqnPart.Schema]
+    ),
+    url: getDatabaseSchemaDetailsPath(
+      entityData.databaseSchema?.fullyQualifiedName || ''
+    ),
+  };
+
+  const service = (serviceCategory: ServiceCategory) => {
+    return {
+      name: getEntityName(entityData.service),
+      url: getEntityName(entityData.service)
+        ? getServiceDetailsPath(entityData.service.name || '', serviceCategory)
+        : '',
+      imgSrc: entityData.serviceType
+        ? serviceTypeLogo(entityData.serviceType || '')
+        : undefined,
+    };
+  };
+
+  switch (entityType) {
+    case EntityType.TABLE: {
+      return [
+        service(ServiceCategory.DATABASE_SERVICES),
+        database,
+        databaseSchema,
+        activeEntity,
+      ];
+    }
+
+    case EntityType.TOPIC: {
+      return [service(ServiceCategory.MESSAGING_SERVICES), activeEntity];
+    }
+
+    case EntityType.DASHBOARD: {
+      return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
+    }
+
+    case EntityType.PIPELINE: {
+      return [service(ServiceCategory.PIPELINE_SERVICES), activeEntity];
+    }
+
+    default:
+      return [];
+  }
+};

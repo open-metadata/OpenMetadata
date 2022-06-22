@@ -31,29 +31,19 @@ import ProfilePicture from '../../components/common/ProfilePicture/ProfilePictur
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-} from '../../constants/constants';
-import { FqnPart } from '../../enums/entity.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateThread, TaskType } from '../../generated/api/feed/createThread';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
-import {
-  getEntityName,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/CommonUtils';
 import { defaultFields as tableFields } from '../../utils/DatasetDetailsUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../utils/EntityUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import {
   fetchOptions,
+  getBreadCrumbList,
   getColumnObject,
   getTaskDetailPath,
 } from '../../utils/TasksUtils';
@@ -111,46 +101,6 @@ const RequestDescription = () => {
   };
 
   const back = () => history.goBack();
-
-  const getBreadCrumb = () => {
-    return [
-      {
-        name: getEntityName(entityData.service),
-        url: getEntityName(entityData.service)
-          ? getServiceDetailsPath(
-              entityData.service.name || '',
-              ServiceCategory.DATABASE_SERVICES
-            )
-          : '',
-        imgSrc: entityData.serviceType
-          ? serviceTypeLogo(entityData.serviceType || '')
-          : undefined,
-      },
-      {
-        name: getPartialNameFromTableFQN(
-          entityData.database?.fullyQualifiedName || '',
-          [FqnPart.Database]
-        ),
-        url: getDatabaseDetailsPath(
-          entityData.database?.fullyQualifiedName || ''
-        ),
-      },
-      {
-        name: getPartialNameFromTableFQN(
-          entityData.databaseSchema?.fullyQualifiedName || '',
-          [FqnPart.Schema]
-        ),
-        url: getDatabaseSchemaDetailsPath(
-          entityData.databaseSchema?.fullyQualifiedName || ''
-        ),
-      },
-      {
-        name: getEntityName(entityData as unknown as EntityReference),
-        url: '',
-        activeTitle: true,
-      },
-    ];
-  };
 
   const getColumnDetails = useCallback(() => {
     if (!isNil(field) && !isNil(value) && field === 'columns') {
@@ -231,7 +181,9 @@ const RequestDescription = () => {
 
   return (
     <TaskPageLayout>
-      <TitleBreadcrumb titleLinks={getBreadCrumb()} />
+      <TitleBreadcrumb
+        titleLinks={getBreadCrumbList(entityData, entityType as EntityType)}
+      />
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
         <Card
           className="tw-col-span-2"
