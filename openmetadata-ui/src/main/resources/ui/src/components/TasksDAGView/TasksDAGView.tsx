@@ -12,17 +12,18 @@
  */
 
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
-  ArrowHeadType,
   Edge,
-  Elements,
+  MarkerType,
   Node,
+  useEdgesState,
+  useNodesState,
 } from 'react-flow-renderer';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
-import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
+import { getLayoutedElementsV1, onLoad } from '../../utils/EntityLineageUtils';
 import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
 import TaskNode from './TaskNode';
 
@@ -32,7 +33,8 @@ export interface Props {
 }
 
 const TasksDAGView = ({ tasks, selectedExec }: Props) => {
-  const [elements, setElements] = useState<Elements>([]);
+  const [nodesData, setNodesData, onNodesChange] = useNodesState([]);
+  const [edgesData, setEdgesData, onEdgesChange] = useEdgesState([]);
 
   const getNodeType = useCallback(
     (index: number) => {
@@ -85,7 +87,9 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
         const dest = replaceSpaceWith_(dwTask);
 
         return {
-          arrowHeadType: ArrowHeadType.ArrowClosed,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+          },
           id: `${src}-${dest}`,
           type: 'custom',
           source: src,
@@ -99,20 +103,28 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   }, [tasks]);
 
   useEffect(() => {
-    setElements(getLayoutedElements([...nodes, ...edges]));
+    const { node: nodeValue, edge: edgeValue } = getLayoutedElementsV1({
+      node: nodes,
+      edge: edges,
+    });
+    setNodesData(nodeValue);
+    setEdgesData(edgeValue);
   }, [nodes, edges]);
 
   return (
     <ReactFlow
       data-testid="react-flow-component"
-      elements={elements}
+      edges={edgesData}
       maxZoom={2}
       minZoom={0.5}
       nodeTypes={nodeTypes}
+      nodes={nodesData}
       selectNodesOnDrag={false}
       zoomOnDoubleClick={false}
       zoomOnScroll={false}
-      onLoad={onLoad}
+      onEdgesChange={onEdgesChange}
+      onInit={onLoad}
+      onNodesChange={onNodesChange}
     />
   );
 };
