@@ -173,7 +173,7 @@ const ServicesPage = () => {
               messagingServices: servicePaging.messagingServices.total || 0,
               dashboardServices: servicePaging.dashboardServices.total || 0,
               pipelineServices: servicePaging.pipelineServices.total || 0,
-              mlmodelServices: servicePaging.pipelineServices.total || 0,
+              mlmodelServices: servicePaging.mlmodelServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
