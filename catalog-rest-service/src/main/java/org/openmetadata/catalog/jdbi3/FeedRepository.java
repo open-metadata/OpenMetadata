@@ -152,7 +152,8 @@ public class FeedRepository {
   }
 
   public Thread getTask(Integer id) throws IOException {
-    return EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
+    Thread task = EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
+    return populateAssignees(task);
   }
 
   private void storeMentions(Thread thread, String message) {
@@ -613,16 +614,18 @@ public class FeedRepository {
   }
 
   private void populateAssignees(List<Thread> threads) {
-    threads.forEach(
-        thread -> {
-          List<EntityReference> assignees = thread.getTask().getAssignees();
-          try {
-            assignees = EntityUtil.populateEntityReferences(assignees);
-            thread.getTask().setAssignees(assignees);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+    threads.forEach(this::populateAssignees);
+  }
+
+  private Thread populateAssignees(Thread thread) {
+    List<EntityReference> assignees = thread.getTask().getAssignees();
+    try {
+      assignees = EntityUtil.populateEntityReferences(assignees);
+      thread.getTask().setAssignees(assignees);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return thread;
   }
 
   /** Return the tasks created by the user. */
