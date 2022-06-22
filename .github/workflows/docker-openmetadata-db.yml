@@ -11,6 +11,10 @@
 
 name: docker-openmetadata-db docker
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "release tag being built"
   release:
     types: [published]
 
