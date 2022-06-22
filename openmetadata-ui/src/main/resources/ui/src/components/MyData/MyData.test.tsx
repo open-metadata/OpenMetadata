@@ -328,6 +328,7 @@ const mockProp: MyDataProps = {
   countTopics: 5,
   countTeams: 7,
   countUsers: 100,
+  countMlModal: 2,
   followedDataCount: 5,
   ownedDataCount: 5,
   error: '',
