@@ -49,6 +49,13 @@ export enum EntityLineageDirection {
   LEFT_RIGHT = 'LR',
 }
 
+export enum EntityLineageNodeType {
+  INPUT = 'input',
+  OUTPUT = 'output',
+  DEFAULT = 'default',
+  NOT_CONNECTED = 'not-connected',
+}
+
 export enum TabSpecificField {
   SAMPLE_DATA = 'sampleData',
   ACTIVITY_FEED = 'activity_feed',

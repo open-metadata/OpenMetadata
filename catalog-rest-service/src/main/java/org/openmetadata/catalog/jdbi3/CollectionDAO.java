@@ -54,6 +54,7 @@ import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.MlModelService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -155,6 +156,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   PipelineServiceDAO pipelineServiceDAO();
+
+  @CreateSqlObject
+  MlModelServiceDAO mlModelServiceDAO();
 
   @CreateSqlObject
   DashboardServiceDAO dashboardServiceDAO();
@@ -1019,6 +1023,23 @@ public interface CollectionDAO {
     @Override
     default Class<PipelineService> getEntityClass() {
       return PipelineService.class;
+    }
+
+    @Override
+    default String getNameColumn() {
+      return "name";
+    }
+  }
+
+  interface MlModelServiceDAO extends EntityDAO<MlModelService> {
+    @Override
+    default String getTableName() {
+      return "mlmodel_service_entity";
+    }
+
+    @Override
+    default Class<MlModelService> getEntityClass() {
+      return MlModelService.class;
     }
 
     @Override

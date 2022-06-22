@@ -83,7 +83,7 @@ class SampleUsageSource(UsageSource):
                 endTime="",
                 analysisDate=self.analysis_date,
                 aborted=False,
-                database="ecommerce_db",
+                databaseName="ecommerce_db",
                 serviceName=self.config.serviceName,
                 databaseSchema="shopify",
             )

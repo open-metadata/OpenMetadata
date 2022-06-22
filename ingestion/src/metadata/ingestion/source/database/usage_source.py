@@ -13,6 +13,7 @@ Usage Souce Module
 """
 import csv
 import traceback
+from abc import ABC
 from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -34,7 +35,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class UsageSource(Source[TableQuery]):
+class UsageSource(Source[TableQuery], ABC):
+
+    sql_stmt: str
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__()
         self.config = config
@@ -77,7 +81,7 @@ class UsageSource(Source[TableQuery]):
                         endTime=query_dict.get("end_time", ""),
                         analysisDate=self.analysis_date,
                         aborted=self.get_aborted_status(query_dict),
-                        database=self.get_database_name(query_dict),
+                        databaseName=self.get_database_name(query_dict),
                         serviceName=self.config.serviceName,
                         databaseSchema=query_dict.get("schema_name"),
                     )
@@ -92,7 +96,7 @@ class UsageSource(Source[TableQuery]):
                     endTime=str(row["end_time"]),
                     analysisDate=self.analysis_date,
                     aborted=self.get_aborted_status(row),
-                    database=self.get_database_name(row),
+                    databaseName=self.get_database_name(row),
                     serviceName=self.config.serviceName,
                     databaseSchema=row["schema_name"],
                 )
@@ -107,7 +111,7 @@ class UsageSource(Source[TableQuery]):
             if table_query:
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_name=table_query.database,
+                    database_name=table_query.databaseName,
                 ):
                     continue
                 if filter_by_schema(
@@ -121,11 +125,10 @@ class UsageSource(Source[TableQuery]):
                     logger.debug(f"Parsed Query: {table_query.query}")
                     if not table_query.databaseSchema:
                         self.report.scanned(
-                            f"{table_query.database}.{table_query.databaseSchema}"
+                            f"{table_query.databaseName}.{table_query.databaseSchema}"
                         )
                     else:
-                        self.report.scanned(f"{table_query.database}")
-                    yield table_query
+                        self.report.scanned(f"{table_query.databaseName}")
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(str(err))

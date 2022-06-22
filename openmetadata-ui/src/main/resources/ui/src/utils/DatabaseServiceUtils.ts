@@ -19,6 +19,7 @@ import azureSQLConnection from '../jsons/connectionSchemas/connections/database/
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
+import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import db2Connection from '../jsons/connectionSchemas/connections/database/db2Connection.json';
 import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
@@ -66,6 +67,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Databricks: {
       schema = databricksConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Datalake: {
+      schema = DatalakeConnection;
 
       break;
     }

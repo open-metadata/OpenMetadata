@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
 import logging
+import shutil
 import traceback
 from datetime import datetime
 
@@ -58,7 +58,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
-from metadata.utils.elasticsearch import ESIndex
+from metadata.utils import fqn
 
 logger = logging.getLogger(__name__)
 
@@ -170,10 +170,19 @@ class MigrateBulkSink(BulkSink):
         for table in file.readlines():
             table = json.loads(table)
             try:
-                table_entities = self.metadata.es_search_from_service(
+
+                filters = self._separate_fqn(table.get("fullyQualifiedName"))
+
+                fqn_search_string = fqn._build(
+                    table.get("service").get("name"),
+                    filters.get("database", "*"),
+                    filters.get("database_schema", "*"),
+                    filters.get("name"),
+                )
+
+                table_entities = self.metadata.es_search_from_fqn(
                     entity_type=Table,
-                    filters=self._separate_fqn(table.get("fullyQualifiedName")),
-                    service_name=table.get("service").get("name"),
+                    fqn_search_string=fqn_search_string,
                 )
                 if len(table_entities) < 1:
                     continue
@@ -672,4 +681,5 @@ class MigrateBulkSink(BulkSink):
         return self.status
 
     def close(self):
+        shutil.rmtree(self.config.dirPath)
         self.metadata.close()

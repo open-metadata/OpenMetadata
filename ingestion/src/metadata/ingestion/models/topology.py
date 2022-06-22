@@ -38,6 +38,7 @@ class NodeStage(BaseModel, Generic[T]):
     cache_all: bool = (
         False  # If we need to cache all values being yielded in the context
     )
+    clear_cache: bool = False  # If we need to clean cache values  in the context for each produced element
     consumer: Optional[
         List[str]
     ] = None  # keys in the source context to fetch state from the parent's context
