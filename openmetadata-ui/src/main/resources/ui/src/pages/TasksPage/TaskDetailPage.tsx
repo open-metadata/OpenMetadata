@@ -14,13 +14,19 @@
 import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, toLower } from 'lodash';
+import { Operation } from 'fast-json-patch';
+import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { getFeedById, getTask, postFeedById } from '../../axiosAPIs/feedsAPI';
+import {
+  getFeedById,
+  getTask,
+  postFeedById,
+  postThread,
+} from '../../axiosAPIs/feedsAPI';
 import ActivityFeedEditor from '../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
@@ -28,14 +34,17 @@ import ProfilePicture from '../../components/common/ProfilePicture/ProfilePictur
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
 import { TaskStatus, Thread } from '../../generated/entity/feed/thread';
 import { getEntityName } from '../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
 import {
+  deletePost,
   getEntityField,
   getEntityFQN,
   getEntityType,
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -138,6 +147,12 @@ const TaskDetailPage = () => {
     fetchOptions(query, setOptions);
   };
 
+  const onTabChange = (key: string) => {
+    if (isEqual(key, '1')) {
+      fetchTaskFeed(taskDetail.id);
+    }
+  };
+
   useEffect(() => {
     fetchTaskDetail();
   }, [taskId]);
@@ -169,8 +184,39 @@ const TaskDetailPage = () => {
     }
   }, [taskDetail]);
 
-  const fn = () => {
-    return;
+  const createThread = (data: CreateThread) => {
+    postThread(data).catch((err: AxiosError) => {
+      showErrorToast(err);
+    });
+  };
+
+  const deletePostHandler = (threadId: string, postId: string) => {
+    deletePost(threadId, postId).catch((error: AxiosError) => {
+      showErrorToast(error);
+    });
+  };
+
+  const postFeedHandler = (value: string, id: string) => {
+    const data = {
+      message: value,
+      from: currentUser?.name,
+    };
+    postFeedById(id, data).catch((err: AxiosError) => {
+      showErrorToast(err);
+    });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    const callback = () => {
+      return;
+    };
+
+    updateThreadData(threadId, postId, isThread, data, callback);
   };
 
   const TaskStatusElement = ({ status }: { status: TaskStatus }) => {
@@ -312,7 +358,7 @@ const TaskDetailPage = () => {
         className="ant-layout-sider-task-detail"
         data-testid="task-right-sider"
         width={600}>
-        <Tabs className="ant-tabs-task-detail">
+        <Tabs className="ant-tabs-task-detail" onChange={onTabChange}>
           <TabPane key="1" tab="Task">
             {!isEmpty(taskFeedDetail) ? (
               <div id="task-feed">
@@ -336,12 +382,12 @@ const TaskDetailPage = () => {
             {!isEmpty(taskFeedDetail) ? (
               <ActivityThreadPanelBody
                 className="tw-p-0"
-                createThread={() => fn()}
-                deletePostHandler={() => fn()}
-                postFeedHandler={() => fn()}
+                createThread={createThread}
+                deletePostHandler={deletePostHandler}
+                postFeedHandler={postFeedHandler}
                 showHeader={false}
                 threadLink={taskFeedDetail.about}
-                updateThreadHandler={() => fn()}
+                updateThreadHandler={updateThreadHandler}
               />
             ) : null}
           </TabPane>
