@@ -8,9 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
-
-from sql_metadata import Parser
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -35,6 +34,16 @@ from metadata.utils import fqn
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import search_table_entities
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
+
 
 logger = ingestion_logger()
 
@@ -115,19 +124,19 @@ class RedashSource(DashboardServiceSource):
             visualization = widgets.get("visualization")
             if not visualization.get("query"):
                 continue
-            table_list = []
             if visualization.get("query", {}).get("query"):
-                table_list = Parser(visualization["query"]["query"])
-            for table in table_list.tables:
-                dataabase_schema = None
+                parser = LineageRunner(visualization["query"]["query"])
+            for table in parser.source_tables:
+                table_name = str(table)
+                database_schema = None
                 if "." in table:
-                    dataabase_schema, table = fqn.split(table)[-2:]
+                    database_schema, table = fqn.split(table_name)[-2:]
                 table_entities = search_table_entities(
                     metadata=self.metadata,
                     database=None,
                     service_name=self.source_config.dbServiceName,
-                    database_schema=dataabase_schema,
-                    table=table,
+                    database_schema=database_schema,
+                    table=table_name,
                 )
                 for from_entity in table_entities:
                     to_entity = self.metadata.get_by_name(

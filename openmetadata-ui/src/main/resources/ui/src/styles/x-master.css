@@ -747,6 +747,12 @@ body .profiler-graph .recharts-active-dot circle {
   pointer-events: all;
   cursor: pointer;
 }
+.react-flow__node-default .react-flow__handle,
+.react-flow__node-group .react-flow__handle,
+.react-flow__node-input .react-flow__handle,
+.react-flow__node-output .react-flow__handle {
+  background-color: #7147e8 !important;
+}
 
 .react-flow__edge .react-flow__edge-path {
   stroke-width: 2px;
@@ -754,6 +760,14 @@ body .profiler-graph .recharts-active-dot circle {
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 2px solid rgb(229, 231, 235) !important;
 }
 
 /* EntityVersion  */
@@ -920,6 +934,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -969,6 +987,10 @@ code {
 
 .ant-card-body {
   padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
 }
 
 .ant-card-head-title {
@@ -1077,13 +1099,22 @@ code {
 }
 
 .ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
   display: none;
 }
 .ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
   border-radius: 6px;
   border: 1px solid #dde3ea;
+}
+
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
 }
 
 /* Feed popover CSS end */

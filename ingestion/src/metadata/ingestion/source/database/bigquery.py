@@ -111,7 +111,8 @@ class BigquerySource(CommonDbSourceService):
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[1]
 
-    def set_project_id(self):
+    @staticmethod
+    def set_project_id():
         _, project_id = auth.default()
         return project_id
 

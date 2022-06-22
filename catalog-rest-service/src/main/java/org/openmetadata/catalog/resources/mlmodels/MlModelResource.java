@@ -77,6 +77,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
     Entity.withHref(uriInfo, mlmodel.getOwner());
     Entity.withHref(uriInfo, mlmodel.getDashboard());
+    Entity.withHref(uriInfo, mlmodel.getService());
     Entity.withHref(uriInfo, mlmodel.getFollowers());
     return mlmodel;
   }
@@ -105,8 +106,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       summary = "List ML Models",
       tags = "mlModels",
       description =
-          "Get a list of ML Models. Use `fields` parameter to get only necessary fields. "
-              + " Use cursor-based pagination to limit the number "
+          "Get a list of mlmodels, optionally filtered by `service` it belongs to. Use `fields` "
+              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
         @ApiResponse(
@@ -122,6 +123,11 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter MlModels by service name",
+              schema = @Schema(type = "string", example = "airflow"))
+          @QueryParam("service")
+          String serviceParam,
       @Parameter(description = "Limit the number models returned. (1 to 1000000, " + "default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -141,7 +147,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(include);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -403,6 +409,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
 
   private MlModel getMlModel(CreateMlModel create, String user) {
     return copy(new MlModel(), create, user)
+        .withService(create.getService())
         .withDashboard(create.getDashboard())
         .withAlgorithm(create.getAlgorithm())
         .withMlFeatures(create.getMlFeatures())

@@ -17,6 +17,7 @@ import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.MLMODEL;
+import static org.openmetadata.catalog.Entity.MLMODEL_SERVICE;
 import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
@@ -31,6 +32,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
+import org.openmetadata.catalog.entity.services.MlModelService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -60,8 +63,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
+  public void setFullyQualifiedName(MlModel mlModel) {
+    mlModel.setFullyQualifiedName(FullyQualifiedName.add(mlModel.getService().getName(), mlModel.getName()));
+  }
+
+  @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
+    mlModel.setService(getService(mlModel));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
@@ -75,6 +84,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Patch can't make changes to following fields. Ignore the changes
     updated
         .withFullyQualifiedName(original.getFullyQualifiedName())
+        .withService(original.getService())
         .withName(original.getName())
         .withId(original.getId());
   }
@@ -121,6 +131,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void prepare(MlModel mlModel) throws IOException {
+    populateService(mlModel);
     setFullyQualifiedName(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
@@ -144,18 +155,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     EntityReference owner = mlModel.getOwner();
     List<TagLabel> tags = mlModel.getTags();
     EntityReference dashboard = mlModel.getDashboard();
+    EntityReference service = mlModel.getService();
 
     // Don't store owner, dashboard, href and tags as JSON. Build it on the fly based on relationships
-    mlModel.withOwner(null).withDashboard(null).withHref(null).withTags(null);
+    mlModel.withService(null).withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
     store(mlModel.getId(), mlModel, update);
 
     // Restore the relationships
-    mlModel.withOwner(owner).withDashboard(dashboard).withTags(tags);
+    mlModel.withService(service).withOwner(owner).withDashboard(dashboard).withTags(tags);
   }
 
   @Override
   public void storeRelationships(MlModel mlModel) {
+    EntityReference service = mlModel.getService();
+    addRelationship(service.getId(), mlModel.getId(), service.getType(), MLMODEL, Relationship.CONTAINS);
+
     storeOwner(mlModel, mlModel.getOwner());
 
     setDashboard(mlModel, mlModel.getDashboard());
@@ -172,6 +187,24 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  private EntityReference getService(MlModel mlModel) throws IOException {
+    return getContainer(mlModel.getId(), MLMODEL);
+  }
+
+  private void populateService(MlModel mlModel) throws IOException {
+    MlModelService service = getService(mlModel.getService().getId(), mlModel.getService().getType());
+    mlModel.setService(service.getEntityReference());
+    mlModel.setServiceType(service.getServiceType());
+  }
+
+  private MlModelService getService(UUID serviceId, String entityType) throws IOException {
+    if (entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)) {
+      return daoCollection.mlModelServiceDAO().findEntityById(serviceId);
+    }
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidServiceEntity(entityType, MLMODEL, MLMODEL_SERVICE));
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
