@@ -11,6 +11,7 @@
 
 name: docker-openmetadata-server docker
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
