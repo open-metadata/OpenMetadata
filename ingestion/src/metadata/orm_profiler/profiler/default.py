@@ -65,6 +65,7 @@ class DefaultProfiler(Profiler):
         profile_sample: Optional[float] = 100.0,
         timeout_seconds: Optional[int] = TEN_MIN,
         partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
 
         _metrics = get_default_metrics(table)
@@ -78,4 +79,5 @@ class DefaultProfiler(Profiler):
             profile_sample=profile_sample,
             timeout_seconds=timeout_seconds,
             partition_details=partition_details,
+            profile_sample_query=profile_sample_query,
         )
