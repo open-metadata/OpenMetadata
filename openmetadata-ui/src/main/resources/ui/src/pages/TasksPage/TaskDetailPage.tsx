@@ -21,7 +21,6 @@ import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getFeedById, getTask, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import ActivityFeedEditor from '../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
@@ -31,10 +30,13 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { TaskStatus, Thread } from '../../generated/entity/feed/thread';
 import { getEntityName } from '../../utils/CommonUtils';
-import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { fetchOptions, getBreadCrumbList } from '../../utils/TasksUtils';
+import {
+  fetchEntityDetail,
+  fetchOptions,
+  getBreadCrumbList,
+} from '../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Assignees from './Assignees';
@@ -99,16 +101,6 @@ const TaskDetailPage = () => {
       .finally(() => setIsLoading(false));
   };
 
-  const fetchTableDetails = (entityFQN: string) => {
-    getTableDetailsByFQN(entityFQN, defaultFields)
-      .then((res: AxiosResponse) => {
-        setEntityData(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
-  };
-
   const onPostReply = (value: string) => {
     const data = {
       message: value,
@@ -136,7 +128,12 @@ const TaskDetailPage = () => {
     if (!isEmpty(taskDetail)) {
       const entityFQN = getEntityFQN(taskDetail.about);
 
-      entityFQN && fetchTableDetails(entityFQN);
+      entityFQN &&
+        fetchEntityDetail(
+          entityType as EntityType,
+          entityFQN as string,
+          setEntityData
+        );
       fetchTaskFeed(taskDetail.id);
     }
   }, [taskDetail]);

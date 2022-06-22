@@ -15,7 +15,11 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { diffLines } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { Diff } from 'Models';
+import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
+import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
+import { getTableDetailsByFQN } from '../axiosAPIs/tableAPI';
+import { getTopicByFqn } from '../axiosAPIs/topicsAPI';
 import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
@@ -31,6 +35,9 @@ import { Column, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { EntityData, Option } from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
+import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
+import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -196,5 +203,49 @@ export const getBreadCrumbList = (
 
     default:
       return [];
+  }
+};
+
+export const fetchEntityDetail = (
+  entityType: EntityType,
+  entityFQN: string,
+  setEntityData: (value: React.SetStateAction<EntityData>) => void
+) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      getTableDetailsByFQN(entityFQN, TableFields)
+        .then((res: AxiosResponse) => {
+          setEntityData(res.data);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.TOPIC:
+      getTopicByFqn(entityFQN, ['owner', 'tags'])
+        .then((res: AxiosResponse) => {
+          setEntityData(res.data);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.DASHBOARD:
+      getDashboardByFqn(entityFQN, DashboardFields)
+        .then((res: AxiosResponse) => {
+          setEntityData(res.data);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.PIPELINE:
+      getPipelineByFqn(entityFQN, PipelineFields)
+        .then((res: AxiosResponse) => {
+          setEntityData(res.data);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    default:
+      break;
   }
 };

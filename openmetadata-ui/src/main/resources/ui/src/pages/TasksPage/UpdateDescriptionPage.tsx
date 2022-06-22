@@ -25,7 +25,6 @@ import React, {
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { postThread } from '../../axiosAPIs/feedsAPI';
-import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -36,13 +35,13 @@ import {
   ThreadType,
 } from '../../generated/api/feed/createThread';
 import { getEntityName } from '../../utils/CommonUtils';
-import { defaultFields as tableFields } from '../../utils/DatasetDetailsUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../utils/EntityUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import {
+  fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
@@ -92,16 +91,6 @@ const UpdateDescription = () => {
   );
 
   const message = `Update description for ${getSanitizeValue || entityType}`;
-
-  const fetchTableDetails = () => {
-    getTableDetailsByFQN(entityFQN, tableFields)
-      .then((res: AxiosResponse) => {
-        setEntityData(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
-  };
 
   const back = () => history.goBack();
 
@@ -166,7 +155,11 @@ const UpdateDescription = () => {
   };
 
   useEffect(() => {
-    fetchTableDetails();
+    fetchEntityDetail(
+      entityType as EntityType,
+      entityFQN as string,
+      setEntityData
+    );
   }, [entityFQN, entityType]);
 
   useEffect(() => {
