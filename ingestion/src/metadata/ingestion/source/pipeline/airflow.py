@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -287,23 +287,29 @@ class AirflowSource(Source[CreatePipelineRequest]):
         :return: Lineage from inlets and outlets
         """
         dag: SerializedDAG = serialized_dag.dag
-        lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline_entity.id, type="pipeline")
-        )
+
         for task in dag.tasks:
-            for from_fqn in self.get_inlets(task) or []:
-                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-                for to_fqn in self.get_outlets(task) or []:
-                    to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
-                    lineage = AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=from_entity.id, type="table"),
-                            toEntity=EntityReference(id=to_entity.id, type="table"),
-                        )
+            for table_fqn in self.get_inlets(task) or []:
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                yield AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=table_entity.id, type="table"),
+                        toEntity=EntityReference(
+                            id=pipeline_entity.id, type="pipeline"
+                        ),
                     )
-                    if lineage_details:
-                        lineage.edge.lineageDetails = lineage_details
-                    yield lineage
+                )
+
+            for table_fqn in self.get_outlets(task) or []:
+                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                yield AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=pipeline_entity.id, type="pipeline"
+                        ),
+                        toEntity=EntityReference(id=table_entity.id, type="table"),
+                    )
+                )
 
     def next_record(self) -> Iterable[Entity]:
         """

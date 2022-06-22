@@ -56,6 +56,7 @@ const mainBorder = '#DCE3EC';
 const mainSeparator = '#DCE3EC';
 const grayBorder = '#DDE3EA';
 const liteGrayBorder = '#f1f4f7';
+const liteGrayBorder60 = '#f1f4f760';
 
 // Text color - Gray variants
 const textBody = '#37352f';
@@ -143,6 +144,7 @@ module.exports = {
         // Webhook statuses end
         separator: mainSeparator,
         'border-lite': liteGrayBorder,
+        'border-lite-60': liteGrayBorder60,
         'border-gray': grayBorder,
       },
       fontFamily: {

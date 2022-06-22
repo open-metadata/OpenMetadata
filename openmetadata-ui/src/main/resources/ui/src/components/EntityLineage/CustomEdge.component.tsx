@@ -12,12 +12,7 @@
  */
 
 import React, { Fragment } from 'react';
-import {
-  EdgeProps,
-  getBezierPath,
-  getEdgeCenter,
-  getMarkerEnd,
-} from 'react-flow-renderer';
+import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
 import { foreignObjectSize } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -31,8 +26,7 @@ export const CustomEdge = ({
   sourcePosition,
   targetPosition,
   style = {},
-  arrowHeadType,
-  markerEndId,
+  markerEnd,
   data,
   selected,
 }: EdgeProps) => {
@@ -63,7 +57,7 @@ export const CustomEdge = ({
     targetY: targetY - offset,
     targetPosition,
   });
-  const markerEnd = getMarkerEnd(arrowHeadType, markerEndId);
+
   const [edgeCenterX, edgeCenterY] = getEdgeCenter({
     sourceX,
     sourceY,
