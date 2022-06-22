@@ -196,7 +196,7 @@ const RequestDescription = () => {
           <p data-testid="description-label">
             <span>Description:</span>{' '}
             <span className="tw-text-grey-muted">
-              description below will be suggested to the table owner
+              description below will be suggested to the assignees
             </span>
           </p>
 

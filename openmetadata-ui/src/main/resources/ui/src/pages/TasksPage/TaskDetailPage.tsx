@@ -14,7 +14,7 @@
 import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, toLower } from 'lodash';
+import { isEmpty, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,14 +28,22 @@ import ProfilePicture from '../../components/common/ProfilePicture/ProfilePictur
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { Column } from '../../generated/entity/data/table';
 import { TaskStatus, Thread } from '../../generated/entity/feed/thread';
 import { getEntityName } from '../../utils/CommonUtils';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
+import {
+  getEntityField,
+  getEntityFQN,
+  getEntityType,
+} from '../../utils/FeedUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getColumnObject,
 } from '../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -80,6 +88,16 @@ const TaskDetailPage = () => {
   const entityType = useMemo(() => {
     return getEntityType(taskDetail.about);
   }, [taskDetail]);
+
+  const columnObject = useMemo(() => {
+    const field = getEntityField(taskDetail.about);
+
+    const column = field?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
+    const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
+    const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
+
+    return getColumnObject(columnName as string, entityData.columns || []);
+  }, [taskDetail, entityData]);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -174,6 +192,28 @@ const TaskDetailPage = () => {
     );
   };
 
+  const ColumnDetail = ({ column }: { column: Column }) => {
+    return !isEmpty(column) && !isUndefined(column) ? (
+      <div className="tw-mb-2" data-testid="column-details">
+        <div>
+          <span className="tw-text-grey-muted">Type:</span>{' '}
+          <span>{column.dataTypeDisplay}</span>
+        </div>
+        {column.tags && column.tags.length ? (
+          <div className="tw-flex">
+            <SVGIcons
+              alt="icon-tag"
+              className="tw-mr-1"
+              icon="icon-tag-grey"
+              width="12"
+            />
+            <div>{column.tags.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</div>
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+  };
+
   return (
     <Layout style={{ ...background, height: '100vh' }}>
       <Content style={{ ...contentStyles, overflowY: 'auto' }}>
@@ -212,10 +252,13 @@ const TaskDetailPage = () => {
         <p className="tw-ml-6" data-testid="tags">
           {entityTags}
         </p>
+
         <Card key="task-details" style={{ ...cardStyles, marginTop: '16px' }}>
           <h6 data-testid="task-title">
             {`#${taskId}`} {taskDetail.message}
           </h6>
+
+          <ColumnDetail column={columnObject} />
 
           <div data-testid="task-assignees">
             <span className="tw-text-grey-muted">Assignees:</span>{' '}
