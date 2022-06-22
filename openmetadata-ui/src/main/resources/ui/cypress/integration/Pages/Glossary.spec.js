@@ -96,13 +96,10 @@ describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
     // redirecting to glossary page
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     // Todo: need to remove below uncaught exception once tree-view error resolves
     cy.on('uncaught:exception', () => {
       // return false to prevent the error from
@@ -321,13 +318,10 @@ describe('Glossary page should work properly', () => {
 
     addNewTagToEntity(entity, term);
 
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     goToAssetsTab(term);
     cy.get('[data-testid="column"] > :nth-child(1)')
       .contains(entity)
@@ -377,13 +371,11 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+
+    cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     cy.wait(500);
     goToAssetsTab(term);
     cy.get('.tableBody-cell')
