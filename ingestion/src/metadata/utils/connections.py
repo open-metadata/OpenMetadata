@@ -80,7 +80,6 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
-
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
