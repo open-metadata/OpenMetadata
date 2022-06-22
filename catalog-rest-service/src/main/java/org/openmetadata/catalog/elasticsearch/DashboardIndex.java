@@ -40,7 +40,7 @@ public class DashboardIndex implements ElasticSearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.DASHBOARD);
     if (dashboard.getService() != null) {
-      doc.put("serviceType", dashboard.getService().getName());
+      doc.put("serviceType", dashboard.getService().getType());
     }
     return doc;
   }
