@@ -45,6 +45,7 @@ import {
 } from '../constants/Lineage.constants';
 import {
   EntityLineageDirection,
+  EntityLineageNodeType,
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
@@ -127,10 +128,12 @@ const getNodeType = (entityLineage: EntityLineage, id: string) => {
   );
   const hasUpstreamToEntity = upStreamEdges.find((up) => up.toEntity === id);
 
-  if (hasDownStreamToEntity && !hasDownStreamFromEntity) return 'output';
-  if (hasUpstreamFromEntity && !hasUpstreamToEntity) return 'input';
+  if (hasDownStreamToEntity && !hasDownStreamFromEntity)
+    return EntityLineageNodeType.OUTPUT;
+  if (hasUpstreamFromEntity && !hasUpstreamToEntity)
+    return EntityLineageNodeType.INPUT;
 
-  return 'default';
+  return EntityLineageNodeType.DEFAULT;
 };
 
 export const getColumnType = (edges: Edge[], id: string) => {
@@ -138,11 +141,11 @@ export const getColumnType = (edges: Edge[], id: string) => {
   const targetEdge = edges.find((edge) => edge.targetHandle === id);
 
   if (sourceEdge?.sourceHandle === id && targetEdge?.targetHandle === id)
-    return 'default';
-  if (sourceEdge?.sourceHandle === id) return 'input';
-  if (targetEdge?.targetHandle === id) return 'output';
+    return EntityLineageNodeType.DEFAULT;
+  if (sourceEdge?.sourceHandle === id) return EntityLineageNodeType.INPUT;
+  if (targetEdge?.targetHandle === id) return EntityLineageNodeType.OUTPUT;
 
-  return 'not-connected';
+  return EntityLineageNodeType.NOT_CONNECTED;
 };
 
 export const getLineageDataV1 = (
@@ -239,7 +242,7 @@ export const getLineageDataV1 = (
       cols[col.fullyQualifiedName || col.name] = {
         ...col,
         type: isEditMode
-          ? 'default'
+          ? EntityLineageNodeType.DEFAULT
           : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
       };
     });
@@ -249,12 +252,12 @@ export const getLineageDataV1 = (
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      type: isEditMode ? 'default' : type,
+      type: isEditMode ? EntityLineageNodeType.DEFAULT : type,
       className: 'leaf-node',
       data: {
         label: (
           <div className="tw-flex">
-            {type === 'input' && (
+            {type === EntityLineageNodeType.INPUT && (
               <div
                 className="tw-pr-2 tw-self-center tw-cursor-pointer "
                 onClick={(e) => {
@@ -282,7 +285,7 @@ export const getLineageDataV1 = (
               {getNodeLabel(node, currentNode?.data?.isExpanded || false)}
             </div>
 
-            {type === 'output' && (
+            {type === EntityLineageNodeType.OUTPUT && (
               <div
                 className="tw-pl-2 tw-self-center tw-cursor-pointer "
                 onClick={(e) => {
@@ -325,7 +328,7 @@ export const getLineageDataV1 = (
     mainCols[col.fullyQualifiedName || col.name] = {
       ...col,
       type: isEditMode
-        ? 'default'
+        ? EntityLineageNodeType.DEFAULT
         : getColumnType(lineageEdgesV1, col.fullyQualifiedName || col.name),
     };
   });

@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import CustomNode from './CustomNode.component';
 
 const mockTableColumns = [
@@ -89,7 +90,7 @@ const mockTableColumns = [
 
 const mockCustomNodeProp = {
   id: 'node-1',
-  type: 'default',
+  type: EntityLineageNodeType.DEFAULT,
   selected: false,
   isConnectable: false,
   data: {

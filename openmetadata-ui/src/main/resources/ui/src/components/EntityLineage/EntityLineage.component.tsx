@@ -364,7 +364,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         const downColumnsLineage: ColumnLineage[] =
           downStreamEdge.lineageDetails?.columnsLineage?.reduce((col, curr) => {
             if (curr.toColumn === data.data?.targetHandle) {
-              const newCol = {
+              const newCol: ColumnLineage = {
                 ...curr,
                 fromColumns:
                   curr.fromColumns?.filter(
@@ -575,183 +575,188 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
         let sourceNode = nodes?.find((n) => source?.includes(n.id));
 
-        if (isUndefined(targetNode)) {
+        if (isUndefined(targetNode) && sourceNode?.id !== selectedEntity?.id) {
           targetNode = target?.includes(updatedLineageData.entity?.id)
             ? updatedLineageData.entity
             : selectedEntity;
         }
-        if (isUndefined(sourceNode)) {
+        if (isUndefined(sourceNode) && targetNode?.id !== selectedEntity?.id) {
           sourceNode = source?.includes(updatedLineageData.entity?.id)
             ? updatedLineageData.entity
             : selectedEntity;
         }
 
-        const newEdge: AddLineage = {
-          edge: {
-            fromEntity: {
-              id: sourceNode.id,
-              type: sourceNode.type,
+        if (!isUndefined(sourceNode) && !isUndefined(targetNode)) {
+          const newEdge: AddLineage = {
+            edge: {
+              fromEntity: {
+                id: sourceNode.id,
+                type: sourceNode.type,
+              },
+              toEntity: {
+                id: targetNode.id,
+                type: targetNode.type,
+              },
             },
-            toEntity: {
-              id: targetNode.id,
-              type: targetNode.type,
-            },
-          },
-        };
+          };
 
-        if (columnConnection) {
-          const allEdge = [
-            ...(entityLineage.downstreamEdges || []),
-            ...(entityLineage.upstreamEdges || []),
-          ];
-          const currentEdge = allEdge.find(
-            (e) => e.fromEntity === source && e.toEntity === target
-          )?.lineageDetails;
+          if (columnConnection) {
+            const allEdge = [
+              ...(entityLineage.downstreamEdges || []),
+              ...(entityLineage.upstreamEdges || []),
+            ];
+            const currentEdge = allEdge.find(
+              (e) => e.fromEntity === source && e.toEntity === target
+            )?.lineageDetails;
 
-          if (isUndefined(currentEdge)) {
-            newEdge.edge.lineageDetails = {
-              sqlQuery: '',
-              columnsLineage: [
-                {
+            if (isUndefined(currentEdge)) {
+              newEdge.edge.lineageDetails = {
+                sqlQuery: '',
+                columnsLineage: [
+                  {
+                    fromColumns: [sourceHandle || ''],
+                    toColumn: targetHandle || '',
+                  },
+                ],
+              };
+            } else {
+              const updatedColumnsLineage: ColumnLineage[] =
+                currentEdge.columnsLineage.map((l) => {
+                  if (l.toColumn === targetHandle) {
+                    return {
+                      ...l,
+                      fromColumns: [
+                        ...(l.fromColumns || []),
+                        sourceHandle || '',
+                      ],
+                    };
+                  }
+
+                  return l;
+                });
+              if (
+                !updatedColumnsLineage.find((l) => l.toColumn === targetHandle)
+              ) {
+                updatedColumnsLineage.push({
                   fromColumns: [sourceHandle || ''],
                   toColumn: targetHandle || '',
-                },
-              ],
-            };
-          } else {
-            const updatedColumnsLineage: ColumnLineage[] =
-              currentEdge.columnsLineage.map((l) => {
-                if (l.toColumn === targetHandle) {
-                  return {
-                    ...l,
-                    fromColumns: [...(l.fromColumns || []), sourceHandle || ''],
-                  };
-                }
-
-                return l;
-              });
-            if (
-              !updatedColumnsLineage.find((l) => l.toColumn === targetHandle)
-            ) {
-              updatedColumnsLineage.push({
-                fromColumns: [sourceHandle || ''],
-                toColumn: targetHandle || '',
-              });
+                });
+              }
+              newEdge.edge.lineageDetails = {
+                sqlQuery: currentEdge.sqlQuery || '',
+                columnsLineage: updatedColumnsLineage,
+              };
             }
-            newEdge.edge.lineageDetails = {
-              sqlQuery: currentEdge.sqlQuery || '',
-              columnsLineage: updatedColumnsLineage,
-            };
+
+            setEdges((els) => {
+              const newEdgeData = {
+                id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
+                source: source || '',
+                target: target || '',
+                sourceHandle: sourceHandle,
+                targetHandle: targetHandle,
+                type: isEditMode ? 'buttonedge' : 'custom',
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                },
+                data: {
+                  id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
+                  source: params.source,
+                  target: params.target,
+                  sourceHandle: sourceHandle,
+                  targetHandle: targetHandle,
+                  sourceType: sourceNode?.type,
+                  targetType: targetNode?.type,
+                  isColumnLineage: true,
+                  onEdgeClick,
+                },
+              };
+
+              return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
+            });
           }
 
           setEdges((els) => {
             const newEdgeData = {
-              id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
-              source: source || '',
-              target: target || '',
-              sourceHandle: sourceHandle,
-              targetHandle: targetHandle,
+              id: `edge-${params.source}-${params.target}`,
+              source: `${params.source}`,
+              target: `${params.target}`,
               type: isEditMode ? 'buttonedge' : 'custom',
               markerEnd: {
                 type: MarkerType.ArrowClosed,
               },
               data: {
-                id: `column-${sourceHandle}-${targetHandle}-edge-${params.source}-${params.target}`,
+                id: `edge-${params.source}-${params.target}`,
                 source: params.source,
                 target: params.target,
-                sourceHandle: sourceHandle,
-                targetHandle: targetHandle,
                 sourceType: sourceNode?.type,
                 targetType: targetNode?.type,
-                isColumnLineage: true,
+                isColumnLineage: false,
                 onEdgeClick,
               },
             };
 
             return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
           });
-        }
 
-        setEdges((els) => {
-          const newEdgeData = {
-            id: `edge-${params.source}-${params.target}`,
-            source: `${params.source}`,
-            target: `${params.target}`,
-            type: isEditMode ? 'buttonedge' : 'custom',
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-            },
-            data: {
-              id: `edge-${params.source}-${params.target}`,
-              source: params.source,
-              target: params.target,
-              sourceType: sourceNode?.type,
-              targetType: targetNode?.type,
-              isColumnLineage: false,
-              onEdgeClick,
-            },
+          const updatedDownStreamEdges = () => {
+            return edgeType === 'downstream'
+              ? [
+                  ...(updatedLineageData.downstreamEdges as EntityEdge[]),
+                  {
+                    fromEntity: sourceNode?.id as string,
+                    toEntity: targetNode?.id as string,
+                    lineageDetails: newEdge.edge.lineageDetails,
+                  },
+                ]
+              : updatedLineageData.downstreamEdges;
           };
 
-          return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
-        });
+          const updatedUpStreamEdges = () => {
+            return edgeType === 'upstream'
+              ? [
+                  ...(updatedLineageData.upstreamEdges as EntityEdge[]),
+                  {
+                    fromEntity: sourceNode?.id as string,
+                    toEntity: targetNode?.id as string,
+                    lineageDetails: newEdge.edge.lineageDetails,
+                  },
+                ]
+              : updatedLineageData.upstreamEdges;
+          };
 
-        const updatedDownStreamEdges = () => {
-          return edgeType === 'downstream'
-            ? [
-                ...(updatedLineageData.downstreamEdges as EntityEdge[]),
-                {
-                  fromEntity: sourceNode?.id as string,
-                  toEntity: targetNode?.id as string,
-                  lineageDetails: newEdge.edge.lineageDetails,
-                },
-              ]
-            : updatedLineageData.downstreamEdges;
-        };
+          const getUpdatedNodes = () => {
+            return !isEmpty(selectedEntity)
+              ? [
+                  ...(updatedLineageData.nodes as Array<EntityReference>),
+                  selectedEntity,
+                ]
+              : updatedLineageData.nodes;
+          };
 
-        const updatedUpStreamEdges = () => {
-          return edgeType === 'upstream'
-            ? [
-                ...(updatedLineageData.upstreamEdges as EntityEdge[]),
-                {
-                  fromEntity: sourceNode?.id as string,
-                  toEntity: targetNode?.id as string,
-                  lineageDetails: newEdge.edge.lineageDetails,
-                },
-              ]
-            : updatedLineageData.upstreamEdges;
-        };
-
-        const getUpdatedNodes = () => {
-          return !isEmpty(selectedEntity)
-            ? [
-                ...(updatedLineageData.nodes as Array<EntityReference>),
-                selectedEntity,
-              ]
-            : updatedLineageData.nodes;
-        };
-
-        setTimeout(() => {
-          addLineageHandler(newEdge)
-            .then(() => {
-              setStatus('success');
-              setLoading(false);
-              setTimeout(() => {
-                setUpdatedLineageData({
-                  ...updatedLineageData,
-                  nodes: getUpdatedNodes(),
-                  downstreamEdges: updatedDownStreamEdges(),
-                  upstreamEdges: updatedUpStreamEdges(),
-                });
+          setTimeout(() => {
+            addLineageHandler(newEdge)
+              .then(() => {
+                setStatus('success');
+                setLoading(false);
+                setTimeout(() => {
+                  setUpdatedLineageData({
+                    ...updatedLineageData,
+                    nodes: getUpdatedNodes(),
+                    downstreamEdges: updatedDownStreamEdges(),
+                    upstreamEdges: updatedUpStreamEdges(),
+                  });
+                  setStatus('initial');
+                }, 100);
+                setNewAddedNode({} as Node);
+                setSelectedEntity({} as EntityReference);
+              })
+              .catch(() => {
                 setStatus('initial');
-              }, 100);
-              setNewAddedNode({} as Node);
-              setSelectedEntity({} as EntityReference);
-            })
-            .catch(() => {
-              setStatus('initial');
-              setLoading(false);
-            });
-        }, 500);
+                setLoading(false);
+              });
+          }, 500);
+        }
       }
     },
     [selectedNode, updatedLineageData, selectedEntity]

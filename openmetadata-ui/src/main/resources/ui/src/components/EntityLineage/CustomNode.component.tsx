@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { ModifiedColumn } from './EntityLineage.interface';
@@ -49,7 +50,7 @@ const getHandle = (
     };
   };
 
-  if (nodeType === 'output') {
+  if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
       <Fragment>
         <Handle
@@ -88,7 +89,7 @@ const getHandle = (
         />
       </Fragment>
     );
-  } else if (nodeType === 'input') {
+  } else if (nodeType === EntityLineageNodeType.INPUT) {
     return (
       <Fragment>
         <Handle
@@ -127,7 +128,7 @@ const getHandle = (
         />
       </Fragment>
     );
-  } else if (nodeType === 'not-connected') {
+  } else if (nodeType === EntityLineageNodeType.NOT_CONNECTED) {
     return null;
   } else {
     return (
@@ -242,7 +243,7 @@ const CustomNode = (props: NodeProps) => {
                     data-testid="column"
                     key={i}>
                     {getHandle(
-                      isEditMode ? type : c.type,
+                      c.type,
                       isConnectable,
                       isNewNode,
                       c.fullyQualifiedName
