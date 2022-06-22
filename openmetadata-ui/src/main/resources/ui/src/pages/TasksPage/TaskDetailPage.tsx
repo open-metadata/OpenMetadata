@@ -193,8 +193,8 @@ const TaskDetailPage = () => {
     if (taskAssignees.length) {
       setAssignees(
         taskAssignees.map((assignee) => ({
-          label: getEntityName(assignee),
-          value: assignee.name as string,
+          label: assignee.name as string,
+          value: assignee.id,
           type: assignee.type as string,
         }))
       );

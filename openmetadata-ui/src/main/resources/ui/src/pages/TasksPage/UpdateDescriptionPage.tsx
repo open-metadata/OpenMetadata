@@ -225,7 +225,7 @@ const UpdateDescription = () => {
       setAssignees([
         {
           label: getEntityName(owner),
-          value: owner.name || '',
+          value: owner.id || '',
           type: owner.type,
         },
       ]);
