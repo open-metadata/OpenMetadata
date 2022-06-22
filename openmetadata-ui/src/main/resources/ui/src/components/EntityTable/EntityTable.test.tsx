@@ -322,13 +322,6 @@ describe('Test EntityTable Component', () => {
 
     expect(requestDescriptionButton).toBeInTheDocument();
 
-    fireEvent.click(
-      requestDescriptionButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onEntityFieldSelect).toBeCalled();
-
     const descriptionThread = queryByTestId(tableRows[0], 'field-thread');
     const startDescriptionThread = queryByTestId(
       tableRows[0],

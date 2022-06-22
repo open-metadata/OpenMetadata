@@ -92,7 +92,6 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
-  // onEntityFieldSelect,
   entityFqn,
   tableConstraints,
 }: Props) => {
