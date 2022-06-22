@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 import json
+import traceback
 from datetime import datetime
 
 from metadata.config.common import ConfigModel
@@ -81,84 +82,89 @@ class MetadataUsageBulkSink(BulkSink):
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         table_usage_map = {}
         for record in usage_records:
-            table_usage = TableUsageCount(**json.loads(record))
+            try:
+                table_usage = TableUsageCount(**json.loads(record))
 
-            self.service_name = table_usage.service_name
+                self.service_name = table_usage.service_name
 
-            table_entities = self.metadata.get_table_entities_from_query(
-                self.service_name,
-                table_usage.database,
-                table_usage.schema_name,
-                table_usage.table,
-            )
-
-            if not table_entities:
-                logger.warning(
-                    f"Could not fetch table from {table_usage.database}.{table_usage.schema_name}.{table_usage.table}"
+                table_entities = self.metadata.get_table_entities_from_query(
+                    self.service_name,
+                    table_usage.database,
+                    table_usage.schema_name,
+                    table_usage.table,
                 )
-                continue
 
-            for table_entity in table_entities:
-                if table_entity is not None:
-                    if not table_usage_map.get(table_entity.id.__root__):
-                        table_usage_map[table_entity.id.__root__] = {
-                            "table_entity": table_entity,
-                            "usage_count": table_usage.count,
-                            "sql_queries": table_usage.sql_queries,
-                            "usage_date": table_usage.date,
-                            "database": table_usage.database,
-                            "schema_name": table_usage.schema_name,
-                        }
-                    else:
-                        table_usage_map[table_entity.id.__root__][
-                            "usage_count"
-                        ] += table_usage.count
-                        table_usage_map[table_entity.id.__root__]["sql_queries"].extend(
-                            table_usage.sql_queries
-                        )
-                    table_join_request = self.__get_table_joins(
-                        table_entity, table_usage
-                    )
-
-                    logger.debug("table join request {}".format(table_join_request))
-                    try:
-                        if (
-                            table_join_request is not None
-                            and len(table_join_request.columnJoins) > 0
-                        ):
-                            self.metadata.publish_frequently_joined_with(
-                                table_entity, table_join_request
-                            )
-                    except APIError as err:
-                        self.status.failures.append(table_join_request)
-                        logger.error(
-                            "Failed to update query join for {}, {}".format(
-                                table_usage.table, err
-                            )
-                        )
-
-                else:
+                if not table_entities:
                     logger.warning(
-                        "Table does not exist, skipping usage publish {}, {}".format(
-                            table_usage.table, table_usage.database
-                        )
+                        f"Could not fetch table from {table_usage.database}.{table_usage.schema_name}.{table_usage.table}"
                     )
-                    self.status.warnings.append(f"Table: {table_usage.table}")
+                    continue
+
+                for table_entity in table_entities:
+                    if table_entity is not None:
+                        if not table_usage_map.get(table_entity.id.__root__):
+                            table_usage_map[table_entity.id.__root__] = {
+                                "table_entity": table_entity,
+                                "usage_count": table_usage.count,
+                                "sql_queries": table_usage.sql_queries,
+                                "usage_date": table_usage.date,
+                                "database": table_usage.database,
+                                "schema_name": table_usage.schema_name,
+                            }
+                        else:
+                            table_usage_map[table_entity.id.__root__][
+                                "usage_count"
+                            ] += table_usage.count
+                            table_usage_map[table_entity.id.__root__][
+                                "sql_queries"
+                            ].extend(table_usage.sql_queries)
+                        table_join_request = self.__get_table_joins(
+                            table_entity, table_usage
+                        )
+
+                        logger.debug("table join request {}".format(table_join_request))
+                        try:
+                            if (
+                                table_join_request is not None
+                                and len(table_join_request.columnJoins) > 0
+                            ):
+                                self.metadata.publish_frequently_joined_with(
+                                    table_entity, table_join_request
+                                )
+                        except APIError as err:
+                            self.status.failures.append(table_join_request)
+                            logger.error(
+                                "Failed to update query join for {}, {}".format(
+                                    table_usage.table, err
+                                )
+                            )
+
+                    else:
+                        logger.warning(
+                            "Table does not exist, skipping usage publish {}, {}".format(
+                                table_usage.table, table_usage.database
+                            )
+                        )
+                        self.status.warnings.append(f"Table: {table_usage.table}")
+            except Exception as err:
+                logger.error(f"Error writing usage for {record.get('table')} - {err}")
+                logger.debug(traceback.format_exc())
 
         for table_id, value_dict in table_usage_map.items():
-            self.metadata.ingest_table_queries_data(
-                table=value_dict["table_entity"],
-                table_queries=value_dict["sql_queries"],
-            )
-            self.ingest_sql_queries_lineage(
-                value_dict["sql_queries"],
-                value_dict["database"],
-                value_dict["schema_name"],
-            )
-            table_usage_request = TableUsageRequest(
-                date=value_dict["usage_date"], count=value_dict["usage_count"]
-            )
             try:
+                self.metadata.ingest_table_queries_data(
+                    table=value_dict["table_entity"],
+                    table_queries=value_dict["sql_queries"],
+                )
+                self.ingest_sql_queries_lineage(
+                    value_dict["sql_queries"],
+                    value_dict["database"],
+                    value_dict["schema_name"],
+                )
+                table_usage_request = TableUsageRequest(
+                    date=value_dict["usage_date"], count=value_dict["usage_count"]
+                )
+
                 self.metadata.publish_table_usage(
                     value_dict["table_entity"], table_usage_request
                 )
@@ -218,9 +224,16 @@ class MetadataUsageBulkSink(BulkSink):
 
         for key, value in column_joins_dict.items():
             # Fetch real key (column) name from the Entity
-            key_name = self.__fetch_column_in_entity(key, table_entity).split(".")[-1]
+            key_name = self.__fetch_column_in_entity(key, table_entity)
+            if not key_name:
+                logger.warning(
+                    f"Could not find column {key} in table {table_entity.fullyQualifiedName.__root__}"
+                )
+                continue
             table_joins.columnJoins.append(
-                ColumnJoins(columnName=key_name, joinedWith=list(value.values()))
+                ColumnJoins(
+                    columnName=key_name.split(".")[-1], joinedWith=list(value.values())
+                )
             )
 
         return table_joins

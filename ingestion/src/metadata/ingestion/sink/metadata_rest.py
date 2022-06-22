@@ -279,7 +279,6 @@ class MetadataRestSink(Sink[Entity]):
         try:
             topic_request = CreateTopicRequest(
                 name=topic.name,
-                displayName=topic.displayName,
                 description=topic.description,
                 service=topic.service,
                 partitions=topic.partitions,
