@@ -12,6 +12,9 @@
 name: docker-openmetadata-server docker
 on:
   workflow_dispatch:
+    inputs:
+      tags:
+        description: "Release tag being built"
   release:
     types: [published]
 
