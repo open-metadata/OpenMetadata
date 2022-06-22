@@ -17,6 +17,7 @@ from unittest import TestCase
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -152,3 +153,25 @@ class RunnerTest(TestCase):
 
         with pytest.raises(TimeoutError):
             self.timeout_runner.slow()
+
+    def test_select_from_statement(self):
+        """
+        Test querying using `from_statement` returns expected values
+        """
+        stmt = "SELECT name FROM users"
+        self.raw_runner._profile_sample_query = stmt
+
+        res = self.raw_runner.select_all_from_table(Column(User.name.name))
+        assert len(res) == 30
+
+        res = self.raw_runner.select_first_from_table(Column(User.name.name))
+        print(res)
+        assert len(res) == 1
+
+        stmt = "SELECT id FROM users"
+        self.raw_runner._profile_sample_query = stmt
+
+        with pytest.raises(OperationalError):
+            self.raw_runner.select_first_from_table(Column(User.name.name))
+
+        self.raw_runner._profile_sample_query = None

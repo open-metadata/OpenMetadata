@@ -104,8 +104,12 @@ class Sampler:
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
         rnd = self.session.execute(f"""{self._profile_sample_query}""")
+        try:
+            columns = [col.name for col in rnd.cursor.description]
+        except AttributeError:
+            columns = list(rnd.keys())
         return TableData(
-            columns=[col.name for col in rnd.cursor.description],
+            columns=columns,
             rows=[list(row) for row in rnd.all()],
         )
 
