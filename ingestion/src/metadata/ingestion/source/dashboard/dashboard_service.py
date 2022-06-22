@@ -15,6 +15,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -34,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
@@ -49,6 +52,15 @@ from metadata.utils.filters import filter_by_dashboard
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class DashboardUsage(BaseModel):
+    """
+    Wrapper to handle type at the sink
+    """
+
+    dashboard: Dashboard
+    usage: UsageRequest
 
 
 class DashboardServiceTopology(ServiceTopology):
@@ -110,6 +122,14 @@ class DashboardServiceTopology(ServiceTopology):
                 ack_sink=False,
                 nullable=True,
             ),
+            NodeStage(
+                type_=UsageRequest,
+                context="usage",
+                processor="yield_dashboard_usage",
+                consumer=["dashboard_service"],
+                ack_sink=False,
+                nullable=True,
+            ),
         ],
     )
 
@@ -144,7 +164,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: Any
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -177,17 +197,34 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         Get Dashboard Details
         """
 
+    def yield_dashboard_lineage(
+        self, dashboard_details: Any
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        """
+        Yields lineage if config is enabled
+        """
+        if self.source_config.dbServiceName:
+            yield from self.yield_dashboard_lineage_details(dashboard_details)
+
     def yield_tag(self, *args, **kwargs) -> Optional[Iterable[OMetaTagAndCategory]]:
         """
         Method to fetch dashboard tags
         """
         return  # Dashboard does not support fetching tags except Tableau
 
-    def yield_owner(self, *args, **kwargs) -> Optional[CreateUserRequest]:
+    def yield_owner(self, *args, **kwargs) -> Optional[Iterable[CreateUserRequest]]:
         """
         Method to fetch dashboard owner
         """
         return  # Dashboard does not support fetching owner details except Tableau
+
+    def yield_dashboard_usage(
+        self, *args, **kwargs
+    ) -> Optional[Iterable[DashboardUsage]]:
+        """
+        Method to pick up dashboard usage data
+        """
+        return  # Dashboard usage currently only available for Looker
 
     status: DashboardSourceStatus
     source_config: DashboardServiceMetadataPipeline
@@ -242,7 +279,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 self.get_dashboard_name(dashboard_details),
             ):
                 self.status.filter(
-                    self.get_dashboard_name(dashboard),
+                    self.get_dashboard_name(dashboard_details),
                     "Dashboard Pattern not Allowed",
                 )
                 continue
