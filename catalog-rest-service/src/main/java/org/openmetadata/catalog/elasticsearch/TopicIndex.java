@@ -36,7 +36,7 @@ public class TopicIndex implements ElasticSearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.TOPIC);
     if (topic.getService() != null) {
-      doc.put("serviceType", topic.getService().getName());
+      doc.put("serviceType", topic.getService().getType());
     }
     return doc;
   }
