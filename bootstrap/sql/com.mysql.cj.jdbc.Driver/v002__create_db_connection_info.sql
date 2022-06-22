@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS mlmodel_service_entity (
 
 UPDATE thread_entity SET json = JSON_SET(json, '$.type', 'Conversation');
 
-
 ALTER TABLE thread_entity
 ADD type VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.type'),
 ADD taskId INT UNSIGNED GENERATED ALWAYS AS (json ->> '$.task.id'),

@@ -181,7 +181,6 @@ public class FeedResource {
               description =
                   "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
               schema = @Schema(implementation = ThreadType.class))
-          @DefaultValue("Conversation")
           @QueryParam("type")
           ThreadType threadType,
       @Parameter(
@@ -355,11 +354,17 @@ public class FeedResource {
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
+      @Parameter(
+              description =
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+              schema = @Schema(implementation = ThreadType.class))
+          @QueryParam("type")
+          ThreadType threadType,
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, isResolved);
+    return dao.getThreadsCount(entityLink, threadType, isResolved);
   }
 
   @POST

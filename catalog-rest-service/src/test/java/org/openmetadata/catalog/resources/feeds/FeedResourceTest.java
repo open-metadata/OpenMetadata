@@ -463,7 +463,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     }
 
     // Get the first page
-    ThreadList threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, null);
+    ThreadList threads =
+        listThreads(
+            entityLink, null, userAuthHeaders, null, null, ThreadType.Conversation.toString(), limit, null, null);
     assertEquals(limit, threads.getData().size());
     assertEquals(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
@@ -474,7 +476,17 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // From the second page till last page, after and before cursors should not be null
     while (afterCursor != null && pageCount < totalPages - 1) {
-      threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, afterCursor);
+      threads =
+          listThreads(
+              entityLink,
+              null,
+              userAuthHeaders,
+              null,
+              null,
+              ThreadType.Conversation.toString(),
+              limit,
+              null,
+              afterCursor);
       assertNotNull(threads.getPaging().getAfter());
       assertNotNull(threads.getPaging().getBefore());
       pageCount++;
@@ -486,12 +498,32 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(totalPages - 1, pageCount);
 
     // Get the last page
-    threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, null, afterCursor);
+    threads =
+        listThreads(
+            entityLink,
+            null,
+            userAuthHeaders,
+            null,
+            null,
+            ThreadType.Conversation.toString(),
+            limit,
+            null,
+            afterCursor);
     assertEquals(lastPageCount, threads.getData().size());
     assertNull(threads.getPaging().getAfter());
 
     // beforeCursor should point to the first page
-    threads = listThreads(entityLink, null, userAuthHeaders, null, null, null, limit, beforeCursor, null);
+    threads =
+        listThreads(
+            entityLink,
+            null,
+            userAuthHeaders,
+            null,
+            null,
+            ThreadType.Conversation.toString(),
+            limit,
+            beforeCursor,
+            null);
     assertEquals(limit, threads.getData().size());
     // since threads are always returned to the order of updated timestamp
     // the first message should read "Thread 10"
@@ -967,6 +999,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
+    target = target.queryParam("type", ThreadType.Conversation);
     target = userId != null ? target.queryParam("userId", userId) : target;
     target = filterType != null ? target.queryParam("filterType", filterType) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
@@ -981,6 +1014,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    target = target.queryParam("type", ThreadType.Conversation);
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
