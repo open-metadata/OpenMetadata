@@ -9,16 +9,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import traceback
-from typing import Any, Iterable, List, Optional, Set
+from datetime import datetime
+from typing import Iterable, List, Optional, Set, cast
 
 from looker_sdk.error import SDKError
 from looker_sdk.sdk.api31.models import Query
-from looker_sdk.sdk.api40.models import LookmlModelExplore, DashboardBase
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
+from looker_sdk.sdk.api40.models import (
+    DashboardBase,
+    DashboardElement,
+    LookmlModelExplore,
+)
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -34,11 +40,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.dashboard_service import (
+    DashboardServiceSource,
+    DashboardUsage,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_chart_entities_from_id, get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -54,6 +64,7 @@ class LookerSource(DashboardServiceSource):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
+        self.today = datetime.now().strftime("%Y-%m-%d")
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
@@ -92,23 +103,25 @@ class LookerSource(DashboardServiceSource):
         ]
         return self.client.dashboard(dashboard_id=dashboard.id, fields=",".join(fields))
 
-    def get_dashboard_entity(self, dashboard_details: LookerDashboard) -> CreateDashboardRequest:
+    def yield_dashboard(
+        self, dashboard_details: LookerDashboard
+    ) -> CreateDashboardRequest:
         """
         Method to Get Dashboard Entity
         """
-        print("DASHBOARD")
-        print(dashboard_details.title)
+
         yield CreateDashboardRequest(
             name=dashboard_details.id,
             displayName=dashboard_details.title,
             description=dashboard_details.description or "",
-            charts=get_chart_entities_from_id(
-                chart_ids=[chart.id for chart in self.charts],
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
-            ),
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
             dashboardUrl=f"/dashboards/{dashboard_details.id}",
-            service=EntityReference(id=self.service.id, type="dashboardService"),
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
+            ),
         )
 
     @staticmethod
@@ -145,13 +158,15 @@ class LookerSource(DashboardServiceSource):
                 f"Cannot get explore from model={query.model}, view={query.view} - {err}"
             )
 
-    def get_dashboard_sources(self) -> Set[str]:
+    def get_dashboard_sources(self, dashboard_details: LookerDashboard) -> Set[str]:
         """
         Set of source tables to build lineage for the processed dashboard
         """
         dashboard_sources: Set[str] = set()
 
-        for chart in self.charts:
+        for chart in cast(
+            Iterable[DashboardElement], dashboard_details.dashboard_elements
+        ):
             if chart.query and chart.query.view:
                 self._add_sql_table(chart.query, dashboard_sources)
             if chart.look and chart.look.query and chart.look.query.view:
@@ -165,7 +180,9 @@ class LookerSource(DashboardServiceSource):
 
         return dashboard_sources
 
-    def get_lineage(self, dashboard_details: LookerDashboard) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_dashboard_lineage_details(
+        self, dashboard_details: LookerDashboard
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between charts and data sources.
 
@@ -174,7 +191,7 @@ class LookerSource(DashboardServiceSource):
         - chart.look (chart.look.query)
         - chart.result_maker
         """
-        datasource_list = self.get_dashboard_sources()
+        datasource_list = self.get_dashboard_sources(dashboard_details)
 
         to_fqn = fqn.build(
             self.metadata,
@@ -190,8 +207,6 @@ class LookerSource(DashboardServiceSource):
         for source in datasource_list:
             try:
                 source_elements = fqn.split_table_name(table_name=source)
-
-                print(f"FOUND THE FOLLOWING SOURCES {source_elements}")
 
                 from_fqn = fqn.build(
                     self.metadata,
@@ -223,37 +238,127 @@ class LookerSource(DashboardServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error building lineage - {err}")
 
-    def fetch_dashboard_charts(
+    def yield_dashboard_chart(
         self, dashboard_details: LookerDashboard
     ) -> Optional[Iterable[CreateChartRequest]]:
         """
-        Metod to fetch charts linked to dashboard
+        Method to fetch charts linked to dashboard
         """
-        self.charts = []
-        for dashboard_elements in dashboard_details.dashboard_elements:
+        for chart in cast(
+            Iterable[DashboardElement], dashboard_details.dashboard_elements
+        ):
             try:
                 if filter_by_chart(
                     chart_filter_pattern=self.source_config.chartFilterPattern,
-                    chart_name=dashboard_elements.id,
+                    chart_name=chart.id,
                 ):
-                    self.status.filter(dashboard_elements.id, "Chart filtered out")
+                    self.status.filter(chart.id, "Chart filtered out")
                     continue
-                om_dashboard_elements = CreateChartRequest(
-                    name=dashboard_elements.id,
-                    displayName=dashboard_elements.title or dashboard_elements.id,
+
+                if not chart.id:
+                    logger.debug(f"Found chart {chart} without id. Skipping.")
+                    continue
+
+                yield CreateChartRequest(
+                    name=chart.id,
+                    displayName=chart.title or chart.id,
                     description="",
-                    chartType=get_standard_chart_type(dashboard_elements.type).value,
-                    chartUrl=f"/dashboard_elements/{dashboard_elements.id}",
+                    chartType=get_standard_chart_type(chart.type).value,
+                    chartUrl=f"/dashboard_elements/{chart.id}",
                     service=EntityReference(
-                        id=self.service.id, type="dashboardService"
+                        id=self.context.dashboard_service.id.__root__,
+                        type="dashboardService",
                     ),
                 )
-                if not dashboard_elements.id:
-                    raise ValueError("Chart(Dashboard Element) without ID")
-                self.status.scanned(dashboard_elements.id)
-                yield om_dashboard_elements
-                # Store the whole chart to pick up lineage info
-                self.charts.append(dashboard_elements)
+                self.status.scanned(chart.id)
+
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(err)
+
+    def yield_dashboard_usage(
+        self, dashboard_details: LookerDashboard
+    ) -> Optional[DashboardUsage]:
+        """
+        The dashboard.view_count gives us the total number of views. However, we need to
+        pass the views for each day (execution).
+
+        In this function we will first validate if the usageSummary
+        returns us some usage for today's date. If so, we will stop the
+        execution.
+
+        Otherwise, we will add the difference between the usage from the last time
+        the usage was reported and today's view_count from the dashboard.
+
+        Example usage summary from OM API:
+        "usageSummary": {
+            "dailyStats": {
+                "count": 51,
+                "percentileRank": 0.0
+            },
+            "date": "2022-06-23",
+            "monthlyStats": {
+                "count": 105,
+                "percentileRank": 0.0
+            },
+            "weeklyStats": {
+                "count": 105,
+                "percentileRank": 0.0
+            }
+        },
+        :param dashboard_details: Looker Dashboard
+        :return: UsageRequest, if not computed
+        """
+
+        dashboard: Dashboard = self.context.dashboard
+
+        try:
+            current_views = dashboard_details.view_count
+
+            if not current_views:
+                logger.debug(f"No usage to report for {dashboard_details.title}")
+
+            if not dashboard.usageSummary:
+                logger.info(
+                    f"Yielding fresh usage for {dashboard.fullyQualifiedName.__root__}"
+                )
+                yield DashboardUsage(
+                    dashboard=dashboard,
+                    usage=UsageRequest(date=self.today, count=current_views),
+                )
+
+            elif (
+                str(dashboard.usageSummary.date.__root__) != self.today
+                or not dashboard.usageSummary.dailyStats.count
+            ):
+
+                latest_usage = dashboard.usageSummary.dailyStats.count
+
+                new_usage = current_views - latest_usage
+                if new_usage < 0:
+                    raise ValueError(
+                        f"Wrong computation of usage difference. Got new_usage={new_usage}."
+                    )
+
+                logger.info(
+                    f"Yielding new usage for {dashboard.fullyQualifiedName.__root__}"
+                )
+                yield DashboardUsage(
+                    dashboard=dashboard,
+                    usage=UsageRequest(
+                        date=self.today, count=current_views - latest_usage
+                    ),
+                )
+
+            else:
+                logger.debug(
+                    f"Latest usage {dashboard.usageSummary} vs. today {self.today}. Nothing to compute."
+                )
+                logger.info(
+                    f"Usage already informed for {dashboard.fullyQualifiedName.__root__}"
+                )
+
+        except Exception as err:
+            logger.error(
+                f"Exception computing dashboard usage for {dashboard.fullyQualifiedName.__root__} - {err}"
+            )
