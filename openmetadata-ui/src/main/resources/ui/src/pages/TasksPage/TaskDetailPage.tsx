@@ -189,17 +189,17 @@ const TaskDetailPage = () => {
   }, [taskDetail]);
 
   useEffect(() => {
-    const owner = entityData.owner;
-    if (owner) {
-      setAssignees([
-        {
-          label: getEntityName(owner),
-          value: owner.name || '',
-          type: owner.type,
-        },
-      ]);
+    const taskAssignees = taskDetail.task?.assignees || [];
+    if (taskAssignees.length) {
+      setAssignees(
+        taskAssignees.map((assignee) => ({
+          label: getEntityName(assignee),
+          value: assignee.name as string,
+          type: assignee.type as string,
+        }))
+      );
     }
-  }, [entityData]);
+  }, [taskDetail]);
 
   const fn = () => {
     return;
