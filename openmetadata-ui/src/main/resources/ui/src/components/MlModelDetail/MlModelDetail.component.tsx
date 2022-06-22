@@ -95,8 +95,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             ServiceCategory.ML_MODAL_SERVICES
           )
         : '',
-      imgSrc: mlModelDetail.service
-        ? serviceTypeLogo(mlModelDetail.service.type)
+      imgSrc: mlModelDetail.serviceType
+        ? serviceTypeLogo(mlModelDetail.serviceType || '')
         : undefined,
     },
     {
