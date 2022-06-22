@@ -31,6 +31,7 @@ import ActivityFeedEditor from '../../components/ActivityFeed/ActivityFeedEditor
 import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -75,6 +76,7 @@ const TaskDetailPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
+  const [showEdit, setShowEdit] = useState<boolean>(false);
 
   // get current user details
   const currentUser = useMemo(
@@ -98,15 +100,25 @@ const TaskDetailPage = () => {
     return getEntityType(taskDetail.about);
   }, [taskDetail]);
 
-  const columnObject = useMemo(() => {
-    const field = getEntityField(taskDetail.about);
+  const entityField = useMemo(() => {
+    return getEntityField(taskDetail.about);
+  }, [taskDetail]);
 
-    const column = field?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
+  const columnObject = useMemo(() => {
+    const column = entityField?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
     const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
     const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
 
     return getColumnObject(columnName as string, entityData.columns || []);
   }, [taskDetail, entityData]);
+
+  const currentDescription = () => {
+    if (entityField) {
+      return columnObject.description || '';
+    } else {
+      return entityData.description || '';
+    }
+  };
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -333,22 +345,48 @@ const TaskDetailPage = () => {
           <div data-testid="task-description-tabs">
             <span>Description:</span>{' '}
             {!isEmpty(taskDetail) && (
-              <DescriptionTabs
-                description={entityData.description || ''}
-                markdownRef={markdownRef}
-                suggestion={taskDetail.task?.suggestion || ''}
-              />
+              <Fragment>
+                {showEdit ? (
+                  <DescriptionTabs
+                    description={currentDescription()}
+                    markdownRef={markdownRef}
+                    suggestion={taskDetail.task?.suggestion || ''}
+                  />
+                ) : (
+                  <div className="tw-relative">
+                    <RichTextEditor
+                      readonly
+                      initialValue={
+                        taskDetail.task?.suggestion || 'No Suggestion'
+                      }
+                    />
+                    <button
+                      className="tw-absolute tw-top-0 tw-right-0 tw-border tw-border-main tw-p-1"
+                      onClick={() => setShowEdit(true)}>
+                      <SVGIcons
+                        alt="edit"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="16px"
+                      />
+                    </button>
+                  </div>
+                )}
+              </Fragment>
             )}
           </div>
 
           <div
             className="tw-flex tw-justify-end"
             data-testid="task-cta-buttons">
-            <Button className="ant-btn-link-custom" type="link">
-              Reject
+            <Button
+              className="ant-btn-link-custom"
+              type="link"
+              onClick={() => setShowEdit(false)}>
+              {showEdit ? 'Cancel' : 'Reject'}
             </Button>
             <Button className="ant-btn-primary-custom" type="primary">
-              Submit
+              {showEdit ? 'Submit' : 'Accept'}
             </Button>
           </div>
         </Card>

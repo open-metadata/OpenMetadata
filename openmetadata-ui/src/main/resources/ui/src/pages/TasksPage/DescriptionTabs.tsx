@@ -91,7 +91,7 @@ export const DescriptionTabs = ({
           readonly
           className="tw-my-0"
           height="208px"
-          initialValue={description}
+          initialValue={description || 'No Description'}
         />
       </TabPane>
       <TabPane key="2" tab="Diff">

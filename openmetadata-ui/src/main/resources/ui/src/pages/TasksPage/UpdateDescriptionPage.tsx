@@ -13,7 +13,7 @@
 
 import { Button, Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize, isNil } from 'lodash';
+import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, {
   useCallback,
@@ -94,12 +94,14 @@ const UpdateDescription = () => {
 
   const back = () => history.goBack();
 
+  const columnObject = useMemo(() => {
+    const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
+
+    return getColumnObject(column[0], entityData.columns || []);
+  }, [field, entityData]);
+
   const getColumnDetails = useCallback(() => {
     if (!isNil(field) && !isNil(value) && field === 'columns') {
-      const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
-
-      const columnObject = getColumnObject(column[0], entityData.columns || []);
-
       return (
         <div data-testid="column-details">
           <p className="tw-font-semibold">Column Details</p>
@@ -114,6 +116,14 @@ const UpdateDescription = () => {
       return null;
     }
   }, [entityData.columns]);
+
+  const currentDescription = () => {
+    if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
+      return columnObject.description || '';
+    } else {
+      return entityData.description || '';
+    }
+  };
 
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
@@ -198,7 +208,7 @@ const UpdateDescription = () => {
           <div data-testid="description-tabs">
             <span>Description:</span>{' '}
             <DescriptionTabs
-              description={entityData.description || ''}
+              description={currentDescription()}
               markdownRef={markdownRef}
               suggestion=""
             />
