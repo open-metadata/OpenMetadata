@@ -150,11 +150,13 @@ class TableauSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_owner(self, dashboard_details: dict) -> Optional[EntityReference]:
+    def yield_owner(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateUserRequest]]:
         """Get dashboard owner
 
         Args:
-            owner:
+            dashboard_details:
         Returns:
             Optional[EntityReference]
         """
@@ -222,14 +224,12 @@ class TableauSource(DashboardServiceSource):
             ),
         )
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        if not self.source_config.dbServiceName:
-            return
         datasource_list = (
             get_workbook_connections_dataframe(self.client, dashboard_details.get("id"))
             .get("datasource_name")
