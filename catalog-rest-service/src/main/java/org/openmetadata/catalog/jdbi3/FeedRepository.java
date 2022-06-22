@@ -554,6 +554,7 @@ public class FeedRepository {
       }
     }
     limitPostsInThreads(threads, limitPosts);
+    populateAssignees(threads);
 
     String beforeCursor = null;
     String afterCursor = null;
@@ -766,7 +767,6 @@ public class FeedRepository {
               .listTasksAssignedToAfter(userTeamJsonPostgres, userTeamJsonMysql, limit, time, status.toString());
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    populateAssignees(threads);
     int totalCount = dao.feedDAO().listCountTasksAssignedTo(userTeamJsonPostgres, userTeamJsonMysql, status.toString());
     return new FilteredThreads(threads, totalCount);
   }
@@ -776,12 +776,14 @@ public class FeedRepository {
   }
 
   private Thread populateAssignees(Thread thread) {
-    List<EntityReference> assignees = thread.getTask().getAssignees();
-    try {
-      assignees = EntityUtil.populateEntityReferences(assignees);
-      thread.getTask().setAssignees(assignees);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    if (thread.getType().equals(ThreadType.Task)) {
+      List<EntityReference> assignees = thread.getTask().getAssignees();
+      try {
+        assignees = EntityUtil.populateEntityReferences(assignees);
+        thread.getTask().setAssignees(assignees);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
     return thread;
   }
@@ -798,7 +800,6 @@ public class FeedRepository {
       jsons = dao.feedDAO().listTasksAssignedByAfter(username, limit, time, status.toString());
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    populateAssignees(threads);
     int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, status.toString());
     return new FilteredThreads(threads, totalCount);
   }

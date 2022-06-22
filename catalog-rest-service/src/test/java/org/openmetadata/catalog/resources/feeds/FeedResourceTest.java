@@ -305,6 +305,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void post_validTaskAndList_200() throws IOException {
+    int totalTaskCount = listTasks(null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    int assignedByCount =
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    int assignedToCount =
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
             .withOldValue("old description")
@@ -323,8 +332,8 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(1, task.getAssignees().size());
     assertEquals(USER2.getEntityReference().getId(), task.getAssignees().get(0).getId());
     assertEquals("new description", task.getSuggestion());
-    assertEquals(1, tasks.getPaging().getTotal());
-    assertEquals(1, tasks.getData().size());
+    assertEquals(totalTaskCount + 1, tasks.getPaging().getTotal());
+    assertEquals(totalTaskCount + 1, tasks.getData().size());
 
     Thread taskThread = getTask(task.getId(), userAuthHeaders);
     TaskDetails task2 = taskThread.getTask();
@@ -358,24 +367,24 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(USER.getId(), task.getAssignees().get(0).getId());
     assertEquals("new description2", task.getSuggestion());
     assertEquals("old value", task.getOldValue());
-    assertEquals(2, tasks.getPaging().getTotal());
-    assertEquals(2, tasks.getData().size());
+    assertEquals(totalTaskCount + 2, tasks.getPaging().getTotal());
+    assertEquals(totalTaskCount + 2, tasks.getData().size());
 
     // try to list tasks with filters
     tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, userAuthHeaders);
     task = tasks.getData().get(0).getTask();
     assertEquals(task1Id, task.getId());
     assertEquals("new description", task.getSuggestion());
-    assertEquals(1, tasks.getPaging().getTotal());
-    assertEquals(1, tasks.getData().size());
+    assertEquals(assignedByCount + 1, tasks.getPaging().getTotal());
+    assertEquals(assignedByCount + 1, tasks.getData().size());
 
     tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, userAuthHeaders);
     task = tasks.getData().get(0).getTask();
     assertEquals(task2Id, task.getId());
     assertEquals(USER.getFullyQualifiedName(), task.getAssignees().get(0).getFullyQualifiedName());
     assertEquals("new description2", task.getSuggestion());
-    assertEquals(1, tasks.getPaging().getTotal());
-    assertEquals(1, tasks.getData().size());
+    assertEquals(assignedToCount + 1, tasks.getPaging().getTotal());
+    assertEquals(assignedToCount + 1, tasks.getData().size());
   }
 
   @Test
