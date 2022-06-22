@@ -194,14 +194,14 @@ const ServicesPage = () => {
               }
             }
           }
-          setIsLoading(false);
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-services-error']
           );
-        });
+        })
+        .finally(() => setIsLoading(false));
     }
   };
 

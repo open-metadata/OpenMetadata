@@ -37,6 +37,7 @@ import {
   mockLookerService,
   mockMessagingService,
   mockMetabaseService,
+  mockMlmodelService,
   mockPipelineService,
   mockPowerBIService,
   mockPulsarService,
@@ -80,6 +81,9 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
 
       case 'pipelineServices':
         return Promise.resolve(mockPipelineService);
+
+      case 'mlmodelServices':
+        return Promise.resolve(mockMlmodelService);
 
       default:
         return Promise.resolve(mockDashboardService);
