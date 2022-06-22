@@ -124,6 +124,8 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   const getRightPanel = useCallback(() => {
+    const currentUserDetails = AppState.getCurrentUserDetails();
+
     return (
       <div className="tw-mt-4">
         <div data-testid="my-data-container">
@@ -134,10 +136,7 @@ const MyData: React.FC<MyDataProps> = ({
                 {ownedData.length ? (
                   <Link
                     data-testid="my-data"
-                    to={getUserPath(
-                      AppState.getCurrentUserDetails()?.name || '',
-                      'mydata'
-                    )}>
+                    to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="my-data-total-count">
@@ -163,7 +162,7 @@ const MyData: React.FC<MyDataProps> = ({
                   <Link
                     data-testid="following-data"
                     to={getUserPath(
-                      AppState.getCurrentUserDetails()?.name || '',
+                      currentUserDetails?.name || '',
                       'following'
                     )}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">

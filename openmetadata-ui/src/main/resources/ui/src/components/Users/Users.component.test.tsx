@@ -295,9 +295,9 @@ describe('Test User Component', () => {
       }
     );
 
-    const obServerElement = await findByTestId(container, 'dataset-card');
+    const datasetCard = await findByTestId(container, 'dataset-card');
 
-    expect(obServerElement).toBeInTheDocument();
+    expect(datasetCard).toBeInTheDocument();
   });
 
   it('Should render inherited roles', async () => {

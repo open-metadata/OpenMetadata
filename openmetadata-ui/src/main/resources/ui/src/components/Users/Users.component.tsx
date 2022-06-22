@@ -33,10 +33,7 @@ import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import {
-  getEntityName,
-  getNonDeletedTeams,
-} from '../../utils/CommonUtils';
+import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
