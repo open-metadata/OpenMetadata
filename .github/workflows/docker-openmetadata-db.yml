@@ -22,6 +22,9 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     steps:
+      - name: Printing tag
+        run: echo "Tag - ${{ github.event.inputs.tags }}"
+    
       - name: Check out the Repo
         uses: actions/checkout@v2
 
