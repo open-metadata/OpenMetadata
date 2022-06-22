@@ -42,6 +42,7 @@ import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -53,6 +54,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
+import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -243,7 +245,7 @@ public class FeedResource {
   }
 
   @GET
-  @Path("/task/{id}")
+  @Path("/tasks/{id}")
   @Operation(
       operationId = "getTaskByID",
       summary = "Get a task thread by task id",
@@ -258,6 +260,51 @@ public class FeedResource {
       })
   public Thread getTask(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
     return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
+  }
+
+  @PUT
+  @Path("/tasks/{id}/resolve")
+  @Operation(
+      operationId = "resolveTask",
+      summary = "Resolve a task",
+      tags = "feeds",
+      description = "Resolve a task.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response resolveTask(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Valid ResolveTask resolveTask)
+      throws IOException {
+    Thread task = dao.getTask(Integer.parseInt(id));
+    return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
+  }
+
+  @PUT
+  @Path("/tasks/{id}/close")
+  @Operation(
+      operationId = "closeTask",
+      summary = "Close a task",
+      tags = "feeds",
+      description = "Close a task without making any changes to the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response closeTask(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+    Thread task = dao.getTask(Integer.parseInt(id));
+    return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
   @PATCH

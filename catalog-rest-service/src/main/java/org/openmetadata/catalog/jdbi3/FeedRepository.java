@@ -13,6 +13,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DASHBOARD;
+import static org.openmetadata.catalog.Entity.PIPELINE;
+import static org.openmetadata.catalog.Entity.TABLE;
+import static org.openmetadata.catalog.Entity.TOPIC;
+import static org.openmetadata.catalog.Entity.getEntityRepository;
 import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.catalog.type.Relationship.CREATED;
 import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
@@ -39,7 +44,12 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
+import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -48,10 +58,14 @@ import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.Relationship;
+import org.openmetadata.catalog.type.Task;
+import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -154,6 +168,150 @@ public class FeedRepository {
   public Thread getTask(Integer id) throws IOException {
     Thread task = EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
     return populateAssignees(task);
+  }
+
+  public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user) throws IOException {
+    // Update the attributes
+    closeTask(thread, user);
+    Thread updatedHref = FeedResource.addHref(uriInfo, thread);
+    return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
+  }
+
+  public PatchResponse<Thread> resolveTask(UriInfo uriInfo, Thread thread, String user, ResolveTask resolveTask)
+      throws IOException {
+    // perform the task
+    TaskDetails task = thread.getTask();
+    EntityLink entityLink = EntityLink.parse(thread.getAbout());
+    EntityReference reference = EntityUtil.validateEntityLink(entityLink);
+    switch (task.getType()) {
+      case RequestDescription:
+      case UpdateDescription:
+        EntityRepository<?> repository = getEntityRepository(reference.getType());
+        String json = repository.dao.findJsonByFqn(entityLink.getEntityFQN(), Include.ALL);
+        switch (entityLink.getEntityType()) {
+          case TABLE:
+            Table table = JsonUtils.readValue(json, Table.class);
+            String oldJson = JsonUtils.pojoToJson(table);
+            if (entityLink.getFieldName().equals("columns")) {
+              Optional<Column> col =
+                  table.getColumns().stream()
+                      .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+                      .findFirst();
+              if (col.isPresent()) {
+                Column column = col.get();
+                column.setDescription(resolveTask.getNewValue());
+              } else {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "The Column with name '%s' is not found in the table.", entityLink.getArrayFieldName()));
+              }
+            } else if (entityLink.getFieldName().equals("description")) {
+              table.setDescription(resolveTask.getNewValue());
+            } else {
+              // Not supported
+              throw new IllegalArgumentException(
+                  String.format(
+                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+            }
+            String updatedEntityJson = JsonUtils.pojoToJson(table);
+            JsonPatch patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+            repository.patch(uriInfo, table.getId(), user, patch);
+            break;
+          case TOPIC:
+            Topic topic = JsonUtils.readValue(json, Topic.class);
+            oldJson = JsonUtils.pojoToJson(topic);
+            if (entityLink.getFieldName().equals("description")) {
+              topic.setDescription(resolveTask.getNewValue());
+            } else {
+              // Not supported
+              throw new IllegalArgumentException(
+                  String.format(
+                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+            }
+            updatedEntityJson = JsonUtils.pojoToJson(topic);
+            patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+            repository.patch(uriInfo, topic.getId(), user, patch);
+            break;
+          case DASHBOARD:
+            Dashboard dashboard = JsonUtils.readValue(json, Dashboard.class);
+            oldJson = JsonUtils.pojoToJson(dashboard);
+            if (entityLink.getFieldName().equals("description")) {
+              dashboard.setDescription(resolveTask.getNewValue());
+            } else if (entityLink.getFieldName().equals("charts")) {
+              Optional<EntityReference> ch =
+                  dashboard.getCharts().stream()
+                      .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+                      .findFirst();
+              if (ch.isPresent()) {
+                EntityReference chart = ch.get();
+                chart.setDescription(resolveTask.getNewValue());
+              } else {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "The Chart with name '%s' is not found in the dashboard.", entityLink.getArrayFieldName()));
+              }
+            } else {
+              // Not supported
+              throw new IllegalArgumentException(
+                  String.format(
+                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+            }
+            updatedEntityJson = JsonUtils.pojoToJson(dashboard);
+            patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+            repository.patch(uriInfo, dashboard.getId(), user, patch);
+            break;
+          case PIPELINE:
+            Pipeline pipeline = JsonUtils.readValue(json, Pipeline.class);
+            oldJson = JsonUtils.pojoToJson(pipeline);
+            if (entityLink.getFieldName().equals("description")) {
+              pipeline.setDescription(resolveTask.getNewValue());
+            } else if (entityLink.getFieldName().equals("tasks")) {
+              Optional<Task> tsk =
+                  pipeline.getTasks().stream()
+                      .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+                      .findFirst();
+              if (tsk.isPresent()) {
+                Task pipelineTask = tsk.get();
+                pipelineTask.setDescription(resolveTask.getNewValue());
+              } else {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "The Task with name '%s' is not found in the pipeline.", entityLink.getArrayFieldName()));
+              }
+            } else {
+              // Not supported
+              throw new IllegalArgumentException(
+                  String.format(
+                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+            }
+            updatedEntityJson = JsonUtils.pojoToJson(pipeline);
+            patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
+            repository.patch(uriInfo, pipeline.getId(), user, patch);
+            break;
+          default:
+            break;
+        }
+        break;
+      case RequestTag:
+      case UpdateTag:
+        break;
+      case Generic:
+      default:
+        // no action to be taken. Just close the task
+        break;
+    }
+    // Update the attributes
+    task.withNewValue(resolveTask.getNewValue());
+    closeTask(thread, user);
+    dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
+    Thread updatedHref = FeedResource.addHref(uriInfo, thread);
+    return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
+  }
+
+  private void closeTask(Thread thread, String user) {
+    TaskDetails task = thread.getTask();
+    task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
+    thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
   }
 
   private void storeMentions(Thread thread, String message) {

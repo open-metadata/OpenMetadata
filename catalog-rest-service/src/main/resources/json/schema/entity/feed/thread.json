@@ -56,7 +56,7 @@
         },
         "closedBy": {
           "description": "The user that closed the task.",
-          "$ref": "../../type/entityReference.json"
+          "type": "string"
         },
         "closedAt": {
           "description": "Timestamp when the task was closed in Unix epoch time milliseconds.",

@@ -45,12 +45,14 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -69,6 +71,7 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Table;
@@ -93,6 +96,7 @@ import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.TaskType;
 import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -112,6 +116,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static String TEAM_LINK;
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
+  public static TableResourceTest TABLE_RESOURCE_TEST;
   public static Comparator<Reaction> REACTION_COMPARATOR =
       (o1, o2) ->
           o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
@@ -120,15 +125,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
+    TABLE_RESOURCE_TEST = new TableResourceTest();
+    TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
 
-    CreateTable createTable = tableResourceTest.createRequest(test);
+    CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test);
     createTable.withOwner(TableResourceTest.USER_OWNER1);
-    TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+    TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
@@ -140,9 +145,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
-    CreateTable createTable2 = tableResourceTest.createRequest(test);
+    CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
     createTable2.withName("table2").withOwner(TEAM2_REF);
-    TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
+    TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
@@ -371,6 +376,51 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals("new description2", task.getSuggestion());
     assertEquals(1, tasks.getPaging().getTotal());
     assertEquals(1, tasks.getData().size());
+  }
+
+  @Test
+  void post_resolveTask_200() throws IOException {
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old description")
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    CreateThread create =
+        create()
+            .withMessage("Request Description for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
+    resolveTask(taskId, resolveTask, userAuthHeaders);
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    assertEquals(
+        "accepted description",
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertEquals("accepted description", task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -848,8 +898,19 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   public static Thread getTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("feed/task/" + id);
+    WebTarget target = getResource("feed/tasks/" + id);
     return TestUtils.get(target, Thread.class, authHeaders);
+  }
+
+  public static void resolveTask(int id, ResolveTask resolveTask, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id + "/resolve");
+    TestUtils.put(target, resolveTask, Status.OK, authHeaders);
+  }
+
+  public static void closeTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id + "/close");
+    TestUtils.put(target, null, Status.OK, authHeaders);
   }
 
   public static ThreadList listTasks(
