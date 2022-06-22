@@ -11,6 +11,10 @@
 
 name: docker-openmetadata-airflow docker
 on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Release tag being built"
   release:
     types: [published]
 
