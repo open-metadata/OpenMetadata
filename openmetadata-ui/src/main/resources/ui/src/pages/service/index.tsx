@@ -28,6 +28,7 @@ import {
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
+import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
@@ -57,6 +58,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
@@ -129,6 +131,8 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
+      case ServiceCategory.ML_MODAL_SERVICES:
+        return 'Models';
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return 'Databases';
@@ -420,6 +424,26 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchMlModal = (paging = '') => {
+    setIsloading(true);
+    getMlmodels(serviceFQN, paging, ['owner', 'tags'])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getAirflowStatus = () => {
     return new Promise<void>((resolve, reject) => {
       checkAirflowStatus()
@@ -456,6 +480,11 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        fetchMlModal(paging);
+
+        break;
+      }
       default:
         break;
     }
@@ -471,6 +500,9 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
+
+      case ServiceCategory.ML_MODAL_SERVICES:
+        return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -514,6 +546,16 @@ const ServicePage: FunctionComponent = () => {
         return (
           <>
             <th className="tableHead-cell">Pipeline Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Model Name</th>
             <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Owner</th>
             <th className="tableHead-cell">Tags</th>
@@ -586,6 +628,24 @@ const ServicePage: FunctionComponent = () => {
                 showStartWith={false}
                 sizeCap={-1}
                 tags={pipeline.tags}
+                type="border"
+              />
+            ) : (
+              '--'
+            )}
+          </td>
+        );
+      }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        const mlmodal = data as Mlmodel;
+
+        return (
+          <td className="tableBody-cell">
+            {mlmodal.tags && mlmodal.tags?.length > 0 ? (
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={mlmodal.tags}
                 type="border"
               />
             ) : (

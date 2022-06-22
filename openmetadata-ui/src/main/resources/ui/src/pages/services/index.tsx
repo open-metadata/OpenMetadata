@@ -42,6 +42,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -68,6 +69,7 @@ type ServiceRecord = {
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
   pipelineServices: Array<PipelineService>;
+  mlmodelServices: Array<MlmodelService>;
 };
 
 type ServicePagingRecord = {
@@ -75,6 +77,7 @@ type ServicePagingRecord = {
   messagingServices: Paging;
   dashboardServices: Paging;
   pipelineServices: Paging;
+  mlmodelServices: Paging;
 };
 
 export type ApiData = {
@@ -101,12 +104,14 @@ const ServicesPage = () => {
     messagingServices: pagingObject,
     dashboardServices: pagingObject,
     pipelineServices: pagingObject,
+    mlmodelServices: pagingObject,
   });
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
     dashboardServices: [],
     pipelineServices: [],
+    mlmodelServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -118,6 +123,7 @@ const ServicesPage = () => {
     messagingServices: 0,
     dashboardServices: 0,
     pipelineServices: 0,
+    mlmodelServices: 0,
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +173,7 @@ const ServicesPage = () => {
               messagingServices: servicePaging.messagingServices.total || 0,
               dashboardServices: servicePaging.dashboardServices.total || 0,
               pipelineServices: servicePaging.pipelineServices.total || 0,
+              mlmodelServices: servicePaging.pipelineServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
@@ -248,7 +255,7 @@ const ServicesPage = () => {
               onClick={() => {
                 handleTabChange(tab.name);
               }}>
-              <p className="tw-text-center tw-self-center label-category">
+              <p className="tw-text-center tw-self-center tw-mb-0 label-category">
                 {tab.displayName}
               </p>
 
@@ -309,6 +316,31 @@ const ServicesPage = () => {
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
                 {pipelineService.connection.config?.hostPort}
+              </span>
+            </div>
+          </>
+        );
+      }
+
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        const mlmodel = service as unknown as MlmodelService;
+
+        return (
+          <>
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">Registry:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
+                {mlmodel.connection.config?.registryUri}
+              </span>
+            </div>
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">Tracking:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
+                {mlmodel.connection.config?.trackingUri}
               </span>
             </div>
           </>

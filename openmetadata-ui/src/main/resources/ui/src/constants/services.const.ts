@@ -57,6 +57,7 @@ import topicDefault from '../assets/svg/topic.svg';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 
 export const NoDataFoundPlaceHolder = noDataFound;
@@ -109,6 +110,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   messagingServices: Object.values(MessagingServiceType),
   dashboardServices: Object.values(DashboardServiceType),
   pipelineServices: Object.values(PipelineServiceType),
+  mlmodelServices: Object.values(MlModelServiceType),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -116,6 +118,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'messagingServices',
   'dashboardServices',
   'pipelineServices',
+  'mlmodelServices',
 ];
 
 export const servicesDisplayName = {
@@ -123,6 +126,7 @@ export const servicesDisplayName = {
   messagingServices: 'Messaging Service',
   dashboardServices: 'Dashboard Service',
   pipelineServices: 'Pipeline Service',
+  mlmodelServices: 'ML Model Service',
 };
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [

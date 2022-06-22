@@ -51,6 +51,7 @@ const MyData: React.FC<MyDataProps> = ({
   countTeams,
   countUsers,
   ownedData,
+  countMlModal,
   followedData,
   feedData,
   feedFilter,
@@ -108,6 +109,7 @@ const MyData: React.FC<MyDataProps> = ({
       <div className="tw-mt-4">
         <MyAssetStats
           countDashboards={countDashboards}
+          countMlModal={countMlModal}
           countPipelines={countPipelines}
           countServices={countServices}
           countTables={countTables}
