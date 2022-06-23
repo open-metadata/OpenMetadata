@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/table.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table",
-  "$comment" : "@om-entity-type",
+  "$comment": "@om-entity-type",
   "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Table",
@@ -18,7 +18,8 @@
         "View",
         "SecureView",
         "MaterializedView",
-        "Iceberg"
+        "Iceberg",
+        "Local"
       ],
       "javaEnums": [
         {
@@ -38,6 +39,9 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "Local"
         }
       ]
     },
@@ -118,10 +122,6 @@
       "minLength": 1,
       "maxLength": 128
     },
-    "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
-      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
-    },
     "tablePartition": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TablePartition",
@@ -190,10 +190,10 @@
         },
         "description": {
           "description": "Description of the column.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
-          "$ref": "#/definitions/fullyQualifiedColumnName"
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
         },
         "tags": {
           "description": "Tags associated with the column.",
@@ -243,6 +243,20 @@
       "required": ["name", "dataType"],
       "additionalProperties": false
     },
+    "joinedWith": {
+      "description": "Fully qualified names of the fields/entities that this field/entity is joined with.",
+      "type": "object",
+      "properties": {
+        "fullyQualifiedName": {
+          "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "joinCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["fullyQualifiedName", "joinCount"],
+      "additionalProperties": false
+    },
     "columnJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnJoin",
@@ -255,16 +269,7 @@
           "description": "Fully qualified names of the columns that this column is joined with.",
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "fullyQualifiedName": {
-                "$ref": "#/definitions/fullyQualifiedColumnName"
-              },
-              "joinCount": {
-                "type": "integer"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },
@@ -273,7 +278,7 @@
     "tableJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableJoins",
-      "description": "This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.",
+      "description": "This schema defines the type to capture information about how this table is joined with other tables and columns.",
       "properties": {
         "startDate": {
           "description": "Date can be only from today going back to last 29 days.",
@@ -287,6 +292,13 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnJoins"
+          }
+        },
+        "directTableJoins": {
+          "description": "Joins with other tables that are not on a specific column (e.g: UNION join)",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/joinedWith"
           }
         }
       },
@@ -468,6 +480,10 @@
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
         },
+        "columnNames": {
+          "description": "List of column names",
+          "type": "array"
+        },
         "columnProfile": {
           "description": "List of local column profiles of the table.",
           "type": "array",
@@ -531,7 +547,7 @@
         },
         "description": {
           "description": "Description of the Table from the model.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "path": {
           "description": "Path to sql definition file.",
@@ -587,7 +603,7 @@
     },
     "description": {
       "description": "Description of a table.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -728,9 +744,9 @@
       "type": "boolean",
       "default": false
     },
-    "extension" : {
+    "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
-      "$ref" : "../../type/basic.json#/definitions/entityExtension"
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["id", "name", "columns"],

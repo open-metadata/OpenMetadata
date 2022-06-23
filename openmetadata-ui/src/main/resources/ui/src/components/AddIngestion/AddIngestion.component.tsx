@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useMemo, useState } from 'react';
 import {
@@ -23,12 +23,12 @@ import { FilterPatternEnum } from '../../enums/filterPattern.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import {
-  ConfigClass,
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
+  ConfigClass,
   ConfigType,
   FilterPattern,
   IngestionPipeline,
@@ -37,7 +37,7 @@ import {
   DatabaseServiceMetadataPipelineClass,
   DbtConfigSource,
 } from '../../generated/metadataIngestion/databaseServiceMetadataPipeline';
-import { getCurrentDate, getCurrentUserId } from '../../utils/CommonUtils';
+import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
 import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
@@ -89,53 +89,48 @@ const AddIngestion = ({
   const [ingestionName, setIngestionName] = useState(
     data?.name ?? getIngestionName(serviceData.name, pipelineType)
   );
+  const [ingestSampleData, setIngestSampleData] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
+  );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
   );
-  const [startDate] = useState(
-    data?.airflowConfig.startDate ?? getCurrentDate()
-  );
-  const [endDate] = useState(data?.airflowConfig?.endDate ?? '');
-
   const [showDashboardFilter, setShowDashboardFilter] = useState(
     !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
+      (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern
     )
   );
   const [showDatabaseFilter, setShowDatabaseFilter] = useState(
     !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.databaseFilterPattern
+      (data?.sourceConfig.config as ConfigClass)?.databaseFilterPattern
     )
   );
   const [showSchemaFilter, setShowSchemaFilter] = useState(
     !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern
+      (data?.sourceConfig.config as ConfigClass)?.schemaFilterPattern
     )
   );
   const [showTableFilter, setShowTableFilter] = useState(
-    !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern
-    )
+    !isUndefined((data?.sourceConfig.config as ConfigClass)?.tableFilterPattern)
   );
   const [showTopicFilter, setShowTopicFilter] = useState(
-    !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern
-    )
+    !isUndefined((data?.sourceConfig.config as ConfigClass)?.topicFilterPattern)
   );
   const [showChartFilter, setShowChartFilter] = useState(
+    !isUndefined((data?.sourceConfig.config as ConfigClass)?.chartFilterPattern)
+  );
+  const [showPipelineFilter, setShowPipelineFilter] = useState(
     !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern
+      (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern
     )
   );
   const [showFqnFilter, setShowFqnFilter] = useState(
-    !isUndefined(
-      (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern
-    )
+    !isUndefined((data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern)
   );
   const configData = useMemo(
     () =>
-      (data?.source.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
+      (data?.sourceConfig.config as DatabaseServiceMetadataPipelineClass)
         ?.dbtConfigSource,
     [data]
   );
@@ -156,76 +151,74 @@ const AddIngestion = ({
   const [markDeletedTables, setMarkDeletedTables] = useState(
     isDatabaseService
       ? Boolean(
-          (data?.source.sourceConfig.config as ConfigClass)
-            ?.markDeletedTables ?? true
+          (data?.sourceConfig.config as ConfigClass)?.markDeletedTables ?? true
         )
       : undefined
   );
   const [includeView, setIncludeView] = useState(
-    Boolean((data?.source.sourceConfig.config as ConfigClass)?.includeViews)
+    Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
-  const [enableDataProfiler, setEnableDataProfiler] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.enableDataProfiler ??
-      true
-  );
-  const [ingestSampleData, setIngestSampleData] = useState(
-    (data?.source.sourceConfig.config as ConfigClass)?.generateSampleData ??
-      true
+  const [includeLineage, setIncludeLineage] = useState(
+    Boolean((data?.sourceConfig.config as ConfigClass)?.includeLineage ?? true)
   );
   const [enableDebugLog, setEnableDebugLog] = useState(
     data?.loggerLevel === LogLevels.Debug
   );
   const [dashboardFilterPattern, setDashboardFilterPattern] =
     useState<FilterPattern>(
-      (data?.source.sourceConfig.config as ConfigClass)
-        ?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN
+      (data?.sourceConfig.config as ConfigClass)?.dashboardFilterPattern ??
+        INITIAL_FILTER_PATTERN
     );
   const [databaseFilterPattern, setDatabaseFilterPattern] =
     useState<FilterPattern>(
-      (data?.source.sourceConfig.config as ConfigClass)
-        ?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
+      (data?.sourceConfig.config as ConfigClass)?.databaseFilterPattern ??
+        INITIAL_FILTER_PATTERN
     );
   const [schemaFilterPattern, setSchemaFilterPattern] = useState<FilterPattern>(
-    (data?.source.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
+    (data?.sourceConfig.config as ConfigClass)?.schemaFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
   const [tableFilterPattern, setTableFilterPattern] = useState<FilterPattern>(
-    (data?.source.sourceConfig.config as ConfigClass)?.tableFilterPattern ??
+    (data?.sourceConfig.config as ConfigClass)?.tableFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
   const [topicFilterPattern, setTopicFilterPattern] = useState<FilterPattern>(
-    (data?.source.sourceConfig.config as ConfigClass)?.topicFilterPattern ??
+    (data?.sourceConfig.config as ConfigClass)?.topicFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
   const [chartFilterPattern, setChartFilterPattern] = useState<FilterPattern>(
-    (data?.source.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
+    (data?.sourceConfig.config as ConfigClass)?.chartFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
+  const [pipelineFilterPattern, setPipelineFilterPattern] =
+    useState<FilterPattern>(
+      (data?.sourceConfig.config as ConfigClass)?.pipelineFilterPattern ??
+        INITIAL_FILTER_PATTERN
+    );
   const [fqnFilterPattern, setFqnFilterPattern] = useState<FilterPattern>(
-    (data?.source.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
+    (data?.sourceConfig.config as ConfigClass)?.fqnFilterPattern ??
       INITIAL_FILTER_PATTERN
   );
 
   const [queryLogDuration, setQueryLogDuration] = useState<number>(
-    (data?.source.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
+    (data?.sourceConfig.config as ConfigClass)?.queryLogDuration ?? 1
   );
   const [stageFileLocation, setStageFileLocation] = useState<string>(
-    (data?.source.sourceConfig.config as ConfigClass)?.stageFileLocation ??
+    (data?.sourceConfig.config as ConfigClass)?.stageFileLocation ??
       '/tmp/query_log'
   );
   const [resultLimit, setResultLimit] = useState<number>(
-    (data?.source.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
+    (data?.sourceConfig.config as ConfigClass)?.resultLimit ?? 100
   );
   const usageIngestionType = useMemo(() => {
     return (
-      (data?.source.sourceConfig.config as ConfigClass)?.type ??
+      (data?.sourceConfig.config as ConfigClass)?.type ??
       ConfigType.DatabaseUsage
     );
   }, [data]);
   const profilerIngestionType = useMemo(() => {
     return (
-      (data?.source.sourceConfig.config as ConfigClass)?.type ??
-      ConfigType.Profiler
+      (data?.sourceConfig.config as ConfigClass)?.type ?? ConfigType.Profiler
     );
   }, [data]);
 
@@ -255,11 +248,15 @@ const AddIngestion = ({
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, includes: value });
+        setChartFilterPattern({ ...chartFilterPattern, includes: value });
 
         break;
       case FilterPatternEnum.FQN:
         setFqnFilterPattern({ ...fqnFilterPattern, includes: value });
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setPipelineFilterPattern({ ...pipelineFilterPattern, includes: value });
 
         break;
     }
@@ -290,11 +287,15 @@ const AddIngestion = ({
 
         break;
       case FilterPatternEnum.CHART:
-        setChartFilterPattern({ ...topicFilterPattern, excludes: value });
+        setChartFilterPattern({ ...chartFilterPattern, excludes: value });
 
         break;
       case FilterPatternEnum.FQN:
         setFqnFilterPattern({ ...fqnFilterPattern, excludes: value });
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setPipelineFilterPattern({ ...pipelineFilterPattern, excludes: value });
 
         break;
     }
@@ -328,6 +329,10 @@ const AddIngestion = ({
         break;
       case FilterPatternEnum.FQN:
         setShowFqnFilter(value);
+
+        break;
+      case FilterPatternEnum.PIPELINE:
+        setShowPipelineFilter(value);
 
         break;
     }
@@ -382,8 +387,6 @@ const AddIngestion = ({
         };
 
         return {
-          enableDataProfiler: enableDataProfiler,
-          generateSampleData: ingestSampleData,
           includeViews: includeView,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
@@ -408,6 +411,7 @@ const AddIngestion = ({
             topicFilterPattern,
             showTopicFilter
           ),
+          generateSampleData: ingestSampleData,
           type: ConfigType.MessagingMetadata,
         };
       }
@@ -422,6 +426,16 @@ const AddIngestion = ({
             showDashboardFilter
           ),
           type: ConfigType.DashboardMetadata,
+        };
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        return {
+          includeLineage: includeLineage,
+          pipelineFilterPattern: getFilterPatternData(
+            pipelineFilterPattern,
+            showPipelineFilter
+          ),
+          type: ConfigType.PipelineMetadata,
         };
       }
       default: {
@@ -459,8 +473,6 @@ const AddIngestion = ({
   const createNewIngestion = () => {
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        startDate: startDate as unknown as Date,
-        endDate: isEmpty(endDate) ? undefined : (endDate as unknown as Date),
         scheduleInterval: repeatFrequency,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
@@ -476,7 +488,9 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: getConfigData(pipelineType),
+        config: getConfigData(
+          pipelineType
+        ) as CreateIngestionPipeline['sourceConfig']['config'],
       },
     };
 
@@ -505,18 +519,13 @@ const AddIngestion = ({
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          startDate: startDate as unknown as Date,
-          endDate: (endDate as unknown as Date) || null,
           scheduleInterval: repeatFrequency,
         },
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
-        source: {
-          ...data.source,
-          sourceConfig: {
-            config: {
-              ...(data.source.sourceConfig.config as ConfigClass),
-              ...getConfigData(pipelineType),
-            },
+        sourceConfig: {
+          config: {
+            ...(data.sourceConfig.config as ConfigClass),
+            ...getConfigData(pipelineType),
           },
         },
       };
@@ -595,16 +604,13 @@ const AddIngestion = ({
             dashboardFilterPattern={dashboardFilterPattern}
             databaseFilterPattern={databaseFilterPattern}
             description={description}
-            enableDataProfiler={enableDataProfiler}
             enableDebugLog={enableDebugLog}
             fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
             handleDescription={(val) => setDescription(val)}
-            handleEnableDataProfiler={() =>
-              setEnableDataProfiler((pre) => !pre)
-            }
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
+            handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
@@ -613,10 +619,12 @@ const AddIngestion = ({
             handleResultLimit={(val) => setResultLimit(val)}
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
+            includeLineage={includeLineage}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}
             markDeletedTables={markDeletedTables}
+            pipelineFilterPattern={pipelineFilterPattern}
             pipelineType={pipelineType}
             queryLogDuration={queryLogDuration}
             resultLimit={resultLimit}
@@ -626,6 +634,7 @@ const AddIngestion = ({
             showDashboardFilter={showDashboardFilter}
             showDatabaseFilter={showDatabaseFilter}
             showFqnFilter={showFqnFilter}
+            showPipelineFilter={showPipelineFilter}
             showSchemaFilter={showSchemaFilter}
             showTableFilter={showTableFilter}
             showTopicFilter={showTopicFilter}

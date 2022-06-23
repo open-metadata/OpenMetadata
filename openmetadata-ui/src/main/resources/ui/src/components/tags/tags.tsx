@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isString } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { TagProps } from './tags.interface';
@@ -42,7 +43,19 @@ const Tags: FunctionComponent<TagProps> = ({
   };
 
   const getTag = (tag: string, startWith = '') => {
-    const tagName = showOnlyName ? tag.split(FQN_SEPARATOR_CHAR).pop() : tag;
+    const startIcon =
+      startWith === '+ ' ? (
+        <SVGIcons
+          alt="plus"
+          className="tw-w-3.5 tw-mr-1"
+          icon={Icons.ICON_PLUS_PRIMERY}
+        />
+      ) : (
+        startWith
+      );
+    const tagName = showOnlyName
+      ? tag.split(FQN_SEPARATOR_CHAR).slice(-2).join(FQN_SEPARATOR_CHAR)
+      : tag;
 
     return (
       <span
@@ -52,9 +65,12 @@ const Tags: FunctionComponent<TagProps> = ({
           className={classNames(
             textBaseStyle,
             textLayoutStyles,
-            textEditStyles
-          )}>
-          {`${startWith}${tagName}`}
+            textEditStyles,
+            'tw-flex tw-items-center'
+          )}
+          title={tag}>
+          {startIcon}
+          <span>{tagName}</span>
         </span>
         {editable && isRemovable && (
           <span
@@ -65,7 +81,7 @@ const Tags: FunctionComponent<TagProps> = ({
               e.stopPropagation();
               removeTag && removeTag(e, getTagString(tag));
             }}>
-            <FontAwesomeIcon className="tw-text-grey-300" icon="times" />
+            <FontAwesomeIcon className="tw-text-primary" icon="times" />
           </span>
         )}
       </span>
@@ -78,7 +94,7 @@ const Tags: FunctionComponent<TagProps> = ({
         getTag(tag, startWith)
       ) : (
         <>
-          {!editable && (tag.description || tag.labelType) ? (
+          {!editable && tag.description ? (
             <PopOver
               html={
                 <div className="tw-text-left tw-p-1">
@@ -90,7 +106,6 @@ const Tags: FunctionComponent<TagProps> = ({
                       />
                     </div>
                   )}
-                  <p>Set as {tag.labelType}</p>
                 </div>
               }
               position="top"

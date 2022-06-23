@@ -49,6 +49,7 @@ const exploreCount = {
   dashboard: 0,
   pipeline: 0,
   dbtModel: 0,
+  mlModel: 0,
 };
 
 const TourPage = () => {
@@ -126,10 +127,13 @@ const TourPage = () => {
         return (
           <MyData
             countDashboards={10}
+            countMlModal={2}
             countPipelines={8}
             countServices={4}
             countTables={21}
+            countTeams={7}
             countTopics={20}
+            countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
             feedFilter={FeedFilter.ALL}
@@ -147,6 +151,7 @@ const TourPage = () => {
             ownedDataCount={1}
             paging={{} as Paging}
             postFeedHandler={handleOnClick}
+            updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
           />
         );
@@ -154,6 +159,7 @@ const TourPage = () => {
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
+            isFilterSelected
             error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}
@@ -169,6 +175,7 @@ const TourPage = () => {
             tabCounts={explorePageCounts}
             updateDashboardCount={handleCountChange}
             updateDbtModelCount={handleCountChange}
+            updateMlModelCount={handleCountChange}
             updatePipelineCount={handleCountChange}
             updateTableCount={handleCountChange}
             updateTopicCount={handleCountChange}
@@ -201,6 +208,7 @@ const TourPage = () => {
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
             handleAddTableTestCase={handleCountChange}
+            handleExtentionUpdate={handleCountChange}
             handleRemoveColumnTest={handleCountChange}
             handleRemoveTableTest={handleCountChange}
             handleSelectedColumn={handleCountChange}
@@ -237,10 +245,10 @@ const TourPage = () => {
             testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
+            updateThreadHandler={handleOnClick}
             usageSummary={
               mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }
-            users={[]}
             versionHandler={handleCountChange}
           />
         );

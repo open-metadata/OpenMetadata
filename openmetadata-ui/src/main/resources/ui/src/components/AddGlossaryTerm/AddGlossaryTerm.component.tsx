@@ -32,6 +32,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import RichTextEditor from '../common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import RelatedTermsModal from '../Modals/RelatedTermsModal/RelatedTermsModal';
@@ -55,6 +56,7 @@ const AddGlossaryTerm = ({
   glossaryData,
   onSave,
   onCancel,
+  slashedBreadcrumb,
   saveState = 'initial',
 }: AddGlossaryTermProps) => {
   const markdownRef = useRef<EditorContentRef>();
@@ -297,219 +299,226 @@ const AddGlossaryTerm = ({
 
   return (
     <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-bg-white tw-pt-4"
+      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
-      <div className="tw-pb-3" data-testid="add-glossary-term">
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            {requiredField('Name:')}
-          </label>
+      <div className="tw-form-container">
+        <h6 className="tw-heading tw-text-base">Add Glossary Term</h6>
+        <div className="tw-pb-3" data-testid="add-glossary-term">
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="name">
+              {requiredField('Name:')}
+            </label>
 
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="name"
-            id="name"
-            name="name"
-            placeholder="Name"
-            type="text"
-            value={name}
-            onChange={handleValidation}
-          />
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="name"
+              id="name"
+              name="name"
+              placeholder="Name"
+              type="text"
+              value={name}
+              onChange={handleValidation}
+            />
 
-          {showErrorMsg.name
-            ? errorMsg('Glossary term name is required.')
-            : showErrorMsg.invalidName
-            ? errorMsg('Glossary term name is invalid.')
-            : null}
-        </Field>
+            {showErrorMsg.name
+              ? errorMsg('Glossary term name is required.')
+              : showErrorMsg.invalidName
+              ? errorMsg('Glossary term name is invalid.')
+              : null}
+          </Field>
 
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="description">
-            {requiredField('Description:')}
-          </label>
-          <RichTextEditor
-            data-testid="description"
-            initialValue={description}
-            readonly={!allowAccess}
-            ref={markdownRef}
-          />
-          {showErrorMsg.description && errorMsg('Description is required.')}
-        </Field>
+          <Field>
+            <label
+              className="tw-block tw-form-label tw-mb-0"
+              htmlFor="description">
+              {requiredField('Description:')}
+            </label>
+            <RichTextEditor
+              data-testid="description"
+              initialValue={description}
+              readonly={!allowAccess}
+              ref={markdownRef}
+            />
+            {showErrorMsg.description && errorMsg('Description is required.')}
+          </Field>
 
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="synonyms">
-            Synonyms:
-          </label>
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="synonyms">
+              Synonyms:
+            </label>
 
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="synonyms"
-            id="synonyms"
-            name="synonyms"
-            placeholder="Enter comma seprated keywords"
-            type="text"
-            value={synonyms}
-            onChange={handleValidation}
-          />
-        </Field>
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="synonyms"
+              id="synonyms"
+              name="synonyms"
+              placeholder="Enter comma seprated keywords"
+              type="text"
+              value={synonyms}
+              onChange={handleValidation}
+            />
+          </Field>
 
-        <div data-testid="references">
-          <div className="tw-flex tw-items-center tw-mt-6">
-            <p className="w-form-label tw-mr-3">References</p>
-            <Button
-              className="tw-h-5 tw-px-2"
-              size="x-small"
-              theme="primary"
-              variant="contained"
-              onClick={addReferenceFields}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
+          <div data-testid="references">
+            <div className="tw-flex tw-items-center tw-mt-6">
+              <p className="w-form-label tw-mr-3">References</p>
+              <Button
+                className="tw-h-5 tw-px-2"
+                size="x-small"
+                theme="primary"
+                variant="contained"
+                onClick={addReferenceFields}>
+                <FontAwesomeIcon icon="plus" />
+              </Button>
+            </div>
+
+            {references.map((value, i) => (
+              <div className="tw-flex tw-items-center" key={i}>
+                <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
+                  <Field>
+                    <input
+                      className="tw-form-inputs tw-form-inputs-padding"
+                      id={`name-${i}`}
+                      name="key"
+                      placeholder="Name"
+                      type="text"
+                      value={value.name}
+                      onChange={(e) =>
+                        handleReferenceFieldsChange(i, 'name', e.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field>
+                    <input
+                      className="tw-form-inputs tw-form-inputs-padding"
+                      id={`url-${i}`}
+                      name="endpoint"
+                      placeholder="url"
+                      type="text"
+                      value={value.endpoint}
+                      onChange={(e) =>
+                        handleReferenceFieldsChange(
+                          i,
+                          'endpoint',
+                          e.target.value
+                        )
+                      }
+                    />
+                  </Field>
+                </div>
+                <button
+                  className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+                  onClick={(e) => {
+                    removeReferenceFields(i);
+                    e.preventDefault();
+                  }}>
+                  <SVGIcons
+                    alt="delete"
+                    icon="icon-delete"
+                    title="Delete"
+                    width="12px"
+                  />
+                </button>
+              </div>
+            ))}
+            {showErrorMsg.invalidReferences
+              ? errorMsg('Endpoints should be valid URL.')
+              : null}
           </div>
 
-          {references.map((value, i) => (
-            <div className="tw-flex tw-items-center" key={i}>
-              <div className="tw-grid tw-grid-cols-2 tw-gap-x-2 tw-w-11/12">
-                <Field>
-                  <input
-                    className="tw-form-inputs tw-form-inputs-padding"
-                    id={`name-${i}`}
-                    name="key"
-                    placeholder="Name"
-                    type="text"
-                    value={value.name}
-                    onChange={(e) =>
-                      handleReferenceFieldsChange(i, 'name', e.target.value)
-                    }
-                  />
-                </Field>
-                <Field>
-                  <input
-                    className="tw-form-inputs tw-form-inputs-padding"
-                    id={`url-${i}`}
-                    name="endpoint"
-                    placeholder="url"
-                    type="text"
-                    value={value.endpoint}
-                    onChange={(e) =>
-                      handleReferenceFieldsChange(i, 'endpoint', e.target.value)
-                    }
-                  />
-                </Field>
-              </div>
-              <button
-                className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
-                onClick={(e) => {
-                  removeReferenceFields(i);
-                  e.preventDefault();
-                }}>
-                <SVGIcons
-                  alt="delete"
-                  icon="icon-delete"
-                  title="Delete"
-                  width="12px"
-                />
-              </button>
+          <Field>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <p className="w-form-label tw-mr-3">Related terms </p>
+              <Button
+                className="tw-h-5 tw-px-2"
+                size="x-small"
+                theme="primary"
+                variant="contained"
+                onClick={() => setShowRelatedTermsModal(true)}>
+                <FontAwesomeIcon icon="plus" />
+              </Button>
             </div>
-          ))}
-          {showErrorMsg.invalidReferences
-            ? errorMsg('Endpoints should be valid URL.')
-            : null}
+            <div className="tw-my-4">
+              {Boolean(relatedTerms.length) &&
+                relatedTerms.map((d, index) => {
+                  return (
+                    <Tags
+                      editable
+                      isRemovable
+                      className="tw-bg-gray-200"
+                      key={index}
+                      removeTag={handleTermRemove}
+                      tag={d.name}
+                      type="contained"
+                    />
+                  );
+                })}
+            </div>
+          </Field>
+          <Field>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <p className="w-form-label tw-mr-3">Reviewers </p>
+              <Button
+                className="tw-h-5 tw-px-2"
+                data-testid="add-reviewers"
+                size="x-small"
+                theme="primary"
+                variant="contained"
+                onClick={() => setShowRevieweModal(true)}>
+                <FontAwesomeIcon icon="plus" />
+              </Button>
+            </div>
+            <div className="tw-my-4">
+              {Boolean(reviewer.length) &&
+                reviewer.map((d, index) => {
+                  return (
+                    <Tags
+                      editable
+                      isRemovable
+                      className="tw-bg-gray-200"
+                      key={index}
+                      removeTag={handleReviewerRemove}
+                      tag={d.name}
+                      type="contained"
+                    />
+                  );
+                })}
+            </div>
+          </Field>
+
+          <Field className="tw-flex tw-justify-end">
+            <Button
+              data-testid="cancel-glossary-term"
+              size="regular"
+              theme="primary"
+              variant="text"
+              onClick={onCancel}>
+              Cancel
+            </Button>
+            {getSaveButton()}
+          </Field>
         </div>
 
-        <Field>
-          <div className="tw-flex tw-items-center tw-mt-4">
-            <p className="w-form-label tw-mr-3">Related terms </p>
-            <Button
-              className="tw-h-5 tw-px-2"
-              size="x-small"
-              theme="primary"
-              variant="contained"
-              onClick={() => setShowRelatedTermsModal(true)}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </div>
-          <div className="tw-my-4">
-            {Boolean(relatedTerms.length) &&
-              relatedTerms.map((d, index) => {
-                return (
-                  <Tags
-                    editable
-                    isRemovable
-                    className="tw-bg-gray-200"
-                    key={index}
-                    removeTag={handleTermRemove}
-                    tag={d.name}
-                    type="contained"
-                  />
-                );
-              })}
-          </div>
-        </Field>
-        <Field>
-          <div className="tw-flex tw-items-center tw-mt-4">
-            <p className="w-form-label tw-mr-3">Reviewers </p>
-            <Button
-              className="tw-h-5 tw-px-2"
-              data-testid="add-reviewers"
-              size="x-small"
-              theme="primary"
-              variant="contained"
-              onClick={() => setShowRevieweModal(true)}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </div>
-          <div className="tw-my-4">
-            {Boolean(reviewer.length) &&
-              reviewer.map((d, index) => {
-                return (
-                  <Tags
-                    editable
-                    isRemovable
-                    className="tw-bg-gray-200"
-                    key={index}
-                    removeTag={handleReviewerRemove}
-                    tag={d.name}
-                    type="contained"
-                  />
-                );
-              })}
-          </div>
-        </Field>
+        {showRelatedTermsModal && (
+          <RelatedTermsModal
+            header="Add Related Terms"
+            relatedTerms={relatedTerms}
+            onCancel={onRelatedTermsModalCancel}
+            onSave={handleRelatedTermsSave}
+          />
+        )}
 
-        <Field className="tw-flex tw-justify-end">
-          <Button
-            data-testid="cancel-glossary-term"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            Cancel
-          </Button>
-          {getSaveButton()}
-        </Field>
+        {showRevieweModal && (
+          <ReviewerModal
+            header="Add Reviewers"
+            reviewer={reviewer}
+            onCancel={onReviewerModalCancel}
+            onSave={handleReviewerSave}
+          />
+        )}
       </div>
-
-      {showRelatedTermsModal && (
-        <RelatedTermsModal
-          header="Add Related Terms"
-          relatedTerms={relatedTerms}
-          onCancel={onRelatedTermsModalCancel}
-          onSave={handleRelatedTermsSave}
-        />
-      )}
-
-      {showRevieweModal && (
-        <ReviewerModal
-          header="Add Reviewers"
-          reviewer={reviewer}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
-      )}
     </PageLayout>
   );
 };

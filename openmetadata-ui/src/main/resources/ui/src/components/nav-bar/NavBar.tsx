@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import React, { useState } from 'react';
+import { debounce } from 'lodash';
+import React, { useCallback, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
@@ -46,11 +47,23 @@ const NavBar = ({
   handleOnClick,
 }: NavBarProps) => {
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
     return { color: normalLink };
   };
+
+  const debouncedOnChange = useCallback(
+    (text: string): void => {
+      setSuggestionSearch(text);
+    },
+    [setSuggestionSearch]
+  );
+
+  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
+    debouncedOnChange,
+  ]);
 
   return (
     <>
@@ -76,6 +89,26 @@ const NavBar = ({
                 label="Settings"
                 type="link"
               />
+              <NavLink
+                className="tw-nav focus:tw-no-underline"
+                data-testid="appbar-item-glossary"
+                id="glossary"
+                style={navStyle(pathname.startsWith('/glossary'))}
+                to={{
+                  pathname: '/glossary',
+                }}>
+                Glossaries
+              </NavLink>
+              <NavLink
+                className="tw-nav focus:tw-no-underline"
+                data-testid="appbar-item-tags"
+                id="tags"
+                style={navStyle(pathname.startsWith('/tags'))}
+                to={{
+                  pathname: '/tags',
+                }}>
+                Tags
+              </NavLink>
             </div>
           </div>
           <div
@@ -95,12 +128,14 @@ const NavBar = ({
               className="tw-relative search-grey tw-rounded tw-border tw-border-main focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-form-inputs tw-ml-4"
               data-testid="searchBox"
               id="searchBox"
-              placeholder="Search for Table, Topics, Dashboards and Pipeline"
+              placeholder="Search for Table, Topics, Dashboards,Pipeline and ML Models"
               type="text"
               value={searchValue}
               onBlur={() => setSearchIcon('icon-searchv1')}
               onChange={(e) => {
-                handleSearchChange(e.target.value);
+                const { value } = e.target;
+                debounceOnSearch(value);
+                handleSearchChange(value);
               }}
               onFocus={() => setSearchIcon('icon-searchv1color')}
               onKeyDown={handleKeyDown}
@@ -120,7 +155,7 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
-                  searchText={searchValue}
+                  searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />
               ))}

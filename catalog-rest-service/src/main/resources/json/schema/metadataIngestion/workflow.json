@@ -26,6 +26,12 @@
             },
             {
               "$ref": "databaseServiceProfilerPipeline.json"
+            },
+            {
+              "$ref": "pipelineServiceMetadataPipeline.json"
+            },
+            {
+              "$ref": "mlmodelServiceMetadataPipeline.json"
             }
           ]
         }
@@ -126,12 +132,7 @@
       "description": "Supported logging levels",
       "javaType": "org.openmetadata.catalog.metadataIngestion.LogLevels",
       "type": "string",
-      "enum": [
-        "DEBUG",
-        "INFO",
-        "WARN",
-        "ERROR"
-      ],
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
       "default": "INFO"
     },
     "workflowConfig": {

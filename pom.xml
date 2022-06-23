@@ -35,9 +35,9 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.5.1</mockito.version>
+    <mockito.version>4.6.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <jackson.version>2.13.2</jackson.version>
+    <jackson.version>2.13.3</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
     <dropwizard-jdbi3.version>2.0.28</dropwizard-jdbi3.version>
     <jersey-bom.version>2.35</jersey-bom.version>
@@ -53,7 +53,7 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.28.0</jdbi3.version>
+    <jdbi3.version>3.30.0</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -61,7 +61,7 @@
     <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.5</postgres.connector.version>
+    <postgres.connector.version>42.3.6</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
@@ -75,7 +75,7 @@
     <nimbus-jose-jwt.version>7.9</nimbus-jose-jwt.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
     <httpclient.version>4.5.13</httpclient.version>
-    <spring.version>5.3.19</spring.version>
+    <spring.version>5.3.20</spring.version>
     <log4j.version>2.17.0</log4j.version>
     <org.junit.jupiter.version>5.8.2</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.2</dropwizard-health.version>
@@ -94,7 +94,9 @@
     <sonar.language>java</sonar.language>
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-
+    <testng.version>7.6.0</testng.version>
+    <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.0.70</json-schema-validator.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -128,7 +130,7 @@
       <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
-        <version>2.13.2.2</version>
+        <version>2.13.3</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -318,6 +320,16 @@
         <artifactId>spring-core</artifactId>
         <version>${spring.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-core</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.maksymdolgykh.dropwizard</groupId>
+        <artifactId>dropwizard-micrometer-jdbi</artifactId>
+        <version>${dropwizard-micrometer.version}</version>
+      </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
         <groupId>jakarta.xml.bind</groupId>
@@ -343,6 +355,18 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-all</artifactId>
         <version>2.0.2-beta</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-inline</artifactId>
+        <version>${mockito.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.mockito</groupId>
+        <artifactId>mockito-junit-jupiter</artifactId>
+        <version>${mockito.version}</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -415,7 +439,7 @@
       <dependency>
         <groupId>org.apache.johnzon</groupId>
         <artifactId>johnzon-core</artifactId>
-        <version>1.2.17</version>
+        <version>1.2.18</version>
       </dependency>
       <dependency>
         <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -559,7 +583,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>10.2</version>
+              <version>10.3</version>
             </dependency>
           </dependencies>
         </plugin>

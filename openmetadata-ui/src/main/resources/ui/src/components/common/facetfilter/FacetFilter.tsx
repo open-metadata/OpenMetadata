@@ -22,6 +22,7 @@ import {
 } from '../../../constants/constants';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
+
 const FacetFilter: FunctionComponent<FacetProp> = ({
   aggregations,
   filters,

@@ -4,8 +4,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
-      projectId: project_id
       credentials:
         gcsConfig:
           type: service_account
@@ -20,7 +18,7 @@ source:
           clientX509CertUrl: clientX509CertUrl
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

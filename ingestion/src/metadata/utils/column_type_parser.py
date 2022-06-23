@@ -1,8 +1,10 @@
 import re
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.types import TypeEngine
+
+from metadata.ingestion.source import sqa_types
 
 
 def create_sqlalchemy_type(name: str):
@@ -14,6 +16,15 @@ def create_sqlalchemy_type(name: str):
         },
     )
     return sqlalchemy_type
+
+
+NUMERIC_TYPES_SUPPORTING_PRECISION = {
+    "DOUBLE",
+    "NUMBER",
+    "NUMERIC",
+    "FLOAT",
+    "DECIMAL",
+}
 
 
 class ColumnTypeParser:
@@ -45,6 +56,9 @@ class ColumnTypeParser:
         types.Integer: "INT",
         types.BigInteger: "BIGINT",
         types.VARBINARY: "VARBINARY",
+        # Custom wrapper types enriching SQA type system
+        sqa_types.SQAMap: "MAP",
+        sqa_types.SQAStruct: "STRUCT",
     }
 
     _SOURCE_TYPE_TO_OM_TYPE = {
@@ -181,6 +195,7 @@ class ColumnTypeParser:
         s: str, **kwargs: Any
     ) -> Union[object, Dict[str, object]]:
         s = s.strip()
+        s = s.replace(" ", "")
         if s.startswith("array<"):
             if s[-1] != ">":
                 raise ValueError("expected '>' found: %s" % s)
@@ -316,6 +331,19 @@ class ColumnTypeParser:
             raise ValueError("The %s cannot be the last char: %s" % (separator, s))
         parts.append(buf)
         return parts
+
+    @staticmethod
+    def check_col_precision(
+        datatype: str, col_raw_type: object
+    ) -> Optional[Tuple[str, str]]:
+        """
+        Method retuerns the precision details of column if available
+        """
+        if datatype and datatype.upper() in NUMERIC_TYPES_SUPPORTING_PRECISION:
+            args = re.search(r"\((.*)\)", str(col_raw_type))
+            if args and args.group(1):
+                args = tuple(re.split(r"\s*,\s*", args.group(1)))
+                return args
 
     @staticmethod
     def is_primitive_om_type(raw_type: str) -> bool:

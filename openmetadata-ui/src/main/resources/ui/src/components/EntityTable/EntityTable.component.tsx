@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
+import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
@@ -58,15 +59,15 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 
 interface Props {
   owner: Table['owner'];
   tableColumns: ModifiedTableColumn[];
   joins: Array<ColumnJoins>;
-  searchText?: string;
   columnName: string;
   hasEditAccess: boolean;
+  tableConstraints: Table['tableConstraints'];
+  searchText?: string;
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
@@ -87,6 +88,7 @@ const EntityTable = ({
   onThreadLinkSelect,
   onEntityFieldSelect,
   entityFqn,
+  tableConstraints,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -154,24 +156,38 @@ const EntityTable = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
-        if (values[0].data) {
-          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
-        if (values[1] && values[1].length > 0) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
-            (tag) => {
-              return { fqn: tag, source: 'Glossary' };
-            }
-          );
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
           tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
         }
         setAllTags(tagsAndTerms);
-        setTagFetchFailed(false);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
       })
       .catch(() => {
         setAllTags([]);
@@ -266,15 +282,22 @@ const EntityTable = ({
     }
   };
 
-  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
+  const handleTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    columnName = ''
+  ) => {
     const newSelectedTags: TagOption[] | undefined = selectedTags?.map(
       (tag) => {
         return { fqn: tag.tagFQN, source: tag.source };
       }
     );
-    if (newSelectedTags && editColumnTag) {
+    if (newSelectedTags && (editColumnTag || columnName)) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(tableCols, editColumnTag.column.name, newSelectedTags);
+      updateColumnTags(
+        tableCols,
+        editColumnTag?.column.name || columnName,
+        newSelectedTags
+      );
       onUpdate?.(tableCols);
     }
     setEditColumnTag(undefined);
@@ -342,6 +365,24 @@ const EntityTable = ({
     onEntityFieldSelect?.(
       `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
     );
+  };
+
+  const prepareConstraintIcon = (
+    columnName: string,
+    columnConstraint?: string
+  ) => {
+    if (!isNil(columnConstraint)) {
+      return getConstraintIcon(columnConstraint);
+    } else {
+      const flag = tableConstraints?.find((constraint) =>
+        constraint.columns?.includes(columnName)
+      );
+      if (!isUndefined(flag)) {
+        return getConstraintIcon(flag.constraintType);
+      } else {
+        return null;
+      }
+    }
   };
 
   useEffect(() => {
@@ -525,6 +566,7 @@ const EntityTable = ({
                             </div>
                           ) : (
                             <div
+                              data-testid="tags-wrapper"
                               onClick={() => {
                                 if (!editColumnTag) {
                                   handleEditColumnTag(row.original, row.id);
@@ -541,6 +583,7 @@ const EntityTable = ({
                                 position="left"
                                 trigger="click">
                                 <TagsContainer
+                                  showAddTagButton
                                   editable={editColumnTag?.index === row.id}
                                   isLoading={
                                     isTagLoading &&
@@ -554,40 +597,24 @@ const EntityTable = ({
                                     handleTagSelection();
                                   }}
                                   onSelectionChange={(tags) => {
-                                    handleTagSelection(tags);
-                                  }}>
-                                  {cell.value.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                      <Tags
-                                        startWith="+ "
-                                        tag="Add tag"
-                                        type="outlined"
-                                      />
-                                    </span>
-                                  )}
-                                </TagsContainer>
+                                    handleTagSelection(tags, row.original.name);
+                                  }}
+                                />
                               </NonAdminAction>
-                              {getFieldThreadElement(
-                                getColumnName(cell),
-                                'tags',
-                                entityFieldThreads as EntityFieldThreads[],
-                                onThreadLinkSelect,
-                                EntityType.TABLE,
-                                entityFqn,
-                                `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                  cell
-                                )}${ENTITY_LINK_SEPARATOR}tags`,
-                                Boolean(cell.value.length)
-                              )}
+                              <div className="tw-mt-1">
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  'tags',
+                                  entityFieldThreads as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}tags`,
+                                  Boolean(cell.value.length)
+                                )}
+                              </div>
                             </div>
                           )}
                         </>
@@ -769,7 +796,7 @@ const EntityTable = ({
                         </div>
                       )}
                       {cell.column.id === 'name' && (
-                        <>
+                        <Fragment>
                           {isReadOnly ? (
                             <div className="tw-inline-block">
                               <RichTextEditorPreviewer markdown={cell.value} />
@@ -781,11 +808,14 @@ const EntityTable = ({
                                   row.canExpand ? '0px' : `${row.depth * 35}px`
                                 }`,
                               }}>
-                              {getConstraintIcon(row.original.constraint)}
+                              {prepareConstraintIcon(
+                                cell.value,
+                                row.original.constraint
+                              )}
                               {cell.render('Cell')}
                             </span>
                           )}
-                        </>
+                        </Fragment>
                       )}
                     </td>
                   );

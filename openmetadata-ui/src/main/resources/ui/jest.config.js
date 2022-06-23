@@ -36,6 +36,7 @@ module.exports = {
     '^.+\\.ts|tsx?$': 'ts-jest',
     '^.+\\.js|jsx?$': '<rootDir>/node_modules/babel-jest',
   },
+  transformIgnorePatterns: ['node_modules/?!(react-markdown)'],
 
   // "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
   // "moduleFileExtensions": ["js", "json","jsx" ],
@@ -52,6 +53,7 @@ module.exports = {
     '\\.json': '<rootDir>/src/test/unit/mocks/json.mock.js',
     '@fortawesome/react-fontawesome':
       '<rootDir>/src/test/unit/mocks/fontawesome.mock.js',
+    '@github/g-emoji-element': '<rootDir>/src/test/unit/mocks/gemoji.mock.js',
   },
 
   // Sonar Cloud Configuration

@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('MySQL Ingestion', () => {
   it('add and ingest data', () => {
@@ -23,7 +20,7 @@ describe('MySQL Ingestion', () => {
       cy.get('#root_username').type('openmetadata_user');
       cy.get('#root_password').type('openmetadata_password');
       cy.get('#root_hostPort').type('172.16.239.10:3306');
-      cy.get('#root_database').type('openmetadata_db');
+      cy.get('#root_databaseSchema').type('openmetadata_db');
     };
 
     const addIngestionInput = () => {

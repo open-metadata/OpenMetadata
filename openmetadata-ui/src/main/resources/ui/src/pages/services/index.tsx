@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -25,7 +26,9 @@ import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import {
   getServiceDetailsPath,
@@ -42,6 +45,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -68,6 +72,7 @@ type ServiceRecord = {
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
   pipelineServices: Array<PipelineService>;
+  mlmodelServices: Array<MlmodelService>;
 };
 
 type ServicePagingRecord = {
@@ -75,6 +80,7 @@ type ServicePagingRecord = {
   messagingServices: Paging;
   dashboardServices: Paging;
   pipelineServices: Paging;
+  mlmodelServices: Paging;
 };
 
 export type ApiData = {
@@ -101,12 +107,14 @@ const ServicesPage = () => {
     messagingServices: pagingObject,
     dashboardServices: pagingObject,
     pipelineServices: pagingObject,
+    mlmodelServices: pagingObject,
   });
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
     dashboardServices: [],
     pipelineServices: [],
+    mlmodelServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -118,6 +126,7 @@ const ServicesPage = () => {
     messagingServices: 0,
     dashboardServices: 0,
     pipelineServices: 0,
+    mlmodelServices: 0,
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -167,6 +176,7 @@ const ServicesPage = () => {
               messagingServices: servicePaging.messagingServices.total || 0,
               dashboardServices: servicePaging.dashboardServices.total || 0,
               pipelineServices: servicePaging.pipelineServices.total || 0,
+              mlmodelServices: servicePaging.mlmodelServices.total || 0,
             });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
@@ -187,14 +197,14 @@ const ServicesPage = () => {
               }
             }
           }
-          setIsLoading(false);
         })
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
             jsonData['api-error-messages']['fetch-services-error']
           );
-        });
+        })
+        .finally(() => setIsLoading(false));
     }
   };
 
@@ -231,36 +241,41 @@ const ServicesPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Services</h6>
-        </div>
+      <Card
+        data-testid="data-summary-container"
+        style={leftPanelAntCardStyle}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
+            <h6 className="tw-heading tw-text-base">Services</h6>
+          </div>
+        }>
+        <>
+          {getServiceTabs()?.map((tab, index) => {
+            return (
+              <div
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                  tab.name,
+                  serviceName
+                )}`}
+                data-testid="tab"
+                key={index}
+                onClick={() => {
+                  handleTabChange(tab.name);
+                }}>
+                <p className="tw-text-center tw-mb-0 tw-self-center label-category">
+                  {tab.displayName}
+                </p>
 
-        {getServiceTabs()?.map((tab, index) => {
-          return (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                tab.name,
-                serviceName
-              )}`}
-              data-testid="tab"
-              key={index}
-              onClick={() => {
-                handleTabChange(tab.name);
-              }}>
-              <p className="tw-text-center tw-self-center label-category">
-                {tab.displayName}
-              </p>
-
-              {getCountBadge(
-                servicesCount[tab.name],
-                'tw-self-center',
-                tab.name === serviceName
-              )}
-            </div>
-          );
-        })}
-      </>
+                {getCountBadge(
+                  servicesCount[tab.name],
+                  'tw-self-center',
+                  tab.name === serviceName
+                )}
+              </div>
+            );
+          })}
+        </>
+      </Card>
     );
   };
 
@@ -308,7 +323,32 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
-                {pipelineService.pipelineUrl}
+                {pipelineService.connection.config?.hostPort}
+              </span>
+            </div>
+          </>
+        );
+      }
+
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        const mlmodel = service as unknown as MlmodelService;
+
+        return (
+          <>
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">Registry:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
+                {mlmodel.connection.config?.registryUri}
+              </span>
+            </div>
+            <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
+              <label className="tw-mb-0">Tracking:</label>
+              <span
+                className=" tw-ml-1 tw-font-normal tw-text-grey-body"
+                data-testid="pipeline-url">
+                {mlmodel.connection.config?.trackingUri}
               </span>
             </div>
           </>
@@ -406,53 +446,56 @@ const ServicesPage = () => {
           className="tw-grid xl:tw-grid-cols-4 tw-grid-cols-2 tw-gap-4 tw-mb-4"
           data-testid="data-container">
           {serviceList.map((service, index) => (
-            <div
-              className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
-              data-testid="service-card"
-              key={index}>
-              <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                <div>
-                  <Link to={getServiceDetailsPath(service.name, serviceName)}>
-                    <button>
-                      <h6
-                        className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                        data-testid={`service-name-${getEntityName(
-                          service as EntityReference
-                        )}`}
-                        title={getEntityName(service as EntityReference)}>
-                        {getEntityName(service as EntityReference)}
-                      </h6>
-                    </button>
-                  </Link>
-                  <div
-                    className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                    data-testid="service-description">
-                    {service.description ? (
-                      <RichTextEditorPreviewer
-                        enableSeeMoreVariant={false}
-                        markdown={service.description}
-                      />
-                    ) : (
-                      <span className="tw-no-description">No description</span>
-                    )}
+            <Card key={index} style={leftPanelAntCardStyle}>
+              <div
+                className="tw-flex tw-justify-between tw-text-grey-muted"
+                data-testid="service-card">
+                <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
+                  <div>
+                    <Link to={getServiceDetailsPath(service.name, serviceName)}>
+                      <button>
+                        <h6
+                          className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
+                          data-testid={`service-name-${getEntityName(
+                            service as EntityReference
+                          )}`}
+                          title={getEntityName(service as EntityReference)}>
+                          {getEntityName(service as EntityReference)}
+                        </h6>
+                      </button>
+                    </Link>
+                    <div
+                      className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
+                      data-testid="service-description">
+                      {service.description ? (
+                        <RichTextEditorPreviewer
+                          enableSeeMoreVariant={false}
+                          markdown={service.description}
+                        />
+                      ) : (
+                        <span className="tw-no-description">
+                          No description
+                        </span>
+                      )}
+                    </div>
+                    {getOptionalFields(service)}
                   </div>
-                  {getOptionalFields(service)}
+                  <div className="" data-testid="service-type">
+                    <label className="tw-mb-0">Type:</label>
+                    <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                      {service.serviceType}
+                    </span>
+                  </div>
                 </div>
-                <div className="" data-testid="service-type">
-                  <label className="tw-mb-0">Type:</label>
-                  <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                    {service.serviceType}
-                  </span>
+                <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
+                  <div
+                    className="tw-flex tw-justify-end"
+                    data-testid="service-icon">
+                    {getServiceLogo(service.serviceType || '', 'tw-h-8')}
+                  </div>
                 </div>
               </div>
-              <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                <div
-                  className="tw-flex tw-justify-end"
-                  data-testid="service-icon">
-                  {getServiceLogo(service.serviceType || '', 'tw-h-8')}
-                </div>
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
       </Fragment>
@@ -490,7 +533,7 @@ const ServicesPage = () => {
       <ErrorPlaceHolder>{errorMessage}</ErrorPlaceHolder>
     ) : (
       <PageLayout leftPanel={fetchLeftPanel()}>
-        <div data-testid="services-container">
+        <div data-testid="services-container" style={{ padding: '14px' }}>
           {getServiceList()}
 
           {getPagination()}

@@ -12,6 +12,8 @@
 """
 Define Length function
 """
+# Keep SQA docs style defining custom constructs
+# pylint: disable=consider-using-f-string,duplicate-code
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
@@ -40,6 +42,8 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.Athena)
 @compiles(LenFn, Dialects.Trino)
 @compiles(LenFn, Dialects.Presto)
+@compiles(LenFn, Dialects.BigQuery)
+@compiles(LenFn, Dialects.Oracle)
 def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 

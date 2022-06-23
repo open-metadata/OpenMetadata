@@ -25,7 +25,6 @@ import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
 import { CreateUser } from '../../generated/api/teams/createUser';
 import { Role } from '../../generated/entity/teams/role';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -36,7 +35,6 @@ const CreateUserPage = () => {
   const history = useHistory();
 
   const [roles, setRoles] = useState<Array<Role>>([]);
-  const [teams, setTeams] = useState<Array<UserTeams>>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const goToUserListPage = () => {
@@ -69,7 +67,6 @@ const CreateUserPage = () => {
     createUser(userData)
       .then((res) => {
         if (res.data) {
-          AppState.addUser(res.data);
           setStatus('success');
           setTimeout(() => {
             setStatus('initial');
@@ -92,9 +89,6 @@ const CreateUserPage = () => {
   useEffect(() => {
     setRoles(AppState.userRoles);
   }, [AppState.userRoles]);
-  useEffect(() => {
-    setTeams(AppState.userTeams);
-  }, [AppState.userTeams]);
 
   return (
     <PageContainerV1>
@@ -102,7 +96,6 @@ const CreateUserPage = () => {
         allowAccess={isAdminUser || isAuthDisabled}
         roles={roles}
         saveState={status}
-        teams={teams}
         onCancel={handleCancel}
         onSave={handleAddUserSave}
       />

@@ -36,7 +36,6 @@ import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.events.EventPubSub;
 import org.openmetadata.catalog.events.EventPubSub.ChangeEventHolder;
@@ -63,12 +62,12 @@ public class WebhookRepository extends EntityRepository<Webhook> {
   }
 
   @Override
-  public Webhook setFields(Webhook entity, Fields fields) throws IOException {
+  public Webhook setFields(Webhook entity, Fields fields) {
     return entity; // No fields to set
   }
 
   @Override
-  public void prepare(Webhook entity) throws IOException {
+  public void prepare(Webhook entity) {
     setFullyQualifiedName(entity);
   }
 
@@ -146,11 +145,6 @@ public class WebhookRepository extends EntityRepository<Webhook> {
     webhookPublisherMap.remove(id);
   }
 
-  @Transaction
-  public boolean delete(String id) {
-    return daoCollection.webhookDAO().delete(id) > 0;
-  }
-
   /**
    * WebhookPublisher publishes events to the webhook endpoint using POST http requests. There is one instance of
    * WebhookPublisher per webhook subscription. Each WebhookPublish is an EventHandler that runs in a separate thread
@@ -216,7 +210,7 @@ public class WebhookRepository extends EntityRepository<Webhook> {
       try {
         String json = JsonUtils.pojoToJson(list);
         Response response;
-        if (webhook.getSecretKey() != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
           response = getTarget().header(RestUtil.SIGNATURE_HEADER, hmac).post(javax.ws.rs.client.Entity.json(json));
         } else {

@@ -16,10 +16,12 @@ the session.
 This is useful to centralise the running logic
 and manage behavior such as timeouts.
 """
-from typing import Union
+from typing import Dict, Optional, Union
 
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
+
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
 
 
 class QueryRunner:
@@ -39,10 +41,12 @@ class QueryRunner:
         session: Session,
         table: DeclarativeMeta,
         sample: Union[DeclarativeMeta, AliasedClass],
+        partition_details: Optional[Dict] = None,
     ):
         self._session = session
-        self._table = table
+        self.table = table
         self._sample = sample
+        self._partition_details = partition_details
 
     def _build_query(self, *entities, **kwargs) -> Query:
         return self._session.query(*entities, **kwargs)
@@ -50,15 +54,19 @@ class QueryRunner:
     def _select_from_sample(self, *entities, **kwargs):
         return self._build_query(*entities, **kwargs).select_from(self._sample)
 
+    @partition_filter_handler()
     def select_first_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).first()
+        return self._build_query(*entities, **kwargs).select_from(self.table).first()
 
+    @partition_filter_handler(first=False)
     def select_all_from_table(self, *entities, **kwargs):
-        return self._build_query(*entities, **kwargs).select_from(self._table).all()
+        return self._build_query(*entities, **kwargs).select_from(self.table).all()
 
+    @partition_filter_handler(sampled=True)
     def select_first_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).first()
 
+    @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).all()
 

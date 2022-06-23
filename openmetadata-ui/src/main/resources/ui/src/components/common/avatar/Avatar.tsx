@@ -37,6 +37,7 @@ const Avatar = ({
         'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
         className
       )}
+      data-testid="avatar"
       style={{
         height: `${width}px`,
         width: `${width}px`,
@@ -46,9 +47,7 @@ const Avatar = ({
         fontSize: `${Number(width) / 2}px`,
         fontWeight: 'normal',
       }}>
-      <p className={classNames('tw-self-center tw-capitalize', textClass)}>
-        {character}
-      </p>
+      <span className={classNames(textClass)}>{character}</span>
     </div>
   );
 };

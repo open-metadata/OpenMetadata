@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import json
 import logging
+import shutil
 import traceback
 from datetime import datetime
 
@@ -58,6 +58,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import EmptyPayloadException, OpenMetadata
+from metadata.utils import fqn
 
 logger = logging.getLogger(__name__)
 
@@ -169,10 +170,19 @@ class MigrateBulkSink(BulkSink):
         for table in file.readlines():
             table = json.loads(table)
             try:
-                table_entities = self.metadata.search_entities_using_es(
-                    table_obj=self._separate_fqn(table.get("fullyQualifiedName")),
-                    search_index="table_search_index",
-                    service_name=table.get("service").get("name"),
+
+                filters = self._separate_fqn(table.get("fullyQualifiedName"))
+
+                fqn_search_string = fqn._build(
+                    table.get("service").get("name"),
+                    filters.get("database", "*"),
+                    filters.get("database_schema", "*"),
+                    filters.get("name"),
+                )
+
+                table_entities = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
                 )
                 if len(table_entities) < 1:
                     continue
@@ -246,9 +256,7 @@ class MigrateBulkSink(BulkSink):
         if user_obj.roles:  # Roles can be optional
             role_ids = []
             for role in user_obj.roles.__root__:
-                role_entity = self.metadata.get_by_name(
-                    entity=Role, fqdn=str(role.name)
-                )
+                role_entity = self.metadata.get_by_name(entity=Role, fqn=str(role.name))
                 if role_entity:
                     role_ids.append(role_entity.id)
                 else:
@@ -261,7 +269,7 @@ class MigrateBulkSink(BulkSink):
             team_ids = []
             for team in user_obj.teams.__root__:
                 try:
-                    team_entity = self.metadata.get_by_name(entity=Team, fqdn=team.name)
+                    team_entity = self.metadata.get_by_name(entity=Team, fqn=team.name)
                     if not team_entity:
                         raise APIError(
                             error={
@@ -420,7 +428,7 @@ class MigrateBulkSink(BulkSink):
     def _get_glossary_reviewers_entities(self, reviewers):
         users = []
         for reviewer in reviewers:
-            user = self.metadata.get_by_name(entity=User, fqdn=reviewer.name)
+            user = self.metadata.get_by_name(entity=User, fqn=reviewer.name)
             users.append(
                 EntityReference(
                     id=user.id.__root__, name=user.name.__root__, type=reviewer.type
@@ -429,7 +437,7 @@ class MigrateBulkSink(BulkSink):
         return users
 
     def _get_glossary_owner_entity(self, owner):
-        user = self.metadata.get_by_name(entity=User, fqdn=owner.name)
+        user = self.metadata.get_by_name(entity=User, fqn=owner.name)
         return EntityReference(
             id=user.id.__root__, name=user.name.__root__, type=owner.type
         )
@@ -459,7 +467,7 @@ class MigrateBulkSink(BulkSink):
                 self.status.failure(f"Pipeline: {glossary_obj.name}")
 
     def _get_glossary_entity(self, glossary):
-        glossary_obj = self.metadata.get_by_name(entity=Glossary, fqdn=glossary.name)
+        glossary_obj = self.metadata.get_by_name(entity=Glossary, fqn=glossary.name)
         return EntityReference(
             id=glossary_obj.id.__root__, name=glossary.name, type=glossary.type
         )
@@ -468,7 +476,7 @@ class MigrateBulkSink(BulkSink):
         if glossary_term:
             try:
                 parent = self.metadata.get_by_name(
-                    entity=GlossaryTerm, fqdn=glossary_term.name
+                    entity=GlossaryTerm, fqn=glossary_term.name
                 )
                 return EntityReference(
                     id=parent.id.__root__,
@@ -673,4 +681,5 @@ class MigrateBulkSink(BulkSink):
         return self.status
 
     def close(self):
+        shutil.rmtree(self.config.dirPath)
         self.metadata.close()

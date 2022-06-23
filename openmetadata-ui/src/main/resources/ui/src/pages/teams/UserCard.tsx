@@ -73,6 +73,7 @@ const UserCard = ({
       case AssetsType.TABLE:
         return getPartialNameFromTableFQN(fqn, [
           FqnPart.Database,
+          FqnPart.Schema,
           FqnPart.Table,
         ]);
 
@@ -132,6 +133,10 @@ const UserCard = ({
         link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
+      case AssetsType.MLMODEL:
+        link = getEntityLink(SearchIndex.MLMODEL, fqn);
+
+        break;
       case AssetsType.TABLE:
       default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
@@ -140,10 +145,10 @@ const UserCard = ({
     }
 
     return (
-      <Link data-testid="dataset-link" to={link}>
-        <button className="tw-font-medium tw-text-grey-body tw-break-all">
+      <Link className="tw-no-underline" data-testid="dataset-link" to={link}>
+        <span className="tw-font-medium tw-text-grey-body tw-break-all tw-text-left">
           {getAssetDisplayName(type, fqn)}
-        </button>
+        </span>
       </Link>
     );
   };
@@ -155,7 +160,10 @@ const UserCard = ({
         { 'tw-py-5 tw-items-center': isDataset }
       )}
       data-testid="user-card-container">
-      <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
+      <div
+        className={`tw-flex ${
+          isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1 tw-items-center'
+        }`}>
         {isIconVisible && !isDataset ? (
           <ProfilePicture
             displayName={item.displayName || item.name}
@@ -167,17 +175,18 @@ const UserCard = ({
         )}
 
         <div
-          className={classNames('tw-flex tw-justify-center tw-flex-col', {
-            'tw-pl-2': !isDataset,
-          })}
+          className={classNames(
+            'tw-flex tw-justify-center tw-flex-col',
+            isDataset ? 'asset-card-text tw-pl-1' : 'tw-pl-2'
+          )}
           data-testid="data-container">
           {isDataset ? (
             <Fragment>{getDatasetTitle(item.type, item.fqn)}</Fragment>
           ) : (
             <Fragment>
-              <p
+              <span
                 className={classNames(
-                  'tw-font-normal',
+                  'tw-font-normal tw-my-1',
                   isActionVisible ? 'tw-truncate tw-w-32' : null,
                   {
                     'tw-cursor-pointer hover:tw-underline':
@@ -189,15 +198,15 @@ const UserCard = ({
                   onTitleClick?.(item.fqn);
                 }}>
                 {item.displayName}
-              </p>
-              {item.name && (
-                <p
+              </span>
+              {item.name && item.name !== item.displayName && (
+                <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                    isActionVisible ? 'tw-truncate tw-w-32 tw-my-1' : null
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
                   {isIconVisible ? item.name : capitalize(item.name)}
-                </p>
+                </span>
               )}
             </Fragment>
           )}

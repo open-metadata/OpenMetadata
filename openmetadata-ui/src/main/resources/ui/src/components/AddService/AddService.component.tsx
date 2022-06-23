@@ -21,17 +21,12 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import {
-  ConfigData,
-  DataObj,
-  DataService,
-} from '../../interface/service.interface';
+import { ConfigData, DataObj } from '../../interface/service.interface';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
   getServiceIngestionStepGuide,
-  isIngestionSupported,
 } from '../../utils/ServiceUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -129,10 +124,7 @@ const AddService = ({
     });
   };
 
-  const handleConfigUpdate = (
-    oData: ConfigData,
-    serviceCat: ServiceCategory
-  ) => {
+  const handleConfigUpdate = (oData: ConfigData) => {
     const data = {
       name: serviceName,
       serviceType: selectServiceType,
@@ -142,15 +134,12 @@ const AddService = ({
         type: 'user',
       },
     };
-    const configData =
-      serviceCat === ServiceCategory.PIPELINE_SERVICES
-        ? { ...data, pipelineUrl: oData.pipelineUrl }
-        : {
-            ...data,
-            connection: {
-              config: oData,
-            },
-          };
+    const configData = {
+      ...data,
+      connection: {
+        config: oData,
+      },
+    };
 
     return new Promise<void>((resolve, reject) => {
       setSaveServiceState('waiting');
@@ -229,30 +218,23 @@ const AddService = ({
           {activeServiceStep === 3 && (
             <ConnectionConfigForm
               cancelText="Back"
-              data={
-                (serviceCategory !== ServiceCategory.PIPELINE_SERVICES
-                  ? {
-                      connection: { config: { type: selectServiceType } },
-                    }
-                  : {}) as DataService
-              }
               serviceCategory={serviceCategory}
               serviceType={selectServiceType}
               status={saveServiceState}
               onCancel={handleConnectionDetailsBackClick}
               onSave={(e) => {
-                handleConfigUpdate(e.formData, serviceCategory);
+                handleConfigUpdate(e.formData);
               }}
             />
           )}
 
           {activeServiceStep > 3 && (
             <SuccessScreen
+              showIngestionButton
               handleIngestionClick={() => handleAddIngestion(true)}
               handleViewServiceClick={handleViewServiceClick}
               isAirflowSetup={isAirflowRunning}
               name={serviceName}
-              showIngestionButton={isIngestionSupported(serviceCategory)}
               state={FormSubmitType.ADD}
               suffix={getServiceCreatedLabel(serviceCategory)}
               onCheckAirflowStatus={onAirflowStatusCheck}

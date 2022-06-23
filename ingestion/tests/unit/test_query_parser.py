@@ -28,13 +28,15 @@ config = """
         "sampleDataFolder": "ingestion/examples/sample_data"
       }
     },
-    "sourceConfig": {}
+    "sourceConfig": {
+      "config":{
+        "type": "DatabaseUsage"
+      }
+    }
   },
   "processor": {
     "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "config": {}
   },
   "stage": {
     "type": "table-usage",
@@ -64,22 +66,11 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.dim_address": 100,
-            "shopify.dim_shop": 190,
-            "shopify.dim_customer": 125,
-            "dim_customer": 38,
-            "shopify.dim_location": 75,
-            "dim_location.shop_id": 25,
-            "dim_shop.shop_id": 105,
-            "shopify.dim_product": 130,
-            "dim_product.shop_id": 80,
-            "shopify.dim_product_variant": 35,
-            "dim_shop": 5,
-            "shopify.dim_staff": 75,
-            "shopify.fact_line_item": 100,
-            "shopify.fact_order": 185,
-            "shopify.dim_api_client": 85,
-            "shopify.fact_sale": 420,
+            "shopify.raw_product_catalog": 2,
+            "dim_customer": 2,
+            "fact_order": 2,
+            "shopify.fact_sale": 3,
+            "shopify.raw_customer": 10,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()

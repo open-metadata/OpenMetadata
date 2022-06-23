@@ -118,7 +118,7 @@ def test_amundsen():
                 "hostPort": "bolt://192.168.1.8:7687",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -172,7 +172,6 @@ def test_bigquery():
         "serviceConnection": {
             "config": {
                 "type": "BigQuery",
-                "enablePolicyTagImport": True,
                 "credentials": {
                     "gcsConfig": {
                         "type": "service_account",
@@ -189,7 +188,7 @@ def test_bigquery():
                 },
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -206,12 +205,12 @@ def test_clickhouse():
                 "username": "default",
                 "password": "",
                 "hostPort": "localhost:8123",
-                "database": "default",
+                "databaseSchema": "default",
             }
         },
         "sourceConfig": {
             "config": {
-                "enableDataProfiler": False,
+                "type": "DatabaseMetadata",
                 "schemaFilterPattern": {
                     "excludes": [
                         "system.*",
@@ -235,13 +234,12 @@ def test_databricks():
             "config": {
                 "token": "<databricks token>",
                 "hostPort": "localhost:443",
-                "database": "default",
                 "connectionArguments": {
                     "http_path": "<http path of databricks cluster>"
                 },
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -258,10 +256,9 @@ def test_db2():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:50000",
-                "database": "custom_database_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -279,7 +276,7 @@ def test_deltalake():
                 "appName": "MyApp",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -308,7 +305,7 @@ def test_dynamo_db():
         },
         "sourceConfig": {
             "config": {
-                "enableDataProfiler": False,
+                "type": "DatabaseMetadata",
                 "tableFilterPattern": {"includes": [""]},
             }
         },
@@ -339,7 +336,7 @@ def test_glue():
                 "pipelineServiceName": "pipeline_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -353,7 +350,7 @@ def test_hive():
         "serviceConnection": {
             "config": {"type": "Hive", "hostPort": "localhost:10000"}
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -400,7 +397,7 @@ def test_mariadb():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -419,7 +416,7 @@ def test_mariadb():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -436,7 +433,6 @@ def test_metabase():
                 "username": "username",
                 "password": "password",
                 "hostPort": "http://hostPort",
-                "dbServiceName": "Database Service Name to create Lineage",
             }
         },
         "sourceConfig": {
@@ -469,12 +465,7 @@ def test_mssql():
                 "hostPort": "localhost:1433",
             }
         },
-        "sourceConfig": {
-            "config": {
-                "enableDataProfiler": False,
-                "sampleDataQuery": "select top 50 * from [{}].[{}]",
-            }
-        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -493,7 +484,7 @@ def test_mysql():
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -533,7 +524,7 @@ def test_postgres():
                 "database": "pagila",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -548,17 +539,18 @@ def test_powerbi():
             "config": {
                 "clientId": "client_id",
                 "clientSecret": "client_secret",
-                "redirectURI": "http://localhost:8585/callback",
-                "hostPort": "https://analysis.windows.net/powerbi",
-                "scope": [
-                    "scope",
-                    "https://analysis.windows.net/powerbi/api/App.Read.All",
-                ],
-                "credentials": "path",
+                "tenantId": "tenant_id",
+                "scope": ["https://analysis.windows.net/powerbi/api/.default"],
                 "type": "PowerBI",
             }
         },
-        "sourceConfig": {"config": {}},
+        "sourceConfig": {
+            "config": {
+                "dashboardFilterPattern": {
+                    "includes": ["Supplier Quality Analysis Sample"]
+                }
+            }
+        },
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -576,7 +568,6 @@ def test_presto():
                 "catalog": "tpcds",
                 "username": "admin",
                 "password": "password",
-                "database": "database",
             }
         },
         "sourceConfig": {"config": {"generateSampleData": False}},
@@ -652,7 +643,7 @@ def test_salesforce():
                 "sobjectName": "sobjectName",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -686,10 +677,9 @@ def test_singlestore():
                 "username": "openmetadata_user",
                 "password": "openmetadata_password",
                 "hostPort": "localhost:3306",
-                "database": "custom_database_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)
@@ -798,7 +788,6 @@ def test_trino():
                 "hostPort": "localhost:8080",
                 "username": "user",
                 "catalog": "tpcds",
-                "database": "tiny",
             }
         },
         "sourceConfig": {"config": {}},
@@ -821,7 +810,7 @@ def test_vertica():
                 "database": "custom_database_name",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     config: WorkflowSource = WorkflowSource.parse_obj(source)

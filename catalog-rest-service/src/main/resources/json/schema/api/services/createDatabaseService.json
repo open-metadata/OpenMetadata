@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of Database entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"

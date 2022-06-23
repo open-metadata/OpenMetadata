@@ -11,6 +11,8 @@
 """
 Register auth provider init functions here
 """
+# Complains about same imports
+# pylint: disable=duplicate-code
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,

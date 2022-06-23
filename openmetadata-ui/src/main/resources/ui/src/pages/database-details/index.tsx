@@ -13,10 +13,10 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isNil, startCase } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, EntityThread, ExtraInfo } from 'Models';
+import { EntityFieldThreadCount, ExtraInfo } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -68,6 +68,7 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
@@ -89,6 +90,7 @@ import {
   deletePost,
   getEntityFieldThreadCounts,
   getUpdatedThread,
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import {
   getExplorePathWithInitFilters,
@@ -96,7 +98,7 @@ import {
 } from '../../utils/RouterUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getErrorText } from '../../utils/StringsUtils';
-import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
+import { getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -127,7 +129,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
   const [error, setError] = useState('');
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
@@ -507,7 +509,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -536,9 +538,18 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
   const fetchTablesCount = () => {
     // limit=0 will fetch empty data list with total count
-    getAllTables('', 0)
+    getAllTables('', 0, databaseFQN)
       .then((res: AxiosResponse) => {
         if (res.data) {
           setTableInstanceCount(res.data.paging.total);
@@ -748,12 +759,7 @@ const DatabaseDetails: FunctionComponent = () => {
                                 )}
                               </td>
                               <td className="tableBody-cell">
-                                <p>
-                                  {getOwnerFromId(schema?.owner?.id)
-                                    ?.displayName ||
-                                    getOwnerFromId(schema?.owner?.id)?.name ||
-                                    '--'}
-                                </p>
+                                <p>{getEntityName(schema?.owner) || '--'}</p>
                               </td>
                               <td className="tableBody-cell">
                                 <p>
@@ -803,6 +809,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       entityName={databaseName}
                       feedList={entityThread}
                       postFeedHandler={postFeedHandler}
+                      updateThreadHandler={updateThreadHandler}
                     />
                     <div />
                   </div>
@@ -840,6 +847,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 open={Boolean(threadLink)}
                 postFeedHandler={postFeedHandler}
                 threadLink={threadLink}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onThreadPanelClose}
               />
             ) : null}

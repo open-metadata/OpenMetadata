@@ -19,7 +19,6 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -37,11 +36,7 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
-import {
-  EntityReference,
-  EntityReference as UserTeams,
-  User,
-} from '../generated/entity/teams/user';
+import { EntityReference, User } from '../generated/entity/teams/user';
 import { getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { getExplorePathWithInitFilters } from './RouterUtils';
@@ -164,26 +159,15 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const getUserTeams = (): Array<UserTeams> => {
-  let retVal: Array<UserTeams>;
-  if (AppState.userDetails.teams) {
-    retVal = AppState.userDetails.teams.map((item) => {
-      const team = AppState.userTeams.find((obj) => obj.id === item.id);
-
-      return { ...item, displayName: team?.displayName };
-    });
-  } else {
-    retVal = AppState.userTeams;
-  }
-
-  return retVal || [];
-};
-
 export const hasEditAccess = (type: string, id: string) => {
+  const loggedInUser = AppState.getCurrentUserDetails();
   if (type === 'user') {
-    return id === getCurrentUserId();
+    return id === loggedInUser?.id;
   } else {
-    return getUserTeams().some((team) => team.id === id);
+    return Boolean(
+      loggedInUser?.teams?.length &&
+        loggedInUser?.teams?.some((team) => team.id === id)
+    );
   }
 };
 
@@ -208,7 +192,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
         clsBG,
         className
       )}>
@@ -343,15 +327,13 @@ export const getOwnerIds = (
   if (filter === Ownership.OWNER) {
     if (!isEmpty(userDetails)) {
       return [
-        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        ...(userDetails.teams?.map((team) => team.id) || []),
         userDetails.id,
       ];
     } else {
       if (!isEmpty(nonSecureUserDetails)) {
         return [
-          ...(nonSecureUserDetails.teams?.map(
-            (team) => team.id
-          ) as Array<string>),
+          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
           nonSecureUserDetails.id,
         ];
       } else {
@@ -434,10 +416,6 @@ export const getServiceLogo = (
   }
 
   return null;
-};
-
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 export const getSvgArrow = (isActive: boolean) => {
@@ -648,4 +626,8 @@ export const getExploreLinkByFilter = (
     undefined,
     `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
   );
+};
+
+export const replaceSpaceWith_ = (text: string) => {
+  return text.replace(/\s/g, '_');
 };

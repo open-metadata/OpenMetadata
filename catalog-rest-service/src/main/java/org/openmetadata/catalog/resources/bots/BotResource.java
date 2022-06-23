@@ -90,6 +90,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @GET
   @Operation(
+      operationId = "listBots",
       summary = "List Bot",
       tags = "bots",
       description = "Get a list of Bot.",
@@ -122,6 +123,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getBotByID",
       summary = "Get a bot",
       tags = "bots",
       description = "Get a bot by `id`.",
@@ -144,6 +146,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getBotByFQN",
       summary = "Get a bot by name",
       tags = "bots",
       description = "Get a bot by name.",
@@ -172,6 +175,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllBotVersion",
       summary = "List bot versions",
       tags = "bots",
       description = "Get a list of all the versions of a bot identified by `id`",
@@ -192,6 +196,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "listSpecificBotVersion",
       summary = "Get a version of the bot",
       tags = "bots",
       description = "Get a version of the bot by given `id`",
@@ -219,6 +224,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @POST
   @Operation(
+      operationId = "createBot",
       summary = "Create a bot",
       tags = "bots",
       description = "Create a new bot.",
@@ -237,6 +243,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateBot",
       summary = "Create or update a bot",
       tags = "bots",
       description = "Create a bot, if it does not exist. If a bot already exists, update the bot.",
@@ -244,7 +251,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The bot",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateBot.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Bot.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -256,6 +263,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchBot",
       summary = "Update a bot",
       tags = "bots",
       description = "Update an existing bot using JsonPatch.",
@@ -281,9 +289,10 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteBot",
       summary = "Delete a bot",
       tags = "bots",
-      description = "Delete a bot by `id`. Bot is not immediately deleted and is only marked as deleted.",
+      description = "Delete a bot by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")

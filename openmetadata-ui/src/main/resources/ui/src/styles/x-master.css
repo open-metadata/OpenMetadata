@@ -12,6 +12,8 @@
  */
 
 /* Generic */
+
+@import '~antd/dist/antd.css';
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -741,8 +743,31 @@ body .profiler-graph .recharts-active-dot circle {
 .leaf-node.core .react-flow__handle {
   background-color: #7147e8;
 }
+.react-flow__edge {
+  pointer-events: all;
+  cursor: pointer;
+}
+.react-flow__node-default .react-flow__handle,
+.react-flow__node-group .react-flow__handle,
+.react-flow__node-input .react-flow__handle,
+.react-flow__node-output .react-flow__handle {
+  background-color: #7147e8 !important;
+}
+
+.react-flow__edge .react-flow__edge-path {
+  stroke-width: 2px;
+}
+
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 2px solid rgb(229, 231, 235) !important;
 }
 
 /* EntityVersion  */
@@ -768,13 +793,12 @@ body .profiler-graph .recharts-active-dot circle {
 }
 
 #left-panel {
-  grid-area: leftsidebar;
-  position: sticky;
-  position: -webkit-sticky;
-  top: 0;
-  left: 0;
+  position: fixed;
   overflow-y: scroll;
+  width: 304px;
+  height: calc(100vh - 90px);
 }
+
 #right-panel {
   grid-area: rightsidebar;
   position: sticky;
@@ -809,13 +833,13 @@ body .profiler-graph .recharts-active-dot circle {
   position: relative;
 }
 .page-layout-container.l3-col {
-  grid-template-columns: 256px auto 256px;
+  grid-template-columns: 304px auto 304px;
 }
 .page-layout-container.l2-ltr-col {
-  grid-template-columns: 300px auto auto;
+  grid-template-columns: 350px auto auto;
 }
 .page-layout-container.l2-rtl-col {
-  grid-template-columns: auto auto 300px;
+  grid-template-columns: auto auto 350px;
 }
 
 .page-layout-container-left-center-right {
@@ -910,6 +934,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -955,4 +983,190 @@ code {
   max-height: 54px;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+.ant-card-body {
+  padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
+}
+
+.ant-card-head-title {
+  padding: 8px 0px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #dce3ec;
+  padding: 0 18px;
+}
+
+.custom-entity-schema > .CodeMirror {
+  height: 70vh;
+}
+
+.ant-card-head {
+  padding: 0 14px;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+.ant-card-extra {
+  padding: 0px;
+}
+/* 
+*/
+/* Reaction CSS Start */
+.ant-btn-add-reactions:hover,
+.ant-btn-add-reactions:focus {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-reaction,
+.ant-btn-popover-reaction {
+  height: auto;
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  background-color: transparent;
+}
+
+.ant-btn-popover-reaction:hover {
+  background-color: #7147e860;
+}
+
+.ant-btn-reaction:hover,
+.ant-btn-isReacted {
+  color: #7147e8;
+  border-color: #7147e8;
+}
+
+.ant-btn-isReacted:hover {
+  color: #7147e8;
+  border-color: #7147e880;
+}
+
+.ant-btn-popover-isReacted,
+.ant-btn-popover-isReacted:hover {
+  background-color: #7147e860;
+}
+
+/* Reaction CSS End */
+.ant-advaced-field-select {
+  color: #7147e8;
+  min-width: 130px;
+}
+.ant-suggestion-dropdown {
+  min-width: 200px !important;
+}
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #dbd1f9;
+}
+
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 0px 4px;
+}
+
+.ant-select-single .ant-select-selector .ant-select-selection-search {
+  left: 4px;
+}
+
+@media only screen and (max-width: 1440px) {
+  #left-panel {
+    width: 256px;
+  }
+
+  .page-layout-container.l3-col {
+    grid-template-columns: 256px auto 256px;
+  }
+}
+
+/* Description CSS */
+
+.description {
+  word-break: break-all;
+}
+
+/* Feed popover CSS start */
+
+.ant-popover-inner-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
+  display: none;
+}
+.ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
+.ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
+  border-radius: 6px;
+  border: 1px solid #dde3ea;
+}
+
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
+}
+
+/* Feed popover CSS end */
+
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #07a35a;
+}
+
+.data-box.Failed {
+  background-color: #e54937;
+}
+
+.data-box.Pending {
+  background-color: #276ef1;
+}
+
+.data-box.Successful.selected,
+.data-box.Failed.selected,
+.data-box.Pending.selected {
+  background-color: #7147e8;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful {
+  border-color: #07a35a;
+}
+
+.leaf-node.Failed {
+  border-color: #e54937;
+}
+
+.leaf-node.Pending {
+  border-color: #276ef1;
 }

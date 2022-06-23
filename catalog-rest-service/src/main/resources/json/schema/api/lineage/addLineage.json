@@ -7,7 +7,7 @@
   "properties": {
     "description": {
       "description": "User provided description of the lineage details.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "edge": {
       "description": "Lineage edge details.",

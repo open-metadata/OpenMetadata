@@ -36,7 +36,8 @@
         "DeltaLake",
         "Salesforce",
         "SampleData",
-        "PinotDB"
+        "PinotDB",
+        "Datalake"
       ],
       "javaEnums": [
         {
@@ -116,6 +117,9 @@
         },
         {
           "name": "PinotDB"
+        },
+        {
+          "name": "Datalake"
         }
       ]
     },
@@ -202,6 +206,9 @@
             },
             {
               "$ref": "./connections/database/pinotDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/datalakeConnection.json"
             }
           ]
         }
@@ -232,7 +239,7 @@
     },
     "description": {
       "description": "Description of a database service instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "connection": {
       "$ref": "#/definitions/databaseConnection"

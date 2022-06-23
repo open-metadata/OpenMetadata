@@ -98,6 +98,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate glossary
     EntityReference glossary = Entity.getEntityReference(entity.getGlossary());
     entity.setGlossary(glossary);
+
+    // Validate parent term
+    EntityReference parentTerm = Entity.getEntityReference(entity.getParent());
+    entity.setParent(parentTerm);
+
     setFullyQualifiedName(entity);
 
     // Validate related terms
@@ -167,14 +172,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
-    if (entity.getParent() == null) {
+    if (entity.getParent() == null) { // Glossary term at the root of the glossary
       entity.setFullyQualifiedName(FullyQualifiedName.add(entity.getGlossary().getName(), entity.getName()));
-    } else {
-      // TODO fix me
-      //      EntityReference parent = Entity.getEntityReference(entity.getParent());
+    } else { // Glossary term that is a child of another glossary term
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
-      entity.setParent(parent);
     }
   }
 
@@ -206,6 +208,16 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
       updateReviewers(original, updated);
+    }
+
+    @Override
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+        throws IOException {
+      super.updateTags(fqn, fieldName, origTags, updatedTags);
+      List<String> targetFQNList = daoCollection.tagUsageDAO().tagTargetFQN(fqn);
+      for (String targetFQN : targetFQNList) {
+        applyTags(updatedTags, targetFQN);
+      }
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) throws JsonProcessingException {

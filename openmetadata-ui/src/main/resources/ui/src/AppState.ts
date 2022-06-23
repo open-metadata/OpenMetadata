@@ -25,6 +25,7 @@ import {
 import { ImageList } from './generated/type/profile';
 
 class AppState {
+  urlPathname = '';
   users: Array<User> = [];
   newUser: NewUser = {} as NewUser;
   authDisabled = false;
@@ -79,7 +80,17 @@ class AppState {
       updateProfilePicsLoading: action,
       isProfilePicLoading: action,
       removeProfilePicsLoading: action,
+      getUrlPathname: action,
+      updateUrlPathname: action,
     });
+  }
+
+  updateUrlPathname(data: string) {
+    this.urlPathname = data;
+  }
+
+  getUrlPathname() {
+    return this.urlPathname;
   }
 
   addUser(data: User) {

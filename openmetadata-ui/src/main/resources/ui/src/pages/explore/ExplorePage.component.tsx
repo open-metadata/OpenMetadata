@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import {
   Bucket,
   FilterObject,
@@ -44,7 +45,6 @@ import {
   getQueryParam,
   getSearchFilter,
   INITIAL_FROM,
-  INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
   ZERO_SIZE,
@@ -76,12 +76,11 @@ const ExplorePage: FunctionComponent = () => {
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [dbtModelCount, setDbtModelCount] = useState<number>(0);
+  const [mlModelCount, setMlModelCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
-    searchQuery
-      ? tabsInfo[getCurrentTab(tab) - 1].sortField
-      : INITIAL_SORT_FIELD
+    tabsInfo[getCurrentTab(tab) - 1].sortField
   );
 
   const handleSearchText = (text: string) => {
@@ -106,6 +105,10 @@ const ExplorePage: FunctionComponent = () => {
 
   const handleDbtModelCount = (count: number) => {
     setDbtModelCount(count);
+  };
+
+  const handleMlModelCount = (count: number) => {
+    setMlModelCount(count);
   };
 
   const handlePathChange = (path: string) => {
@@ -133,6 +136,7 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
+      SearchIndex.MLMODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -144,7 +148,8 @@ const ExplorePage: FunctionComponent = () => {
         emptyValue,
         emptyValue,
         entity,
-        showDeleted
+        showDeleted,
+        true
       )
     );
 
@@ -155,6 +160,7 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
+          mlmodel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -184,6 +190,14 @@ const ExplorePage: FunctionComponent = () => {
             pipeline.status === 'fulfilled'
               ? getTotalEntityCountByType(
                   pipeline.value.data.aggregations?.['sterms#EntityType']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setMlModelCount(
+            mlmodel.status === 'fulfilled'
+              ? getTotalEntityCountByType(
+                  mlmodel.value.data.aggregations?.['sterms#EntityType']
                     ?.buckets as Bucket[]
                 )
               : 0
@@ -254,6 +268,8 @@ const ExplorePage: FunctionComponent = () => {
   }, [tab]);
 
   useEffect(() => {
+    setSearchResult(undefined);
+    setIsLoadingForData(true);
     fetchData([
       {
         queryString: searchText,
@@ -308,6 +324,7 @@ const ExplorePage: FunctionComponent = () => {
             handlePathChange={handlePathChange}
             handleSearchText={handleSearchText}
             initialFilter={initialFilter}
+            isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
             searchFilter={searchFilter}
             searchQuery={searchQuery}
             searchResult={searchResult}
@@ -321,9 +338,11 @@ const ExplorePage: FunctionComponent = () => {
               dashboard: dashboardCount,
               pipeline: pipelineCount,
               dbtModel: dbtModelCount,
+              mlModel: mlModelCount,
             }}
             updateDashboardCount={handleDashboardCount}
             updateDbtModelCount={handleDbtModelCount}
+            updateMlModelCount={handleMlModelCount}
             updatePipelineCount={handlePipelineCount}
             updateTableCount={handleTableCount}
             updateTopicCount={handleTopicCount}

@@ -18,6 +18,7 @@ import com.auth0.jwk.JwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.annotations.VisibleForTesting;
@@ -28,7 +29,9 @@ import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.MultivaluedMap;
@@ -37,6 +40,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.User;
@@ -52,15 +56,17 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
-
   private List<String> jwtPrincipalClaims;
   private JwkProvider jwkProvider;
+  private String principalDomain;
+  private boolean enforcePrincipalDomain;
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
 
   @SneakyThrows
-  public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
+  public JwtFilter(
+      AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConfiguration) {
     this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
 
     ImmutableList.Builder<URL> publicKeyUrlsBuilder = ImmutableList.builder();
@@ -68,19 +74,27 @@ public class JwtFilter implements ContainerRequestFilter {
       publicKeyUrlsBuilder.add(new URL(publicKeyUrlStr));
     }
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
   }
 
   @VisibleForTesting
-  JwtFilter(JwkProvider jwkProvider, List<String> jwtPrincipalClaims) {
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
+    this.principalDomain = principalDomain;
+    this.enforcePrincipalDomain = enforcePrincipalDomain;
   }
 
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
     UriInfo uriInfo = requestContext.getUriInfo();
-    if (uriInfo.getPath().contains("config")) {
+    if (uriInfo.getPath().contains("config") || uriInfo.getPath().contains("version")) {
       return;
     }
 
@@ -89,16 +103,39 @@ public class JwtFilter implements ContainerRequestFilter {
     String tokenFromHeader = extractToken(headers);
     LOG.debug("Token from header:{}", tokenFromHeader);
 
+    DecodedJWT jwt = validateAndReturnDecodedJwtToken(tokenFromHeader);
+
+    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    claims.putAll(jwt.getClaims());
+
+    String userName = validateAndReturnUsername(claims);
+
+    // validate bot token
+    if (claims.containsKey(BOT_CLAIM) && claims.get(BOT_CLAIM).asBoolean()) {
+      validateBotToken(tokenFromHeader, userName);
+    }
+
+    // Setting Security Context
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
+    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
+    LOG.debug("SecurityContext {}", catalogSecurityContext);
+    requestContext.setSecurityContext(catalogSecurityContext);
+  }
+
+  @SneakyThrows
+  public DecodedJWT validateAndReturnDecodedJwtToken(String token) {
     // Decode JWT Token
     DecodedJWT jwt;
     try {
-      jwt = JWT.decode(tokenFromHeader);
+      jwt = JWT.decode(token);
     } catch (JWTDecodeException e) {
       throw new AuthenticationException("Invalid token", e);
     }
 
     // Check if expired
-    // if the expiresAt set to null, treat it as never expiring token
+    // If expiresAt is set to null, treat it as never expiring token
     if (jwt.getExpiresAt() != null
         && jwt.getExpiresAt().before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
       throw new AuthenticationException("Expired token!");
@@ -112,37 +149,41 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (RuntimeException runtimeException) {
       throw new AuthenticationException("Invalid token");
     }
+    return jwt;
+  }
 
+  @SneakyThrows
+  public String validateAndReturnUsername(Map<String, Claim> claims) {
     // Get username from JWT token
-    String userName =
+    String jwtClaim =
         jwtPrincipalClaims.stream()
-            .filter(jwt.getClaims()::containsKey)
+            .filter(claims::containsKey)
             .findFirst()
-            .map(jwt::getClaim)
+            .map(claims::get)
             .map(claim -> claim.as(TextNode.class).asText())
-            .map(
-                authorizedClaim -> {
-                  if (authorizedClaim.contains("@")) {
-                    return authorizedClaim.split("@")[0];
-                  } else {
-                    return authorizedClaim;
-                  }
-                })
             .orElseThrow(
                 () ->
                     new AuthenticationException(
                         "Invalid JWT token, none of the following claims are present " + jwtPrincipalClaims));
-    // validate bot token
-    if (jwt.getClaims().containsKey(BOT_CLAIM) && jwt.getClaims().get(BOT_CLAIM).asBoolean()) {
-      validateBotToken(tokenFromHeader, userName);
+
+    String userName;
+    String domain;
+    if (jwtClaim.contains("@")) {
+      userName = jwtClaim.split("@")[0];
+      domain = jwtClaim.split("@")[1];
+    } else {
+      userName = jwtClaim;
+      domain = StringUtils.EMPTY;
     }
-    // Setting Security Context
-    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
-    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(catalogPrincipal, scheme, SecurityContext.DIGEST_AUTH);
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
-    requestContext.setSecurityContext(catalogSecurityContext);
+
+    // validate principal domain
+    if (enforcePrincipalDomain) {
+      if (!domain.equals(principalDomain)) {
+        throw new AuthenticationException(
+            String.format("Not Authorized! Email does not match the principal domain %s", principalDomain));
+      }
+    }
+    return userName;
   }
 
   protected static String extractToken(MultivaluedMap<String, String> headers) {
@@ -154,6 +195,18 @@ public class JwtFilter implements ContainerRequestFilter {
     // Extract the bearer token
     if (source.startsWith(TOKEN_PREFIX)) {
       return source.substring(TOKEN_PREFIX.length() + 1);
+    }
+    throw new AuthenticationException("Not Authorized! Token not present");
+  }
+
+  public static String extractToken(String tokenFromHeader) {
+    LOG.debug("Request Token:{}", tokenFromHeader);
+    if (Strings.isNullOrEmpty(tokenFromHeader)) {
+      throw new AuthenticationException("Not Authorized! Token not present");
+    }
+    // Extract the bearer token
+    if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
+      return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
     }
     throw new AuthenticationException("Not Authorized! Token not present");
   }

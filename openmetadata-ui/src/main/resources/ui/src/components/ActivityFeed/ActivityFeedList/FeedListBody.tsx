@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Post } from 'Models';
+import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
+import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedCardFooter from '../FeedCardFooter/FeedCardFooter';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
@@ -28,9 +29,15 @@ const FeedListBody: FC<FeedListBodyProp> = ({
   onViewMore,
   selectedThreadId,
   onConfirmation,
+  updateThreadHandler,
 }) => {
   const toggleReplyEditor = (id: string) => {
     onThreadIdSelect(selectedThreadId === id ? '' : id);
+  };
+
+  const onReplyThread = (id: string) => {
+    onThreadSelect(id);
+    onViewMore();
   };
 
   const getFeedEditor = (id: string) => {
@@ -46,30 +53,32 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
   const getThreadFooter = (
     postLength: number,
-    lastPost: Post,
     repliedUsers: Array<string>,
     replies: number,
-    threadId: string
+    threadId: string,
+    lastPost?: Post
   ) => {
-    return postLength > 1 ? (
-      <div className="tw-mb-6">
-        <div className="tw-ml-9 tw-flex tw-mb-6">
-          <FeedCardFooter
-            isFooterVisible
-            className="tw--mt-4"
-            lastReplyTimeStamp={lastPost?.postTs}
-            repliedUsers={repliedUsers}
-            replies={replies}
-            threadId={threadId}
-            onThreadSelect={(id: string) => {
-              onThreadIdSelect('');
-              onThreadSelect(id);
-              onViewMore();
-            }}
-          />
-        </div>
+    return (
+      <div className="tw-ml-9 tw-my-2">
+        {Boolean(lastPost) && <div className="tw-filter-seperator" />}
+        {postLength > 1 ? (
+          <div className="tw-flex tw-my-4">
+            <FeedCardFooter
+              isFooterVisible
+              lastReplyTimeStamp={lastPost?.postTs}
+              repliedUsers={repliedUsers}
+              replies={replies}
+              threadId={threadId}
+              onThreadSelect={(id: string) => {
+                onThreadIdSelect('');
+                onThreadSelect(id);
+                onViewMore();
+              }}
+            />
+          </div>
+        ) : null}
       </div>
-    ) : null;
+    );
   };
 
   return (
@@ -82,62 +91,61 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             postTs: feed.threadTs,
             from: feed.createdBy,
             id: feed.id,
-          };
-          const postLength = feed.posts.length;
-          const replies = feed.postsCount - 1;
-          const repliedUsers = feed.posts
+            reactions: feed.reactions,
+          } as Post;
+          const postLength = feed?.posts?.length || 0;
+          const replies = feed.postsCount ? feed.postsCount - 1 : 0;
+          const repliedUsers = (feed?.posts || [])
             .map((f) => f.from)
             .slice(0, postLength >= 3 ? 2 : 1);
-          const lastPost = feed.posts[postLength - 1];
+          const lastPost = feed?.posts?.[postLength - 1];
 
           return (
-            <div data-testid="message-container" key={index}>
-              <ActivityFeedCard
-                className="tw-mb-6"
-                data-testid="main-message"
-                entityLink={feed.about}
-                feed={mainFeed}
-                isEntityFeed={isEntityFeed}
-              />
-              {postLength > 0 ? (
-                <Fragment>
-                  {getThreadFooter(
-                    postLength,
-                    lastPost,
-                    repliedUsers,
-                    replies,
-                    feed.id
-                  )}
-                  <ActivityFeedCard
-                    className="tw-mb-6 tw-ml-9"
-                    data-testid="latest-message"
-                    feed={lastPost}
-                    isEntityFeed={isEntityFeed}
-                    threadId={feed.id}
-                    onConfirmation={onConfirmation}
-                  />
-                  <p
-                    className="link-text tw-text-xs tw-underline tw-ml-9 tw-pl-9 tw--mt-4 tw-mb-6"
-                    data-testid="quick-reply"
-                    onClick={() => {
-                      toggleReplyEditor(feed.id);
-                    }}>
-                    Reply
-                  </p>
-                  {getFeedEditor(feed.id)}
-                </Fragment>
-              ) : (
-                <p
-                  className="link-text tw-text-xs tw-underline tw-ml-9 tw--mt-4 tw-mb-6"
-                  data-testid="replyInSidePanel"
-                  onClick={() => {
-                    onThreadSelect(feed.id);
-                    onViewMore();
-                  }}>
-                  Reply
-                </p>
-              )}
-            </div>
+            <Card
+              className="ant-card-feed"
+              key={`${index} - card`}
+              style={{
+                border: '1px rgb(221, 227, 234) solid',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+                marginRight: '4px',
+                marginLeft: '4px',
+              }}>
+              <div data-testid="message-container" key={index}>
+                <ActivityFeedCard
+                  isThread
+                  data-testid="main-message"
+                  entityLink={feed.about}
+                  feed={mainFeed}
+                  isEntityFeed={isEntityFeed}
+                  updateThreadHandler={updateThreadHandler}
+                  onReply={() => onReplyThread(feed.id)}
+                />
+                {postLength > 0 ? (
+                  <Fragment>
+                    {getThreadFooter(
+                      postLength,
+                      repliedUsers,
+                      replies,
+                      feed.id,
+                      lastPost
+                    )}
+                    <ActivityFeedCard
+                      className="tw-ml-9"
+                      data-testid="latest-message"
+                      feed={lastPost as Post}
+                      isEntityFeed={isEntityFeed}
+                      threadId={feed.id}
+                      updateThreadHandler={updateThreadHandler}
+                      onConfirmation={onConfirmation}
+                      onReply={() => toggleReplyEditor(feed.id)}
+                    />
+                    {getFeedEditor(feed.id)}
+                  </Fragment>
+                ) : null}
+              </div>
+            </Card>
           );
         })}
     </Fragment>

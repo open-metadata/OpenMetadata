@@ -13,13 +13,15 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { EntityThread } from 'Models';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
@@ -43,9 +45,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   postFeedHandler,
   createThread,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
-  const [threads, setThreads] = useState<EntityThread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<EntityThread>();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [showNewConversation, setShowNewConversation] =
     useState<boolean>(false);
@@ -89,14 +92,18 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     setConfirmationState(confirmStateInitialValue);
   };
 
+  const loadNewThreads = () => {
+    setTimeout(() => {
+      getThreads();
+    }, 500);
+  };
+
   const onPostDelete = () => {
     if (confirmationState.postId && confirmationState.threadId) {
       deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
     }
     onDiscard();
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
   };
 
   const onConfirmation = (data: ConfirmState) => {
@@ -111,9 +118,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
 
   const postFeed = (value: string) => {
     postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
   };
 
   const onThreadIdSelect = (id: string) => {
@@ -139,9 +144,17 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
       about: threadLink,
     };
     createThread(data);
-    setTimeout(() => {
-      getThreads();
-    }, 500);
+    loadNewThreads();
+  };
+
+  const onUpdateThread = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadHandler(threadId, postId, isThread, data);
+    loadNewThreads();
   };
 
   const getLoader = () => {
@@ -183,20 +196,25 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
-  return (
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+  }, []);
+
+  return ReactDOM.createPortal(
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
-        className="tw-z-10 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
+        className="tw-z-9997 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
         onCancel={onCancel}
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9997',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
           }
-        )}>
+        )}
+        id="thread-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
@@ -217,9 +235,10 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               {'< Back'}
             </p>
             <ActivityThread
-              className="tw-pb-6 tw-pl-5"
+              className="tw-pb-4 tw-pl-5 tw-pr-2"
               postFeed={postFeed}
               selectedThread={selectedThread}
+              updateThreadHandler={onUpdateThread}
               onConfirmation={onConfirmation}
             />
           </Fragment>
@@ -239,10 +258,11 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               </div>
             ) : null}
             <ActivityThreadList
-              className="tw-py-6 tw-pl-5"
+              className="tw-py-6 tw-px-5"
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}
+              updateThreadHandler={onUpdateThread}
               onConfirmation={onConfirmation}
               onThreadIdSelect={onThreadIdSelect}
               onThreadSelect={onThreadSelect}
@@ -262,7 +282,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           onDiscard={onDiscard}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 };
 

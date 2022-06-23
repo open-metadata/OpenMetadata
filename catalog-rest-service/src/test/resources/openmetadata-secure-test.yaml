@@ -114,9 +114,8 @@ migrationConfiguration:
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
 
 # Authorizer Configuration
@@ -130,6 +129,8 @@ authorizerConfiguration:
   botPrincipals:
     - "ingestion-bot"
   principalDomain: "open-metadata.org"
+  enforcePrincipalDomain: false
+  enableSecureSocketConnection: false
 
 authenticationConfiguration:
   provider: "openID"

@@ -84,6 +84,7 @@ import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -650,7 +651,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Add user as follower to a table
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(test, 1);
-    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS);
+    tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), OK, 1, ADMIN_AUTH_HEADERS);
 
     // Delete user
     deleteAndCheckEntity(user, ADMIN_AUTH_HEADERS);
@@ -662,7 +663,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // User can no longer follow other entities
     assertResponse(
-        () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, ADMIN_AUTH_HEADERS),
+        () -> tableResourceTest.addAndCheckFollower(table.getId(), user.getId(), OK, 1, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityNotFound("user", user.getId()));
   }
@@ -681,7 +682,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
-        JWTTokenExpiry.Seven,
+        new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
         OK,
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
@@ -793,8 +794,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(User user, CreateUser createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(user, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertEquals(createRequest.getName(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
@@ -820,8 +819,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(expected, expected.getDescription(), TestUtils.getPrincipal(authHeaders), null);
-
     assertEquals(expected.getName(), expected.getName());
     assertEquals(expected.getDisplayName(), expected.getDisplayName());
     assertEquals(expected.getTimezone(), expected.getTimezone());

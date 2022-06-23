@@ -11,11 +11,12 @@
 """
 Metadata DAG function builder
 """
-
+from pathlib import Path
 
 from airflow import DAG
 from openmetadata.workflows.ingestion.common import (
     build_dag,
+    build_source,
     build_workflow_config_property,
     metadata_ingestion_workflow,
 )
@@ -39,27 +40,53 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 
 
+def build_usage_config_from_file(
+    ingestion_pipeline: IngestionPipeline, filename: str
+) -> OpenMetadataWorkflowConfig:
+    """
+    Given a filename for the staging location, build
+    the OpenMetadataWorkflowConfig
+    :param ingestion_pipeline: IngestionPipeline with workflow info
+    :param filename: staging location file
+    :return: OpenMetadataWorkflowConfig
+    """
+
+    source = build_source(ingestion_pipeline)
+    source.type = f"{source.type}-usage"  # Mark the source as usage
+
+    return OpenMetadataWorkflowConfig(
+        source=source,
+        processor=Processor(type="query-parser", config={"filter": ""}),
+        stage=Stage(
+            type="table-usage",
+            config={"filename": filename},
+        ),
+        bulkSink=BulkSink(
+            type="metadata-usage",
+            config={"filename": filename},
+        ),
+        workflowConfig=build_workflow_config_property(ingestion_pipeline),
+    )
+
+
 def build_usage_workflow_config(
     ingestion_pipeline: IngestionPipeline,
 ) -> OpenMetadataWorkflowConfig:
     """
     Given an airflow_pipeline, prepare the workflow config JSON
     """
+    location = ingestion_pipeline.sourceConfig.config.stageFileLocation
 
-    usage_source = ingestion_pipeline.source
-    usage_source.type = f"{usage_source.type}-usage"
+    if not location:
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            workflow_config = build_usage_config_from_file(ingestion_pipeline, tmp_file)
 
-    with tempfile.NamedTemporaryFile() as tmp_file:
+    else:
+        # If dir does not exist, create it
+        if not Path(location).parent.is_dir():
+            Path(location).parent.mkdir(parents=True, exist_ok=True)
 
-        workflow_config = OpenMetadataWorkflowConfig(
-            source=usage_source,
-            processor=Processor(type="query-parser", config={"filter": ""}),
-            stage=Stage(type="table-usage", config={"filename": tmp_file.name}),
-            bulkSink=BulkSink(
-                type="metadata-usage", config={"filename": tmp_file.name}
-            ),
-            workflowConfig=build_workflow_config_property(ingestion_pipeline),
-        )
+        workflow_config = build_usage_config_from_file(ingestion_pipeline, location)
 
     return workflow_config
 

@@ -34,19 +34,21 @@ const ConfigureIngestion = ({
   tableFilterPattern,
   topicFilterPattern,
   chartFilterPattern,
+  pipelineFilterPattern,
   fqnFilterPattern,
+  includeLineage,
   includeView,
   markDeletedTables,
   serviceCategory,
-  enableDataProfiler,
-  ingestSampleData,
   pipelineType,
   showDatabaseFilter,
+  ingestSampleData,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
   showTopicFilter,
   showChartFilter,
+  showPipelineFilter,
   showFqnFilter,
   queryLogDuration,
   stageFileLocation,
@@ -58,7 +60,7 @@ const ConfigureIngestion = ({
   handleIngestionName,
   handleDescription,
   handleShowFilter,
-  handleEnableDataProfiler,
+  handleIncludeLineage,
   handleIncludeView,
   handleMarkDeletedTables,
   handleIngestSampleData,
@@ -69,6 +71,27 @@ const ConfigureIngestion = ({
   onNext,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
+
+  const getIngestSampleToggle = () => {
+    return (
+      <>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>Ingest Sample Data</label>
+            <ToggleSwitchV1
+              checked={ingestSampleData}
+              handleCheck={handleIngestSampleData}
+              testId="ingest-sample-data"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            Extract sample data from each topic
+          </p>
+        </Field>
+        {getSeparator('')}
+      </>
+    );
+  };
 
   const getDebugLogToggle = () => {
     return (
@@ -105,35 +128,6 @@ const ConfigureIngestion = ({
             </p>
             {getSeparator('')}
           </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Enable Data Profiler</label>
-              <ToggleSwitchV1
-                checked={enableDataProfiler}
-                handleCheck={handleEnableDataProfiler}
-                testId="data-profiler"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Enable Data Profiler to collect metrics and distribution of data
-              in the table. This will however slowdown the metadata extraction.
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Ingest Sample Data</label>
-              <ToggleSwitchV1
-                checked={ingestSampleData}
-                handleCheck={handleIngestSampleData}
-                testId="ingest-sample-data"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Extract sample data from each table
-            </p>
-            {getSeparator('')}
-          </Field>
           {getDebugLogToggle()}
           {!isNil(markDeletedTables) && (
             <Field>
@@ -158,6 +152,28 @@ const ConfigureIngestion = ({
           )}
         </div>
       </>
+    );
+  };
+
+  const getPipelineFieldToggles = () => {
+    return (
+      <div>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>Include lineage</label>
+            <ToggleSwitchV1
+              checked={includeLineage}
+              handleCheck={handleIncludeLineage}
+              testId="include-lineage"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            Configuration to turn off fetching lineage from pipelines.
+          </p>
+          {getSeparator('')}
+        </Field>
+        {getDebugLogToggle()}
+      </div>
     );
   };
 
@@ -251,7 +267,27 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.TOPIC}
             />
             {getSeparator('')}
+            {getIngestSampleToggle()}
             {getDebugLogToggle()}
+          </Fragment>
+        );
+      case ServiceCategory.PIPELINE_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showPipelineFilter}
+              excludePattern={pipelineFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.PIPELINE)
+              }
+              includePattern={pipelineFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.PIPELINE}
+            />
+            {getSeparator('')}
+            {getPipelineFieldToggles()}
           </Fragment>
         );
       default:

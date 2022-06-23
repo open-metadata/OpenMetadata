@@ -12,32 +12,34 @@
  */
 
 import { searchEntity, visitEntityTab } from '../../common/common';
-import {
-  FOLLOWING_TITLE,
-  MYDATA_SUMMARY_OPTIONS,
-  MY_DATA_TITLE,
-  NO_SEARCHED_TERMS,
-  RECENT_SEARCH_TITLE,
-  RECENT_VIEW_TITLE,
-  SEARCH_TERMS,
-} from '../../constants/constants';
+import { FOLLOWING_TITLE, MYDATA_SUMMARY_OPTIONS, MY_DATA_TITLE, NO_SEARCHED_TERMS, RECENT_SEARCH_TITLE, RECENT_VIEW_TITLE, SEARCH_ENTITY_DASHBOARD, SEARCH_ENTITY_PIPELINE, SEARCH_ENTITY_TABLE, SEARCH_ENTITY_TOPIC } from '../../constants/constants';
+
+const tables = Object.values(SEARCH_ENTITY_TABLE);
+const topics = Object.values(SEARCH_ENTITY_TOPIC);
+const dashboards = Object.values(SEARCH_ENTITY_DASHBOARD);
+const pipelines = Object.values(SEARCH_ENTITY_PIPELINE);
 
 describe('MyData page should work', () => {
   beforeEach(() => {
     cy.goToHomePage();
   });
 
-  const checkRecentlyViewElement = (index, tab) => {
-    visitEntityTab(tab);
-    cy.wait(100); // to prevent from flicky behaviour, if page is not loaded it will wait for 100ms else it will continue testing
-    cy.get('[data-testid="table-data-card"]').eq(index).should('be.visible');
-    cy.get('[data-testid="table-link"]').eq(index).should('be.visible').click();
+  const checkRecentlyViewElement = () => {
+    cy.get('[data-testid="table-data-card"]')
+      .first()
+      .should('be.visible')
+      .scrollIntoView();
+    cy.wait(500);
+    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
 
     cy.get('[data-testid="inactive-link"]')
       .invoke('text')
       .then((text) => {
         cy.clickOnLogo();
-        cy.get(`[title="${text}"]`).should('be.visible').click();
+        cy.get(`[data-testid="Recently Viewed-${text}"]`)
+          .contains(text)
+          .should('be.visible')
+          .click();
         cy.get('[data-testid="inactive-link"]')
           .invoke('text')
           .then((newText) => {
@@ -68,19 +70,22 @@ describe('MyData page should work', () => {
   const followAndOwnTheEntity = (termObj) => {
     // search for the term and redirect to the respective entity tab
     searchEntity(termObj.term);
+
     cy.get(`[data-testid="${termObj.entity}-tab"]`)
       .should('be.visible')
       .click();
+
     cy.get(`[data-testid="${termObj.entity}-tab"]`)
       .should('be.visible')
-      .should('have.class', 'active')
-      .click();
+      .should('have.class', 'active');
 
     // click on the 1st result and go to entity details page and follow the entity
-    cy.get('[data-testid="table-link"]').first().should('be.visible').click();
+    cy.wait(500);
+    cy.get('[data-testid="table-link"]').first().contains(termObj.term).click();
+    cy.wait(500);
     cy.get('[data-testid="follow-button"]').should('be.visible').click();
 
-    // got to manage tab and search for logged in user and set the owner
+    // go to manage tab and search for logged in user and set the owner
     cy.get('[data-testid="Manage"]').should('be.visible').click();
 
     cy.get(
@@ -94,8 +99,9 @@ describe('MyData page should work', () => {
       .then((name) => {
         cy.get('.tw-z-10').click();
         cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-        cy.get('[data-testid="searchInputText"]').type(name);
+        cy.get('[data-testid="dropdown-tab"]').eq(1).should('exist').click();
         cy.get('[data-testid="list-item"]').should('be.visible').click();
+        cy.wait(500);
         cy.get('[data-testid="owner-dropdown"] > .tw-truncate')
           .invoke('text')
           .then((text) => {
@@ -115,6 +121,8 @@ describe('MyData page should work', () => {
           .contains(`Started to follow ${termObj.entity.slice(0, -1)}`)
           .should('be.visible');
       });
+
+    cy.clickOnLogo();
   };
 
   it('MyData Page should render properly with all the required components', () => {
@@ -123,7 +131,6 @@ describe('MyData page should work', () => {
     cy.contains(RECENT_VIEW_TITLE).should('be.visible');
     cy.contains(MY_DATA_TITLE).should('be.visible');
     cy.contains(FOLLOWING_TITLE).should('be.visible');
-    cy.get('[data-testid="onboarding"]').should('be.visible');
 
     Object.values(MYDATA_SUMMARY_OPTIONS).forEach((value) => {
       cy.get(
@@ -132,76 +139,97 @@ describe('MyData page should work', () => {
     });
   });
 
-  it('onClick of table should redirect to tables tab in explore page', () => {
+  it('Recent view section and redirection should work for table entity', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.tables);
+    checkRecentlyViewElement();
   });
 
-  it('onClick of topics should redirect to topics tab in explore page', () => {
+  it('Recent view section and redirection should work for topic entity', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.topics);
+    checkRecentlyViewElement();
   });
 
-  it('onClick of dashboards should redirect to dashboards tab in explore page', () => {
+  it('Recent view section and redirection should work for dashboard entity', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.dashboards);
+    checkRecentlyViewElement();
   });
 
-  it('onClick of pipelines should redirect to pipelines tab in explore page', () => {
+  it('Recent view section and redirection should work for pipeline entity', () => {
     visitEntityTab(MYDATA_SUMMARY_OPTIONS.pipelines);
-  });
-
-  it('Listing entity in Recent views section with redirection should work properly', () => {
-    // checking for table entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.tables);
-
-    // checking for topic entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.topics);
-
-    // checking for dashboard entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.dashboards);
-
-    // checking for pipeline entity
-    checkRecentlyViewElement(0, MYDATA_SUMMARY_OPTIONS.pipelines);
+    checkRecentlyViewElement();
   });
 
   it('Listing Recent search terms with redirection should work properly', () => {
     cy.contains(NO_SEARCHED_TERMS).should('be.visible');
 
-    checkRecentlySearchElement(SEARCH_TERMS.eta_predictions_performance.term);
-    checkRecentlySearchElement(SEARCH_TERMS.fact_session.term);
-    checkRecentlySearchElement(SEARCH_TERMS.hive_etl.term);
-    checkRecentlySearchElement(SEARCH_TERMS.sales.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_TABLE.table_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_TOPIC.topic_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_DASHBOARD.dashboard_1.term);
+    checkRecentlySearchElement(SEARCH_ENTITY_PIPELINE.pipeline_1.term);
   });
 
-  it('My data, following & feed section should work properly', () => {
-    const termArr = Object.values(SEARCH_TERMS);
-
-    termArr.forEach((term) => {
-      followAndOwnTheEntity(term);
+  it('My data, following & feed section should work properly for table entity', () => {
+    tables.forEach((table) => {
+      followAndOwnTheEntity(table);
     });
+  });
 
-    cy.get('[data-testid="my-data-container"]')
+  it('My data, following & feed section should work properly for topic entity', () => {
+    topics.forEach((topic) => {
+      followAndOwnTheEntity(topic);
+    });
+  });
+
+  it('My data, following & feed section should work properly for dashboard entity', () => {
+    dashboards.forEach((dashboard) => {
+      followAndOwnTheEntity(dashboard);
+    });
+  });
+
+  it('My data, following & feed section should work properly for pipeline entity', () => {
+    pipelines.forEach((pipeline) => {
+      followAndOwnTheEntity(pipeline);
+    });
+  });
+
+  it.skip('My data and following section, CTA should work properly', () => {
+    const totalCount =
+      tables.length + pipelines.length + dashboards.length + topics.length;
+
+    cy.get('[data-testid="my-data-container"] > .ant-card > .ant-card-body')
       .children()
-      .should('have.length', 9);
-    cy.get('[data-testid="following-data-container"]')
+      .should('have.length', 8);
+    cy.get(
+      '[data-testid="following-data-container"] > .ant-card > .ant-card-body'
+    )
       .children()
-      .should('have.length', 9);
+      .should('have.length', 8);
 
     cy.get('[data-testid="my-data-total-count"]')
       .invoke('text')
       .then((text) => {
-        expect(text).equal(`(${termArr.length})`);
+        expect(text).equal(`(${totalCount})`);
+      });
+    cy.get('[data-testid="following-data-total-count"]')
+      .invoke('text')
+      .then((text) => {
+        expect(text).equal(`(${totalCount})`);
       });
 
-    cy.get('[data-testid="my-data-total-count"]').click();
+    cy.get('[data-testid="my-data-total-count"]').should('be.visible').click();
+
+    cy.intercept(
+      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
+    ).as('searchApi');
+    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
 
     cy.get('[data-testid="following-data-total-count"]')
-      .invoke('text')
-      .then((text) => {
-        expect(text).equal(`(${termArr.length})`);
-      });
+      .should('be.visible')
+      .click();
 
-    cy.get('[data-testid="following-data-total-count"]').click();
+    cy.wait('@searchApi');
     cy.get('[data-testid="table-data-card"]').first().should('be.visible');
     cy.clickOnLogo();
   });

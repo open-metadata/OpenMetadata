@@ -74,6 +74,7 @@ describe('Test SigninPage Component', () => {
     ['auth0', 'Sign in with auth0'],
     ['azure', 'Sign in with azure'],
     ['custom-oidc', 'Sign in with sso'],
+    ['aws-cognito', 'Sign in with aws cognito'],
     ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
   ])(
     'Sign in button should render correctly for %s',

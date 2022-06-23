@@ -61,6 +61,7 @@ import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 public class SearchResource {
   private final RestHighLevelClient client;
   private static final Integer MAX_AGGREGATE_SIZE = 50;
+  private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
   private static final String DISPLAY_NAME = "display_name";
   private static final String DESCRIPTION = "description";
@@ -73,6 +74,7 @@ public class SearchResource {
   @GET
   @Path("/query")
   @Operation(
+      operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
       tags = "search",
       description =
@@ -130,7 +132,9 @@ public class SearchResource {
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          String sortOrderParam)
+          String sortOrderParam,
+      @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
+          boolean trackTotalHits)
       throws IOException {
 
     SearchRequest searchRequest = new SearchRequest(index);
@@ -173,6 +177,16 @@ public class SearchResource {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
     LOG.debug(searchSourceBuilder.toString());
+    /* for performance reasons ElasticSearch doesn't provide accurate hits
+    if we enable trackTotalHits parameter it will try to match every result, count and return hits
+    however in most cases for search results an approximate value is good enough.
+    we are displaying total entity counts in landing page and explore page where we need the total count
+    https://github.com/elastic/elasticsearch/issues/33028 */
+    if (trackTotalHits) {
+      searchSourceBuilder.trackTotalHits(true);
+    } else {
+      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
+    }
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
@@ -182,14 +196,15 @@ public class SearchResource {
   @GET
   @Path("/suggest")
   @Operation(
-      summary = "Suggest entities",
+      operationId = "getSuggestedEntities",
+      summary = "Suggest Entities",
       tags = "search",
       description = "Get suggested entities used for auto-completion.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Table Suggestion API",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Suggest.class)))
       })
   public Response suggest(
       @Context UriInfo uriInfo,
@@ -204,13 +219,14 @@ public class SearchResource {
               required = true)
           @javax.ws.rs.QueryParam("q")
           String query,
-      @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index)
+      @DefaultValue("table_search_index") @javax.ws.rs.QueryParam("index") String index,
+      @DefaultValue("suggest") @javax.ws.rs.QueryParam("field") String fieldName)
       throws IOException {
     SearchRequest searchRequest = new SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion("suggest").prefix(query);
+    CompletionSuggestionBuilder suggestionBuilder = SuggestBuilders.completionSuggestion(fieldName).prefix(query);
     SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("table-suggest", suggestionBuilder);
+    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
     searchSourceBuilder.suggest(suggestBuilder);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
@@ -332,8 +348,9 @@ public class SearchResource {
   private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
     builder
         .aggregation(AggregationBuilders.terms("Service").field("service_type").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceName").field("service").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("ServiceCategory").field("service_category").size(MAX_AGGREGATE_SIZE))
+        .aggregation(AggregationBuilders.terms("ServiceName").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms("ServiceCategory").field("service.type.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
         .aggregation(AggregationBuilders.terms("Tier").field("tier"))
         .aggregation(AggregationBuilders.terms("Tags").field("tags").size(MAX_AGGREGATE_SIZE));

@@ -35,10 +35,13 @@ class TestDef(ConfigModel):
     on the incoming properties.
     """
 
-    table: str  # Table FQDN
+    table: str  # Table FQN
     profile_sample: Optional[float] = None
     table_tests: Optional[List[CreateTableTestRequest]] = None
     column_tests: Optional[List[CreateColumnTestRequest]] = None
+    partition_field: Optional[str] = None
+    partition_query_duration: Optional[int] = 1
+    partition_values: Optional[List] = None
 
 
 class TestSuite(ConfigModel):

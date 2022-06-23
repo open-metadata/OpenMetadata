@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.security;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
@@ -47,7 +48,7 @@ public class DefaultAuthorizer implements Authorizer {
   private String principalDomain;
 
   @Override
-  public void init(AuthorizerConfiguration config, Jdbi dbi) throws IOException {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
@@ -68,11 +69,12 @@ public class DefaultAuthorizer implements Authorizer {
         }
         addOrUpdateUser(user);
       } catch (EntityNotFoundException | IOException ex) {
+        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
         User user =
             new User()
                 .withId(UUID.randomUUID())
                 .withName(adminUser)
-                .withEmail(adminUser + "@" + principalDomain)
+                .withEmail(adminUser + "@" + domain)
                 .withIsAdmin(true)
                 .withUpdatedBy(adminUser)
                 .withUpdatedAt(System.currentTimeMillis());
@@ -92,11 +94,12 @@ public class DefaultAuthorizer implements Authorizer {
         }
         addOrUpdateUser(user);
       } catch (EntityNotFoundException | IOException ex) {
+        String domain = principalDomain.isEmpty() ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
         User user =
             new User()
                 .withId(UUID.randomUUID())
                 .withName(botUser)
-                .withEmail(botUser + "@" + principalDomain)
+                .withEmail(botUser + "@" + domain)
                 .withIsBot(true)
                 .withUpdatedBy(botUser)
                 .withUpdatedAt(System.currentTimeMillis());

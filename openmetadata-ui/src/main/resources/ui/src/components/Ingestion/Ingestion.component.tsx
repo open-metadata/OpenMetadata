@@ -43,12 +43,13 @@ import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import { IngestionProps, ModifiedConfig } from './ingestion.interface';
+import { IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
   serviceName,
   serviceCategory,
+  serviceDetails,
   ingestionList,
   isRequiredDetailsAvailable,
   deleteIngestion,
@@ -77,17 +78,28 @@ const Ingestion: React.FC<IngestionProps> = ({
     setSearchText(searchValue);
   };
 
-  const getIngestionPipelineTypeOption = (): PipelineType[] => {
-    if (ingestionList.length > 0) {
-      const ingestion = ingestionList[0]?.source?.serviceConnection
-        ?.config as ModifiedConfig;
-      const pipelineType = [];
-      ingestion?.supportsMetadataExtraction &&
+  const getSupportedPipelineTypes = () => {
+    let pipelineType = [];
+    const config = serviceDetails.connection?.config;
+    if (config) {
+      config.supportsMetadataExtraction &&
         pipelineType.push(PipelineType.Metadata);
-      ingestion?.supportsUsageExtraction &&
-        pipelineType.push(PipelineType.Usage);
-      ingestion?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+      config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+      config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    } else {
+      pipelineType = [
+        PipelineType.Metadata,
+        PipelineType.Usage,
+        PipelineType.Profiler,
+      ];
+    }
 
+    return pipelineType;
+  };
+
+  const getIngestionPipelineTypeOption = (): PipelineType[] => {
+    const pipelineType = getSupportedPipelineTypes();
+    if (ingestionList.length > 0) {
       return pipelineType.reduce((prev, curr) => {
         if (
           curr !== PipelineType.Profiler &&

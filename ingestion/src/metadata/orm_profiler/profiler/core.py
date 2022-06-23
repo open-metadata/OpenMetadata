@@ -18,7 +18,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
 
@@ -26,10 +26,11 @@ from metadata.generated.schema.entity.data.table import ColumnProfile, TableProf
 from metadata.orm_profiler.metrics.core import (
     ComposedMetric,
     CustomMetric,
-    MetricType,
     QueryMetric,
     StaticMetric,
+    TMetric,
 )
+from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -48,7 +49,7 @@ class MissingMetricException(Exception):
     """
 
 
-class Profiler(Generic[MetricType]):
+class Profiler(Generic[TMetric]):
     """
     Core Profiler.
 
@@ -58,16 +59,19 @@ class Profiler(Generic[MetricType]):
     - A tuple of metrics, from which we will construct queries.
     """
 
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
+
     def __init__(
         self,
-        *metrics: Type[MetricType],
+        *metrics: Type[TMetric],
         session: Session,
         table: DeclarativeMeta,
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = None,
+        profile_sample: Optional[float] = 100.0,
         timeout_seconds: Optional[int] = TEN_MIN,
+        partition_details: Optional[Dict] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -87,6 +91,7 @@ class Profiler(Generic[MetricType]):
         self._use_cols = use_cols
         self._profile_sample = profile_sample
         self._profile_date = profile_date
+        self._partition_details = partition_details
 
         self.validate_composed_metric()
 
@@ -99,13 +104,21 @@ class Profiler(Generic[MetricType]):
 
         # We will compute the sample from the property
         self._sampler = Sampler(
-            session=session, table=table, profile_sample=profile_sample
+            session=session,
+            table=table,
+            profile_sample=profile_sample,
+            partition_details=self._partition_details,
         )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
         # Prepare a timeout controlled query runner
         self.runner: QueryRunner = cls_timeout(timeout_seconds)(
-            QueryRunner(session=session, table=table, sample=self.sample)
+            QueryRunner(
+                session=session,
+                table=table,
+                sample=self.sample,
+                partition_details=self._partition_details,
+            )
         )
 
     @property
@@ -117,7 +130,7 @@ class Profiler(Generic[MetricType]):
         return self._table
 
     @property
-    def metrics(self) -> Tuple[Type[MetricType], ...]:
+    def metrics(self) -> Tuple[Type[TMetric], ...]:
         return self._metrics
 
     @property
@@ -158,7 +171,7 @@ class Profiler(Generic[MetricType]):
 
         return self._columns
 
-    def _filter_metrics(self, _type: Type[MetricType]) -> List[Type[MetricType]]:
+    def _filter_metrics(self, _type: Type[TMetric]) -> List[Type[TMetric]]:
         """
         Filter metrics by type
         """
@@ -181,7 +194,7 @@ class Profiler(Generic[MetricType]):
         return self._filter_metrics(QueryMetric)
 
     @staticmethod
-    def get_col_metrics(metrics: List[Type[MetricType]]) -> List[Type[MetricType]]:
+    def get_col_metrics(metrics: List[Type[TMetric]]) -> List[Type[TMetric]]:
         """
         Filter list of metrics for column metrics with allowed types
         """
@@ -258,7 +271,7 @@ class Profiler(Generic[MetricType]):
         except (TimeoutError, Exception) as err:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error while running table metric for: {self.table.__tablename__}"
+                f"Error while running table metric for: {self.table.__tablename__} - {err}"
             )
             self.session.rollback()
 
@@ -409,6 +422,7 @@ class Profiler(Generic[MetricType]):
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                columnNames=self._table_results.get(ColumnNames.name(), "").split(","),
                 columnProfile=computed_profiles,
             )
 

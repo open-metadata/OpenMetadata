@@ -76,7 +76,7 @@
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -94,9 +94,8 @@
       "$ref": "#/definitions/chartType"
     },
     "chartUrl": {
-      "description": "Chart URL, pointing to its own Service URL.",
-      "type": "string",
-      "format": "uri"
+      "description": "Chart URL suffix from its service.",
+      "type": "string"
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

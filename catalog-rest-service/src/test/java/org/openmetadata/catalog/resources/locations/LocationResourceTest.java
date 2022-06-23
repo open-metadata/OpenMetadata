@@ -75,8 +75,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   @Override
   public void validateCreatedEntity(Location location, CreateLocation createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        location, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getPath(), location.getPath());
     // Validate service
     EntityReference expectedService = createRequest.getService();
@@ -91,9 +89,6 @@ public class LocationResourceTest extends EntityResourceTest<Location, CreateLoc
   @Override
   public void compareEntities(Location expected, Location patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
-    // Entity specific validation
     assertEquals(expected.getDisplayName(), patched.getDisplayName());
     assertEquals(expected.getFullyQualifiedName(), patched.getFullyQualifiedName());
     assertEquals(expected.getLocationType(), patched.getLocationType());

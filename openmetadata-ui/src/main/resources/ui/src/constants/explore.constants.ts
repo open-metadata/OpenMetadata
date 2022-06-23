@@ -16,7 +16,7 @@ import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
-import { tableSortingFields, tiers, topicSortingFields } from './constants';
+import { entitySortingFields, tableSortingFields, tiers } from './constants';
 
 export const INITIAL_SORT_FIELD = 'last_updated_timestamp';
 export const INITIAL_SORT_ORDER = 'desc';
@@ -25,6 +25,7 @@ export const ZERO_SIZE = 0;
 export const emptyValue = '';
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';
+export const MAX_RESULT_HITS = 10000;
 
 export const UPDATABLE_AGGREGATION = ['Service', 'Tier', 'Tags'];
 
@@ -182,6 +183,10 @@ export const getCurrentIndex = (tab: string) => {
       currentIndex = SearchIndex.PIPELINE;
 
       break;
+    case 'mlmodels':
+      currentIndex = SearchIndex.MLMODEL;
+
+      break;
     case 'tables':
     default:
       currentIndex = SearchIndex.TABLE;
@@ -207,6 +212,10 @@ export const getCurrentTab = (tab: string) => {
       currentTab = 4;
 
       break;
+    case 'mlmodels':
+      currentTab = 5;
+
+      break;
 
     case 'tables':
     default:
@@ -223,7 +232,7 @@ export const tabsInfo = [
     label: 'Tables',
     index: SearchIndex.TABLE,
     sortingFields: tableSortingFields,
-    sortField: '',
+    sortField: INITIAL_SORT_FIELD,
     tab: 1,
     path: 'tables',
     icon: Icons.TABLE_GREY,
@@ -232,8 +241,8 @@ export const tabsInfo = [
   {
     label: 'Topics',
     index: SearchIndex.TOPIC,
-    sortingFields: topicSortingFields,
-    sortField: '',
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
     tab: 2,
     path: 'topics',
     icon: Icons.TOPIC_GREY,
@@ -242,8 +251,8 @@ export const tabsInfo = [
   {
     label: 'Dashboards',
     index: SearchIndex.DASHBOARD,
-    sortingFields: topicSortingFields,
-    sortField: '',
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
     tab: 3,
     path: 'dashboards',
     icon: Icons.DASHBOARD_GREY,
@@ -252,11 +261,21 @@ export const tabsInfo = [
   {
     label: 'Pipelines',
     index: SearchIndex.PIPELINE,
-    sortingFields: topicSortingFields,
-    sortField: '',
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
     tab: 4,
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
     selectedIcon: Icons.PIPELINE,
+  },
+  {
+    label: 'ML Models',
+    index: SearchIndex.MLMODEL,
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    tab: 5,
+    path: 'mlmodels',
+    icon: '',
+    selectedIcon: '',
   },
 ];

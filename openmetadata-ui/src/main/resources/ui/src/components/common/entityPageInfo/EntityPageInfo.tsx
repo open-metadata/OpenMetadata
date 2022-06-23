@@ -14,14 +14,16 @@
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
+import { SettledStatus } from '../../../enums/axios.enum';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
+import { useAfterMount } from '../../../hooks/useAfterMount';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
 import {
@@ -29,7 +31,6 @@ import {
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { getFollowerDetail } from '../../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
@@ -96,6 +97,9 @@ const EntityPageInfo = ({
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
+    document.getElementById('version-and-follow-section')?.offsetWidth
+  );
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -140,9 +144,7 @@ const EntityPageInfo = ({
   };
 
   const getFollowers = () => {
-    const list = entityFollowers
-      .map((follower) => getFollowerDetail(follower.id))
-      .filter(Boolean);
+    const list = cloneDeep(entityFollowers);
 
     return (
       <div
@@ -186,7 +188,7 @@ const EntityPageInfo = ({
   const getVersionButton = (version: string) => {
     return (
       <div
-        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+        className="tw-flex tw-h-6 tw-ml-2"
         data-testid="version"
         onClick={versionHandler}>
         <span
@@ -223,24 +225,38 @@ const EntityPageInfo = ({
 
   const fetchTagsAndGlossaryTerms = () => {
     setIsTagLoading(true);
-    Promise.all([getTagCategories(), fetchGlossaryTerms()])
+    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
       .then((values) => {
         let tagsAndTerms: TagOption[] = [];
-        if (values[0].data) {
-          tagsAndTerms = getTaglist(values[0].data).map((tag) => {
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[0].value.data
+        ) {
+          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
             return { fqn: tag, source: 'Tag' };
           });
         }
-        if (values[1] && values[1].length > 0) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(values[1]).map(
-            (tag) => {
-              return { fqn: tag, source: 'Glossary' };
-            }
-          );
+        if (
+          values[1].status === SettledStatus.FULFILLED &&
+          values[1].value &&
+          values[1].value.length > 0
+        ) {
+          const glossaryTerms: TagOption[] = getGlossaryTermlist(
+            values[1].value
+          ).map((tag) => {
+            return { fqn: tag, source: 'Glossary' };
+          });
           tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
         }
         setTagList(tagsAndTerms);
-        setTagFetchFailed(false);
+        if (
+          values[0].status === SettledStatus.FULFILLED &&
+          values[1].status === SettledStatus.FULFILLED
+        ) {
+          setTagFetchFailed(false);
+        } else {
+          setTagFetchFailed(true);
+        }
       })
       .catch(() => {
         setTagList([]);
@@ -251,16 +267,58 @@ const EntityPageInfo = ({
       });
   };
 
+  const getThreadElements = () => {
+    if (!isUndefined(entityFieldThreads)) {
+      return !isUndefined(tagThread) ? (
+        <p
+          className="link-text tw-m-0 tw-ml-1 tw-w-8 tw-flex-none"
+          data-testid="tag-thread"
+          onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+          <span className="tw-flex">
+            <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+            <span className="tw-ml-1" data-testid="tag-thread-count">
+              {tagThread.count}
+            </span>
+          </span>
+        </p>
+      ) : (
+        <p
+          className="link-text tw-self-start tw-w-8 tw-m-0 tw-ml-1  tw-flex-none"
+          data-testid="start-tag-thread"
+          onClick={() =>
+            onThreadLinkSelect?.(
+              getEntityFeedLink(entityType, entityFqn, 'tags')
+            )
+          }>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+        </p>
+      );
+    } else {
+      return null;
+    }
+  };
+
   useEffect(() => {
     setEntityFollowers(followersList);
   }, [followersList]);
+
+  useAfterMount(() => {
+    setVersionFollowButtonWidth(
+      document.getElementById('version-and-follow-section')?.offsetWidth
+    );
+  });
 
   return (
     <div data-testid="entity-page-info">
       <div className="tw-flex tw-flex-col">
         <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
           <div className="tw-flex tw-items-center">
-            <TitleBreadcrumb titleLinks={titleLinks} />
+            <TitleBreadcrumb
+              titleLinks={titleLinks}
+              widthDeductions={
+                (versionFollowButtonWidth ? versionFollowButtonWidth : 0) + 30
+              }
+            />
             {deleted && (
               <>
                 <div
@@ -275,7 +333,9 @@ const EntityPageInfo = ({
               </>
             )}
           </div>
-          <div className="tw-flex tw-py-1">
+          <div
+            className="tw-flex tw-py-1 tw-mt-1"
+            id="version-and-follow-section">
             {!isUndefined(version) ? (
               <>
                 {!isUndefined(isVersionSelected) ? (
@@ -296,7 +356,7 @@ const EntityPageInfo = ({
               </>
             ) : null}
             {!isUndefined(isFollowing) ? (
-              <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
+              <div className="tw-flex tw-h-6 tw-ml-2">
                 <span
                   className={classNames(
                     'tw-flex tw-border tw-border-primary tw-rounded',
@@ -360,7 +420,7 @@ const EntityPageInfo = ({
         ))}
       </div>
       <div
-        className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
+        className="tw-flex tw-items-center tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
         data-testid="entity-tags">
         {(!isEditable || !isTagEditable || deleted) && (
           <>
@@ -395,6 +455,7 @@ const EntityPageInfo = ({
               trigger="click">
               <div
                 className="tw-inline-block"
+                data-testid="tags-wrapper"
                 onClick={() => {
                   // Fetch tags and terms only once
                   if (tagList.length === 0 || tagFetchFailed) {
@@ -417,7 +478,9 @@ const EntityPageInfo = ({
                     handleTagSelection(tags);
                   }}>
                   {tags.length || tier ? (
-                    <button className=" tw-ml-1 focus:tw-outline-none">
+                    <button
+                      className=" tw-ml-1 focus:tw-outline-none"
+                      data-testid="edit-button">
                       <SVGIcons
                         alt="edit"
                         icon="icon-edit"
@@ -438,34 +501,7 @@ const EntityPageInfo = ({
                 </TagsContainer>
               </div>
             </NonAdminAction>
-            {!isUndefined(tagThread) ? (
-              <p
-                className="link-text tw-ml-1 tw-w-8 tw-flex-none"
-                data-testid="tag-thread"
-                onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <span className="tw-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
-                  <span className="tw-ml-1" data-testid="tag-thread-count">
-                    {tagThread.count}
-                  </span>
-                </span>
-              </p>
-            ) : (
-              <p
-                className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
-                data-testid="start-tag-thread"
-                onClick={() =>
-                  onThreadLinkSelect?.(
-                    getEntityFeedLink(entityType, entityFqn, 'tags')
-                  )
-                }>
-                <SVGIcons
-                  alt="comments"
-                  icon={Icons.COMMENT_PLUS}
-                  width="20px"
-                />
-              </p>
-            )}
+            {getThreadElements()}
           </Fragment>
         )}
       </div>

@@ -19,6 +19,7 @@ import {
 } from '../generated/entity/services/dashboardService';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
@@ -30,10 +31,10 @@ export const getDashboardURL = (config: DashboardConnection['config']) => {
     : '--';
 };
 
-export const getDashboardConfig = (config?: DashboardConnection['config']) => {
+export const getDashboardConfig = (type: DashboardServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  switch (config?.type) {
+  switch (type) {
     case DashboardServiceType.Looker: {
       schema = lookerConnection;
 
@@ -41,6 +42,11 @@ export const getDashboardConfig = (config?: DashboardConnection['config']) => {
     }
     case DashboardServiceType.Metabase: {
       schema = metabaseConnection;
+
+      break;
+    }
+    case DashboardServiceType.Mode: {
+      schema = modeConnection;
 
       break;
     }

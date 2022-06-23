@@ -133,19 +133,12 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   public void validateCreatedEntity(
       Glossary createdEntity, CreateGlossary createRequest, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        createdEntity, createRequest.getDescription(), TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-
-    // Entity specific validation
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
   }
 
   @Override
   public void compareEntities(Glossary expected, Glossary patched, Map<String, String> authHeaders)
       throws HttpResponseException {
-    validateCommonEntityFields(
-        patched, expected.getDescription(), TestUtils.getPrincipal(authHeaders), expected.getOwner());
-
     // Entity specific validation
     TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.assertEntityReferenceList(expected.getReviewers(), patched.getReviewers());

@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
-import static org.openmetadata.catalog.util.TestUtils.getPrincipal;
 
 import java.io.IOException;
 import java.util.List;
@@ -239,13 +238,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(1, updatedService.getPipelines().size());
     assertReference(ingestionPipeline.getEntityReference(), updatedService.getPipelines().get(0));
 
-    // TODO remove this
-    DatabaseConnection expectedDatabaseConnection =
-        JsonUtils.convertValue(ingestionPipeline.getSource().getServiceConnection(), DatabaseConnection.class);
-    SnowflakeConnection expectedSnowflake =
-        JsonUtils.convertValue(expectedDatabaseConnection.getConfig(), SnowflakeConnection.class);
-    assertEquals(expectedSnowflake, snowflakeConnection);
-
     // Delete the database service and ensure ingestion pipeline is deleted
     deleteEntity(updatedService.getId(), true, true, ADMIN_AUTH_HEADERS);
     ingestionPipelineResourceTest.assertEntityDeleted(ingestionPipeline.getId(), true);
@@ -262,10 +254,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   @Override
   public void validateCreatedEntity(
       DatabaseService service, CreateDatabaseService createRequest, Map<String, String> authHeaders) {
-    validateCommonEntityFields(
-        service, createRequest.getDescription(), getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getName(), service.getName());
-
     validateDatabaseConnection(createRequest.getConnection(), service.getConnection(), service.getServiceType());
   }
 
@@ -361,7 +350,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
 
   public static void validateMysqlConnection(
       MysqlConnection expectedMysqlConnection, MysqlConnection actualMysqlConnection) {
-    assertEquals(expectedMysqlConnection.getDatabase(), actualMysqlConnection.getDatabase());
+    assertEquals(expectedMysqlConnection.getDatabaseSchema(), actualMysqlConnection.getDatabaseSchema());
     assertEquals(expectedMysqlConnection.getHostPort(), actualMysqlConnection.getHostPort());
     assertEquals(expectedMysqlConnection.getUsername(), actualMysqlConnection.getUsername());
     assertEquals(expectedMysqlConnection.getPassword(), actualMysqlConnection.getPassword());
@@ -374,7 +363,6 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     assertEquals(expectedBigQueryConnection.getHostPort(), actualBigQueryConnection.getHostPort());
     assertEquals(expectedBigQueryConnection.getCredentials(), actualBigQueryConnection.getCredentials());
     assertEquals(expectedBigQueryConnection.getScheme(), actualBigQueryConnection.getScheme());
-    assertEquals(expectedBigQueryConnection.getDatabase(), actualBigQueryConnection.getDatabase());
     assertEquals(
         expectedBigQueryConnection.getConnectionArguments(), actualBigQueryConnection.getConnectionArguments());
     assertEquals(expectedBigQueryConnection.getConnectionOptions(), actualBigQueryConnection.getConnectionOptions());

@@ -99,6 +99,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   @GET
   @Operation(
+      operationId = "listCharts",
       summary = "List charts",
       tags = "charts",
       description =
@@ -148,6 +149,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllChartVersions",
       summary = "List chart versions",
       tags = "charts",
       description = "Get a list of all the versions of a chart identified by `id`",
@@ -168,6 +170,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getChartByID",
       summary = "Get a Chart",
       tags = "charts",
       description = "Get a chart by `id`.",
@@ -200,6 +203,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getChartByFQN",
       summary = "Get a chart by name",
       tags = "charts",
       description = "Get a chart by fully qualified name.",
@@ -232,6 +236,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificChartVersion",
       summary = "Get a version of the chart",
       tags = "charts",
       description = "Get a version of the chart by given `id`",
@@ -259,6 +264,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   @POST
   @Operation(
+      operationId = "createChart",
       summary = "Create a chart",
       tags = "charts",
       description = "Create a chart under an existing `service`.",
@@ -266,7 +272,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The chart",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateChart.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
@@ -278,6 +284,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchChart",
       summary = "Update a chart",
       tags = "charts",
       description = "Update an existing chart using JsonPatch.",
@@ -302,6 +309,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateChart",
       summary = "Create or update chart",
       tags = "charts",
       description = "Create a chart, it it does not exist or update an existing chart.",
@@ -309,7 +317,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated chart ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CreateChart.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
@@ -321,6 +329,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @PUT
   @Path("/{id}/followers")
   @Operation(
+      operationId = "addFollowerToChart",
       summary = "Add a follower",
       tags = "charts",
       description = "Add a user identified by `userId` as followed of this chart",
@@ -342,6 +351,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(
+      operationId = "deleteFollowerFromChart",
       summary = "Remove a follower",
       tags = "charts",
       description = "Remove the user identified `userId` as a follower of the chart.")
@@ -361,6 +371,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteChart",
       summary = "Delete a Chart",
       tags = "charts",
       description = "Delete a chart by `id`.",

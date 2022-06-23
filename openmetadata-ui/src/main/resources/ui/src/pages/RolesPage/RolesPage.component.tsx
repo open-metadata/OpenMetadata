@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -30,14 +31,16 @@ import {
   updatePolicy,
   updateRole,
 } from '../../axiosAPIs/rolesAPI';
-import { patchTeamDetail } from '../../axiosAPIs/teamsAPI';
+import { getTeams, patchTeamDetail } from '../../axiosAPIs/teamsAPI';
 import { getUserCounts } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import AddRoleModal from '../../components/Modals/RoleModal/AddRoleModal';
@@ -211,6 +214,23 @@ const RolesPage = () => {
         setError(errMsg);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  const fetchTeams = () => {
+    getTeams('defaultRoles')
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setTeamList(res.data.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-teams-error']
+        );
+      });
   };
 
   const createNewRole = (data: Role) => {
@@ -562,33 +582,39 @@ const RolesPage = () => {
 
   const fetchLeftPanel = (roles: Array<Role>) => {
     return (
-      <Fragment>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6
-            className="tw-heading tw-text-base"
-            data-testid="left-panel-title">
-            Roles
-          </h6>
-        </div>
-        {roles &&
-          roles.map((role) => (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                role.name,
-                currentRole?.name
-              )}`}
-              data-testid="role-name-container"
-              key={role.name}
-              onClick={() => setCurrentRole(role)}>
-              <p
-                className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                title={role.displayName}>
-                <span>{role.displayName}</span>{' '}
-              </p>
-              {role.defaultRole ? getDefaultBadge() : null}
-            </div>
-          ))}
-      </Fragment>
+      <Card
+        data-testid="data-summary-container"
+        style={leftPanelAntCardStyle}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
+            <h6
+              className="tw-heading tw-text-base"
+              data-testid="left-panel-title">
+              Roles
+            </h6>
+          </div>
+        }>
+        <Fragment>
+          {roles &&
+            roles.map((role) => (
+              <div
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                  role.name,
+                  currentRole?.name
+                )}`}
+                data-testid="role-name-container"
+                key={role.name}
+                onClick={() => setCurrentRole(role)}>
+                <span
+                  className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                  title={role.displayName}>
+                  <span>{role.displayName}</span>{' '}
+                </span>
+                {role.defaultRole ? getDefaultBadge() : null}
+              </div>
+            ))}
+        </Fragment>
+      </Card>
     );
   };
 
@@ -1076,13 +1102,10 @@ const RolesPage = () => {
 
   useEffect(() => {
     fetchRoles();
+    fetchTeams();
     fetchUserCounts();
     fetchDefualtPolicies();
   }, []);
-
-  useEffect(() => {
-    setTeamList(AppState.userTeams as Team[]);
-  }, [AppState.userTeams]);
 
   useEffect(() => {
     setCurrentRolePolicies([]);
@@ -1099,7 +1122,10 @@ const RolesPage = () => {
             {isLoading ? (
               <Loader />
             ) : (
-              <div className="tw-pb-3" data-testid="role-container">
+              <div
+                className="tw-pb-3 tw-bg-white"
+                data-testid="role-container"
+                style={{ padding: '14px' }}>
                 {getRolesContainer()}
 
                 {getAddRoleForm()}

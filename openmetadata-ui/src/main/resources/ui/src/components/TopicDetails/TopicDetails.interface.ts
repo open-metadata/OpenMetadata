@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { EntityFieldThreadCount, EntityTags, EntityThread } from 'Models';
+import { EntityFieldThreadCount, EntityTags } from 'Models';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
-import { User } from '../../generated/entity/teams/user';
+import { Thread } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface TopicDetailsProps {
@@ -30,7 +31,6 @@ export interface TopicDetailsProps {
   maximumMessageSize: number;
   replicationFactor: number;
   retentionSize: number;
-  users: Array<User>;
   topicDetails: Topic;
   entityName: string;
   activeTab: number;
@@ -41,7 +41,7 @@ export interface TopicDetailsProps {
   topicTags: Array<EntityTags>;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   deleted?: boolean;
-  entityThread: EntityThread[];
+  entityThread: Thread[];
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
@@ -59,4 +59,5 @@ export interface TopicDetailsProps {
   versionHandler: () => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

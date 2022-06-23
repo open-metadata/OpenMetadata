@@ -16,7 +16,7 @@ import React from 'react';
 import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
 import PipelineStatusListComponent from './PipelineStatusList.component';
 
-const mockPipelineStatus = [
+const mockPipelineStatus: Pipeline['pipelineStatus'] = [
   {
     executionDate: 1649669589,
     executionStatus: 'Successful',
@@ -115,7 +115,9 @@ const mockPipelineStatus = [
       },
     ],
   },
-];
+] as Pipeline['pipelineStatus'];
+
+const mockSelectExec = jest.fn();
 
 jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getModifiedPipelineStatus: jest.fn().mockReturnValue([
@@ -138,28 +140,51 @@ jest.mock('../../utils/PipelineDetailsUtils', () => ({
   getStatusBadgeIcon: jest.fn().mockImplementation((status: StatusType) => {
     return status;
   }),
+  getFilteredPipelineStatus: jest
+    .fn()
+    .mockImplementation(
+      (status: StatusType, pipelineStatus: Pipeline['pipelineStatus'] = []) => {
+        if (!status) {
+          return pipelineStatus;
+        } else {
+          return pipelineStatus.filter((d) => d?.executionStatus === status);
+        }
+      }
+    ),
   STATUS_OPTIONS: [],
 }));
+
+jest.mock('../ExecutionStrip/ExecutionStrip', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="exec-strip">Execution Strip</p>);
+});
 
 describe('Test PipelineStatus list component', () => {
   it('Should render all child elements', async () => {
     const { findByTestId } = render(
       <PipelineStatusListComponent
-        pipelineStatus={mockPipelineStatus as Pipeline['pipelineStatus']}
+        pipelineStatus={mockPipelineStatus}
+        selectedExec={mockPipelineStatus?.[0] || {}}
+        onSelectExecution={mockSelectExec}
       />
     );
 
     const filterDropDown = await findByTestId('filter-dropdown');
 
-    const pipelineStatusTable = await findByTestId('pipeline-status-table');
+    const executionStrip = await findByTestId('exec-strip');
 
     expect(filterDropDown).toBeInTheDocument();
-    expect(pipelineStatusTable).toBeInTheDocument();
+    expect(executionStrip).toBeInTheDocument();
   });
 
   it('Should render no data placeholder if pipelinestatus is undefined', async () => {
     const { findByTestId } = render(
-      <PipelineStatusListComponent pipelineStatus={undefined} />
+      <PipelineStatusListComponent
+        pipelineStatus={undefined}
+        selectedExec={{}}
+        onSelectExecution={mockSelectExec}
+      />
     );
 
     const noData = await findByTestId('no-data');
@@ -169,7 +194,11 @@ describe('Test PipelineStatus list component', () => {
 
   it('Should render no data placeholder if pipelinestatus is empty list', async () => {
     const { findByTestId } = render(
-      <PipelineStatusListComponent pipelineStatus={[]} />
+      <PipelineStatusListComponent
+        pipelineStatus={[]}
+        selectedExec={{}}
+        onSelectExecution={mockSelectExec}
+      />
     );
 
     const noData = await findByTestId('no-data');

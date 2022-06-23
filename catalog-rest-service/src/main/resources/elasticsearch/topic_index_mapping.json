@@ -1,7 +1,21 @@
 {
+  "settings": {
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
     "properties": {
       "name": {
-        "type":"text"
+        "type": "text"
       },
       "display_name": {
         "type": "text"
@@ -13,7 +27,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 36
+                "ignore_above": 128
               }
             }
           },
@@ -44,7 +58,8 @@
         }
       },
       "fqdn": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "boolean"
@@ -66,12 +81,43 @@
         "type": "keyword"
       },
       "service": {
-        "type": "keyword"
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "type": {
+            "type": "text"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "service_type": {
-        "type": "keyword"
-      },
-      "service_category": {
         "type": "keyword"
       },
       "entity_type": {
@@ -79,6 +125,10 @@
       },
       "suggest": {
         "type": "completion"
+      },
+      "service_suggest": {
+        "type": "completion"
       }
     }
+  }
 }

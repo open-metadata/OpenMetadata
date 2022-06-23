@@ -17,7 +17,8 @@ import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
-type Tab = {
+
+export type Tab = {
   name: string;
   icon?: {
     alt: string;
@@ -50,7 +51,7 @@ const TabsPane = ({
   };
 
   return (
-    <div className={classNames('tw-bg-transparent tw--mx-6', className)}>
+    <div className={classNames('tw-bg-transparent', className)}>
       <nav
         className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container tw-px-7"
         data-testid="tabs"

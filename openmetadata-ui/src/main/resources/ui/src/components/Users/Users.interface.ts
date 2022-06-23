@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
+import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
+import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface Option {
   label: string;
@@ -32,7 +33,9 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
-  feedData: EntityThread[];
+  username: string;
+  tab: string;
+  feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
   isAdminUser: boolean;
@@ -42,4 +45,5 @@ export interface Props {
   fetchFeedHandler: (after?: string) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
 }

@@ -25,7 +25,10 @@ export enum EntityType {
   MESSAGING_SERVICE = 'messagingService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
+  MLMODEL_SERVICE = 'mlmodelService',
   WEBHOOK = 'webhook',
+  MLMODEL = 'mlmodel',
+  TYPE = 'type',
 }
 
 export enum AssetsType {
@@ -33,6 +36,7 @@ export enum AssetsType {
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
   PIPELINE = 'pipeline',
+  MLMODEL = 'mlmodel',
 }
 
 export enum ChangeType {
@@ -44,6 +48,13 @@ export enum ChangeType {
 export enum EntityLineageDirection {
   TOP_BOTTOM = 'TB',
   LEFT_RIGHT = 'LR',
+}
+
+export enum EntityLineageNodeType {
+  INPUT = 'input',
+  OUTPUT = 'output',
+  DEFAULT = 'default',
+  NOT_CONNECTED = 'not-connected',
 }
 
 export enum TabSpecificField {
@@ -63,6 +74,9 @@ export enum TabSpecificField {
   TABLE_QUERIES = 'tableQueries',
   TESTS = 'tests',
   PIPELINE_STATUS = 'pipelineStatus',
+  DASHBOARD = 'dashboard',
+  TABLE_CONSTRAINTS = 'tableConstraints',
+  EXTENSION = 'extension',
 }
 
 export enum FqnPart {

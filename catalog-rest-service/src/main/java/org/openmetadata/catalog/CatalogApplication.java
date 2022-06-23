@@ -29,18 +29,30 @@ import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerHttpFilter;
+import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerJdbiTimingCollector;
+import io.socket.engineio.server.EngineIoServerOptions;
+import io.socket.engineio.server.JettyWebSocketHandler;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.SQLException;
 import java.time.temporal.ChronoUnit;
+import java.util.EnumSet;
 import java.util.Optional;
+import javax.servlet.DispatcherType;
+import javax.servlet.FilterRegistration;
+import javax.servlet.ServletException;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
@@ -69,17 +81,23 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
+import org.openmetadata.catalog.socket.FeedServlet;
+import org.openmetadata.catalog.socket.SocketAddressFilter;
+import org.openmetadata.catalog.socket.WebSocketManager;
 
 /** Main catalog application */
 @Slf4j
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   private Authorizer authorizer;
 
+  private SocketAddressFilter socketAddressFilter = null;
+
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
-          InvocationTargetException, IOException, SQLException {
+          InvocationTargetException, IOException {
     final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
+    jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -126,7 +144,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(jdbi));
+    environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
     registerResources(catalogConfig, environment, jdbi);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
@@ -138,9 +156,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EventPubSub.start();
     // Register Event publishers
     registerEventPublisher(catalogConfig);
+
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
+    FilterRegistration.Dynamic micrometerFilter =
+        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    intializeWebsockets(environment);
   }
 
   @SneakyThrows
@@ -164,6 +187,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
             return configuration.getHealthConfiguration();
           }
         });
+    bootstrap.addBundle(new MicrometerBundle());
     super.initialize(bootstrap);
   }
 
@@ -190,22 +214,28 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           InstantiationException {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
+    // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
-      authorizer = ((Class<Authorizer>) Class.forName(authorizerConf.getClassName())).getConstructor().newInstance();
+      if (authorizerConf.getEnableSecureSocketConnection()) {
+        socketAddressFilter = new SocketAddressFilter(authenticationConfiguration, authorizerConf);
+      }
+      authorizer =
+          Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
-            ((Class<ContainerRequestFilter>) Class.forName(filterClazzName))
-                .getConstructor(AuthenticationConfiguration.class)
-                .newInstance(authenticationConfiguration);
+            Class.forName(filterClazzName)
+                .asSubclass(ContainerRequestFilter.class)
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         environment.jersey().register(filter);
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
-      authorizer = NoopAuthorizer.class.getConstructor().newInstance();
-      ContainerRequestFilter filter = NoopFilter.class.getConstructor().newInstance();
+      authorizer = new NoopAuthorizer();
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       environment.jersey().register(filter);
     }
   }
@@ -248,6 +278,29 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.getApplicationContext().setErrorHandler(eph);
   }
 
+  private void intializeWebsockets(Environment environment) {
+    EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
+    eioOptions.setAllowedCorsOrigins(null);
+    WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    environment.getApplicationContext().setContextPath("/");
+    if (socketAddressFilter != null)
+      environment
+          .getApplicationContext()
+          .addFilter(new FilterHolder(socketAddressFilter), "/api/v1/push/feed/*", EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/api/v1/push/feed/*");
+    // Upgrade connection to websocket from Http
+    try {
+      WebSocketUpgradeFilter webSocketUpgradeFilter =
+          WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
+      webSocketUpgradeFilter.addMapping(
+          new ServletPathSpec("/api/v1/push/feed/*"),
+          (servletUpgradeRequest, servletUpgradeResponse) ->
+              new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+    } catch (ServletException ex) {
+      LOG.error("Websocket Upgrade Filter error : ", ex.getMessage());
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     CatalogApplication catalogApplication = new CatalogApplication();
     catalogApplication.run(args);
@@ -256,12 +309,12 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   public static class ManagedShutdown implements Managed {
 
     @Override
-    public void start() throws Exception {
+    public void start() {
       LOG.info("Starting the application");
     }
 
     @Override
-    public void stop() throws Exception {
+    public void stop() throws InterruptedException {
       EventPubSub.shutdown();
       LOG.info("Stopping the application");
     }

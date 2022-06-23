@@ -12,6 +12,10 @@
 
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
+    AthenaConnection,
+    AthenaScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
@@ -36,6 +40,10 @@ from metadata.generated.schema.entity.services.connections.database.mariaDBConne
     MariaDBConnection,
     MariaDBScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
+    MssqlConnection,
+    MssqlScheme,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
     MySQLScheme,
@@ -47,6 +55,10 @@ from metadata.generated.schema.entity.services.connections.database.pinotDBConne
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
     PostgresScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+    PrestoScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -68,6 +80,7 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
     VerticaConnection,
     VerticaScheme,
 )
+from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.utils.source_connections import get_connection_args, get_connection_url
 
 
@@ -85,41 +98,38 @@ class SouceConnectionTest(TestCase):
 
     def test_databricks_url_with_db(self):
         expected_result = (
-            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443/default"
+            "databricks+connector://token:KlivDTACWXKmZVfN1qIM@1.1.1.1:443"
         )
         databricks_conn_obj = DatabricksConnection(
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
-            database="default",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_hive_url(self):
-        expected_result = "hive://localhost:10000/default"
+        expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive, hostPort="localhost:10000", database="default"
+            scheme=HiveScheme.hive, hostPort="localhost:10000"
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_custom_auth(self):
-        expected_result = "hive://username:password@localhost:10000/default"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={"auth": "CUSTOM"},
         )
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_kerberos_auth(self):
-        expected_result = "hive://localhost:10000/default"
+        expected_result = "hive://localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={
                 "auth": "KERBEROS",
                 "kerberos_service_name": "hive",
@@ -129,13 +139,12 @@ class SouceConnectionTest(TestCase):
         assert expected_result == get_connection_url(hive_conn_obj)
 
     def test_hive_url_with_ldap_auth(self):
-        expected_result = "hive://username:password@localhost:10000/default"
+        expected_result = "hive://username:password@localhost:10000"
         hive_conn_obj = HiveConnection(
             scheme=HiveScheme.hive.value,
             username="username",
             password="password",
             hostPort="localhost:10000",
-            database="default",
             connectionArguments={"auth": "LDAP"},
         )
         assert expected_result == get_connection_url(hive_conn_obj)
@@ -159,7 +168,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments=None,
             scheme=TrinoScheme.trino,
         )
@@ -172,7 +180,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=TrinoScheme.trino,
         )
@@ -185,7 +192,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments=None,
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
@@ -202,7 +208,6 @@ class SouceConnectionTest(TestCase):
             password=None,
             hostPort="localhost:443",
             catalog="tpcds",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             proxies={"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"},
             scheme=TrinoScheme.trino,
@@ -277,17 +282,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(mysql_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
         mysql_conn_obj = MysqlConnection(
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MySQLScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(mysql_conn_obj)
 
@@ -298,7 +301,7 @@ class SouceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            database=None,
+            databaseSchema=None,
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
@@ -308,7 +311,7 @@ class SouceConnectionTest(TestCase):
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            database="default",
+            databaseSchema="default",
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
@@ -319,17 +322,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(mariadb_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"
         mariadb_conn_obj = MariaDBConnection(
             username="openmetadata_user",
             hostPort="localhost:3306",
             scheme=MariaDBScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(mariadb_conn_obj)
 
@@ -373,17 +374,15 @@ class SouceConnectionTest(TestCase):
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
-            database=None,
         )
         assert expected_url == get_connection_url(singleStore_conn_obj)
 
         # connection arguments with db
-        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432/default"
+        expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
         singleStore_conn_obj = SingleStoreConnection(
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
-            database="default",
         )
         assert expected_url == get_connection_url(singleStore_conn_obj)
 
@@ -394,17 +393,15 @@ class SouceConnectionTest(TestCase):
             scheme=Db2Scheme.db2_ibm_db,
             username="openmetadata_user",
             hostPort="localhost:50000",
-            database=None,
         )
         assert expected_url == get_connection_url(db2_conn_obj)
 
         # connection arguments with db
-        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000/default"
+        expected_url = "db2+ibm_db://openmetadata_user:@localhost:50000"
         db2_conn_obj = Db2Connection(
             username="openmetadata_user",
             hostPort="localhost:50000",
             scheme=Db2Scheme.db2_ibm_db,
-            database="default",
         )
         assert expected_url == get_connection_url(db2_conn_obj)
 
@@ -439,7 +436,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
             connectionArguments=None,
             scheme=MySQLScheme.mysql_pymysql,
         )
@@ -451,7 +447,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MySQLScheme.mysql_pymysql,
         )
@@ -464,7 +459,7 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
+            databaseSchema=None,
             connectionArguments=None,
             scheme=ClickhouseScheme.clickhouse_http,
         )
@@ -476,7 +471,7 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
+            databaseSchema="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=ClickhouseScheme.clickhouse_http,
         )
@@ -489,7 +484,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database=None,
             connectionArguments=None,
             scheme=MariaDBScheme.mysql_pymysql,
         )
@@ -501,7 +495,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=MariaDBScheme.mysql_pymysql,
         )
@@ -564,7 +557,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments=None,
             scheme=SingleStoreScheme.mysql_pymysql,
         )
@@ -576,7 +568,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SingleStoreScheme.mysql_pymysql,
         )
@@ -589,7 +580,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments=None,
             scheme=Db2Scheme.db2_ibm_db,
         )
@@ -601,7 +591,6 @@ class SouceConnectionTest(TestCase):
             username="user",
             password=None,
             hostPort="localhost:443",
-            database="tiny",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=Db2Scheme.db2_ibm_db,
         )
@@ -612,9 +601,9 @@ class SouceConnectionTest(TestCase):
         expected_args = {}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
-            connectionArguments=None,
+            warehouse="COMPUTE_WH",
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
@@ -624,10 +613,72 @@ class SouceConnectionTest(TestCase):
         expected_args = {"user": "user-to-be-impersonated"}
         snowflake_conn_obj = SnowflakeConnection(
             username="user",
-            password=None,
+            password="test-pwd",
             database="tiny",
+            warehouse="COMPUTE_WH",
             connectionArguments={"user": "user-to-be-impersonated"},
             scheme=SnowflakeScheme.snowflake,
             account="account.region_name.cloud_service",
         )
         assert expected_args == get_connection_args(snowflake_conn_obj)
+
+    def test_athena_url(self):
+        # connection arguments without db
+        awsCreds = awsCredentials.AWSCredentials(
+            awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
+        )
+
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        athena_conn_obj = AthenaConnection(
+            awsConfig=awsCreds,
+            s3StagingDir="s3athena-postgres",
+            workgroup="primary",
+            scheme=AthenaScheme.awsathena_rest,
+        )
+        assert expected_url == get_connection_url(athena_conn_obj)
+
+        # connection arguments witho db
+        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3athena-postgres&work_group=primary"
+        athena_conn_obj = AthenaConnection(
+            awsConfig=awsCreds,
+            s3StagingDir="s3athena-postgres",
+            workgroup="primary",
+            scheme=AthenaScheme.awsathena_rest,
+        )
+        assert expected_url == get_connection_url(athena_conn_obj)
+
+    def test_mssql_url(self):
+        # connection arguments without db
+        expected_url = "mssql+pytds://sa:password@localhost:1433"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database=None,
+        )
+
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+        # connection arguments witho db
+        expected_url = "mssql+pytds://sa:password@localhost:1433/catalog_test"
+        mssql_conn_obj = MssqlConnection(
+            username="sa",
+            password="password",
+            hostPort="localhost:1433",
+            scheme=MssqlScheme.mssql_pytds,
+            database="catalog_test",
+        )
+        assert expected_url == get_connection_url(mssql_conn_obj)
+
+    def test_presto_url(self):
+        # connection arguments without db
+        expected_url = "presto://admin@localhost:8080/test_catalog"
+
+        presto_conn_obj = PrestoConnection(
+            username="admin",
+            hostPort="localhost:8080",
+            scheme=PrestoScheme.presto,
+            catalog="test_catalog",
+        )
+        assert expected_url == get_connection_url(presto_conn_obj)

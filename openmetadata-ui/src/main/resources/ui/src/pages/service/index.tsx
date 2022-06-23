@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined, startCase } from 'lodash';
-import { ExtraInfo, ServicesData } from 'Models';
+import { ExtraInfo } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -28,9 +28,11 @@ import {
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
 import { fetchAirflowConfig } from '../../axiosAPIs/miscAPI';
+import { getMlmodels } from '../../axiosAPIs/mlModelAPI';
 import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
+import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
@@ -43,7 +45,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Ingestion from '../../components/Ingestion/Ingestion.component';
 import Loader from '../../components/Loader/Loader';
 import ManageTabComponent from '../../components/ManageTab/ManageTab.component';
-import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import TagsViewer from '../../components/tags-viewer/tags-viewer';
 import {
   getServiceDetailsPath,
@@ -56,13 +58,15 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
-import { DataObj, ServiceDataObj } from '../../interface/service.interface';
+import { ConfigData, ServiceDataObj } from '../../interface/service.interface';
 import jsonData from '../../jsons/en';
 import {
   getEntityDeleteMessage,
@@ -73,10 +77,12 @@ import {
   pluralize,
 } from '../../utils/CommonUtils';
 import { getInfoElements } from '../../utils/EntityUtils';
-import { getServicesWithTabPath } from '../../utils/RouterUtils';
+import {
+  getEditConnectionPath,
+  getServicesWithTabPath,
+} from '../../utils/RouterUtils';
 import {
   getCurrentServiceTab,
-  getIsIngestionEnable,
   getServiceCategoryFromType,
   servicePageTabs,
   serviceTypeLogo,
@@ -94,9 +100,6 @@ const ServicePage: FunctionComponent = () => {
   const { isAuthDisabled } = useAuthContext();
   const [serviceName, setServiceName] = useState(
     serviceCategory || getServiceCategoryFromType(serviceType)
-  );
-  const [isIngestionEnable] = useState(
-    getIsIngestionEnable(serviceName as ServiceCategory)
   );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -118,6 +121,7 @@ const ServicePage: FunctionComponent = () => {
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [isAirflowRunning, setIsAirflowRunning] = useState(false);
+  const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -127,6 +131,8 @@ const ServicePage: FunctionComponent = () => {
         return 'Topics';
       case ServiceCategory.PIPELINE_SERVICES:
         return 'Pipelines';
+      case ServiceCategory.ML_MODAL_SERVICES:
+        return 'Models';
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return 'Databases';
@@ -154,7 +160,6 @@ const ServicePage: FunctionComponent = () => {
         title: 'Sample Data',
         selectedName: 'sample-data-color',
       },
-      isHidden: !isIngestionEnable,
       isProtected: false,
       position: 2,
       count: ingestions.length,
@@ -339,59 +344,6 @@ const ServicePage: FunctionComponent = () => {
     }).finally(() => setIsloading(false));
   };
 
-  const handleConfigUpdate = (
-    updatedData: ServicesData,
-    serviceCategory: ServiceCategory
-  ) => {
-    const configData =
-      serviceCategory === ServiceCategory.PIPELINE_SERVICES
-        ? {
-            databaseConnection: updatedData.databaseConnection,
-            name: updatedData.name,
-            serviceType: updatedData.serviceType,
-            brokers: updatedData.brokers,
-            schemaRegistry: updatedData.schemaRegistry,
-            dashboardUrl: updatedData.dashboardUrl,
-            username: updatedData.username,
-            password: updatedData.password,
-            pipelineUrl: updatedData.pipelineUrl,
-          }
-        : {
-            name: serviceDetails?.name,
-            serviceType: serviceDetails?.serviceType,
-            description: serviceDetails?.description,
-            owner: serviceDetails?.owner,
-            connection: {
-              config: updatedData,
-            },
-          };
-
-    return new Promise<void>((resolve, reject) => {
-      updateService(serviceName, serviceDetails?.id, configData)
-        .then((res: AxiosResponse) => {
-          if (res.data) {
-            setServiceDetails({
-              ...res.data,
-              owner: res.data?.owner ?? serviceDetails?.owner,
-            });
-          } else {
-            showErrorToast(
-              `${jsonData['api-error-messages']['update-service-config-error']}`
-            );
-          }
-
-          resolve();
-        })
-        .catch((error: AxiosError) => {
-          reject();
-          showErrorToast(
-            error,
-            `${jsonData['api-error-messages']['update-service-config-error']}`
-          );
-        });
-    });
-  };
-
   const fetchDatabases = (paging?: string) => {
     setIsloading(true);
     getDatabases(serviceFQN, paging, ['owner', 'usageSummary'])
@@ -472,6 +424,26 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchMlModal = (paging = '') => {
+    setIsloading(true);
+    getMlmodels(serviceFQN, paging, ['owner', 'tags'])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getAirflowStatus = () => {
     return new Promise<void>((resolve, reject) => {
       checkAirflowStatus()
@@ -508,6 +480,11 @@ const ServicePage: FunctionComponent = () => {
 
         break;
       }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        fetchMlModal(paging);
+
+        break;
+      }
       default:
         break;
     }
@@ -523,6 +500,9 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.PIPELINE_SERVICES:
         return getEntityLink(SearchIndex.PIPELINE, fqn);
+
+      case ServiceCategory.ML_MODAL_SERVICES:
+        return getEntityLink(SearchIndex.MLMODEL, fqn);
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
@@ -572,6 +552,16 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Model Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
       default:
         return <></>;
     }
@@ -598,7 +588,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={topic.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={topic.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -611,7 +606,12 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={dashboard.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={dashboard.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -624,7 +624,30 @@ const ServicePage: FunctionComponent = () => {
         return (
           <td className="tableBody-cell">
             {pipeline.tags && pipeline.tags?.length > 0 ? (
-              <TagsViewer sizeCap={-1} tags={pipeline.tags} />
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={pipeline.tags}
+                type="border"
+              />
+            ) : (
+              '--'
+            )}
+          </td>
+        );
+      }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        const mlmodal = data as Mlmodel;
+
+        return (
+          <td className="tableBody-cell">
+            {mlmodal.tags && mlmodal.tags?.length > 0 ? (
+              <TagsViewer
+                showStartWith={false}
+                sizeCap={-1}
+                tags={mlmodal.tags}
+                type="border"
+              />
             ) : (
               '--'
             )}
@@ -680,6 +703,7 @@ const ServicePage: FunctionComponent = () => {
         if (resService.data) {
           const { description, serviceType } = resService.data;
           setServiceDetails(resService.data);
+          setConnectionDetails(resService.data.connection.config);
           setDescription(description);
           setSlashedTableName([
             {
@@ -719,39 +743,18 @@ const ServicePage: FunctionComponent = () => {
       activeTabHandler(1);
     }
 
-    if (isIngestionEnable) {
-      getAirflowStatus()
-        .then(() => {
-          setIsAirflowRunning(true);
-          getAllIngestionWorkflows();
-        })
-        .catch(() => {
-          setIsAirflowRunning(false);
-        });
-    }
+    getAirflowStatus()
+      .then(() => {
+        setIsAirflowRunning(true);
+        getAllIngestionWorkflows();
+      })
+      .catch(() => {
+        setIsAirflowRunning(false);
+      });
   }, []);
 
   const onCancel = () => {
     setIsEdit(false);
-  };
-
-  const getServiceSpecificData = (serviceDetails?: ServiceDataObj) => {
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES:
-      case ServiceCategory.MESSAGING_SERVICES:
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return {
-          connection: serviceDetails?.connection,
-        };
-
-      case ServiceCategory.PIPELINE_SERVICES:
-        return {
-          pipelineUrl: serviceDetails?.pipelineUrl,
-        };
-
-      default:
-        return {};
-    }
   };
 
   const onDescriptionUpdate = (updatedHTML: string) => {
@@ -759,20 +762,17 @@ const ServicePage: FunctionComponent = () => {
       const { id } = serviceDetails;
 
       const updatedServiceDetails = {
-        ...getServiceSpecificData(serviceDetails),
+        connection: serviceDetails?.connection,
         name: serviceDetails.name,
         serviceType: serviceDetails.serviceType,
         description: updatedHTML,
+        owner: serviceDetails.owner,
       };
 
       updateService(serviceName, id, updatedServiceDetails)
-        .then(() => {
+        .then((res: AxiosResponse) => {
           setDescription(updatedHTML);
-          setServiceDetails({
-            ...updatedServiceDetails,
-            id,
-            owner: serviceDetails?.owner,
-          });
+          setServiceDetails(res.data);
           setIsEdit(false);
         })
         .catch((error: AxiosError) => {
@@ -788,10 +788,11 @@ const ServicePage: FunctionComponent = () => {
 
   const handleUpdateOwner = (owner: ServiceDataObj['owner']) => {
     const updatedData = {
-      ...getServiceSpecificData(serviceDetails),
+      connection: serviceDetails?.connection,
       name: serviceDetails?.name,
       serviceType: serviceDetails?.serviceType,
       owner,
+      description: serviceDetails?.description,
     };
 
     return new Promise<void>((resolve, reject) => {
@@ -862,7 +863,7 @@ const ServicePage: FunctionComponent = () => {
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
             serviceCategory={serviceName as ServiceCategory}
-            serviceDetails={serviceDetails as DataObj}
+            serviceDetails={serviceDetails as ServiceDataObj}
             serviceList={serviceList}
             serviceName={serviceFQN}
             triggerIngestion={triggerIngestionById}
@@ -877,6 +878,14 @@ const ServicePage: FunctionComponent = () => {
       setActiveTab(getCurrentServiceTab(tab));
     }
   }, [tab]);
+
+  const goToEditConnection = () => {
+    history.push(getEditConnectionPath(serviceName || '', serviceFQN || ''));
+  };
+
+  const handleEditConnection = () => {
+    goToEditConnection();
+  };
 
   return (
     <>
@@ -956,11 +965,9 @@ const ServicePage: FunctionComponent = () => {
                                     to={getLinkForFqn(
                                       dataObj.fullyQualifiedName || ''
                                     )}>
-                                    {serviceName ===
-                                      ServiceCategory.DASHBOARD_SERVICES &&
-                                    (dataObj as Dashboard).displayName
-                                      ? (dataObj as Dashboard).displayName
-                                      : dataObj.name}
+                                    {getEntityName(
+                                      dataObj as unknown as EntityReference
+                                    )}
                                   </Link>
                                 </td>
                                 <td className="tableBody-cell">
@@ -1007,12 +1014,29 @@ const ServicePage: FunctionComponent = () => {
                 {activeTab === 2 && getIngestionTab()}
 
                 {activeTab === 3 && (isAdminUser || isAuthDisabled) && (
-                  <ServiceConfig
-                    data={serviceDetails as ServicesData}
-                    handleUpdate={handleConfigUpdate}
-                    serviceCategory={serviceName as ServiceCategory}
-                    serviceType={serviceDetails?.serviceType || ''}
-                  />
+                  <>
+                    <div className="tw-my-4 tw-flex tw-justify-end">
+                      <Button
+                        className={classNames(
+                          'tw-h-8 tw-rounded tw-px-4 tw-py-1',
+                          {
+                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                          }
+                        )}
+                        data-testid="add-new-service-button"
+                        size="small"
+                        theme="primary"
+                        variant="outlined"
+                        onClick={handleEditConnection}>
+                        Edit Connection
+                      </Button>
+                    </div>
+                    <ServiceConnectionDetails
+                      connectionDetails={connectionDetails as ConfigData}
+                      serviceCategory={serviceCategory}
+                      serviceFQN={serviceDetails?.serviceType || ''}
+                    />
+                  </>
                 )}
 
                 {activeTab === 4 && (

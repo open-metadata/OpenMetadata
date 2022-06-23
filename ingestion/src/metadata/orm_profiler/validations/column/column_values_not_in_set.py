@@ -12,6 +12,7 @@
 """
 ColumnValuesToBeNotNull validation implementation
 """
+# pylint: disable=duplicate-code
 
 from datetime import datetime
 from typing import Optional
@@ -37,7 +38,7 @@ def column_values_not_in_set(
     execution_date: datetime,
     session: Optional[Session] = None,
     table: Optional[DeclarativeMeta] = None,
-    profile_sample: Optional[float] = None,
+    profile_sample: Optional[float] = 100.0,
 ) -> TestCaseResult:
     """
     Validate Column Values metric

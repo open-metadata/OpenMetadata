@@ -14,20 +14,7 @@ Mixin class containing Topic specific methods
 To be used by OpenMetadata class
 """
 
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
-from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
-from metadata.generated.schema.entity.data.location import Location
-from metadata.generated.schema.entity.data.table import (
-    DataModel,
-    SqlQuery,
-    Table,
-    TableData,
-    TableJoins,
-    TableProfile,
-)
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
-from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 

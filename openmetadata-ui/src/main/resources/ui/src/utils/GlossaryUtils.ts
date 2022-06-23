@@ -29,9 +29,11 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
+import { PRIMERY_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { ModifiedGlossaryData } from '../pages/GlossaryPage/GlossaryPageV1.component';
+import { FileIcon, FolderIcon } from '../utils/svgconstant';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 import { getNameFromFQN } from './CommonUtils';
 
@@ -66,7 +68,7 @@ export const fetchGlossaryTerms = (): Promise<FormattedGlossaryTermData[]> => {
 export const getGlossaryTermlist = (
   terms: Array<FormattedGlossaryTermData> = []
 ): Array<string> => {
-  return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+  return terms.map((term: FormattedGlossaryTermData) => term.fqdn || '');
 };
 
 /**
@@ -107,11 +109,15 @@ export const generateTreeData = (data: ModifiedGlossaryData[]): DataNode[] => {
           title: getNameFromFQN(d.name),
           children: generateTreeData(d.children as ModifiedGlossaryData[]),
           data: d,
+          icon: ({ selected }) =>
+            FolderIcon(selected ? PRIMERY_COLOR : TEXT_BODY_COLOR),
         }
       : {
           key: (d as GlossaryTerm)?.fullyQualifiedName || d.name,
           title: getNameFromFQN(d.name),
           data: d,
+          icon: ({ selected }) =>
+            FileIcon(selected ? PRIMERY_COLOR : TEXT_BODY_COLOR),
         };
   });
 };

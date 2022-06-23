@@ -32,7 +32,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -60,11 +60,7 @@ import org.openmetadata.catalog.airflow.AirflowConfiguration;
 import org.openmetadata.catalog.airflow.AirflowRESTClient;
 import org.openmetadata.catalog.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.catalog.api.services.ingestionPipelines.TestServiceConnection;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.catalog.entity.services.ingestionPipelines.Source;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
@@ -123,6 +119,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Valid
   @Operation(
+      operationId = "listIngestionPipelines",
       summary = "List Ingestion Pipelines for Metadata Operations",
       tags = "IngestionPipelines",
       description =
@@ -180,6 +177,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllIngestionPipelineVersion",
       summary = "List ingestion workflow versions",
       tags = "IngestionPipelines",
       description = "Get a list of all the versions of a IngestionPipeline identified by `id`",
@@ -200,6 +198,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getIngestionPipelineByID",
       summary = "Get a IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Get a IngestionPipeline by `id`.",
@@ -237,6 +236,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificIngestionPipelineVersion",
       summary = "Get a version of the IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Get a version of the IngestionPipeline by given `id`",
@@ -266,6 +266,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Path("/name/{fqn}")
   @Operation(
+      operationId = "getSpecificIngestionPipelineByFQN",
       summary = "Get a IngestionPipeline by name",
       tags = "IngestionPipelines",
       description = "Get a ingestion by fully qualified name.",
@@ -302,6 +303,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   @POST
   @Operation(
+      operationId = "createIngestionPipeline",
       summary = "Create a Ingestion Pipeline",
       tags = "IngestionPipelines",
       description = "Create a new Ingestion Pipeline.",
@@ -310,9 +312,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
             responseCode = "200",
             description = "The Ingestion Pipeline",
             content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CreateIngestionPipeline.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -325,6 +325,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @PATCH
   @Path("/{id}")
   @Operation(
+      operationId = "patchIngestionPipeline",
       summary = "Update a IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Update an existing IngestionPipeline using JsonPatch.",
@@ -349,6 +350,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateIngestionPipeline",
       summary = "Create or update a IngestionPipeline",
       tags = "IngestionPipelines",
       description = "Create a new IngestionPipeline, if it does not exist or update an existing IngestionPipeline.",
@@ -393,6 +395,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @POST
   @Path("/trigger/{id}")
   @Operation(
+      operationId = "triggerIngestionPipelineRun",
       summary = "Trigger a ingestion pipeline run",
       tags = "IngestionPipelines",
       description = "Trigger a ingestion pipeline run by id.",
@@ -416,6 +419,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @POST
   @Path("/testConnection")
   @Operation(
+      operationId = "testConnection",
       summary = "Test Connection of a Service",
       tags = "IngestionPipelines",
       description = "Test Connection of a Service.",
@@ -436,6 +440,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @GET
   @Path("/status")
   @Operation(
+      operationId = "checkRestAirflowStatus",
       summary = "Check the Airflow REST status",
       tags = "IngestionPipelines",
       description = "Check that the Airflow REST endpoint is reachable and up and running",
@@ -453,12 +458,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   @DELETE
   @Path("/{id}")
   @Operation(
+      operationId = "deleteIngestionPipeline",
       summary = "Delete a Ingestion",
       tags = "IngestionPipelines",
       description = "Delete a ingestion by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "ingestion for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -472,54 +478,38 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
+  @GET
+  @Path("/logs/{id}/last")
+  @Operation(
+      summary = "Retrieve all logs from last ingestion pipeline run",
+      tags = "IngestionPipelines",
+      description = "Get all logs from last ingestion pipeline run by `id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "JSON object with the task instance name of the ingestion on each key and log in the value",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+      })
+  public Response getLastIngestionLogs(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Pipeline Id", schema = @Schema(type = "string")) @PathParam("id") String id)
+      throws IOException {
+    Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(id);
+    return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
+  }
+
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
-    Source source = buildIngestionSource(create);
     OpenMetadataServerConnection openMetadataServerConnection =
         OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withSource(source)
+        .withSourceConfig(create.getSourceConfig())
         .withLoggerLevel(create.getLoggerLevel())
         .withService(create.getService());
-  }
-
-  private Source buildIngestionSource(CreateIngestionPipeline create) throws IOException {
-    Source source;
-    String serviceType = create.getService().getType();
-    Fields serviceFields = new Fields(List.of("connection"));
-    switch (serviceType) {
-      case Entity.DATABASE_SERVICE:
-        DatabaseService databaseService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceConnection(databaseService.getConnection())
-                .withServiceName(databaseService.getName())
-                .withType(databaseService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      case Entity.DASHBOARD_SERVICE:
-        DashboardService dashboardService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceName(dashboardService.getName())
-                .withServiceConnection(dashboardService.getConnection())
-                .withType(dashboardService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      case Entity.MESSAGING_SERVICE:
-        MessagingService messagingService = Entity.getEntity(create.getService(), serviceFields, Include.ALL);
-        source =
-            new Source()
-                .withServiceName(messagingService.getName())
-                .withServiceConnection(messagingService.getConnection())
-                .withType(messagingService.getServiceType().value().toLowerCase(Locale.ROOT));
-        break;
-      default:
-        throw new IllegalArgumentException(
-            String.format("Ingestion Pipeline is not supported for service %s", serviceType));
-    }
-    source.setSourceConfig(create.getSourceConfig());
-    return source;
   }
 
   public void addStatus(List<IngestionPipeline> ingestionPipelines) {

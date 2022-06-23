@@ -12,6 +12,9 @@
 """
 Define Concat function
 """
+# Keep SQA docs style defining custom constructs
+# pylint: disable=consider-using-f-string,duplicate-code
+
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import FunctionElement
 
@@ -35,10 +38,6 @@ def _(element, compiler, **kw):
 @compiles(ConcatFn, Dialects.SQLite)
 @compiles(ConcatFn, Dialects.Vertica)
 def _(element, compiler, **kw):
-    """
-    This actually returns the squared STD, but as
-    it is only required for tests we can live with it.
-    """
 
     if len(element.clauses) < 2:
         raise ValueError("We need to concat at least two elements")

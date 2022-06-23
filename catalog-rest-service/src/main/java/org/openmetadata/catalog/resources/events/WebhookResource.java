@@ -17,14 +17,18 @@ import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 
 import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -32,6 +36,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -50,7 +55,6 @@ import org.openmetadata.catalog.jdbi3.WebhookRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
-import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Webhook;
@@ -87,6 +91,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @GET
   @Operation(
+      operationId = "listWebHooks",
       summary = "List webhooks",
       tags = "webhook",
       description = "Get a list of webhook subscriptions",
@@ -99,6 +104,9 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   public ResultList<Webhook> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Filter webhooks by status", schema = @Schema(type = "string", example = "active"))
+          @QueryParam("status")
+          String statusParam,
       @Parameter(description = "Limit the number webhooks returned. (1 to 1000000, default = " + "10) ")
           @DefaultValue("10")
           @Min(0)
@@ -118,7 +126,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("status", statusParam);
     return listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
@@ -126,6 +134,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @Path("/{id}")
   @Valid
   @Operation(
+      operationId = "getWebHookByID",
       summary = "Get a webhook",
       tags = "webhook",
       description = "Get a webhook by given Id",
@@ -133,7 +142,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
         @ApiResponse(
             responseCode = "200",
             description = "Entity events",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Webhook.class))),
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Webhook get(
@@ -153,6 +162,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/name/{name}")
   @Operation(
+      operationId = "getWebHookByFQN",
       summary = "Get a webhook by name",
       tags = "webhook",
       description = "Get a webhook by name.",
@@ -180,6 +190,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/{id}/versions")
   @Operation(
+      operationId = "listAllWebHookVersion",
       summary = "List webhook versions",
       tags = "webhook",
       description = "Get a list of all the versions of a webhook identified by `id`",
@@ -200,6 +211,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
+      operationId = "getSpecificWebhookVersion",
       summary = "Get a version of the webhook",
       tags = "webhook",
       description = "Get a version of the webhook by given `id`",
@@ -227,6 +239,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @POST
   @Operation(
+      operationId = "createWebHook",
       summary = "Subscribe to a new webhook",
       tags = "webhook",
       description = "Subscribe to a new webhook",
@@ -248,6 +261,7 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
 
   @PUT
   @Operation(
+      operationId = "createOrUpdateWebhook",
       summary = "Updated an existing or create a new webhook",
       tags = "webhook",
       description = "Updated an existing or create a new webhook",
@@ -267,10 +281,37 @@ public class WebhookResource extends EntityResource<Webhook, WebhookRepository> 
     return response;
   }
 
+  @PATCH
+  @Path("/{id}")
+  @Operation(
+      operationId = "patchWebHook",
+      summary = "Update a webhook",
+      tags = "webhook",
+      description = "Update an existing webhook using JsonPatch.",
+      externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
+                      }))
+          JsonPatch patch)
+      throws IOException {
+    return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
   @DELETE
   @Path("/{id}")
   @Valid
   @Operation(
+      operationId = "deleteWebHook",
       summary = "Delete a webhook",
       tags = "webhook",
       description = "Get a webhook by given Id",

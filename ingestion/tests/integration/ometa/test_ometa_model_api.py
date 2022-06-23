@@ -24,6 +24,9 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.services.createMlModelService import (
+    CreateMlModelServiceRequest,
+)
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
@@ -40,10 +43,18 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.mlmodelService import (
+    MlModelConnection,
+    MlModelService,
+    MlModelServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -65,13 +76,58 @@ class OMetaModelTest(TestCase):
     )
     owner = EntityReference(id=user.id, type="user")
 
-    entity = MlModel(
-        id=uuid.uuid4(),
-        name="test-model",
-        algorithm="algo",
-        fullyQualifiedName="test-model",
+    service = CreateMlModelServiceRequest(
+        name="test-model-service",
+        serviceType=MlModelServiceType.Mlflow,
+        connection=MlModelConnection(
+            config=MlflowConnection(
+                trackingUri="http://localhost:1234",
+                registryUri="http://localhost:4321",
+            )
+        ),
     )
-    create = CreateMlModelRequest(name="test-model", algorithm="algo")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """
+        Prepare ingredients
+        """
+
+        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
+        cls.service_reference = EntityReference(
+            id=cls.service_entity.id, name="test-mlflow", type="mlmodelService"
+        )
+
+        cls.create = CreateMlModelRequest(
+            name="test-model", algorithm="algo", service=cls.service_reference
+        )
+
+        cls.entity = MlModel(
+            id=uuid.uuid4(),
+            name="test-model",
+            algorithm="algo",
+            fullyQualifiedName="test-model-service.test-model",
+            service=cls.service_reference,
+        )
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        """
+        Clean up
+        """
+
+        service_id = str(
+            cls.metadata.get_by_name(
+                entity=MlModelService, fqn="test-model-service"
+            ).id.__root__
+        )
+
+        cls.metadata.delete(
+            entity=MlModelService,
+            entity_id=service_id,
+            recursive=True,
+            hard_delete=True,
+        )
 
     def test_create(self):
         """
@@ -104,14 +160,14 @@ class OMetaModelTest(TestCase):
 
         # Getting without owner field does not return it by default
         res_none = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         self.assertIsNone(res_none.owner)
 
         # We can request specific fields to be added
         res_owner = self.metadata.get_by_name(
             entity=MlModel,
-            fqdn=self.entity.fullyQualifiedName,
+            fqn=self.entity.fullyQualifiedName,
             fields=["owner", "followers"],
         )
         self.assertEqual(res_owner.owner.id, self.user.id)
@@ -124,7 +180,7 @@ class OMetaModelTest(TestCase):
         self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
@@ -137,7 +193,7 @@ class OMetaModelTest(TestCase):
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=MlModel, entity_id=res_name.id)
@@ -168,7 +224,7 @@ class OMetaModelTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
@@ -256,7 +312,7 @@ class OMetaModelTest(TestCase):
                             name="age",
                             dataType=FeatureSourceDataType.integer,
                             dataSource=self.metadata.get_entity_reference(
-                                entity=Table, fqdn=table2_entity.fullyQualifiedName
+                                entity=Table, fqn=table2_entity.fullyQualifiedName
                             ),
                         )
                     ],
@@ -269,14 +325,14 @@ class OMetaModelTest(TestCase):
                             name="age",
                             dataType=FeatureSourceDataType.integer,
                             dataSource=self.metadata.get_entity_reference(
-                                entity=Table, fqdn=table2_entity.fullyQualifiedName
+                                entity=Table, fqn=table2_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
                             name="education",
                             dataType=FeatureSourceDataType.string,
                             dataSource=self.metadata.get_entity_reference(
-                                entity=Table, fqdn=table1_entity.fullyQualifiedName
+                                entity=Table, fqn=table1_entity.fullyQualifiedName
                             ),
                         ),
                         FeatureSource(
@@ -291,6 +347,7 @@ class OMetaModelTest(TestCase):
                 MlHyperParameter(name="random", value="hello"),
             ],
             target="myTarget",
+            service=self.service_reference,
         )
 
         res = self.metadata.create_or_update(data=model)
@@ -318,7 +375,7 @@ class OMetaModelTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
 
         res = self.metadata.get_list_entity_versions(
@@ -334,7 +391,7 @@ class OMetaModelTest(TestCase):
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=MlModel, fqdn=self.entity.fullyQualifiedName
+            entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
             entity=MlModel, entity_id=res_name.id.__root__, version=0.1
@@ -350,7 +407,7 @@ class OMetaModelTest(TestCase):
         """
         res = self.metadata.create_or_update(data=self.create)
         entity_ref = self.metadata.get_entity_reference(
-            entity=MlModel, fqdn=res.fullyQualifiedName
+            entity=MlModel, fqn=res.fullyQualifiedName
         )
 
         assert res.id == entity_ref.id

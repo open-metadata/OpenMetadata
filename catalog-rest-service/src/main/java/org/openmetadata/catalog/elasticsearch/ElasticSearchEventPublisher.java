@@ -44,7 +44,9 @@ import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition.Elast
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
+import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -109,6 +111,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           case Entity.GLOSSARY_TERM:
             updateGlossaryTerm(event);
             break;
+          case Entity.GLOSSARY:
+            updateGlossary(event);
+            break;
           case Entity.DATABASE:
             updateDatabase(event);
             break;
@@ -126,6 +131,9 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.PIPELINE_SERVICE:
             updatePipelineService(event);
+            break;
+          case Entity.MLMODEL:
+            updateMlModel(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -446,6 +454,54 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
+  private void updateGlossary(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      Glossary glossary = (Glossary) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX.indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      queryBuilder.must(new TermQueryBuilder("glossary_name", glossary.getName()));
+      request.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateMlModel(ChangeEvent event) throws IOException {
+    MlModelESIndex mlModelESIndex = null;
+    if (event.getEntity() != null
+        && event.getEventType() != EventType.ENTITY_SOFT_DELETED
+        && event.getEventType() != EventType.ENTITY_DELETED) {
+      MlModel mlModel = (MlModel) event.getEntity();
+      mlModelESIndex = MlModelESIndex.builder(mlModel, event.getEventType()).build();
+    }
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        String json = JsonUtils.pojoToJson(mlModelESIndex);
+        updateRequest.doc(json, XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          scriptedUpsert(mlModelESIndex, updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.MLMODEL_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
   private void updateDatabase(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       Database database = (Database) event.getEntity();
@@ -515,12 +571,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedUserUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'teams') "
-            + "{ ctx._source.teams.addAll(params.teams) } "
-            + "else if (k == 'roles') "
-            + " { ctx._source.roles.addAll(params.roles) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) {ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);
@@ -528,12 +579,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
   }
 
   private void scriptedTeamUpsert(Object index, UpdateRequest updateRequest) {
-    String scriptTxt =
-        "for (k in params.keySet()) {if (k == 'users') "
-            + "{ ctx._source.users.addAll(params.users) } "
-            + "else if (k == 'owns') "
-            + " { ctx._source.owns.addAll(params.owns) }"
-            + "else { ctx._source.put(k, params.get(k)) }}";
+    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
     Map<String, Object> doc = JsonUtils.getMap(index);
     Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, doc);
     updateRequest.script(script);

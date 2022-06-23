@@ -63,10 +63,17 @@
       "description": "Snowflake warehouse.",
       "type": "string"
     },
+    "queryTag": {
+      "title": "Query Tag",
+      "description": "Session query tag used to monitor usage on snoflake",
+      "type": "string",
+      "default": "OpenMetadata"
+    },
     "privateKey": {
       "title": "Private Key",
       "description": "Connection to Snowflake instance via Private Key",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "snowflakePrivatekeyPassphrase": {
       "title": "Snowflake Passphrase Key",
@@ -92,8 +99,12 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account"]
+  "required": ["username", "account", "password", "warehouse"]
 }

@@ -237,13 +237,26 @@ declare module 'Models' {
     id: string;
   };
 
+  export type FormattedTeamsData = {
+    name: string;
+    displayName: string;
+    type: string;
+    id: string;
+  };
+
   export type FormattedGlossaryTermData = {
     name: string;
     displayName: string;
-    fqdn: string;
+    fullyQualifiedName: string;
+    fqdn?: string;
     type: string;
     id: string;
     description?: string;
+  };
+
+  export type SearchedUsersAndTeams = {
+    users: FormattedUsersData[];
+    teams: FormattedTeamsData[];
   };
 
   export type TagOption = {
@@ -386,7 +399,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'mlmodelServices';
 
   export type SampleData = {
     columns: Array<string>;
@@ -572,27 +586,6 @@ declare module 'Models' {
   }
 
   // Feed interfaces and types
-  export interface EntityThread {
-    id: string;
-    href: string;
-    threadTs: number;
-    about: string;
-    createdBy: string;
-    updatedAt: number;
-    updatedBy: string;
-    resolved: boolean;
-    message: string;
-    postsCount: number;
-    posts: Post[];
-  }
-
-  export interface Post {
-    message: string;
-    postTs: number;
-    from: string;
-    id: string;
-  }
-
   export interface EntityFieldThreadCount {
     count: number;
     entityLink: string;
@@ -606,4 +599,14 @@ declare module 'Models' {
   }
 
   export type ImageShape = 'circle' | 'square';
+
+  export interface SelectableOption {
+    readonly label: string;
+    readonly value: string;
+  }
+
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
+  }
 }

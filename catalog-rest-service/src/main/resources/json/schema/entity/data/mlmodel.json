@@ -51,7 +51,7 @@
         },
         "description": {
           "description": "Description of the feature source.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -85,7 +85,7 @@
         },
         "description": {
           "description": "Description of the ML Feature.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "fullyQualifiedName": {
           "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -128,7 +128,7 @@
         },
         "description": {
           "description": "Description of the Hyper Parameter.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         }
       }
     },
@@ -168,7 +168,7 @@
     },
     "description": {
       "description": "Description of the ML Model, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model.",
@@ -243,6 +243,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "service": {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "serviceType": {
+      "description": "Service type where this pipeline is hosted in.",
+      "$ref": "../services/mlmodelService.json#/definitions/mlModelServiceType"
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
@@ -253,6 +261,6 @@
       "default": false
     }
   },
-  "required": ["id", "name", "algorithm"],
+  "required": ["id", "name", "algorithm", "service"],
   "additionalProperties": false
 }

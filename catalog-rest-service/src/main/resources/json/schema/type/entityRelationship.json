@@ -28,7 +28,8 @@
         "upstream",
         "appliedTo",
         "relatedTo",
-        "reviews"
+        "reviews",
+        "reactedTo"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -47,7 +48,8 @@
         { "name": "UPSTREAM" },
         { "name": "APPLIED_TO" },
         { "name": "RELATED_TO" },
-        { "name": "REVIEWS" }
+        { "name": "REVIEWS" },
+        { "name": "REACTED_TO" }
       ]
     }
   },

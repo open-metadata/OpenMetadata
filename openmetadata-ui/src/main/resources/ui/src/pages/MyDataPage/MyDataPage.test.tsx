@@ -17,7 +17,9 @@ import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
+import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { getAllTopics } from '../../axiosAPIs/topicsAPI';
+import { getUsers } from '../../axiosAPIs/userAPI';
 import { getAllServices } from '../../utils/ServiceUtils';
 import MyDataPageComponent from './MyDataPage.component';
 
@@ -104,6 +106,36 @@ jest.mock('../../axiosAPIs/pipelineAPI', () => ({
         paging: {
           total: 3,
         },
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+  getAllMlModal: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/userAPI', () => ({
+  getUsers: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
+jest.mock('../../axiosAPIs/teamsAPI', () => ({
+  getTeams: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
       },
     })
   ),
@@ -424,6 +456,80 @@ describe('Test MyData page component', () => {
             },
           },
         ])
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if user count api fails', async () => {
+      (getUsers as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if user count api has no data', async () => {
+      (getUsers as jest.Mock).mockImplementationOnce(() => Promise.resolve({}));
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if user count api has no paging', async () => {
+      (getUsers as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if team count api fails', async () => {
+      (getTeams as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject({
+          response: { data: { message: 'Error!' } },
+        })
+      );
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if team count api has no data', async () => {
+      (getTeams as jest.Mock).mockImplementationOnce(() => Promise.resolve({}));
+
+      const { container } = render(<MyDataPageComponent />);
+      const myData = await findByText(container, /MyData.component/i);
+
+      expect(myData).toBeInTheDocument();
+    });
+
+    it('should render component if team count api has no paging', async () => {
+      (getTeams as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          data: {
+            data: [],
+          },
+        })
       );
 
       const { container } = render(<MyDataPageComponent />);

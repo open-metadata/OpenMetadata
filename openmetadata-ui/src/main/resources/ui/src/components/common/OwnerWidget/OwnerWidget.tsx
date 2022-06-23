@@ -19,6 +19,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
 import { getTitleCase } from '../../../utils/EntityUtils';
+import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
 import { Button } from '../../buttons/Button/Button';
 import DropDownList from '../../dropdown/DropDownList';
 import Loader from '../../Loader/Loader';
@@ -43,12 +44,15 @@ interface OwnerWidgetProps {
     group: string;
     type: string;
   }[];
+  isListLoading: boolean;
+  ownerSearchText: string;
   handleIsJoinable?: (bool: boolean) => void;
   handleSelectOwnerDropdown: () => void;
   handleOwnerSelection: (
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string | undefined
   ) => void;
+  handleSearchOwnerDropdown: (text: string) => void;
 }
 
 const OwnerWidget = ({
@@ -63,9 +67,12 @@ const OwnerWidget = ({
   allowTeamOwner,
   statusOwner,
   listOwners,
+  isListLoading,
+  ownerSearchText,
   handleIsJoinable,
   handleSelectOwnerDropdown,
   handleOwnerSelection,
+  handleSearchOwnerDropdown,
 }: OwnerWidgetProps) => {
   const { userPermissions } = useAuth();
 
@@ -155,11 +162,14 @@ const OwnerWidget = ({
                 <DropDownList
                   horzPosRight
                   showEmptyList
-                  showSearchBar
+                  controlledSearchStr={ownerSearchText}
                   dropDownList={listOwners}
                   groupType="tab"
+                  isLoading={isListLoading}
                   listGroups={getOwnerGroup()}
+                  showSearchBar={isCurrentUserAdmin()}
                   value={owner?.id || ''}
+                  onSearchTextChange={handleSearchOwnerDropdown}
                   onSelect={handleOwnerSelection}
                 />
               )}

@@ -33,6 +33,10 @@ class MetadataRestSinkConfig(ConfigModel):
 
 
 class MetadataRestSink(Sink[Entity]):
+    """
+    Metadata Sink sending the profiler
+    and tests results to the OM API
+    """
 
     config: MetadataRestSinkConfig
     status: SinkStatus
@@ -69,7 +73,7 @@ class MetadataRestSink(Sink[Entity]):
             if record.record_tests:
                 if record.record_tests.profile_sample:
                     self.metadata.update_profile_sample(
-                        fqdn=record.table.fullyQualifiedName.__root__,
+                        fqn=record.table.fullyQualifiedName.__root__,
                         profile_sample=record.record_tests.profile_sample,
                     )
                 for table_test in record.record_tests.table_tests:
@@ -79,6 +83,11 @@ class MetadataRestSink(Sink[Entity]):
 
                 for col_test in record.record_tests.column_tests:
                     self.metadata.add_column_test(table=record.table, col_test=col_test)
+
+            if record.sample_data:
+                self.metadata.ingest_table_sample_data(
+                    table=record.table, sample_data=record.sample_data
+                )
 
             logger.info(
                 f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName.__root__}"

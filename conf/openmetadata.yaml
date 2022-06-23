@@ -87,7 +87,7 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: INFO
+  level: ${LOG_LEVEL:-TRACE}
   loggers:
     org.openmetadata.catalog.events: DEBUG
     io.swagger: ERROR
@@ -115,12 +115,12 @@ logging:
 
 database:
   # the name of the JDBC driver, mysql in our case
-  driverClass: com.mysql.cj.jdbc.Driver
+  driverClass: ${DB_DRIVER_CLASS:-com.mysql.cj.jdbc.Driver}
   # the username and password
   user: ${MYSQL_USER:-openmetadata_user}
   password: ${MYSQL_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:mysql://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  url: jdbc:${DB_SCHEME:-mysql}://${MYSQL_HOST:-localhost}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
 
 migrationConfiguration:
   path: "./bootstrap/sql"
@@ -131,7 +131,9 @@ authorizerConfiguration:
   containerRequestFilter: ${AUTHORIZER_REQUEST_FILTER:-org.openmetadata.catalog.security.NoopFilter}
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   botPrincipals: ${AUTHORIZER_INGESTION_PRINCIPALS:-[ingestion-bot]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-""}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
+  enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
 
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-no-auth}
@@ -141,6 +143,7 @@ authenticationConfiguration:
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-""}
@@ -170,7 +173,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc"
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc", "openmetadata"
   authConfig:
     azure:
       clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
@@ -195,6 +198,8 @@ airflowConfiguration:
       clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
       secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
       tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
+    openmetadata:
+      jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
 
 slackEventPublishers:
   - name: "slack events"
@@ -222,9 +227,8 @@ fernetConfiguration:
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
   healthChecks:
-    - name: UserDatabaseCheck
+    - name: OpenMetadataServerHealthCheck
       critical: true
       schedule:
         checkInterval: 2500ms

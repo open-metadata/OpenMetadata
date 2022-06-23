@@ -144,8 +144,13 @@
   .link-title {
     @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
+
+  .link-text-info {
+    @apply tw-text-info hover:tw-text-info focus:tw-text-info hover:tw-underline focus:tw-underline tw-cursor-pointer;
+  }
+
   .show-more,
-  a[href]:not(.button-comp),
+  a[href]:not(.button-comp):not(.tw-no-underline):not(.link-text-info),
   .link-text {
     @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
@@ -211,7 +216,7 @@
   }
 
   .tw-form-container {
-    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form;
+    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form tw-w-700;
   }
 
   /* Dropdown CSS start */
@@ -330,13 +335,14 @@
     @apply tw-border-main;
     box-shadow: 0 0 0 0.5px #e2dce4;
   }
-  .leaf-node.selected-node,
-  .leaf-node.selected-node:hover {
+  .leaf-node.selected,
+  .leaf-node.selected:hover {
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
   }
   .tw-filter-seperator {
-    @apply tw-border-b tw-border-separator tw-mb-4;
+    @apply tw-mb-1;
+    border-bottom: 1px solid #dce3ec80;
   }
 
   /* Cron editor css */

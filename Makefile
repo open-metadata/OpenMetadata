@@ -61,23 +61,25 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	@echo "Running Datamodel Code Generator"
 	@echo "Make sure to first run the install_dev recipe"
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json --input-file-type jsonschema --output ingestion/src/metadata/generated --set-default-enum-member
+	$(MAKE) py_antlr
 	$(MAKE) install
 
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run -m pytest -c ingestion/setup.cfg --doctest-modules --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage
+	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-integration.xml ingestion/tests/integration/ometa ingestion/tests/integration/stage ingestion/tests/integration/orm_profiler
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	coverage run -m pytest -c ingestion/setup.cfg -s --doctest-modules --junitxml=ingestion/junit/test-results-unit.xml ingestion/tests/unit
+	coverage run -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage report
 	coverage erase
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage xml -i -o ingestion/coverage.xml
+	coverage xml -o ingestion/coverage.xml
+	cat ingestion/coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -144,6 +146,7 @@ core_generate:  ## Generate the pydantic models from the JSON Schemas to the ing
 	mkdir -p ingestion-core/src/metadata/generated; \
 	. ingestion-core/venv/bin/activate; \
 	datamodel-codegen --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion-core/src/metadata/generated
+	$(MAKE) core_py_antlr
 
 .PHONY: core_bump_version_dev
 core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To be used when schemas are updated
@@ -160,3 +163,17 @@ core_publish:  ## Install, generate and publish the ingestion-core module to Tes
 		python setup.py install sdist bdist_wheel; \
 		twine check dist/*; \
 		twine upload -r testpypi dist/*
+
+.PHONY: core_py_antlr
+core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
+	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: py_antlr
+py_antlr:  ## Generate the Python code for parsing FQNs
+	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/catalog-rest-service/src/main/antlr4/org/openmetadata/catalog/Fqn.g4
+
+.PHONY: install_antlr_cli
+install_antlr_cli:  ## Install antlr CLI locally
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	chmod 755 /usr/local/bin/antlr4

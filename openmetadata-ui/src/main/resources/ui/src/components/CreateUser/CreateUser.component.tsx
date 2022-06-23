@@ -29,12 +29,12 @@ import DropDown from '../dropdown/DropDown';
 import { DropDownListItem } from '../dropdown/types';
 import { Field } from '../Field/Field';
 import Loader from '../Loader/Loader';
+import TeamsSelectable from '../TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
   allowAccess,
   roles,
-  teams,
   saveState = 'initial',
   onCancel,
   onSave,
@@ -114,24 +114,6 @@ const CreateUser = ({
    */
   const selectedRolesHandler = (id?: string) => {
     setSelectedRoles((prevState: Array<string | undefined>) => {
-      if (prevState.includes(id as string)) {
-        const selectedRole = [...prevState];
-        const index = selectedRole.indexOf(id as string);
-        selectedRole.splice(index, 1);
-
-        return selectedRole;
-      } else {
-        return [...prevState, id];
-      }
-    });
-  };
-
-  /**
-   * Dropdown option selector.
-   * @param id of selected option from dropdown.
-   */
-  const selectedTeamsHandler = (id?: string) => {
-    setSelectedTeams((prevState: Array<string | undefined>) => {
       if (prevState.includes(id as string)) {
         const selectedRole = [...prevState];
         const index = selectedRole.indexOf(id as string);
@@ -274,16 +256,7 @@ const CreateUser = ({
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0">Teams</label>
-        <DropDown
-          className={classNames('tw-bg-white', {
-            'tw-bg-gray-100 tw-cursor-not-allowed': teams.length === 0,
-          })}
-          dropDownList={getDropdownOptions(teams) as DropDownListItem[]}
-          label="Teams"
-          selectedItems={selectedTeams as Array<string>}
-          type="checkbox"
-          onSelect={(_e, value) => selectedTeamsHandler(value)}
-        />
+        <TeamsSelectable onSelectionChange={setSelectedTeams} />
       </Field>
       <Field>
         <label className="tw-block tw-form-label tw-mb-0" htmlFor="role">
@@ -293,6 +266,7 @@ const CreateUser = ({
           className={classNames('tw-bg-white', {
             'tw-bg-gray-100 tw-cursor-not-allowed': roles.length === 0,
           })}
+          dataTestId="roles-dropdown"
           dropDownList={getDropdownOptions(roles) as DropDownListItem[]}
           label="Roles"
           selectedItems={selectedRoles as Array<string>}

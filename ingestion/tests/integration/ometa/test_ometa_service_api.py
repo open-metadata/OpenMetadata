@@ -63,7 +63,7 @@ class OMetaServiceTest(TestCase):
                     "hostPort": "random:3306",
                 }
             },
-            "sourceConfig": {"config": {"enableDataProfiler": False}},
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
         }
 
         workflow_source = WorkflowSource(**data)
@@ -102,7 +102,7 @@ class OMetaServiceTest(TestCase):
                     "hostPort": "random:1433",
                 }
             },
-            "sourceConfig": {"config": {"enableDataProfiler": False}},
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
         }
 
         workflow_source = WorkflowSource(**data)
@@ -136,7 +136,6 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "BigQuery",
-                    "enablePolicyTagImport": True,
                     "credentials": {
                         "gcsConfig": {
                             "type": "service_account",
@@ -153,7 +152,7 @@ class OMetaServiceTest(TestCase):
                     },
                 }
             },
-            "sourceConfig": {"config": {"enableDataProfiler": False}},
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
         }
 
         workflow_source = WorkflowSource(**data)

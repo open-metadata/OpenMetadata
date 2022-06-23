@@ -14,8 +14,8 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
@@ -38,7 +38,6 @@ import {
   getEntityPlaceHolder,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  getUserTeams,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
@@ -68,6 +67,7 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
+import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -91,7 +91,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   descriptionUpdateHandler,
   columnsUpdateHandler,
   settingsUpdateHandler,
-  users,
   usageSummary,
   joins,
   tableType,
@@ -131,8 +130,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  handleExtentionUpdate,
+  updateThreadHandler,
 }: DatasetDetailsProps) => {
-  const { isAuthDisabled } = useAuthContext();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -142,6 +142,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
+    directTableJoins: [],
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
@@ -173,10 +174,14 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     );
   };
   const hasEditAccess = () => {
+    const loggedInUser = AppState.getCurrentUserDetails();
     if (owner?.type === 'user') {
-      return owner.id === getCurrentUserId();
+      return owner.id === loggedInUser?.id;
     } else {
-      return getUserTeams().some((team) => team.id === owner?.id);
+      return Boolean(
+        loggedInUser?.teams?.length &&
+          loggedInUser?.teams?.some((team) => team.id === owner?.id)
+      );
     }
   };
   const setFollowersData = (followers: Array<EntityReference>) => {
@@ -277,6 +282,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 9,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -287,42 +303,44 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       isProtected: false,
       isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 9,
+      position: 10,
     },
   ];
 
   const getFrequentlyJoinedWithTables = (): Array<
     JoinedWith & { name: string }
   > => {
-    let freqJoin: Array<JoinedWith & { name: string }> = [];
-    for (const joinData of tableJoinData.columnJoins as ColumnJoins[]) {
-      freqJoin = [
-        ...freqJoin,
-        ...(joinData?.joinedWith?.map((joinedCol) => {
-          const tableFQN = getTableFQNFromColumnFQN(
-            joinedCol?.fullyQualifiedName as string
-          );
+    const tableFQNGrouping = [
+      ...(tableJoinData.columnJoins?.flatMap(
+        (cjs) =>
+          cjs.joinedWith?.map<JoinedWith>((jw) => ({
+            fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
+            joinCount: jw.joinCount,
+          })) ?? []
+      ) ?? []),
+      ...(tableJoinData.directTableJoins ?? []),
+    ].reduce(
+      (result, jw) => ({
+        ...result,
+        [jw.fullyQualifiedName]:
+          (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
+      }),
+      {} as Record<string, number>
+    );
 
-          return {
-            name: getPartialNameFromTableFQN(
-              tableFQN,
-              [FqnPart.Database, FqnPart.Table],
-              FQN_SEPARATOR_CHAR
-            ),
-            fullyQualifiedName: tableFQN,
-            joinCount: joinedCol.joinCount,
-          };
-        }) as Array<JoinedWith & { name: string }>),
-      ].sort((a, b) =>
-        (a?.joinCount as number) > (b?.joinCount as number)
-          ? 1
-          : (b?.joinCount as number) > (a?.joinCount as number)
-          ? -1
-          : 0
-      );
-    }
-
-    return freqJoin;
+    return Object.entries(tableFQNGrouping)
+      .map<JoinedWith & { name: string }>(
+        ([fullyQualifiedName, joinCount]) => ({
+          fullyQualifiedName,
+          joinCount,
+          name: getPartialNameFromTableFQN(
+            fullyQualifiedName,
+            [FqnPart.Database, FqnPart.Table],
+            FQN_SEPARATOR_CHAR
+          ),
+        })
+      )
+      .sort((a, b) => b.joinCount - a.joinCount);
   };
 
   const prepareTableRowInfo = () => {
@@ -526,12 +544,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   };
 
   useEffect(() => {
-    if (isAuthDisabled && users.length && followers.length) {
-      setFollowersData(followers);
-    }
-  }, [users, followers]);
-
-  useEffect(() => {
     setFollowersData(followers);
   }, [followers]);
   useEffect(() => {
@@ -632,6 +644,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       joins={tableJoinData.columnJoins as ColumnJoins[]}
                       owner={owner}
                       sampleData={sampleData}
+                      tableConstraints={tableDetails.tableConstraints}
                       onEntityFieldSelect={onEntityFieldSelect}
                       onThreadLinkSelect={onThreadLinkSelect}
                       onUpdate={onColumnsUpdate}
@@ -652,6 +665,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
                   />
                   <div />
                 </div>
@@ -668,12 +682,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
                   id="tablequeries">
-                  <div />
-                  <TableQueries
-                    isLoading={isQueriesLoading}
-                    queries={tableQueries}
-                  />
-                  <div />
+                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
+                    <Fragment>
+                      <div />
+                      <TableQueries
+                        isLoading={isQueriesLoading}
+                        queries={tableQueries}
+                      />
+                      <div />
+                    </Fragment>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      data-testid="no-queries">
+                      <span>No queries data available.</span>
+                    </div>
+                  )}
                 </div>
               )}
               {activeTab === 5 && (
@@ -743,7 +767,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   />
                 </div>
               )}
-              {activeTab === 9 && !deleted && (
+              {activeTab === 9 && (
+                <CustomPropertyTable
+                  handleExtentionUpdate={handleExtentionUpdate}
+                  tableDetails={tableDetails}
+                />
+              )}
+              {activeTab === 10 && !deleted && (
                 <div>
                   <ManageTab
                     allowDelete
@@ -773,6 +803,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />
           ) : null}

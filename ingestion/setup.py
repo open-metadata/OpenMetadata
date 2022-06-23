@@ -37,32 +37,23 @@ base_requirements = {
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
-    "sql-metadata~=2.0.0",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
     "PyYAML",
     "jsonschema",
-    "sqllineage==1.3.3",
+    "sqllineage==1.3.5",
+    "antlr4-python3-runtime==4.9.2",
     # compatibility requirements for 3.7
     "typing-compat~=0.1.0",
     "importlib-metadata~=4.11.3",
 }
 
-report_requirements = {
-    "asgiref==3.4.1",
-    "Django==3.2.7",
-    "pytz==2021.1",
-    "sqlparse==0.4.2",
-}
 
-base_plugins = {
-    "query-parser",
-    "metadata-usage",
-    "file-stage",
-    "sql-metadata~=2.0.0",
-}
 plugins: Dict[str, Set[str]] = {
+    "airflow": {
+        "apache-airflow==2.1.4"
+    },  # Same as ingestion container. For development.
     "airflow-container": {
         "marshmallow-sqlalchemy>=0.26.0",
         "SQLAlchemy-Utils>=0.38.0",
@@ -82,6 +73,15 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "docker": {"python_on_whales==0.34.0"},
     "backup": {"boto3~=1.19.12"},
+    "datalake": {
+        "google-cloud-storage==1.43.0",
+        "pandas==1.3.5",
+        "gcsfs==2022.5.0",
+        "s3fs==0.4.2",
+        "dask==2022.2.0",
+        "pyarrow==6.0.1",
+        "boto3~=1.19.12",
+    },
     "dbt": {"google-cloud", "boto3", "google-cloud-storage==1.43.0"},
     "druid": {"pydruid>=0.6.2"},
     "elasticsearch": {"elasticsearch==7.13.1"},
@@ -95,19 +95,19 @@ plugins: Dict[str, Set[str]] = {
         "presto-types-parser==0.0.2",
     },
     "kafka": {
-        "confluent_kafka>=1.5.0",
+        "confluent_kafka==1.8.2",
         "fastavro>=1.2.0",
         "avro-python3",
         "confluent_avro",
     },
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {"looker-sdk==21.12.2"},
+    "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "pymssql": {"pymssql~=2.2.5"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "powerbi": {"python-power-bi==0.1.2"},
+    "powerbi": {"msal==1.17.0"},
     "presto": {"pyhive~=0.6.3"},
     "trino": {"trino[sqlalchemy]"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
@@ -124,7 +124,7 @@ plugins: Dict[str, Set[str]] = {
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.29"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
-    "report-server": report_requirements,
+    "webhook-server": {},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
     "mlflow": {"mlflow-skinny~=1.22.0"},
@@ -135,6 +135,7 @@ plugins: Dict[str, Set[str]] = {
     "singlestore": {"pymysql>=1.0.2"},
     "azure-sso": {"msal~=1.17.0"},
     "deltalake": {"delta-spark~=1.1.0"},
+    "great-expectations": {"great-expectations~=0.15.0"},
     "pinotdb": {"pinotdb~=0.3.11"},
 }
 dev = {
@@ -158,6 +159,8 @@ test = {
     # sklearn integration
     "scikit-learn==1.0.2",
     "pandas==1.3.5",
+    # great_expectations tests
+    "great-expectations~=0.15.0",
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -197,7 +200,13 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin not in {"airflow-container-1.10.15", "db2"}
+                    if plugin
+                    not in {
+                        "airflow",
+                        "airflow-container-1.10.15",
+                        "db2",
+                        "great-expectations",
+                    }
                 ]
             )
         ),

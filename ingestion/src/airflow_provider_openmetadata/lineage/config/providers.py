@@ -105,7 +105,7 @@ def load_okta_auth() -> OktaSSOClientConfig:
         orgURL=conf.get(LINEAGE, "org_url"),
         privateKey=conf.get(LINEAGE, "private_key"),
         email=conf.get(LINEAGE, "email"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        scopes=conf.getjson(LINEAGE, "scopes", fallback=[]),
     )
 
 
@@ -130,7 +130,7 @@ def load_azure_auth() -> AzureSSOClientConfig:
         clientSecret=conf.get(LINEAGE, "client_secret"),
         authority=conf.get(LINEAGE, "authority"),
         clientId=conf.get(LINEAGE, "client_id"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        scopes=conf.getjson(LINEAGE, "scopes", fallback=[]),
     )
 
 

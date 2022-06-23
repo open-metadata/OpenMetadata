@@ -13,12 +13,14 @@
 
 import React, { FunctionComponent } from 'react';
 import IconAuth0 from '../assets/img/icon-auth0.png';
+import IconCognito from '../assets/img/icon-aws-cognito.png';
 import IconAzure from '../assets/img/icon-azure.png';
 import IconGithub from '../assets/img/icon-github.png';
 import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
+import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -41,12 +43,15 @@ import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
+import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
+import IconFeedDelete from '../assets/svg/delete-white.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
@@ -105,15 +110,19 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
+import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconReaction from '../assets/svg/Reaction.svg';
+import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -156,11 +165,13 @@ export const Icons = {
   AZURE_ICON: 'azure-icon',
   GOOGLE_ICON: 'google-icon',
   OKTA_ICON: 'okta-icon',
+  COGNITO_ICON: 'cognito-icon',
   GITHUB_ICON: 'github-icon',
   AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
   EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
+  EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
@@ -176,6 +187,7 @@ export const Icons = {
   VELLIPSIS: 'icon-v-ellipsis',
   COPY: 'copy',
   DELETE: 'icon-delete',
+  DELETE_GRADIANT: 'delete-gradient',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
   INFO: 'icon-info',
@@ -227,6 +239,7 @@ export const Icons = {
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
+  MLMODAL: 'mlmodal',
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
@@ -238,6 +251,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
+  ICON_PLUS_PRIMERY: 'icon-plus-primary',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -281,6 +295,10 @@ export const Icons = {
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
+  ADD_REACTION: 'add-reaction',
+  ADD_REPLY: 'add-reply',
+  REACTION: 'reaction',
+  FEED_DELETE: 'feed-delete',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -355,6 +373,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconOkta;
 
       break;
+    case Icons.COGNITO_ICON:
+      IconComponent = IconCognito;
+
+      break;
     case Icons.GITHUB_ICON:
       IconComponent = IconGithub;
 
@@ -385,6 +407,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE:
       IconComponent = IconDelete;
+
+      break;
+    case Icons.DELETE_GRADIANT:
+      IconComponent = IconDeleteGradiant;
 
       break;
     case Icons.COPY:
@@ -547,6 +573,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTopic;
 
       break;
+    case Icons.MLMODAL:
+      IconComponent = IconMlModal;
+
+      break;
     case Icons.DASHBOARD:
       IconComponent = IconDashboard;
 
@@ -619,6 +649,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconPlus;
 
       break;
+    case Icons.ICON_PLUS_PRIMERY:
+      IconComponent = IconPlusPrimery;
+
+      break;
     case Icons.ICON_MINUS:
       IconComponent = IconMinus;
 
@@ -686,6 +720,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
+
+      break;
+    case Icons.EDIT_OUTLINE_PRIMARY:
+      IconComponent = IconEditOutlinePrimary;
 
       break;
 
@@ -815,6 +853,23 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DEPLOY_INGESTION:
       IconComponent = IconDeployIngestion;
+
+      break;
+    case Icons.ADD_REACTION:
+      IconComponent = IconAddReaction;
+
+      break;
+    case Icons.ADD_REPLY:
+      IconComponent = IconReplyFeed;
+
+      break;
+
+    case Icons.REACTION:
+      IconComponent = IconReaction;
+
+      break;
+    case Icons.FEED_DELETE:
+      IconComponent = IconFeedDelete;
 
       break;
     default:

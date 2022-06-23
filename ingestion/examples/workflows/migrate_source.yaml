@@ -13,7 +13,7 @@ source:
       limitRecords: 10
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 stage:
   type: migrate
   config:

@@ -14,12 +14,14 @@ Build and document all supported Engines
 """
 import json
 import logging
+import os
 import traceback
+from distutils.command.config import config
 from functools import singledispatch
 from typing import Union
 
 import requests
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
@@ -27,10 +29,18 @@ from sqlalchemy.orm.session import Session
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
-    ConnectionOptions,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.modeConnection import (
+    ModeConnection,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
     RedashConnection,
@@ -46,6 +56,11 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    GCSConfig,
+    S3Config,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
@@ -65,13 +80,24 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
+    AirbyteConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+    AirflowConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
+    AirByteClient,
+    DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
     GlueClient,
     KafkaClient,
+    LookerClient,
     MetabaseClient,
+    ModeClient,
+    PowerBiClient,
     RedashClient,
     SalesforceClient,
     SupersetClient,
@@ -97,12 +123,11 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
     :param verbose: debugger or not
     :return: SQAlchemy Engine
     """
-    options = connection.connectionOptions or ConnectionOptions()
 
     engine = create_engine(
         get_connection_url(connection),
-        **options.dict(),
         connect_args=get_connection_args(connection),
+        pool_reset_on_return=None,  # https://docs.sqlalchemy.org/en/14/core/pooling.html#reset-on-return
         echo=verbose,
     )
 
@@ -146,7 +171,7 @@ def _(connection: SnowflakeConnection, verbose: bool = False) -> Engine:
                 "Snowflake Private Key Passphrase not found, replacing it with empty string"
             )
         p_key = serialization.load_pem_private_key(
-            bytes(connection.privateKey, "utf-8"),
+            bytes(connection.privateKey.get_secret_value(), "utf-8"),
             password=snowflake_private_key_passphrase.encode(),
             backend=default_backend(),
         )
@@ -199,7 +224,7 @@ def _(connection: SalesforceConnection, verbose: bool = False) -> SalesforceClie
         Salesforce(
             connection.username,
             password=connection.password.get_secret_value(),
-            security_token=connection.securityToken,
+            security_token=connection.securityToken.get_secret_value(),
         )
     )
     return salesforce_connection
@@ -423,13 +448,50 @@ def _(connection: MetabaseClient) -> None:
         )
 
 
+@test_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        test_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirflowConnection) -> None:
+    try:
+        return get_connection(connection.connection)
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: AirbyteConnection, verbose: bool = False):
+    from metadata.utils.airbyte_client import AirbyteClient
+
+    return AirByteClient(AirbyteClient(connection))
+
+
+@test_connection.register
+def _(connection: AirByteClient) -> None:
+    try:
+        connection.client.list_workspaces()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
 @get_connection.register
 def _(connection: RedashConnection, verbose: bool = False):
 
     from redash_toolbelt import Redash
 
     try:
-        redash = Redash(connection.hostPort, connection.apiKey)
+        redash = Redash(connection.hostPort, connection.apiKey.get_secret_value())
         redash_client = RedashClient(redash)
         return redash_client
 
@@ -485,13 +547,16 @@ def _(connection: TableauConnection, verbose: bool = False):
         tableau_server_config[connection.env][
             "password"
         ] = connection.password.get_secret_value()
-    elif connection.personalAccessTokenName and connection.personalAccessTokenSecret:
+    elif (
+        connection.personalAccessTokenName
+        and connection.personalAccessTokenSecret.get_secret_value()
+    ):
         tableau_server_config[connection.env][
             "personal_access_token_name"
         ] = connection.personalAccessTokenName
         tableau_server_config[connection.env][
             "personal_access_token_secret"
-        ] = connection.personalAccessTokenSecret
+        ] = connection.personalAccessTokenSecret.get_secret_value()
     try:
         conn = TableauServerConnection(
             config_json=tableau_server_config,
@@ -510,6 +575,124 @@ def _(connection: TableauClient) -> None:
     try:
         connection.client.server_info()
 
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: PowerBIConnection, verbose: bool = False):
+    from metadata.utils.powerbi_client import PowerBiApiClient
+
+    return PowerBiClient(PowerBiApiClient(connection))
+
+
+@test_connection.register
+def _(connection: PowerBiClient) -> None:
+    try:
+        connection.client.fetch_dashboards()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: LookerConnection, verbose: bool = False):
+    import looker_sdk
+
+    if not os.environ.get("LOOKERSDK_CLIENT_ID"):
+        os.environ["LOOKERSDK_CLIENT_ID"] = connection.username
+    if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
+        os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
+    if not os.environ.get("LOOKERSDK_BASE_URL"):
+        os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
+    client = looker_sdk.init40()
+    return LookerClient(client=client)
+
+
+@test_connection.register
+def _(connection: LookerClient) -> None:
+    try:
+        connection.client.me()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: DatalakeClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto service resource to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        config = connection.config.configSource
+        if isinstance(config, GCSConfig):
+            if connection.config.bucketName:
+                connection.client.get_bucket(connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+        if isinstance(config, S3Config):
+            if connection.config.bucketName:
+                connection.client.list_objects(Bucket=connection.config.bucketName)
+            else:
+                connection.client.list_buckets()
+
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+
+
+@singledispatch
+def get_datalake_client(config):
+    if config:
+        raise NotImplementedError(
+            f"Config not implemented for type {type(config)}: {config}"
+        )
+
+
+@get_connection.register
+def _(connection: DatalakeConnection, verbose: bool = False) -> DatalakeClient:
+    datalake_connection = get_datalake_client(connection.configSource)
+    return DatalakeClient(client=datalake_connection, config=connection)
+
+
+@get_datalake_client.register
+def _(config: S3Config):
+    from metadata.utils.aws_client import AWSClient
+
+    s3_client = AWSClient(config.securityConfig).get_client(service_name="s3")
+    return s3_client
+
+
+@get_datalake_client.register
+def _(config: GCSConfig):
+    from google.cloud import storage
+
+    set_google_credentials(gcs_credentials=config.securityConfig)
+    gcs_client = storage.Client()
+    return gcs_client
+
+
+@get_connection.register
+def _(connection: ModeConnection, verbose: bool = False):
+    from metadata.utils.mode_client import ModeApiClient
+
+    return ModeClient(ModeApiClient(connection))
+
+
+@test_connection.register
+def _(connection: ModeClient) -> None:
+    try:
+        connection.client.get_user_account()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

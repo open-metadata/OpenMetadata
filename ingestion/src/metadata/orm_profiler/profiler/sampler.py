@@ -12,12 +12,18 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
-from sqlalchemy.orm import DeclarativeMeta, Session, aliased
+from sqlalchemy import inspect
+from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.orm_profiler.orm.functions.modulo import ModuloFn
 from metadata.orm_profiler.orm.functions.random_num import RandomNumFn
+from metadata.orm_profiler.profiler.handle_partition import partition_filter_handler
+
+RANDOM_LABEL = "random"
 
 
 class Sampler:
@@ -31,25 +37,28 @@ class Sampler:
         session: Session,
         table: DeclarativeMeta,
         profile_sample: Optional[float] = None,
+        partition_details: Optional[Dict] = None,
     ):
         self.profile_sample = profile_sample
         self.session = session
         self.table = table
+        self._partition_details = partition_details
+
+        self.sample_limit = 100
+
+    @partition_filter_handler(build_sample=True)
+    def get_sample_query(self) -> Query:
+        return self.session.query(
+            self.table, (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL)
+        ).cte(f"{self.table.__tablename__}_rnd")
 
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
-
-        if not self.profile_sample:
-            # Use the full table
-            return self.table
-
         # Add new RandomNumFn column
-        rnd = self.session.query(self.table, (RandomNumFn() % 100).label("random")).cte(
-            f"{self.table.__tablename__}_rnd"
-        )
+        rnd = self.get_sample_query()
 
         # Prepare sampled CTE
         sampled = (
@@ -60,3 +69,25 @@ class Sampler:
 
         # Assign as an alias
         return aliased(self.table, sampled)
+
+    def fetch_sample_data(self) -> TableData:
+        """
+        Use the sampler to retrieve 100 sample data rows
+        :return: TableData to be added to the Table Entity
+        """
+
+        # Add new RandomNumFn column
+        rnd = self.get_sample_query()
+        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+
+        sqa_sample = (
+            self.session.query(*sqa_columns)
+            .select_from(rnd)
+            .limit(self.sample_limit)
+            .all()
+        )
+
+        return TableData(
+            columns=[column.name for column in sqa_columns],
+            rows=[list(row) for row in sqa_sample],
+        )

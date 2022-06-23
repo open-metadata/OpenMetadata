@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
@@ -22,15 +23,15 @@ import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
 
 const TeamsAndUsers = ({
-  users,
+  usersCount,
   isUsersLoading,
-  admins,
+  adminsCount,
   activeUserTab,
   userSearchTerm,
   selectedUserList,
@@ -45,7 +46,9 @@ const TeamsAndUsers = ({
   currentTeam,
   currentTeamUsers,
   teamUserPagin,
+  userPaging,
   currentTeamUserPage,
+  currentUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
   errorNewTeamData,
@@ -59,6 +62,7 @@ const TeamsAndUsers = ({
   descriptionHandler,
   handleTeamUsersSearchAction,
   teamUserPaginHandler,
+  userPagingHandler,
   changeCurrentTeam,
   isAddingUsers,
   isTeamMemberLoading,
@@ -71,11 +75,11 @@ const TeamsAndUsers = ({
   const usersData = [
     {
       name: UserType.USERS,
-      data: users,
+      count: usersCount,
     },
     {
       name: UserType.ADMINS,
-      data: admins,
+      count: adminsCount,
     },
   ];
 
@@ -85,98 +89,106 @@ const TeamsAndUsers = ({
    */
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-mb-8">
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
-            <p className="tw-heading">Teams</p>
-            {hasAccess && (
-              <NonAdminAction
-                position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
-                <Button
-                  className="tw-h-7 tw-px-2 tw-mb-4"
-                  data-testid="add-teams"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => {
-                    handleAddTeam(true);
-                  }}>
-                  <FontAwesomeIcon icon="plus" />
-                </Button>
-              </NonAdminAction>
-            )}
-          </div>
-          {teams.map((team) => (
+      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
+        <>
+          <div className="tw-mb-8">
             <div
-              className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-              key={team.name}
-              onClick={() => {
-                changeCurrentTeam(team.name, false);
-              }}>
-              <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
-                  team.name,
-                  currentTeam?.name
-                )}`}>
-                <p
-                  className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                  title={team.displayName ?? team.name}>
-                  {team.displayName ?? team.name}
-                </p>
-              </div>
-              {getCountBadge(
-                getActiveUsers(team.users).length,
-                '',
-                currentTeam?.name === team.name
-              )}
-            </div>
-          ))}
-        </div>
-        {hasAccess && (
-          <div>
-            <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
-              <p className="tw-heading">All Users</p>
+              className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b"
+              data-testid="add-team-container">
+              <p className="tw-heading">Teams</p>
               {hasAccess && (
                 <NonAdminAction
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-7 tw-px-2 tw-mb-4"
-                    data-testid="add-teams"
+                    data-testid="add-team-button"
                     size="small"
                     theme="primary"
                     variant="contained"
-                    onClick={handleAddNewUser}>
+                    onClick={() => {
+                      handleAddTeam(true);
+                    }}>
                     <FontAwesomeIcon icon="plus" />
                   </Button>
                 </NonAdminAction>
               )}
             </div>
-            {usersData.map((d) => (
+            {teams.map((team) => (
               <div
                 className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
-                key={d.name}
+                data-testid={`team-${team.name}`}
+                key={team.name}
                 onClick={() => {
-                  changeCurrentTeam(d.name, true);
+                  changeCurrentTeam(team.name, false);
                 }}>
                 <div
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
-                    d.name,
-                    activeUserTab
+                    team.name,
+                    currentTeam?.name
                   )}`}>
                   <p
                     className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                    title={capitalize(d.name)}>
-                    {capitalize(d.name)}
+                    data-testid="team-name"
+                    title={team.displayName ?? team.name}>
+                    {team.displayName ?? team.name}
                   </p>
                 </div>
-                {getCountBadge(d.data.length, '', activeUserTab === d.name)}
+                {getCountBadge(
+                  getActiveUsers(team.users).length,
+                  '',
+                  currentTeam?.name === team.name
+                )}
               </div>
             ))}
           </div>
-        )}
-      </>
+          {hasAccess && (
+            <div>
+              <div className="tw-flex tw-justify-between tw-items-center tw-mb-2 tw-border-b">
+                <p className="tw-heading">All Users</p>
+                {hasAccess && (
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className="tw-h-7 tw-px-2 tw-mb-4"
+                      data-testid="add-user-button"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={handleAddNewUser}>
+                      <FontAwesomeIcon icon="plus" />
+                    </Button>
+                  </NonAdminAction>
+                )}
+              </div>
+              {usersData.map((user) => (
+                <div
+                  className="tw-flex tw-items-center tw-justify-between tw-mb-2 tw-cursor-pointer"
+                  data-testid={user.name}
+                  key={user.name}
+                  onClick={() => {
+                    changeCurrentTeam(user.name, true);
+                  }}>
+                  <div
+                    className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
+                      user.name,
+                      activeUserTab
+                    )}`}>
+                    <p
+                      className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                      data-testid="user-type"
+                      title={capitalize(user.name)}>
+                      {capitalize(user.name)}
+                    </p>
+                  </div>
+                  {getCountBadge(user.count, '', activeUserTab === user.name)}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      </Card>
     );
   };
 
@@ -186,14 +198,18 @@ const TeamsAndUsers = ({
         <Loader />
       ) : (
         <div
-          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col"
-          data-testid="team-and-user-container">
+          className="tw-pb-3 tw-w-full tw-h-full tw-flex tw-flex-col tw-bg-white"
+          data-testid="team-and-user-container"
+          style={{ padding: '14px' }}>
           {!isTeamVisible ? (
             <UserDetails
+              currentUserPage={currentUserPage}
               handleDeleteUser={handleDeleteUser}
               handleUserSearchTerm={handleUserSearchTerm}
               isUsersLoading={isUsersLoading}
               selectedUserList={selectedUserList}
+              userPaging={userPaging}
+              userPagingHandler={userPagingHandler}
               userSearchTerm={userSearchTerm}
             />
           ) : (

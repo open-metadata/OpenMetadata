@@ -72,3 +72,34 @@ class SupersetClient:
 class TableauClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class PowerBiClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class LookerClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class DatalakeClient:
+    def __init__(self, client, config) -> None:
+        self.client = client
+        self.config = config
+
+
+@dataclass
+class AirByteClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class ModeClient:
+    def __init__(self, client) -> None:
+        self.client = client

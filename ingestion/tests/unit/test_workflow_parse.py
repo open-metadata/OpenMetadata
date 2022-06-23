@@ -108,12 +108,7 @@ class TestWorkflowParse(TestCase):
                         "hostPort": "random:1433",
                     }
                 },
-                "sourceConfig": {
-                    "config": {
-                        "enableDataProfiler": True,
-                        "sampleDataQuery": "select top 50 * from [{}].[{}]",
-                    }
-                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -146,12 +141,7 @@ class TestWorkflowParse(TestCase):
                         "random": "extra",
                     }
                 },
-                "sourceConfig": {
-                    "config": {
-                        "enableDataProfiler": True,
-                        "sampleDataQuery": "select top 50 * from [{}].[{}]",
-                    }
-                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -190,7 +180,7 @@ class TestWorkflowParse(TestCase):
                         "random": "extra",
                     }
                 },
-                "sourceConfig": {"config": {"enableDataProfiler": False}},
+                "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -204,4 +194,7 @@ class TestWorkflowParse(TestCase):
         with self.assertRaises(ValidationError) as err:
             parse_workflow_config_gracefully(config_dict)
 
-        self.assertIn("2 validation errors for GlueConnection", str(err.exception))
+        self.assertIn(
+            "1 validation error for GlueConnection\nrandom\n  extra fields not permitted (type=value_error.extra)",
+            str(err.exception),
+        )

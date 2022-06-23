@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  findAllByText,
-  findByTestId,
-  queryByTestId,
-  render,
-} from '@testing-library/react';
-import React from 'react';
+import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
 import Users from './Users.component';
@@ -135,13 +130,35 @@ jest.mock('../../axiosAPIs/teamsAPI', () => ({
   ),
 }));
 
+jest.mock('../containers/PageLayout', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        leftPanel,
+        rightPanel,
+      }: {
+        children: ReactNode;
+        rightPanel: ReactNode;
+        leftPanel: ReactNode;
+      }) => (
+        <div data-testid="PageLayout">
+          <div>{leftPanel}</div>
+          <div>{rightPanel}</div>
+          {children}
+        </div>
+      )
+    )
+);
+
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../EntityList/EntityList', () => {
-  return jest.fn().mockReturnValue(<p>EntityList.component</p>);
-});
+jest.mock('../EntityList/EntityList', () => ({
+  EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
+}));
 
 const mockObserve = jest.fn();
 const mockunObserve = jest.fn();
@@ -162,6 +179,8 @@ const mockPaging = {
 };
 
 const mockProp = {
+  username: 'test',
+  tab: 'following',
   feedData: [],
   feedFilter: FeedFilter.ALL,
   feedFilterHandler: feedFilterHandler,
@@ -174,6 +193,7 @@ const mockProp = {
   isLoggedinUser: false,
   isAuthDisabled: true,
   updateUserDetails,
+  updateThreadHandler: jest.fn(),
 };
 
 describe('Test User Component', () => {
@@ -186,12 +206,8 @@ describe('Test User Component', () => {
     );
 
     const leftPanel = await findByTestId(container, 'left-panel');
-    const rightPanel = await findByTestId(container, 'right-pannel');
-    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(leftPanel).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
-    expect(EntityLists.length).toBe(2);
   });
 
   it('Only admin can able to see tab for bot page', async () => {
@@ -208,13 +224,9 @@ describe('Test User Component', () => {
 
     const tabs = await findByTestId(container, 'tabs');
     const leftPanel = await findByTestId(container, 'left-panel');
-    const rightPanel = await findByTestId(container, 'right-pannel');
-    const EntityLists = await findAllByText(container, 'EntityList.component');
 
     expect(tabs).toBeInTheDocument();
     expect(leftPanel).toBeInTheDocument();
-    expect(rightPanel).toBeInTheDocument();
-    expect(EntityLists.length).toBe(2);
   });
 
   it('Tab should not visible to normal user', async () => {
@@ -225,7 +237,7 @@ describe('Test User Component', () => {
       }
     );
 
-    const tabs = queryByTestId(container, 'tabs');
+    const tabs = queryByTestId(container, 'tab');
     const leftPanel = await findByTestId(container, 'left-panel');
 
     expect(tabs).not.toBeInTheDocument();
@@ -262,7 +274,7 @@ describe('Test User Component', () => {
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
+      <Users userData={mockUserData} {...mockProp} tab="activity" />,
       {
         wrapper: MemoryRouter,
       }
@@ -273,6 +285,19 @@ describe('Test User Component', () => {
     expect(obServerElement).toBeInTheDocument();
 
     expect(mockObserve).toHaveBeenCalled();
+  });
+
+  it('Should check if cards are rendered', async () => {
+    const { container } = render(
+      <Users userData={mockUserData} {...mockProp} tab="mydata" />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const datasetCard = await findByTestId(container, 'dataset-card');
+
+    expect(datasetCard).toBeInTheDocument();
   });
 
   it('Should render inherited roles', async () => {

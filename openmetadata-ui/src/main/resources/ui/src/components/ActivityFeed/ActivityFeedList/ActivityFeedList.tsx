@@ -13,9 +13,9 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityThread } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { withLoader } from '../../../hoc/withLoader';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
@@ -34,10 +34,11 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   postFeedHandler,
   entityName,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
-  const [selectedThread, setSelectedThread] = useState<EntityThread>();
+  const [selectedThread, setSelectedThread] = useState<Thread>();
   const [selectedThreadId, setSelectedThreadId] = useState<string>('');
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
@@ -123,6 +124,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                   postFeed={postFeed}
                   relativeDay={d}
                   selectedThreadId={selectedThreadId}
+                  updateThreadHandler={updateThreadHandler}
                   updatedFeedList={updatedFeedList}
                   withSidePanel={withSidePanel}
                   onConfirmation={onConfirmation}
@@ -141,6 +143,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
                 open={!isUndefined(selectedThread) && isPanelOpen}
                 postFeed={postFeed}
                 selectedThread={selectedThread}
+                updateThreadHandler={updateThreadHandler}
                 onCancel={onCancel}
               />
             </Fragment>

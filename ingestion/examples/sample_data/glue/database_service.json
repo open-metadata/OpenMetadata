@@ -16,7 +16,7 @@
   },
   "sourceConfig": {
     "config": {
-      "enableDataProfiler": false
+      "type": "DatabaseMetadata"
     }
   }
 }

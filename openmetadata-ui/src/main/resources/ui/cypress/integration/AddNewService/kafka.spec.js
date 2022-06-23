@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  goToAddNewServicePage,
-  testServiceCreationAndIngestion,
-} from '../../common/common';
+import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Kafka Ingestion', () => {
   it('add and ingest data', () => {
@@ -26,6 +23,9 @@ describe('Kafka Ingestion', () => {
     const connectionInput = () => {
       cy.get('#root_bootstrapServers').type(
         Cypress.env('kafkaBootstrapServers')
+      );
+      cy.get('#root_schemaRegistryURL').type(
+        Cypress.env('kafkaSchemaRegistryUrl')
       );
     };
 

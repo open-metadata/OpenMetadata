@@ -37,13 +37,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GlossaryV1 from '../../components/Glossary/GlossaryV1.component';
 import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getAddGlossaryTermsPath,
-  getGlossaryPath,
-  getUserPath,
-  PAGE_SIZE,
-  ROUTES,
-} from '../../constants/constants';
+import { getUserPath, PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -59,7 +53,11 @@ import {
   getTermPosFromGlossaries,
   updateGlossaryListBySearchedTerms,
 } from '../../utils/GlossaryUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  getAddGlossaryTermsPath,
+  getGlossaryPath,
+} from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export type ModifiedGlossaryData = Glossary & {
   children?: GlossaryTerm[];
@@ -559,9 +557,7 @@ const GlossaryPageV1 = () => {
         if (res.data) {
           setSelectedData(res.data);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-glossary-term-error']
-          );
+          throw jsonData['api-error-messages']['update-glossary-term-error'];
         }
       })
       .catch((err: AxiosError) => {
@@ -572,6 +568,20 @@ const GlossaryPageV1 = () => {
       });
   };
 
+  const afterDeleteAction = () => {
+    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
+
+    if (isEmpty(redirectFqn)) {
+      setGlossariesList([]);
+      setIsLoading(true);
+      history.push(getGlossaryPath());
+      fetchGlossaryList();
+    } else {
+      history.push(getGlossaryPath(redirectFqn));
+      fetchGlossaryList(redirectFqn);
+    }
+  };
+
   /**
    * To delete glossary by id
    * @param id glossary id
@@ -580,16 +590,19 @@ const GlossaryPageV1 = () => {
     setDeleteStatus('waiting');
     deleteGlossary(id)
       .then(() => {
-        setDeleteStatus('initial');
-        fetchGlossaryList();
+        setDeleteStatus('success');
+        showSuccessToast(
+          jsonData['api-success-messages']['delete-glossary-success']
+        );
+        afterDeleteAction();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
           jsonData['api-error-messages']['delete-glossary-error']
         );
-        setDeleteStatus('initial');
-      });
+      })
+      .finally(() => setDeleteStatus('initial'));
   };
 
   /**
@@ -600,16 +613,19 @@ const GlossaryPageV1 = () => {
     setDeleteStatus('waiting');
     deleteGlossaryTerm(id)
       .then(() => {
-        setDeleteStatus('initial');
-        fetchGlossaryList();
+        setDeleteStatus('success');
+        showSuccessToast(
+          jsonData['api-success-messages']['delete-glossary-term-success']
+        );
+        afterDeleteAction();
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
           jsonData['api-error-messages']['delete-glossary-term-error']
         );
-        setDeleteStatus('initial');
-      });
+      })
+      .finally(() => setDeleteStatus('initial'));
   };
 
   /**
@@ -675,20 +691,6 @@ const GlossaryPageV1 = () => {
     }
   };
 
-  const afterDeleteAction = () => {
-    const redirectFqn = selectedKey.split('.').slice(0, -1).join('.');
-
-    if (isEmpty(redirectFqn)) {
-      setGlossariesList([]);
-      setIsLoading(true);
-      history.push(getGlossaryPath());
-      fetchGlossaryList();
-    } else {
-      history.push(getGlossaryPath(redirectFqn));
-      fetchGlossaryList(redirectFqn);
-    }
-  };
-
   useEffect(() => {
     fetchGlossaryTermAssets(
       (selectedData as GlossaryTerm)?.fullyQualifiedName || ''
@@ -709,7 +711,6 @@ const GlossaryPageV1 = () => {
         <Loader />
       ) : (
         <GlossaryV1
-          afterDeleteAction={afterDeleteAction}
           assetData={assetData}
           currentPage={assetData.currPage}
           deleteStatus={deleteStatus}

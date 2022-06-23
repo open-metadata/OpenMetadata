@@ -17,6 +17,7 @@ export const tagStyles = {
   contained: 'tw-bg-badge tw-mr-2 tw-my-0.5',
   outlined: 'tw-bg-transparent tw-mr-2 tw-my-0.5',
   label: 'tw-bg-transparent tw-border-none tw-text-grey-body',
+  border: 'tw-bg-white tw-border tw-items-center tw-mr-1 tw-mt-1',
 
   text: {
     base: 'tw-no-underline hover:tw-no-underline',
@@ -24,6 +25,7 @@ export const tagStyles = {
     editable: 'tw-pl-2 tw-pr-1',
     contained: 'tw-py-0.5 tw-px-2',
     outlined: 'tw-py-0.5 tw-px-2',
+    border: 'tw-py-0.5 tw-px-2',
     label: 'tw-px-1',
   },
 };

@@ -23,12 +23,12 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.type.EntityReference;
@@ -55,14 +55,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityReference getOriginalOwner(User entity) throws IOException {
+  public EntityReference getOriginalOwner(User entity) {
     // For User entity, the entity and the owner are the same
     return entity.getEntityReference();
   }
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) throws IOException {
+  public void prepare(User user) {
     setFullyQualifiedName(user);
   }
 
@@ -116,12 +116,6 @@ public class UserRepository extends EntityRepository<User> {
     return new UserUpdater(original, updated, operation);
   }
 
-  @Transaction
-  public User getByEmail(String email, Fields fields) throws IOException {
-    User user = EntityUtil.validate(email, daoCollection.userDAO().findByEmail(email), User.class);
-    return setFields(user, fields);
-  }
-
   @Override
   public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
@@ -152,7 +146,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
-    List<EntityReference> ownedEntities =
+    List<EntityRelationshipRecord> ownedEntities =
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
@@ -162,11 +156,11 @@ public class UserRepository extends EntityRepository<User> {
           daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.populateEntityReferences(ownedEntities);
+    return EntityUtil.getEntityReferences(ownedEntities);
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.populateEntityReferences(
+    return EntityUtil.getEntityReferences(
         daoCollection.relationshipDAO().findTo(user.getId().toString(), Entity.USER, Relationship.FOLLOWS.ordinal()));
   }
 

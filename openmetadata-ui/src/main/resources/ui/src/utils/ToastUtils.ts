@@ -12,10 +12,24 @@
  */
 
 import { AxiosError } from 'axios';
-import { isString } from 'lodash';
+import { isEmpty, isString } from 'lodash';
 import { toast } from 'react-toastify';
 import jsonData from '../jsons/en';
 import { getErrorText } from './StringsUtils';
+
+export const hashCode = (str: string) => {
+  let hash = 0,
+    i,
+    chr;
+  if (isEmpty(str)) return hash;
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+
+  return hash;
+};
 
 /**
  * Display an error toast message.
@@ -39,11 +53,17 @@ export const showErrorToast = (
     errorMessage = getErrorText(error, fallback);
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page
-    if (error && error.response?.status === 401) {
+    // except for principal domain mismatch errors
+    if (
+      error &&
+      error.response?.status === 401 &&
+      !errorMessage.includes('principal domain')
+    ) {
       return;
     }
   }
   toast.error(errorMessage, {
+    toastId: hashCode(errorMessage),
     autoClose: autoCloseTimer,
   });
 };

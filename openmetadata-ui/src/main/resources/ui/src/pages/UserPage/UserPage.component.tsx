@@ -12,10 +12,9 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -31,22 +30,27 @@ import {
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const { username } = useParams<{ [key: string]: string }>();
+  const { username, tab } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -142,7 +146,7 @@ const UserPage = () => {
                 if (thread.id === data.id) {
                   return {
                     ...thread,
-                    posts: data.posts.slice(-3),
+                    posts: data.posts && data.posts.slice(-3),
                     postsCount: data.postsCount,
                   };
                 } else {
@@ -160,6 +164,15 @@ const UserPage = () => {
         const message = error?.message;
         showErrorToast(message ?? onErrorText);
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   const updateUserDetails = (data: UserDetails) => {
@@ -195,8 +208,11 @@ const UserPage = () => {
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
+          tab={tab}
+          updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
           userData={userData}
+          username={username}
         />
       );
     } else {

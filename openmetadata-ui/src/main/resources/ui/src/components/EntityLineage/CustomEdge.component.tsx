@@ -12,12 +12,7 @@
  */
 
 import React, { Fragment } from 'react';
-import {
-  EdgeProps,
-  getBezierPath,
-  getEdgeCenter,
-  getMarkerEnd,
-} from 'react-flow-renderer';
+import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
 import { foreignObjectSize } from '../../constants/Lineage.constants';
 import SVGIcons from '../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
@@ -31,11 +26,12 @@ export const CustomEdge = ({
   sourcePosition,
   targetPosition,
   style = {},
-  arrowHeadType,
-  markerEndId,
+  markerEnd,
   data,
+  selected,
 }: EdgeProps) => {
-  const { onEdgeClick, selectedNode, ...rest } = data;
+  const { onEdgeClick, ...rest } = data;
+  const offset = 4;
 
   const edgePath = getBezierPath({
     sourceX,
@@ -45,13 +41,42 @@ export const CustomEdge = ({
     targetY,
     targetPosition,
   });
-  const markerEnd = getMarkerEnd(arrowHeadType, markerEndId);
+  const invisibleEdgePath = getBezierPath({
+    sourceX: sourceX + offset,
+    sourceY: sourceY + offset,
+    sourcePosition,
+    targetX: targetX + offset,
+    targetY: targetY + offset,
+    targetPosition,
+  });
+  const invisibleEdgePath1 = getBezierPath({
+    sourceX: sourceX - offset,
+    sourceY: sourceY - offset,
+    sourcePosition,
+    targetX: targetX - offset,
+    targetY: targetY - offset,
+    targetPosition,
+  });
+
   const [edgeCenterX, edgeCenterY] = getEdgeCenter({
     sourceX,
     sourceY,
     targetX,
     targetY,
   });
+
+  const getInvisiblePath = (path: string) => {
+    return (
+      <path
+        className="react-flow__edge-path"
+        d={path}
+        data-testid="react-flow-edge-path"
+        id={id}
+        markerEnd={markerEnd}
+        style={{ ...style, strokeWidth: '6px', opacity: 0 }}
+      />
+    );
+  };
 
   return (
     <Fragment>
@@ -63,15 +88,17 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={style}
       />
-      {(rest as CustomEdgeData)?.source?.includes(selectedNode?.id) ||
-      (rest as CustomEdgeData)?.target?.includes(selectedNode?.id) ? (
+      {getInvisiblePath(invisibleEdgePath)}
+      {getInvisiblePath(invisibleEdgePath1)}
+
+      {selected ? (
         <foreignObject
           data-testid="delete-button"
           height={foreignObjectSize}
           requiredExtensions="http://www.w3.org/1999/xhtml"
           width={foreignObjectSize}
-          x={edgeCenterX - foreignObjectSize / 4}
-          y={edgeCenterY - foreignObjectSize / 4}>
+          x={edgeCenterX - foreignObjectSize / offset}
+          y={edgeCenterY - foreignObjectSize / offset}>
           <button
             className="tw-cursor-pointer tw-flex tw-z-9999"
             onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>

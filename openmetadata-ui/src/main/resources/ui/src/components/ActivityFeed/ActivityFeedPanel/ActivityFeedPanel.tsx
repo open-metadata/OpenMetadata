@@ -13,10 +13,10 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { EntityThread } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import { Thread } from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -35,8 +35,9 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   className,
   postFeed,
   deletePostHandler,
+  updateThreadHandler,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const entityField = getEntityField(selectedThread.about);
 
@@ -73,17 +74,18 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
   return (
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
-        className="tw-z-10 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
+        className="tw-z-9997 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
         onCancel={onCancel}
       />
       <div
         className={classNames(
-          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-10',
+          'tw-top-16 tw-right-0 tw-bottom-0 tw-w-2/5 tw-bg-white tw-fixed tw-shadow-md tw-transform tw-ease-in-out tw-duration-1000 tw-overflow-y-auto tw-z-9997',
           {
             'tw-translate-x-0': open,
             'tw-translate-x-full': !open,
           }
-        )}>
+        )}
+        id="feed-panel">
         <FeedPanelHeader
           className="tw-px-4 tw-shadow-sm"
           entityField={entityField as string}
@@ -94,7 +96,8 @@ const ActivityFeedPanel: FC<ActivityFeedPanelProp> = ({
           className="tw-p-4 tw-pl-8 tw-mb-3"
           deletePostHandler={deletePostHandler}
           isLoading={isLoading}
-          threadData={threadData as EntityThread}
+          threadData={threadData as Thread}
+          updateThreadHandler={updateThreadHandler}
           onConfirmation={onConfirmation}
         />
         <ActivityFeedEditor

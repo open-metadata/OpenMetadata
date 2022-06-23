@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isUndefined, orderBy } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -319,7 +319,7 @@ const TeamDetails = ({
                 title={TITLE_FOR_NON_ADMIN_ACTION}>
                 <Button
                   className="tw-h-8 tw-px-2"
-                  data-testid="add-teams"
+                  data-testid="add-user"
                   size="small"
                   theme="primary"
                   variant="contained"
@@ -349,6 +349,7 @@ const TeamDetails = ({
                     <p>Would like to start adding some?</p>
                     <Button
                       className="tw-h-8 tw-rounded tw-my-2"
+                      data-testid="add-new-user"
                       size="small"
                       theme="primary"
                       variant="contained"
@@ -362,7 +363,7 @@ const TeamDetails = ({
               <Fragment>
                 <div
                   className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
-                  data-testid="user-card-container">
+                  data-testid="user-data-container">
                   {sortedUser.map((user, index) => {
                     const User = {
                       displayName: user.displayName || user.name,
@@ -412,7 +413,7 @@ const TeamDetails = ({
     if (ownData.length <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>Your team does not have any dataset</p>
+          <p>Your team does not have any assets</p>
           <p>Would like to start adding some?</p>
           <Link to="/explore">
             <Button
@@ -467,7 +468,7 @@ const TeamDetails = ({
     ) : (
       <Button
         className="tw-h-8 tw-rounded tw-ml-2"
-        data-testid="delete-team-button"
+        data-testid="leave-team-button"
         size="small"
         theme="primary"
         variant="outlined"
@@ -549,7 +550,7 @@ const TeamDetails = ({
           </div>
         ) : (
           <div className="tw-flex tw-group">
-            <span>{heading}</span>
+            <span data-testid="team-heading">{heading}</span>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <NonAdminAction
@@ -576,8 +577,10 @@ const TeamDetails = ({
   };
 
   return (
-    <div className="tw-h-full tw-flex tw-flex-col tw-flex-grow">
-      {teams.length && currentTeam ? (
+    <div
+      className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
+      data-testid="team-details-container">
+      {teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"

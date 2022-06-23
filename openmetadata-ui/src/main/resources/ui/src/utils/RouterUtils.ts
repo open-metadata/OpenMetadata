@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   IN_PAGE_SEARCH_ROUTES,
+  PLACEHOLDER_GLOSSARY_NAME,
+  PLACEHOLDER_GLOSSARY_TERMS_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_SEARCHQUERY,
@@ -49,6 +52,32 @@ export const inPageSearchOptions = (pathname: string): Array<string> => {
 export const getAddServicePath = (serviceCategory: string) => {
   let path = ROUTES.ADD_SERVICE;
   path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory);
+
+  return path;
+};
+
+export const getEditConnectionPath = (
+  serviceCategory: string,
+  serviceFQN: string
+) => {
+  let path = ROUTES.EDIT_SERVICE_CONNECTION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
+
+  return path;
+};
+
+export const getPathByServiceFQN = (
+  serviceCategory: string,
+  serviceFQN: string
+) => {
+  let path = ROUTES.SERVICE_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
 
   return path;
 };
@@ -108,6 +137,58 @@ export const getExplorePathWithInitFilters = (
 export const getServicesWithTabPath = (serviceCat: string) => {
   let path = ROUTES.SERVICES_WITH_TAB;
   path = path.replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat);
+
+  return path;
+};
+
+export const getGlossaryPath = (fqn?: string) => {
+  let path = ROUTES.GLOSSARY;
+  if (fqn) {
+    path = ROUTES.GLOSSARY_DETAILS;
+    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
+  }
+
+  return path;
+};
+
+export const getParentGlossaryPath = (fqn?: string) => {
+  if (fqn) {
+    const parts = fqn.split(FQN_SEPARATOR_CHAR);
+    if (parts.length > 1) {
+      // remove the last part to get parent FQN
+      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
+    }
+  }
+
+  return getGlossaryPath(fqn);
+};
+
+export const getGlossaryTermsPath = (
+  glossaryName: string,
+  glossaryTerm = ''
+) => {
+  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+
+  if (glossaryTerm) {
+    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+  }
+
+  return path;
+};
+
+export const getAddGlossaryTermsPath = (
+  glossaryName: string,
+  glossaryTerm = ''
+) => {
+  let path = glossaryTerm
+    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
+    : ROUTES.ADD_GLOSSARY_TERMS;
+  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
+
+  if (glossaryTerm) {
+    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+  }
 
   return path;
 };
