@@ -141,6 +141,7 @@ export const AuthProvider = ({
     if (!redirectPathExists) {
       cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
         expires: getUrlPathnameExpiry(),
+        path: '/',
       });
     }
   }
@@ -400,6 +401,9 @@ export const AuthProvider = ({
             setAuthConfig(configJson);
             updateAuthInstance(configJson);
             if (!oidcUserToken) {
+              if (isProtectedRoute(location.pathname)) {
+                storeRedirectPath();
+              }
               setLoading(false);
             } else {
               getLoggedInUserDetails();
