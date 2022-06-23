@@ -68,7 +68,7 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterCount, getFilterString } from '../../utils/FilterUtils';
 import AdvancedFields from '../AdvancedSearch/AdvancedFields';
 import AdvancedSearchDropDown from '../AdvancedSearch/AdvancedSearchDropDown';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import { AdvanceField, ExploreProps } from './explore.interface';
 import SortingDropDown from './SortingDropDown';
 
@@ -398,7 +398,7 @@ const Explore: React.FC<ExploreProps> = ({
 
         <div className="tw-flex">
           {sortOrder === 'asc' ? (
-            <button onClick={() => handleOrder('desc')}>
+            <button className="tw-mt-2" onClick={() => handleOrder('desc')}>
               <FontAwesomeIcon
                 className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
@@ -406,7 +406,7 @@ const Explore: React.FC<ExploreProps> = ({
               />
             </button>
           ) : (
-            <button onClick={() => handleOrder('asc')}>
+            <button className="tw-mt-2" onClick={() => handleOrder('asc')}>
               <FontAwesomeIcon
                 className="tw-text-base tw-text-primary"
                 data-testid="last-updated"
@@ -460,7 +460,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const getTabs = () => {
     return (
-      <div className="tw-mb-5 tw-px-6 centered-layout">
+      <div className="tw-mb-5 centered-layout">
         <nav
           className={classNames(
             'tw-flex tw-flex-row tw-justify-between tw-gh-tabs-container'
@@ -481,7 +481,7 @@ const Explore: React.FC<ExploreProps> = ({
             <div>
               {tabsInfo.map((tabDetail, index) => (
                 <button
-                  className={`tw-pb-2 tw-pr-6 tw-gh-tabs ${getActiveTabClass(
+                  className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
                     tabDetail.tab
                   )}`}
                   data-testid={`${lowerCase(tabDetail.label)}-tab`}
@@ -490,7 +490,7 @@ const Explore: React.FC<ExploreProps> = ({
                     onTabChange(tabDetail.tab);
                   }}>
                   {tabDetail.label}
-                  <span className="tw-pl-2">
+                  <span className="tw-pl-1">
                     {getTabCount(tabDetail.index, tabDetail.tab === currentTab)}
                   </span>
                 </button>
@@ -660,14 +660,7 @@ const Explore: React.FC<ExploreProps> = ({
       <div className="tw-h-full">
         <Card
           data-testid="data-summary-container"
-          style={{
-            border: '1px rgb(221, 227, 234) solid',
-            borderRadius: '8px',
-            boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-            marginRight: '4px',
-            marginLeft: '4px',
-            marginTop: '20px',
-          }}>
+          style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
           <Fragment>
             <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
               <Button

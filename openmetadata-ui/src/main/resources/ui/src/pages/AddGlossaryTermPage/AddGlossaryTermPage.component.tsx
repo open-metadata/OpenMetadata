@@ -196,15 +196,17 @@ const AddGlossaryTermPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <AddGlossaryTerm
-          allowAccess={isAdminUser || isAuthDisabled}
-          glossaryData={glossaryData as Glossary}
-          parentGlossaryData={parentGlossaryData}
-          saveState={status}
-          slashedBreadcrumb={slashedBreadcrumb}
-          onCancel={handleCancel}
-          onSave={onSave}
-        />
+        <div className="tw-self-center">
+          <AddGlossaryTerm
+            allowAccess={isAdminUser || isAuthDisabled}
+            glossaryData={glossaryData as Glossary}
+            parentGlossaryData={parentGlossaryData}
+            saveState={status}
+            slashedBreadcrumb={slashedBreadcrumb}
+            onCancel={handleCancel}
+            onSave={onSave}
+          />
+        </div>
       )}
     </PageContainerV1>
   );

@@ -418,7 +418,7 @@ const AddGlossaryTerm = ({
                     alt="delete"
                     icon="icon-delete"
                     title="Delete"
-                    width="12px"
+                    width="16px"
                   />
                 </button>
               </div>

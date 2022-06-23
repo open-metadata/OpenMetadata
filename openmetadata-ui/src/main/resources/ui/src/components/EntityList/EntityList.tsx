@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
 interface Prop {
   entityList: Array<FormatedTableData>;
   headerText: string | JSX.Element;
@@ -89,13 +90,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
   return (
     <Card
       extra={headerText}
-      style={{
-        border: '1px rgb(221, 227, 234) solid',
-        borderRadius: '8px',
-        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-        marginRight: '4px',
-        marginLeft: '4px',
-      }}
+      style={leftPanelAntCardStyle}
       title={headerTextLabel}>
       {entityList.length
         ? entityList.map((item, index) => {

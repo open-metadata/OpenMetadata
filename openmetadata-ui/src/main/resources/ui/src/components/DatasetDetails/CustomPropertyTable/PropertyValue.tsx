@@ -32,7 +32,7 @@ const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
     className="tw-cursor-pointer tw-ml-2"
     data-testid="edit-icon"
     onClick={onShowInput}>
-    <SVGIcons alt="edit" icon={Icons.EDIT} width="12px" />
+    <SVGIcons alt="edit" icon={Icons.EDIT} width="16px" />
   </span>
 );
 
