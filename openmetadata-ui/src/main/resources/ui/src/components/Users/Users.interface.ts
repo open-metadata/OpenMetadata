@@ -33,6 +33,8 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
+  username: string;
+  tab: string;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
