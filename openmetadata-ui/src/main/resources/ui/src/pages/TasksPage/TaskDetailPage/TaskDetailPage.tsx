@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { Operation } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
@@ -85,6 +86,7 @@ const TaskDetailPage = () => {
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [showEdit, setShowEdit] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [editAssignee, setEditAssignee] = useState<boolean>(false);
 
   // get current user details
   const currentUser = useMemo(
@@ -203,6 +205,26 @@ const TaskDetailPage = () => {
     }
   };
 
+  const onTaskUpdate = () => {
+    const newAssignees = assignees.map((assignee) => ({
+      id: assignee.value,
+      type: assignee.type,
+    }));
+
+    const updatedTask = {
+      ...taskDetail,
+      task: { ...(taskDetail.task || {}), assignees: newAssignees },
+    };
+
+    const patch = compare(taskDetail, updatedTask);
+    updateThread(taskDetail.id, patch)
+      .then((res: AxiosResponse) => {
+        setTaskDetail(res.data);
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+    setEditAssignee(false);
+  };
+
   const createThread = (data: CreateThread) => {
     postThread(data).catch((err: AxiosError) => {
       showErrorToast(err);
@@ -262,13 +284,13 @@ const TaskDetailPage = () => {
 
       const taskAssignees = taskDetail.task?.assignees || [];
       if (taskAssignees.length) {
-        setAssignees(
-          taskAssignees.map((assignee) => ({
-            label: assignee.name as string,
-            value: assignee.id,
-            type: assignee.type as string,
-          }))
-        );
+        const assigneesArr = taskAssignees.map((assignee) => ({
+          label: assignee.name as string,
+          value: assignee.id,
+          type: assignee.type as string,
+        }));
+        setAssignees(assigneesArr);
+        setOptions(assigneesArr);
       }
     }
   };
@@ -364,95 +386,6 @@ const TaskDetailPage = () => {
     );
   };
 
-  const TaskDetail = () => {
-    return (
-      <Card key="task-details" style={{ ...cardStyles, marginTop: '16px' }}>
-        <h6 className="tw-text-base" data-testid="task-title">
-          {`Task #${taskId}`} {taskDetail.message}
-        </h6>
-        <p data-testid="task-metadata">
-          <TaskStatusElement
-            status={taskDetail.task?.status as ThreadTaskStatus}
-          />
-          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
-          <span>
-            <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
-              {taskDetail.createdBy}
-            </span>{' '}
-            created this task{' '}
-            {toLower(getDayTimeByTimeStamp(taskDetail.threadTs as number))}
-          </span>
-        </p>
-
-        <ColumnDetail column={columnObject} />
-
-        <div className="tw-flex" data-testid="task-assignees">
-          <span className="tw-text-grey-muted tw-self-center tw-mr-1">
-            Assignees:
-          </span>{' '}
-          <Assignees
-            assignees={assignees}
-            options={options}
-            onChange={setAssignees}
-            onSearch={onSearch}
-          />
-        </div>
-
-        <div data-testid="task-description-tabs">
-          <span className="tw-text-grey-muted">Description:</span>{' '}
-          {!isEmpty(taskDetail) && (
-            <Fragment>
-              {showEdit ? (
-                <DescriptionTabs
-                  description={currentDescription()}
-                  markdownRef={markdownRef}
-                  suggestion={taskDetail.task?.suggestion || ''}
-                />
-              ) : (
-                <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                  {taskDetail.task?.suggestion?.trim() ? (
-                    <RichTextEditorPreviewer
-                      className="tw-p-2"
-                      enableSeeMoreVariant={false}
-                      markdown={taskDetail.task.suggestion}
-                    />
-                  ) : (
-                    <span className="tw-no-description tw-p-2">
-                      No description{' '}
-                    </span>
-                  )}
-                  <button
-                    className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
-                    data-testid="edit-suggestion"
-                    onClick={() => setShowEdit(true)}>
-                    <SVGIcons
-                      alt="edit"
-                      icon="icon-edit"
-                      title="Edit"
-                      width="12px"
-                    />
-                  </button>
-                </div>
-              )}
-            </Fragment>
-          )}
-        </div>
-
-        <div className="tw-flex tw-justify-end" data-testid="task-cta-buttons">
-          <Button
-            className="ant-btn-link-custom"
-            type="link"
-            onClick={() => setShowEdit(false)}>
-            {showEdit ? 'Cancel' : 'Reject'}
-          </Button>
-          <Button className="ant-btn-primary-custom" type="primary">
-            {showEdit ? 'Submit' : 'Accept'}
-          </Button>
-        </div>
-      </Card>
-    );
-  };
-
   return (
     <Layout style={{ ...background, height: '100vh' }}>
       {error ? (
@@ -467,7 +400,141 @@ const TaskDetailPage = () => {
               )}
             />
             <EntityDetail />
-            <TaskDetail />
+            <Card
+              key="task-details"
+              style={{ ...cardStyles, marginTop: '16px' }}>
+              <h6 className="tw-text-base" data-testid="task-title">
+                {`Task #${taskId}`} {taskDetail.message}
+              </h6>
+              <p data-testid="task-metadata">
+                <TaskStatusElement
+                  status={taskDetail.task?.status as ThreadTaskStatus}
+                />
+                <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
+                  |
+                </span>
+                <span>
+                  <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
+                    {taskDetail.createdBy}
+                  </span>{' '}
+                  created this task{' '}
+                  {toLower(
+                    getDayTimeByTimeStamp(taskDetail.threadTs as number)
+                  )}
+                </span>
+              </p>
+
+              <ColumnDetail column={columnObject} />
+
+              <div className="tw-flex" data-testid="task-assignees">
+                <span className="tw-text-grey-muted tw-self-center tw-mr-1">
+                  Assignees:
+                </span>
+                {editAssignee ? (
+                  <Fragment>
+                    <Assignees
+                      assignees={assignees}
+                      options={options}
+                      onChange={setAssignees}
+                      onSearch={onSearch}
+                    />
+                    <Button
+                      className="tw-mx-1 tw-self-center ant-btn-primary-custom"
+                      size="small"
+                      type="primary"
+                      onClick={() => setEditAssignee(false)}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="times"
+                      />
+                    </Button>
+                    <Button
+                      className="tw-mx-1 tw-self-center ant-btn-primary-custom"
+                      size="small"
+                      type="primary"
+                      onClick={onTaskUpdate}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="check"
+                      />
+                    </Button>
+                  </Fragment>
+                ) : (
+                  <Fragment>
+                    <span className="tw-self-center tw-mr-1">
+                      {taskDetail.task?.assignees
+                        ?.map((assignee) => getEntityName(assignee))
+                        ?.join(', ')}
+                    </span>
+                    <button
+                      className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                      data-testid="edit-suggestion"
+                      onClick={() => setEditAssignee(true)}>
+                      <SVGIcons
+                        alt="edit"
+                        icon="icon-edit"
+                        title="Edit"
+                        width="12px"
+                      />
+                    </button>
+                  </Fragment>
+                )}
+              </div>
+
+              <div data-testid="task-description-tabs">
+                <span className="tw-text-grey-muted">Description:</span>{' '}
+                {!isEmpty(taskDetail) && (
+                  <Fragment>
+                    {showEdit ? (
+                      <DescriptionTabs
+                        description={currentDescription()}
+                        markdownRef={markdownRef}
+                        suggestion={taskDetail.task?.suggestion || ''}
+                      />
+                    ) : (
+                      <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                        {taskDetail.task?.suggestion?.trim() ? (
+                          <RichTextEditorPreviewer
+                            className="tw-p-2"
+                            enableSeeMoreVariant={false}
+                            markdown={taskDetail.task.suggestion}
+                          />
+                        ) : (
+                          <span className="tw-no-description tw-p-2">
+                            No description{' '}
+                          </span>
+                        )}
+                        <button
+                          className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                          data-testid="edit-suggestion"
+                          onClick={() => setShowEdit(true)}>
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="12px"
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </Fragment>
+                )}
+              </div>
+
+              <div
+                className="tw-flex tw-justify-end"
+                data-testid="task-cta-buttons">
+                <Button
+                  className="ant-btn-link-custom"
+                  type="link"
+                  onClick={() => setShowEdit(false)}>
+                  {showEdit ? 'Cancel' : 'Reject'}
+                </Button>
+                <Button className="ant-btn-primary-custom" type="primary">
+                  {showEdit ? 'Submit' : 'Accept'}
+                </Button>
+              </div>
+            </Card>
           </Content>
 
           <Sider
