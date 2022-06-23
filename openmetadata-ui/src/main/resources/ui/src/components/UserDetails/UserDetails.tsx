@@ -174,18 +174,6 @@ const UserDetails = ({
           totalCount={userPaging.total}
         />
       )}
-      {/* {!isUndefined(deletingUser) && (
-        <ConfirmationModal
-          bodyText={`Are you sure you want to delete ${deletingUser.name}?`}
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Delete user"
-          onCancel={() => setDeletingUser(undefined)}
-          onConfirm={() => {
-            onConfirmDeleteUser(deletingUser.id);
-          }}
-        />
-      )} */}
 
       <DeleteWidgetV1
         afterDeleteAction={onConfirmDeleteUser}
