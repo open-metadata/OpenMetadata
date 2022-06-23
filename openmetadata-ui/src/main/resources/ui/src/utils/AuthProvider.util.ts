@@ -184,3 +184,7 @@ export const isProtectedRoute = (pathname: string) => {
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
 };
+
+export const getUrlPathnameExpiry = () => {
+  return new Date(Date.now() + 60 * 60 * 1000);
+};
