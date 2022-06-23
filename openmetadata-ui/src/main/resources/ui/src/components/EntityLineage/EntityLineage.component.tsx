@@ -621,7 +621,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
             } else {
               const updatedColumnsLineage: ColumnLineage[] =
-                currentEdge.columnsLineage.map((l) => {
+                currentEdge.columnsLineage?.map((l) => {
                   if (l.toColumn === targetHandle) {
                     return {
                       ...l,
@@ -633,7 +633,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   }
 
                   return l;
-                });
+                }) || [];
               if (
                 !updatedColumnsLineage.find((l) => l.toColumn === targetHandle)
               ) {

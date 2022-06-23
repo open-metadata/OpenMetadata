@@ -17,6 +17,7 @@ import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent, useMemo } from 'react';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
+import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
 import {
   DashboardService,
   DashboardServiceType,
@@ -29,6 +30,7 @@ import {
   MessagingService,
   MessagingServiceType,
 } from '../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../generated/entity/services/mlmodelService';
 import {
   PipelineService,
   PipelineServiceType,
@@ -39,6 +41,7 @@ import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
+import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import {
   getTestConnectionType,
@@ -52,7 +55,8 @@ interface Props {
     | DatabaseService
     | MessagingService
     | DashboardService
-    | PipelineService;
+    | PipelineService
+    | MlmodelService;
   okText?: string;
   cancelText?: string;
   serviceType: string;
@@ -141,6 +145,11 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       }
       case ServiceCategory.PIPELINE_SERVICES: {
         connSch = getPipelineConfig(serviceType as PipelineServiceType);
+
+        break;
+      }
+      case ServiceCategory.ML_MODAL_SERVICES: {
+        connSch = getMlmodelConfig(serviceType as MlModelServiceType);
 
         break;
       }

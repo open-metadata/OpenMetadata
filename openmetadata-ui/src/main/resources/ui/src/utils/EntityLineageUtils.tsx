@@ -186,7 +186,7 @@ export const getLineageDataV1 = (
     const targetType = nodes.find((n) => edge.toEntity === n.id);
 
     if (!isUndefined(edge.lineageDetails)) {
-      edge.lineageDetails.columnsLineage.forEach((e) => {
+      edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
         if (e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
