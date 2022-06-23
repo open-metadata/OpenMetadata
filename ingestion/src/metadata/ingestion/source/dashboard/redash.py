@@ -110,7 +110,7 @@ class RedashSource(DashboardServiceSource):
         )
         self.status.scanned(dashboard_details["name"])
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
@@ -118,8 +118,6 @@ class RedashSource(DashboardServiceSource):
         In redash we do not get table, database_schema or database name but we do get query
         the lineage is being generated based on the query
         """
-        if not self.source_config.dbServiceName:
-            return
         for widgets in dashboard_details.get("widgets", []):
             visualization = widgets.get("visualization")
             if not visualization.get("query"):

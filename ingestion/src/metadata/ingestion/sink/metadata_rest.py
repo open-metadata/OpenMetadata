@@ -54,6 +54,7 @@ from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
@@ -140,6 +141,8 @@ class MetadataRestSink(Sink[Entity]):
             self.write_pipeline_status(record)
         elif isinstance(record, DataModelLink):
             self.write_datamodel(record)
+        elif isinstance(record, DashboardUsage):
+            self.write_dashboard_usage(record)
         else:
             logging.debug(f"Processing Create request {type(record)}")
             self.write_create_request(record)
@@ -170,6 +173,20 @@ class MetadataRestSink(Sink[Entity]):
 
         self.metadata.ingest_table_data_model(
             table=table, data_model=datamodel_link.datamodel
+        )
+
+    def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
+        """
+        Send a UsageRequest update to a dashboard entity
+        :param dashboard_usage: dashboard entity and usage request
+        """
+
+        self.metadata.publish_dashboard_usage(
+            dashboard=dashboard_usage.dashboard,
+            dashboard_usage_request=dashboard_usage.usage,
+        )
+        logger.info(
+            f"Successfully ingested usage for {dashboard_usage.dashboard.fullyQualifiedName.__root__}"
         )
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):

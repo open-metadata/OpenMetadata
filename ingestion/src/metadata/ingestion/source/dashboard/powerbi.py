@@ -114,14 +114,12 @@ class PowerbiSource(DashboardServiceSource):
             ),
         )
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        if not self.source_config.dbServiceName:
-            return
         try:
             charts = self.client.fetch_charts(dashboard_id=dashboard_details["id"]).get(
                 "value"
