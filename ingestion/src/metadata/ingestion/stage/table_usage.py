@@ -39,7 +39,6 @@ class TableUsageStage(Stage[QueryParserData]):
         config: TableStageConfig,
         metadata_config: OpenMetadataConnection,
     ):
-
         self.config = config
         self.metadata_config = metadata_config
         self.status = StageStatus()
@@ -57,9 +56,9 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def _add_sql_query(self, record, table):
         if self.table_queries.get(table):
-            self.table_queries[table].append(SqlQuery(query=record.sql))
+            self.table_queries[(table, record.date)].append(SqlQuery(query=record.sql))
         else:
-            self.table_queries[table] = [SqlQuery(query=record.sql)]
+            self.table_queries[(table, record.date)] = [SqlQuery(query=record.sql)]
 
     def stage_record(self, record: QueryParserData) -> None:
         if record is None:
@@ -68,7 +67,7 @@ class TableUsageStage(Stage[QueryParserData]):
             table_joins = record.joins.get(table)
             try:
                 self._add_sql_query(record=record, table=table)
-                table_usage_count = self.table_usage.get(table)
+                table_usage_count = self.table_usage.get((table, record.date))
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
                     if table_joins:
@@ -104,7 +103,7 @@ class TableUsageStage(Stage[QueryParserData]):
                 data = value.json()
                 with open(
                     os.path.join(self.config.dirPath, f"{value.serviceName}_{key[1]}"),
-                    "w+",
+                    "a+",
                 ) as file:
                     file.write(json.dumps(data))
                     file.write("\n")

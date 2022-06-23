@@ -131,12 +131,6 @@ class UsageSource(Source[TableQuery], ABC):
                 try:
                     yield table_query
                     logger.debug(f"Parsed Query: {table_query.query}")
-                    if not table_query.databaseSchema:
-                        self.report.scanned(
-                            f"{table_query.databaseName}.{table_query.databaseSchema}"
-                        )
-                    else:
-                        self.report.scanned(f"{table_query.databaseName}")
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(str(err))

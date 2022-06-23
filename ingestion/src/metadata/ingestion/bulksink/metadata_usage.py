@@ -11,6 +11,7 @@
 import json
 import os
 import traceback
+import shutil
 from datetime import datetime
 from typing import List, Optional
 
@@ -321,11 +322,5 @@ class MetadataUsageBulkSink(BulkSink):
         return self.status
 
     def close(self):
-        for filename in os.listdir(self.config.dirPath):
-            if (
-                filename
-                and self.service_name
-                and filename.startswith(self.service_name)
-            ):
-                os.remove(os.path.join(self.config.dirPath, filename))
+        shutil.rmtree(self.config.dirPath)
         self.metadata.close()
