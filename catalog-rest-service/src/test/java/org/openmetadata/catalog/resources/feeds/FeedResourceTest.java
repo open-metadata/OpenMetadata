@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -43,6 +44,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -91,6 +93,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.type.Reaction;
 import org.openmetadata.catalog.type.ReactionType;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.TaskType;
@@ -388,7 +391,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  void post_resolveTask_200() throws IOException {
+  void post_resolveTask_description_200() throws IOException {
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
             .withOldValue("old description")
@@ -429,6 +432,54 @@ public class FeedResourceTest extends CatalogApplicationTest {
     task = taskThread.getTask();
     assertEquals(taskId, task.getId());
     assertEquals("accepted description", task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
+  }
+
+  @Test
+  void post_resolveTask_tags_200() throws IOException {
+    String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue(null)
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestTag)
+            .withSuggestion(newValue);
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::tags>";
+    CreateThread create =
+        create()
+            .withMessage("Request Tags for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
+    resolveTask(taskId, resolveTask, userAuthHeaders);
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", "tags");
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(params, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    List<TagLabel> tags =
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getTags();
+    assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertEquals(newValue, task.getNewValue());
     assertEquals(TaskStatus.Closed, task.getStatus());
   }
 
