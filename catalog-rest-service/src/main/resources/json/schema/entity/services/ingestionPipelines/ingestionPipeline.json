@@ -170,6 +170,11 @@
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",
       "type": "boolean"
     },
+    "enabled": {
+      "description": "True if the pipeline is ready to be run in the next schedule. False if it is paused.",
+      "type": "boolean",
+      "default": true
+    },
     "href": {
       "description": "Link to this ingestion pipeline resource.",
       "$ref": "../../../type/basic.json#/definitions/href"
