@@ -11,7 +11,6 @@
 """
 Snowflake usage module
 """
-
 from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -59,7 +58,7 @@ class SnowflakeUsageSource(UsageSource):
         super().__init__(config, metadata_config)
 
         # Snowflake does not allow retrieval of data older than 7 days
-        duration = min(self.source_config.queryLogDuration, 7)
+        duration = min(self.source_config.queryLogDuration, 6)
         self.start, self.end = get_start_and_end(duration)
 
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(

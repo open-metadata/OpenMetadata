@@ -150,11 +150,13 @@ class TableauSource(DashboardServiceSource):
         """
         return dashboard
 
-    def yield_owner(self, dashboard_details: dict) -> Optional[EntityReference]:
+    def yield_owner(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateUserRequest]]:
         """Get dashboard owner
 
         Args:
-            owner:
+            dashboard_details:
         Returns:
             Optional[EntityReference]
         """
@@ -222,20 +224,30 @@ class TableauSource(DashboardServiceSource):
             ),
         )
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        if not self.source_config.dbServiceName:
-            return
         datasource_list = (
             get_workbook_connections_dataframe(self.client, dashboard_details.get("id"))
             .get("datasource_name")
             .tolist()
         )
         dashboard_name = dashboard_details.get("name")
+
+        to_fqn = fqn.build(
+            self.metadata,
+            entity_type=LineageDashboard,
+            service_name=self.config.serviceName,
+            dashboard_name=dashboard_name,
+        )
+        to_entity = self.metadata.get_by_name(
+            entity=LineageDashboard,
+            fqn=to_fqn,
+        )
+
         for datasource in datasource_list:
             try:
                 schema_and_table_name = (
@@ -254,16 +266,6 @@ class TableauSource(DashboardServiceSource):
                 from_entity = self.metadata.get_by_name(
                     entity=Table,
                     fqn=from_fqn,
-                )
-                to_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=LineageDashboard,
-                    service_name=self.config.serviceName,
-                    dashboard_name=dashboard_name,
-                )
-                to_entity = self.metadata.get_by_name(
-                    entity=LineageDashboard,
-                    fqn=to_fqn,
                 )
                 if from_entity and to_entity:
                     lineage = AddLineageRequest(

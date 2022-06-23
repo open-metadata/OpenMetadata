@@ -18,6 +18,8 @@ working with OpenMetadata entities.
 import urllib
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+
 try:
     from typing import get_args
 except ImportError:
@@ -129,6 +131,7 @@ class OpenMetadata(
     OMetaServiceMixin,
     ESMixin,
     OMetaServerMixin,
+    OMetaDashboardMixin,
     Generic[T, C],
 ):
     """
@@ -537,7 +540,7 @@ class OpenMetadata(
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: str = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """
