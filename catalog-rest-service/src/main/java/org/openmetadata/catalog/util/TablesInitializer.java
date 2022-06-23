@@ -39,7 +39,6 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
@@ -302,23 +301,22 @@ public final class TablesInitializer {
           new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
       user.setAuthenticationMechanism(authenticationMechanism);
     }
-    addOrUpdateUser(user, jdbi);
-    if (jwtAuthMechanism != null) {
-      System.out.println(jwtAuthMechanism.getJWTToken());
+    try {
+      addOrUpdateUser(user, jdbi);
+      if (jwtAuthMechanism != null) {
+        System.out.println(jwtAuthMechanism.getJWTToken());
+      }
+    } catch (Exception exception) {
+      System.out.format("User entry:" + user.getName() + "already exists.");
+      throw new RuntimeException("Failed to create ingestion-bot");
     }
   }
 
-  private static void addOrUpdateUser(User user, Jdbi jdbi) {
-    try {
-      CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-      UserRepository userRepository = new UserRepository(daoObject);
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
-      System.out.println("Added user entry: " + addedUser);
-    } catch (Exception exception) {
-      // In HA set up the other server may have already added the user.
-      System.out.format("Caught exception: " + ExceptionUtils.getStackTrace(exception));
-      System.out.format("User entry:" + user + "already exists.");
-    }
+  private static void addOrUpdateUser(User user, Jdbi jdbi) throws Exception {
+    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+    UserRepository userRepository = new UserRepository(daoObject);
+    User addedUser = userRepository.create(null, user);
+    System.out.println("Added user entry: " + addedUser.getName());
   }
 
   enum SchemaMigrationOption {
