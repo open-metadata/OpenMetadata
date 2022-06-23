@@ -134,18 +134,6 @@ def load_azure_auth() -> AzureSSOClientConfig:
     )
 
 
-@provider_config_registry.add(AuthProvider.custom_oidc.value)
-def load_custom_oidc_auth() -> CustomOIDCSSOClientConfig:
-    """
-    Load config for Azure Auth
-    """
-    return CustomOIDCSSOClientConfig(
-        clientId=conf.get(LINEAGE, "client_id"),
-        secretKey=conf.get(LINEAGE, "secret_key"),
-        tokenEndpoint=conf.get(LINEAGE, "token_endpoint"),
-    )
-
-
 @provider_config_registry.add(AuthProvider.openmetadata.value)
 def load_om_auth() -> OpenMetadataJWTClientConfig:
     """
