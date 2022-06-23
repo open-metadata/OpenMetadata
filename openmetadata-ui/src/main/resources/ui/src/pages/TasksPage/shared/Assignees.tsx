@@ -13,7 +13,7 @@
 
 import { Select } from 'antd';
 import React, { FC } from 'react';
-import { Option } from './TasksPage.interface';
+import { Option } from '../TasksPage.interface';
 
 interface Props {
   options: Option[];

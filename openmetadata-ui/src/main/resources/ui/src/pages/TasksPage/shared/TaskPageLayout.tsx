@@ -13,7 +13,7 @@
 
 import { Layout } from 'antd';
 import React, { FC, HTMLAttributes } from 'react';
-import { background, contentStyles } from './TaskPage.styles';
+import { background, contentStyles } from '../TaskPage.styles';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface Props extends HTMLAttributes<HTMLDivElement> {}

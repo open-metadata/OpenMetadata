@@ -15,9 +15,9 @@ import { Tabs } from 'antd';
 import { isEqual, uniqueId } from 'lodash';
 import { Diff, EditorContentRef } from 'Models';
 import React, { useState } from 'react';
-import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { getDescriptionDiff } from '../../utils/TasksUtils';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { getDescriptionDiff } from '../../../utils/TasksUtils';
 
 interface Props {
   description: string;

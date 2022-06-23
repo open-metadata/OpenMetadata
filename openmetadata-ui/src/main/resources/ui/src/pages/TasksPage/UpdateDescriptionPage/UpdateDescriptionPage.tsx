@@ -23,36 +23,36 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { postThread } from '../../axiosAPIs/feedsAPI';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityType } from '../../enums/entity.enum';
+import AppState from '../../../AppState';
+import { postThread } from '../../../axiosAPIs/feedsAPI';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
   TaskType,
   ThreadType,
-} from '../../generated/api/feed/createThread';
-import { getEntityName } from '../../utils/CommonUtils';
+} from '../../../generated/api/feed/createThread';
+import { getEntityName } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
-} from '../../utils/EntityUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+} from '../../../utils/EntityUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
   getTaskDetailPath,
-} from '../../utils/TasksUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import Assignees from './Assignees';
-import { DescriptionTabs } from './DescriptionTabs';
-import { cardStyles } from './TaskPage.styles';
-import TaskPageLayout from './TaskPageLayout';
-import { EntityData, Option } from './TasksPage.interface';
+} from '../../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import Assignees from '../shared/Assignees';
+import { DescriptionTabs } from '../shared/DescriptionTabs';
+import TaskPageLayout from '../shared/TaskPageLayout';
+import { cardStyles } from '../TaskPage.styles';
+import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateDescription = () => {
   const location = useLocation();

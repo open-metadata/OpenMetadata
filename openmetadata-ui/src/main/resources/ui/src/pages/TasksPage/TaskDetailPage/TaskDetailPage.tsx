@@ -20,48 +20,53 @@ import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import AppState from '../../AppState';
+import AppState from '../../../AppState';
 import {
   getFeedById,
   getTask,
   postFeedById,
   postThread,
-} from '../../axiosAPIs/feedsAPI';
-import ActivityFeedEditor from '../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import FeedPanelBody from '../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
-import ActivityThreadPanelBody from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import Ellipses from '../../components/common/Ellipses/Ellipses';
-import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityType } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Column } from '../../generated/entity/data/table';
-import { Thread, ThreadTaskStatus } from '../../generated/entity/feed/thread';
-import { getEntityName } from '../../utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
+  updatePost,
+  updateThread,
+} from '../../../axiosAPIs/feedsAPI';
+import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
+import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import Ellipses from '../../../components/common/Ellipses/Ellipses';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Column } from '../../../generated/entity/data/table';
+import {
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { getEntityName } from '../../../utils/CommonUtils';
+import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import {
   deletePost,
   getEntityField,
   getEntityFQN,
   getEntityType,
   updateThreadData,
-} from '../../utils/FeedUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+} from '../../../utils/FeedUtils';
+import SVGIcons from '../../../utils/SvgUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-} from '../../utils/TasksUtils';
-import { getDayTimeByTimeStamp } from '../../utils/TimeUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
-import Assignees from './Assignees';
-import { DescriptionTabs } from './DescriptionTabs';
-import { background, cardStyles, contentStyles } from './TaskPage.styles';
-import { EntityData, Option } from './TasksPage.interface';
+} from '../../../utils/TasksUtils';
+import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import Assignees from '../shared/Assignees';
+import { DescriptionTabs } from '../shared/DescriptionTabs';
+import { background, cardStyles, contentStyles } from '../TaskPage.styles';
+import { EntityData, Option } from '../TasksPage.interface';
 
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
@@ -141,7 +146,7 @@ const TaskDetailPage = () => {
       .finally(() => setIsLoading(false));
   };
 
-  const onPostReply = (value: string) => {
+  const onPostTaskFeed = (value: string) => {
     const data = {
       message: value,
       from: currentUser?.name,
@@ -154,6 +159,44 @@ const TaskDetailPage = () => {
       .catch((err: AxiosError) => {
         showErrorToast(err);
       });
+  };
+
+  const onTaskFeedUpdate = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    if (isThread) {
+      updateThread(threadId, data)
+        .then((res: AxiosResponse) => {
+          setTaskFeedDetail((prev) => ({
+            ...prev,
+            reactions: res.data.reactions,
+          }));
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(err);
+        });
+    } else {
+      updatePost(threadId, postId, data)
+        .then((res: AxiosResponse) => {
+          setTaskFeedDetail((prev) => {
+            const updatedPosts = (prev.posts || []).map((post) => {
+              if (isEqual(postId, post.id)) {
+                return { ...post, reactions: res.data.reactions };
+              } else {
+                return post;
+              }
+            });
+
+            return { ...prev, posts: updatedPosts };
+          });
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(err);
+        });
+    }
   };
 
   const createThread = (data: CreateThread) => {
@@ -382,7 +425,7 @@ const TaskDetailPage = () => {
                       alt="edit"
                       icon="icon-edit"
                       title="Edit"
-                      width="14px"
+                      width="12px"
                     />
                   </button>
                 </div>
@@ -427,12 +470,12 @@ const TaskDetailPage = () => {
                 <FeedPanelBody
                   isLoading={isLoading}
                   threadData={taskFeedDetail}
-                  updateThreadHandler={updateThreadHandler}
+                  updateThreadHandler={onTaskFeedUpdate}
                 />
                 <ActivityFeedEditor
                   buttonClass="tw-mr-4"
                   className="tw-ml-5 tw-mr-2 tw-mb-2"
-                  onSave={onPostReply}
+                  onSave={onPostTaskFeed}
                 />
               </div>
             ) : null}
