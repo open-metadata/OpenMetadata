@@ -71,21 +71,21 @@ class MetadataRestSink(Sink[Entity]):
             )
 
             if record.record_tests:
-                if record.profile.profileQuery and record.record_tests.profile_sample:
+                if record.profile.profileQuery and record.profile.profileSample:
                     self.metadata.update_profile_query(
                         fqn=record.table.fullyQualifiedName.__root__,
                         profileQuery=record.profile.profileQuery,
-                        profileSample=record.record_tests.profile_sample,
+                        profileSample=record.profile.profileSample,
                     )
-                if record.record_tests.profile_sample and not record.profile.profileQuery:
+                if record.profile.profileSample and not record.profile.profileQuery:
                     self.metadata.update_profile_sample(
                         fqn=record.table.fullyQualifiedName.__root__,
-                        profile_sample=record.record_tests.profile_sample,
+                        profile_sample=record.profile.profileSample,
                     )
-                if record.profile.profileQuery and not record.record_tests.profile_sample:
+                if record.profile.profileQuery and not record.profile.profileSample:
                     self.metadata.update_profile_query(
                         fqn=record.table.fullyQualifiedName.__root__,
-                        profile_query=record.profile.profileQuery,
+                        profileQuery=record.profile.profileQuery,
                     )
                 for table_test in record.record_tests.table_tests:
                     self.metadata.add_table_test(

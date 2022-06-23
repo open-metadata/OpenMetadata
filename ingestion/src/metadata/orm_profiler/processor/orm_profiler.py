@@ -192,8 +192,8 @@ class OrmProfilerProcessor(Processor[Table]):
                 if test_record.clear_sample_query_from_entity:
                     self.metadata.update_profile_query(
                         fqn=table.fullyQualifiedName.__root__,
-                        table=table,
-                        )
+                        profileSample=self.get_table_profile_sample(table),
+                    )
                     return None
                 return test_record.profile_sample_query
 
