@@ -11,7 +11,6 @@
 """
 Snowflake usage module
 """
-
 from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (

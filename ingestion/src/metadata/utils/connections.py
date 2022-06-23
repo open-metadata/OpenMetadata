@@ -608,7 +608,7 @@ def _(connection: LookerConnection, verbose: bool = False):
         os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
-    client = looker_sdk.init31()
+    client = looker_sdk.init40()
     return LookerClient(client=client)
 
 
