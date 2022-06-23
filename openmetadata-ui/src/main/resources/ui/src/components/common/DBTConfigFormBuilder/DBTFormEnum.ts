@@ -12,6 +12,7 @@
  */
 
 export enum DBT_SOURCES {
+  cloud = 'cloud',
   local = 'local',
   http = 'http',
   s3 = 's3',

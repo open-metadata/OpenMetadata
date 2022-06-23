@@ -43,7 +43,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const { username } = useParams<{ [key: string]: string }>();
+  const { username, tab } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const [isLoading, setIsLoading] = useState(true);
@@ -208,9 +208,11 @@ const UserPage = () => {
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
+          tab={tab}
           updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
           userData={userData}
+          username={username}
         />
       );
     } else {

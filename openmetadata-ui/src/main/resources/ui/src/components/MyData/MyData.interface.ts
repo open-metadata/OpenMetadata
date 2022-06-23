@@ -25,6 +25,7 @@ export interface MyDataProps {
   countTopics: number;
   countTeams: number;
   countUsers: number;
+  countMlModal: number;
   countDashboards: number;
   followedDataCount: number;
   ownedDataCount: number;

@@ -127,6 +127,7 @@ const TourPage = () => {
         return (
           <MyData
             countDashboards={10}
+            countMlModal={2}
             countPipelines={8}
             countServices={4}
             countTables={21}
