@@ -234,7 +234,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
   @Test
   void put_MlModelAddMlFeatures_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
+    CreateMlModel request =
+        new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlFeatures").withNewValue(ML_FEATURES));
@@ -311,7 +312,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
 
   @Test
   void put_MlModelAddMlHyperParams_200(TestInfo test) throws IOException {
-    CreateMlModel request = new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM);
+    CreateMlModel request =
+        new CreateMlModel().withName(getEntityName(test)).withAlgorithm(ALGORITHM).withService(MLFLOW_REFERENCE);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("mlHyperParameters").withNewValue(ML_HYPERPARAMS));
@@ -373,7 +375,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         .withAlgorithm(ALGORITHM)
         .withMlFeatures(ML_FEATURES)
         .withMlHyperParameters(ML_HYPERPARAMS)
-        .withDashboard(DASHBOARD_REFERENCE);
+        .withDashboard(DASHBOARD_REFERENCE)
+        .withService(MLFLOW_REFERENCE);
   }
 
   @Override

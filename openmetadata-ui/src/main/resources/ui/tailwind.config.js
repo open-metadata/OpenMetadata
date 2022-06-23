@@ -56,6 +56,7 @@ const mainBorder = '#DCE3EC';
 const mainSeparator = '#DCE3EC';
 const grayBorder = '#DDE3EA';
 const liteGrayBorder = '#f1f4f7';
+const liteGrayBorder60 = '#f1f4f760';
 
 // Text color - Gray variants
 const textBody = '#37352f';
@@ -143,6 +144,7 @@ module.exports = {
         // Webhook statuses end
         separator: mainSeparator,
         'border-lite': liteGrayBorder,
+        'border-lite-60': liteGrayBorder60,
         'border-gray': grayBorder,
       },
       fontFamily: {
@@ -171,6 +173,7 @@ module.exports = {
         'screen-xxl': '2160px',
         'full-hd': '1080px',
         600: '600px',
+        700: '700px',
       },
       minWidth: {
         badgeCount: '30px',

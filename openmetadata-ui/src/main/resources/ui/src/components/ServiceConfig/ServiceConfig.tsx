@@ -14,16 +14,19 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { ServiceCategory } from '../../enums/service.enum';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
+import { getPathByServiceFQN } from '../../utils/RouterUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 interface ServiceConfigProps {
   serviceCategory: ServiceCategory;
+  serviceFQN: string;
   serviceType: string;
   data?: ServicesData;
   handleUpdate: (
@@ -38,10 +41,12 @@ export const Field = ({ children }: { children: React.ReactNode }) => {
 
 const ServiceConfig = ({
   serviceCategory,
+  serviceFQN,
   serviceType,
   data,
   handleUpdate,
 }: ServiceConfigProps) => {
+  const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
 
   const handleOnSaveClick = (e: ISubmitEvent<ConfigData>) => {
@@ -51,6 +56,7 @@ const ServiceConfig = ({
       .then(() => {
         setTimeout(() => {
           setStatus('success');
+          history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
         }, 200);
       })
       .finally(() => {
@@ -84,7 +90,7 @@ const ServiceConfig = ({
         className="tw-max-w-xl tw-mx-auto tw-pb-6"
         data-testid="service-config"
         id="serviceConfig">
-        <div className="tw-px-4 tw-pt-3 tw-mx-auto">{getDynamicFields()}</div>
+        <div className="tw-mx-auto">{getDynamicFields()}</div>
       </div>
     </div>
   );

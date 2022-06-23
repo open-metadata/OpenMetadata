@@ -15,7 +15,7 @@ Validate filter patterns
 from unittest import TestCase
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
-from metadata.utils.filters import filter_by_fqn
+from metadata.utils.filters import filter_by_dashboard, filter_by_fqn
 
 
 class FilterPatternTests(TestCase):
@@ -23,7 +23,8 @@ class FilterPatternTests(TestCase):
     Validate filter patterns
     """
 
-    def test_filter_by_fqn(self):
+    @staticmethod
+    def test_filter_by_fqn():
         """
         Check FQN filters
         """
@@ -36,3 +37,17 @@ class FilterPatternTests(TestCase):
 
         assert not filter_by_fqn(fqn_filter_schema, "service.my_db.my_schema.table")
         assert filter_by_fqn(fqn_filter_schema, "service.another_db.my_schema.table")
+
+    @staticmethod
+    def test_filter_numbers():
+        """
+        Check numeric filtering
+        """
+
+        num_filter = FilterPattern(includes=["^[4]"])
+
+        assert not filter_by_dashboard(num_filter, "40")
+        assert not filter_by_dashboard(num_filter, "41")
+
+        assert filter_by_dashboard(num_filter, "50")
+        assert filter_by_dashboard(num_filter, "54")

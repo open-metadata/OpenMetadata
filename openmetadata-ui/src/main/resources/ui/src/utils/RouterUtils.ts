@@ -56,6 +56,32 @@ export const getAddServicePath = (serviceCategory: string) => {
   return path;
 };
 
+export const getEditConnectionPath = (
+  serviceCategory: string,
+  serviceFQN: string
+) => {
+  let path = ROUTES.EDIT_SERVICE_CONNECTION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
+
+  return path;
+};
+
+export const getPathByServiceFQN = (
+  serviceCategory: string,
+  serviceFQN: string
+) => {
+  let path = ROUTES.SERVICE_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
+
+  return path;
+};
+
 export const getAddIngestionPath = (
   serviceCategory: string,
   serviceFQN: string,

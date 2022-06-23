@@ -37,7 +37,6 @@ base_requirements = {
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "sqlalchemy>=1.4.0",
-    "sql-metadata~=2.0.0",
     "requests>=2.23",
     "cryptography",
     "Jinja2>=2.11.3",
@@ -51,12 +50,6 @@ base_requirements = {
 }
 
 
-base_plugins = {
-    "query-parser",
-    "metadata-usage",
-    "file-stage",
-    "sql-metadata~=2.5.0",
-}
 plugins: Dict[str, Set[str]] = {
     "airflow": {
         "apache-airflow==2.1.4"
@@ -101,7 +94,11 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl==0.4.3",
         "presto-types-parser==0.0.2",
     },
-    "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0", "avro-python3"},
+    "kafka": {
+        "confluent_kafka==1.8.2",
+        "fastavro>=1.2.0",
+        "avro-python3"
+    },
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.4.0"},
     "mssql": {"sqlalchemy-pytds>=0.3"},

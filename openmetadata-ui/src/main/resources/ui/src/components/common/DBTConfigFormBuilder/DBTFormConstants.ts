@@ -15,6 +15,7 @@ import { FormValidationRulesType } from '../../../enums/form.enum';
 import { FormValidationRules } from '../../../interface/genericForm.interface';
 import { DropDownListItem } from '../../dropdown/types';
 import {
+  DbtConfigCloud,
   DbtConfigHttp,
   DbtConfigLocal,
   DbtGCSCreds,
@@ -37,6 +38,10 @@ export const DBTSources: Array<DropDownListItem> = [
     value: DBT_SOURCES.http,
   },
   {
+    name: 'Cloud Config Source',
+    value: DBT_SOURCES.cloud,
+  },
+  {
     name: 'S3 Config Source',
     value: DBT_SOURCES.s3,
   },
@@ -56,6 +61,11 @@ export const GCSCreds: Array<DropDownListItem> = [
     value: GCS_CONFIG.GCSCredentialsPath,
   },
 ];
+
+export const reqDBTCloudFields: Record<keyof DbtConfigCloud, string> = {
+  dbtCloudAccountId: 'DBT Cloud Account Id',
+  dbtCloudAuthToken: 'DBT Cloud Authentication Token',
+};
 
 export const reqDBTLocalFields: Record<keyof DbtConfigLocal, string> = {
   dbtCatalogFilePath: 'DBT Catalog File Path',

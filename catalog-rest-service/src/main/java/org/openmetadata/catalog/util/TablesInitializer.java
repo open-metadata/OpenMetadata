@@ -14,6 +14,7 @@
 package org.openmetadata.catalog.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
+import static org.openmetadata.catalog.security.SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
@@ -22,13 +23,16 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
+import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.validation.Validators;
+import io.dropwizard.setup.Environment;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.UUID;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -38,10 +42,21 @@ import org.apache.commons.cli.Options;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchIndexDefinition;
+import org.openmetadata.catalog.entity.teams.AuthenticationMechanism;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.fernet.Fernet;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
+import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 public final class TablesInitializer {
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
@@ -85,6 +100,7 @@ public final class TablesInitializer {
     OPTIONS.addOption(
         null, SchemaMigrationOption.ES_DROP.toString(), false, "Drop all the indexes in the elastic search");
     OPTIONS.addOption(null, SchemaMigrationOption.ES_MIGRATE.toString(), false, "Update Elastic Search index mapping");
+    OPTIONS.addOption(null, SchemaMigrationOption.CREATE_INGESTION_BOT.toString(), false, "Create Ingestion Bot");
   }
 
   private TablesInitializer() {}
@@ -153,7 +169,7 @@ public final class TablesInitializer {
             !disableValidateOnMigrate);
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
-      execute(flyway, client, schemaMigrationOptionSpecified);
+      execute(config, flyway, client, schemaMigrationOptionSpecified);
       System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified);
     } catch (Exception e) {
       System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified, e);
@@ -182,7 +198,11 @@ public final class TablesInitializer {
         .load();
   }
 
-  private static void execute(Flyway flyway, RestHighLevelClient client, SchemaMigrationOption schemaMigrationOption)
+  private static void execute(
+      CatalogApplicationConfig config,
+      Flyway flyway,
+      RestHighLevelClient client,
+      SchemaMigrationOption schemaMigrationOption)
       throws SQLException {
     ElasticSearchIndexDefinition esIndexDefinition;
     switch (schemaMigrationOption) {
@@ -238,6 +258,9 @@ public final class TablesInitializer {
         esIndexDefinition = new ElasticSearchIndexDefinition(client);
         esIndexDefinition.dropIndexes();
         break;
+      case CREATE_INGESTION_BOT:
+        createIngestionBot(config);
+        break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
@@ -246,6 +269,54 @@ public final class TablesInitializer {
   private static void usage() {
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
+  }
+
+  private static void createIngestionBot(CatalogApplicationConfig config) {
+    Environment environment = new Environment("bootstrap");
+    final Jdbi jdbi = new JdbiFactory().build(environment, config.getDataSourceFactory(), "database");
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
+    String domain =
+        config.getAuthorizerConfiguration().getPrincipalDomain().isEmpty()
+            ? DEFAULT_PRINCIPAL_DOMAIN
+            : config.getAuthorizerConfiguration().getPrincipalDomain();
+    String botUser = "ingestion-bot";
+
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(botUser)
+            .withEmail(botUser + "@" + domain)
+            .withIsBot(true)
+            .withUpdatedBy(botUser)
+            .withUpdatedAt(System.currentTimeMillis());
+    JWTAuthMechanism jwtAuthMechanism = null;
+    if (config.getJwtTokenConfiguration() != null) {
+      JWTTokenGenerator.getInstance().init(config.getJwtTokenConfiguration());
+      GenerateTokenRequest generateTokenRequest =
+          new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Unlimited);
+      JWTTokenGenerator jwtTokenGenerator = JWTTokenGenerator.getInstance();
+      jwtAuthMechanism = jwtTokenGenerator.generateJWTToken(user, generateTokenRequest.getJWTTokenExpiry());
+      AuthenticationMechanism authenticationMechanism =
+          new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(AuthenticationMechanism.AuthType.JWT);
+      user.setAuthenticationMechanism(authenticationMechanism);
+    }
+    try {
+      addOrUpdateUser(user, jdbi);
+      if (jwtAuthMechanism != null) {
+        System.out.println(jwtAuthMechanism.getJWTToken());
+      }
+    } catch (Exception exception) {
+      System.out.format("User entry:" + user.getName() + "already exists.");
+      throw new RuntimeException("Failed to create ingestion-bot");
+    }
+  }
+
+  private static void addOrUpdateUser(User user, Jdbi jdbi) throws Exception {
+    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+    UserRepository userRepository = new UserRepository(daoObject);
+    User addedUser = userRepository.create(null, user);
+    System.out.println("Added user entry: " + addedUser.getName());
   }
 
   enum SchemaMigrationOption {
@@ -258,7 +329,8 @@ public final class TablesInitializer {
     REPAIR("repair"),
     ES_DROP("es-drop"),
     ES_CREATE("es-create"),
-    ES_MIGRATE("es-migrate");
+    ES_MIGRATE("es-migrate"),
+    CREATE_INGESTION_BOT("create-ingestion-bot");
     private final String value;
 
     SchemaMigrationOption(String schemaMigrationOption) {

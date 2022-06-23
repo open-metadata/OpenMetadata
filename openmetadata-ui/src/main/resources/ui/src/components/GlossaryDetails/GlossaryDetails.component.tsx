@@ -481,7 +481,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           </div>
         </NonAdminAction>
       </div>
-      <div className="tw-flex tw-gap-4">
+      <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
           <div data-testid="description-container">
             <DescriptionV1
@@ -495,7 +495,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             />
           </div>
         </div>
-        <div className="tw-w-3/12">
+        <div className="tw-w-3/12 tw-px-2">
           <Card action={ownerAction()} heading="Owner">
             <div className="tw-flex tw-items-center">
               {glossary.owner && getEntityName(glossary.owner) && (

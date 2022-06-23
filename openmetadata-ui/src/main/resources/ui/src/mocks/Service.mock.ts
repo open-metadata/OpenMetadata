@@ -41,7 +41,44 @@ export const mockServiceDetails = {
         href: 'http://pipelineServices',
       },
     },
+    {
+      collection: {
+        name: 'mlmodelServices',
+        documentation: 'MlModel service collection',
+        href: 'http://localhost:8585/api/v1/services/mlmodelServices',
+      },
+    },
   ],
+};
+
+export const mockMlmodelService = {
+  data: {
+    data: [
+      {
+        id: 'b59a9acb-6c90-481e-afd9-ec0f208c4f35',
+        name: 'mlflow_svc',
+        fullyQualifiedName: 'mlflow_svc',
+        serviceType: 'Mlflow',
+        description: 'description for mlflow_svc',
+        version: 0.4,
+        updatedAt: 1655890983668,
+        updatedBy: 'anonymous',
+        connection: {
+          config: {
+            type: 'Mlflow',
+            registryUri: 'http://localhost:8088',
+            trackingUri: 'http://localhost:8088',
+            supportsMetadataExtraction: null,
+          },
+        },
+        href: 'http://localhost:8585/api/v1/services/mlmodelServices/b59a9acb-6c90-481e-afd9-ec0f208c4f35',
+        deleted: false,
+      },
+    ],
+    paging: {
+      total: 1,
+    },
+  },
 };
 
 export const mockDatabaseService = {

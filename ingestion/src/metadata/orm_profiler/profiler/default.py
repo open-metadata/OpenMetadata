@@ -29,6 +29,7 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         # Table Metrics
         Metrics.ROW_COUNT.value,
         add_props(table=table)(Metrics.COLUMN_COUNT.value),
+        add_props(table=table)(Metrics.COLUMN_NAMES.value),
         # Column Metrics
         Metrics.MEAN.value,
         Metrics.COUNT.value,
