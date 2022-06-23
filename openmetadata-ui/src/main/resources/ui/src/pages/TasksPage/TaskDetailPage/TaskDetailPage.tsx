@@ -33,6 +33,7 @@ import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEdi
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import Ellipses from '../../../components/common/Ellipses/Ellipses';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -83,6 +84,7 @@ const TaskDetailPage = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [showEdit, setShowEdit] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
 
   // get current user details
   const currentUser = useMemo(
@@ -131,7 +133,9 @@ const TaskDetailPage = () => {
       .then((res: AxiosResponse) => {
         setTaskDetail(res.data);
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => {
+        showErrorToast(err, '', 5000, setError);
+      });
   };
 
   const fetchTaskFeed = (id: string) => {
@@ -451,51 +455,60 @@ const TaskDetailPage = () => {
 
   return (
     <Layout style={{ ...background, height: '100vh' }}>
-      <Content style={{ ...contentStyles, overflowY: 'auto' }}>
-        <TitleBreadcrumb
-          titleLinks={getBreadCrumbList(entityData, entityType as EntityType)}
-        />
-        <EntityDetail />
-        <TaskDetail />
-      </Content>
+      {error ? (
+        <ErrorPlaceHolder>{error}</ErrorPlaceHolder>
+      ) : (
+        <Fragment>
+          <Content style={{ ...contentStyles, overflowY: 'auto' }}>
+            <TitleBreadcrumb
+              titleLinks={getBreadCrumbList(
+                entityData,
+                entityType as EntityType
+              )}
+            />
+            <EntityDetail />
+            <TaskDetail />
+          </Content>
 
-      <Sider
-        className="ant-layout-sider-task-detail"
-        data-testid="task-right-sider"
-        width={600}>
-        <Tabs className="ant-tabs-task-detail" onChange={onTabChange}>
-          <TabPane key="1" tab="Task">
-            {!isEmpty(taskFeedDetail) ? (
-              <div id="task-feed">
-                <FeedPanelBody
-                  isLoading={isLoading}
-                  threadData={taskFeedDetail}
-                  updateThreadHandler={onTaskFeedUpdate}
-                />
-                <ActivityFeedEditor
-                  buttonClass="tw-mr-4"
-                  className="tw-ml-5 tw-mr-2 tw-mb-2"
-                  onSave={onPostTaskFeed}
-                />
-              </div>
-            ) : null}
-          </TabPane>
+          <Sider
+            className="ant-layout-sider-task-detail"
+            data-testid="task-right-sider"
+            width={600}>
+            <Tabs className="ant-tabs-task-detail" onChange={onTabChange}>
+              <TabPane key="1" tab="Task">
+                {!isEmpty(taskFeedDetail) ? (
+                  <div id="task-feed">
+                    <FeedPanelBody
+                      isLoading={isLoading}
+                      threadData={taskFeedDetail}
+                      updateThreadHandler={onTaskFeedUpdate}
+                    />
+                    <ActivityFeedEditor
+                      buttonClass="tw-mr-4"
+                      className="tw-ml-5 tw-mr-2 tw-mb-2"
+                      onSave={onPostTaskFeed}
+                    />
+                  </div>
+                ) : null}
+              </TabPane>
 
-          <TabPane key="2" tab="Conversations">
-            {!isEmpty(taskFeedDetail) ? (
-              <ActivityThreadPanelBody
-                className="tw-p-0"
-                createThread={createThread}
-                deletePostHandler={deletePostHandler}
-                postFeedHandler={postFeedHandler}
-                showHeader={false}
-                threadLink={taskFeedDetail.about}
-                updateThreadHandler={updateThreadHandler}
-              />
-            ) : null}
-          </TabPane>
-        </Tabs>
-      </Sider>
+              <TabPane key="2" tab="Conversations">
+                {!isEmpty(taskFeedDetail) ? (
+                  <ActivityThreadPanelBody
+                    className="tw-p-0"
+                    createThread={createThread}
+                    deletePostHandler={deletePostHandler}
+                    postFeedHandler={postFeedHandler}
+                    showHeader={false}
+                    threadLink={taskFeedDetail.about}
+                    updateThreadHandler={updateThreadHandler}
+                  />
+                ) : null}
+              </TabPane>
+            </Tabs>
+          </Sider>
+        </Fragment>
+      )}
     </Layout>
   );
 };
