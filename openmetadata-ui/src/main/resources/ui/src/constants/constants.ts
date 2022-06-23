@@ -208,6 +208,7 @@ export const ROUTES = {
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
+  USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
   WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook',
@@ -366,9 +367,12 @@ export const getEditWebhookPath = (webhookName: string) => {
   return path;
 };
 
-export const getUserPath = (username: string) => {
-  let path = ROUTES.USER_PROFILE;
+export const getUserPath = (username: string, tab?: string) => {
+  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
   path = path.replace(PLACEHOLDER_USER_NAME, username);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

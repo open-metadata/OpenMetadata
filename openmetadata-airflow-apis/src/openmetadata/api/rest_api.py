@@ -201,13 +201,13 @@ class REST_API(AppBuilderBaseView):
         except ValidationError as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload {json_request}. (Workflow)Source expected - {err}",
+                error=f"Request Validation Error parsing payload. (Workflow)Source expected - {err}",
             )
 
         except Exception as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Internal error testing connection {json_request} - {err} - {traceback.format_exc()}",
+                error=f"Internal error testing connection {err} - {traceback.format_exc()}",
             )
 
     @staticmethod
