@@ -67,7 +67,7 @@ def build_google_credentials_dict(gcs_values: GCSValues) -> Dict[str, str]:
         "type": gcs_values.type,
         "project_id": gcs_values.projectId,
         "private_key_id": gcs_values.privateKeyId,
-        "private_key": gcs_values.privateKey,
+        "private_key": gcs_values.privateKey.get_secret_value(),
         "client_email": gcs_values.clientEmail,
         "client_id": gcs_values.clientId,
         "auth_uri": str(gcs_values.authUri),
