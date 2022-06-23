@@ -6,9 +6,9 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.security.client.GoogleSSOClientConfig",
   "properties": {
-    "secretKey": {
-      "description": "Google SSO client secret key path or contents.",
-      "type": "string"
+    "credentials": {
+      "description": "Google SSO credentials values or credentials path.",
+      "$ref": "../credentials/gcsCredentials.json"
     },
     "audience": {
       "description": "Google SSO audience URL",
@@ -17,5 +17,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["secretKey"]
+  "required": [
+    "credentials"
+  ]
 }

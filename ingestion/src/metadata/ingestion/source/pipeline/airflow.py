@@ -154,7 +154,6 @@ class AirflowSource(Source[CreatePipelineRequest]):
     ) -> OMetaPipelineStatus:
         dag_run_list = self.get_pipeline_status(serialized_dag.dag_id)
         for dag in dag_run_list:
-            tasks = []
             if isinstance(dag.task_instances, Iterable):
                 tasks = dag.task_instances
             else:

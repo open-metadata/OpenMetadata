@@ -46,8 +46,13 @@ from metadata.generated.schema.security.client.oktaSSOClientConfig import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.security.credentials.gcsCredentials import (
+    GCSCredentialsPath,
+    GCSValues,
+)
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.utils import ometa_logger
+from metadata.utils.credentials import build_google_credentials_dict
 
 # Only load security providers on call
 # pylint: disable=import-outside-toplevel
@@ -153,10 +158,27 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
         import google.auth.transport.requests
         from google.oauth2 import service_account
 
-        credentials = service_account.IDTokenCredentials.from_service_account_file(
-            self.security_config.secretKey,
-            target_audience=self.security_config.audience,
-        )
+        credentials = None
+        if isinstance(self.security_config.credentials.gcsConfig, GCSCredentialsPath):
+            credentials = service_account.IDTokenCredentials.from_service_account_file(
+                str(self.security_config.credentials.gcsConfig.__root__),
+                target_audience=self.security_config.audience,
+            )
+
+        if isinstance(self.security_config.credentials.gcsConfig, GCSValues):
+            info_security_dict = build_google_credentials_dict(
+                self.security_config.credentials.gcsConfig
+            )
+            credentials = service_account.IDTokenCredentials.from_service_account_info(
+                info=info_security_dict,
+                target_audience=self.security_config.audience,
+            )
+
+        if not credentials:
+            raise AuthenticationException(
+                "Cannot create GCS identity from given config"
+            )
+
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
         self.generated_auth_token = credentials.token
