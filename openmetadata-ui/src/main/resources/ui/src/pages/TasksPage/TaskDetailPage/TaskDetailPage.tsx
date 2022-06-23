@@ -22,12 +22,14 @@ import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import {
   getFeedById,
   getTask,
   postFeedById,
   postThread,
   updatePost,
+  updateTask,
   updateThread,
 } from '../../../axiosAPIs/feedsAPI';
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
@@ -35,10 +37,12 @@ import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/Fe
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { TaskOperation } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column } from '../../../generated/entity/data/table';
@@ -46,6 +50,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import {
@@ -64,7 +69,7 @@ import {
   getColumnObject,
 } from '../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
@@ -73,6 +78,8 @@ import { EntityData, Option } from '../TasksPage.interface';
 const TaskDetailPage = () => {
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
+  const { isAdminUser } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
@@ -225,6 +232,35 @@ const TaskDetailPage = () => {
     setEditAssignee(false);
   };
 
+  const onTaskResolve = () => {
+    const description =
+      markdownRef.current?.getEditorContent() || taskDetail.task?.suggestion;
+
+    updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
+      newValue: description,
+    })
+      .then((res: AxiosResponse) => {
+        showSuccessToast('Task Resolved Successfully');
+        setTaskDetail(res.data);
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
+
+  const onTaskReject = () => {
+    if (showEdit) {
+      setShowEdit(false);
+    } else {
+      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
+        newValue: '',
+      })
+        .then((res: AxiosResponse) => {
+          showSuccessToast('Task Closed Successfully');
+          setTaskDetail(res.data);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+    }
+  };
+
   const createThread = (data: CreateThread) => {
     postThread(data).catch((err: AxiosError) => {
       showErrorToast(err);
@@ -308,7 +344,7 @@ const TaskDetailPage = () => {
       <Fragment>
         <span
           className={classNames(
-            'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
+            'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full tw-self-center',
             {
               'tw-bg-green-500': status === ThreadTaskStatus.Open,
             },
@@ -324,7 +360,7 @@ const TaskDetailPage = () => {
 
   const ColumnDetail = ({ column }: { column: Column }) => {
     return !isEmpty(column) && !isUndefined(column) ? (
-      <div data-testid="column-details">
+      <div className="tw-mb-4" data-testid="column-details">
         <div className="tw-flex">
           <span className="tw-text-grey-muted tw-flex-none tw-mr-1">
             Column type:
@@ -386,6 +422,38 @@ const TaskDetailPage = () => {
     );
   };
 
+  const getCurrentDescription = () => {
+    let markdown;
+    if (taskDetail.task?.status === ThreadTaskStatus.Open) {
+      markdown = taskDetail.task.suggestion;
+    } else {
+      markdown = taskDetail.task?.newValue;
+    }
+
+    return markdown ? (
+      <RichTextEditorPreviewer
+        className="tw-p-2"
+        enableSeeMoreVariant={false}
+        markdown={markdown}
+      />
+    ) : (
+      <span className="tw-no-description tw-p-2">No description </span>
+    );
+  };
+
+  const hasEditAccess = () => {
+    const isOwner = entityData.owner?.id === currentUser?.id;
+    const isAssignee = taskDetail.task?.assignees?.some(
+      (assignee) => assignee.id === currentUser?.id
+    );
+
+    const isTaskClosed = taskDetail.task?.status === ThreadTaskStatus.Closed;
+
+    return (
+      (isAdminUser || isAuthDisabled || isAssignee || isOwner) && !isTaskClosed
+    );
+  };
+
   return (
     <Layout style={{ ...background, height: '100vh' }}>
       {error ? (
@@ -403,30 +471,36 @@ const TaskDetailPage = () => {
             <Card
               key="task-details"
               style={{ ...cardStyles, marginTop: '16px' }}>
-              <h6 className="tw-text-base" data-testid="task-title">
+              <p
+                className="tw-text-base tw-font-medium"
+                data-testid="task-title">
                 {`Task #${taskId}`} {taskDetail.message}
-              </h6>
-              <p data-testid="task-metadata">
+              </p>
+              <p className="tw-flex" data-testid="task-metadata">
                 <TaskStatusElement
                   status={taskDetail.task?.status as ThreadTaskStatus}
                 />
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                   |
                 </span>
-                <span>
-                  <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
-                    {taskDetail.createdBy}
-                  </span>{' '}
-                  created this task{' '}
-                  {toLower(
-                    getDayTimeByTimeStamp(taskDetail.threadTs as number)
-                  )}
+                <span className="tw-flex">
+                  <UserPopOverCard userName={taskDetail.createdBy || ''}>
+                    <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
+                      {taskDetail.createdBy}
+                    </span>
+                  </UserPopOverCard>
+                  <span className="tw-ml-1">created this task </span>
+                  <span className="tw-ml-1">
+                    {toLower(
+                      getDayTimeByTimeStamp(taskDetail.threadTs as number)
+                    )}
+                  </span>
                 </span>
               </p>
 
               <ColumnDetail column={columnObject} />
 
-              <div className="tw-flex" data-testid="task-assignees">
+              <div className="tw-flex tw-mb-4" data-testid="task-assignees">
                 <span className="tw-text-grey-muted tw-self-center tw-mr-1">
                   Assignees:
                 </span>
@@ -466,17 +540,19 @@ const TaskDetailPage = () => {
                         ?.map((assignee) => getEntityName(assignee))
                         ?.join(', ')}
                     </span>
-                    <button
-                      className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
-                      data-testid="edit-suggestion"
-                      onClick={() => setEditAssignee(true)}>
-                      <SVGIcons
-                        alt="edit"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="12px"
-                      />
-                    </button>
+                    {hasEditAccess() && (
+                      <button
+                        className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                        data-testid="edit-suggestion"
+                        onClick={() => setEditAssignee(true)}>
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
+                      </button>
+                    )}
                   </Fragment>
                 )}
               </div>
@@ -493,47 +569,60 @@ const TaskDetailPage = () => {
                       />
                     ) : (
                       <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                        {taskDetail.task?.suggestion?.trim() ? (
-                          <RichTextEditorPreviewer
-                            className="tw-p-2"
-                            enableSeeMoreVariant={false}
-                            markdown={taskDetail.task.suggestion}
-                          />
-                        ) : (
-                          <span className="tw-no-description tw-p-2">
-                            No description{' '}
-                          </span>
+                        {getCurrentDescription()}
+                        {hasEditAccess() && (
+                          <button
+                            className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                            data-testid="edit-suggestion"
+                            onClick={() => setShowEdit(true)}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
                         )}
-                        <button
-                          className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
-                          data-testid="edit-suggestion"
-                          onClick={() => setShowEdit(true)}>
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="12px"
-                          />
-                        </button>
                       </div>
                     )}
                   </Fragment>
                 )}
               </div>
 
-              <div
-                className="tw-flex tw-justify-end"
-                data-testid="task-cta-buttons">
-                <Button
-                  className="ant-btn-link-custom"
-                  type="link"
-                  onClick={() => setShowEdit(false)}>
-                  {showEdit ? 'Cancel' : 'Reject'}
-                </Button>
-                <Button className="ant-btn-primary-custom" type="primary">
-                  {showEdit ? 'Submit' : 'Accept'}
-                </Button>
-              </div>
+              {hasEditAccess() && (
+                <div
+                  className="tw-flex tw-justify-end"
+                  data-testid="task-cta-buttons">
+                  <Button
+                    className="ant-btn-link-custom"
+                    type="link"
+                    onClick={onTaskReject}>
+                    {showEdit ? 'Cancel' : 'Reject'}
+                  </Button>
+                  <Button
+                    className="ant-btn-primary-custom"
+                    type="primary"
+                    onClick={onTaskResolve}>
+                    {showEdit ? 'Submit' : 'Accept'}
+                  </Button>
+                </div>
+              )}
+
+              {taskDetail.task?.status === ThreadTaskStatus.Closed && (
+                <p className="tw-flex" data-testid="task-closed">
+                  <UserPopOverCard userName={taskDetail.task.closedBy || ''}>
+                    <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
+                      {taskDetail.task.closedBy}
+                    </span>{' '}
+                  </UserPopOverCard>
+                  <span className="tw-ml-1"> closed this task </span>
+                  <span className="tw-ml-1">
+                    {toLower(
+                      getDayTimeByTimeStamp(taskDetail.task.closedAt as number)
+                    )}
+                  </span>
+                </p>
+              )}
             </Card>
           </Content>
 
