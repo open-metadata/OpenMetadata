@@ -33,6 +33,7 @@ from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     get_column_fqn,
@@ -282,7 +283,7 @@ class MetadataUsageBulkSink(BulkSink):
                 continue
             table_joins.columnJoins.append(
                 ColumnJoins(
-                    columnName=key_name.split(".")[-1], joinedWith=list(value.values())
+                    columnName=fqn.split(key_name)[-1], joinedWith=list(value.values())
                 )
             )
         return table_joins
