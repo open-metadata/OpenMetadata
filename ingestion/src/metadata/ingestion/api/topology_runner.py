@@ -80,6 +80,11 @@ class TopologyRunnerMixin(Generic[C]):
                         except ValueError:
                             logger.error("Value unexpectedly None")
 
+                # processing for all stages completed now cleaning the cache if applicable
+                for stage in node.stages:
+                    if stage.clear_cache:
+                        self.clear_context(stage=stage)
+
                 # process all children from the node being run
                 yield from self.process_nodes(child_nodes)
 
@@ -113,6 +118,13 @@ class TopologyRunnerMixin(Generic[C]):
         :param value: value to use for the update
         """
         self.context.__dict__[key].append(value)
+
+    def clear_context(self, stage: NodeStage) -> None:
+        """
+        Clear the available context
+        :param key: element to update from the source context
+        """
+        self.context.__dict__[stage.context] = get_ctx_default(stage)
 
     def fqn_from_context(self, stage: NodeStage, entity_request: C) -> str:
         """

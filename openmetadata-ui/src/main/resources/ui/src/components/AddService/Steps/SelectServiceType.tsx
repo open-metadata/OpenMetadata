@@ -14,7 +14,10 @@
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { serviceTypes } from '../../../constants/services.const';
+import {
+  excludedService,
+  serviceTypes,
+} from '../../../constants/services.const';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
@@ -51,7 +54,11 @@ const SelectServiceType = ({
       ? serviceCategory
       : allCategory[0];
     setCategory(selectedCategory);
-    setSelectedConnectors(serviceTypes[selectedCategory]);
+    setSelectedConnectors(
+      serviceTypes[selectedCategory].filter(
+        (service) => !excludedService.find((e) => e === service)
+      )
+    );
   }, [serviceCategory]);
 
   return (

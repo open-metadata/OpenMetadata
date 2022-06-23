@@ -52,6 +52,7 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MLFLOW,
   MSSQL,
   MYSQL,
   ORACLE,
@@ -64,6 +65,7 @@ import {
   REDASH,
   REDSHIFT,
   SALESFORCE,
+  SCIKIT,
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
@@ -76,6 +78,7 @@ import {
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
+import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -186,6 +189,12 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.Prefect:
       return PREFECT;
+
+    case MlModelServiceType.Mlflow:
+      return MLFLOW;
+
+    case MlModelServiceType.Sklearn:
+      return SCIKIT;
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {

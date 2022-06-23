@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { CookieStorage } from 'cookie-storage';
 import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -23,13 +24,15 @@ import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
 import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
-import { ROUTES } from '../../constants/constants';
+import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { fetchAllUsers } from '../../utils/UserDataUtils';
+
+const cookieStorage = new CookieStorage();
 
 const Signup = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
@@ -77,6 +80,7 @@ const Signup = () => {
           appState.updateUserDetails(res.data);
           fetchAllUsers();
           getUserPermissions();
+          cookieStorage.removeItem(REDIRECT_PATHNAME);
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);

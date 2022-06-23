@@ -88,6 +88,7 @@ class DashboardServiceTopology(ServiceTopology):
                 consumer=["dashboard_service"],
                 nullable=True,
                 cache_all=True,
+                clear_cache=True,
             ),
             NodeStage(
                 type_=CreateUserRequest,

@@ -22,6 +22,7 @@ import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -60,6 +61,7 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
+  const [countMlModal, setCountMlModal] = useState<number>();
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
@@ -170,6 +172,23 @@ const MyDataPage = () => {
           jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountDashboards(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllMlModal('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountMlModal(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setCountMlModal(0);
       });
   };
 
@@ -415,10 +434,12 @@ const MyDataPage = () => {
       !isUndefined(countDashboards) &&
       !isUndefined(countPipelines) &&
       !isUndefined(countTeams) &&
+      !isUndefined(countMlModal) &&
       !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
             countDashboards={countDashboards}
+            countMlModal={countMlModal}
             countPipelines={countPipelines}
             countServices={countServices}
             countTables={countTables}

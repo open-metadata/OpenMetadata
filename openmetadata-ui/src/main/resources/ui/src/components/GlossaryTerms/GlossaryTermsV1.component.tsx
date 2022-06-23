@@ -481,7 +481,7 @@ const GlossaryTermsV1 = ({
 
   const summaryTab = () => {
     return (
-      <div className="tw-flex tw-gap-4">
+      <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
           <div data-testid="description-container">
             <DescriptionV1
@@ -623,7 +623,7 @@ const GlossaryTermsV1 = ({
             </Fragment>
           </Card>
         </div>
-        <div className="tw-w-3/12">
+        <div className="tw-px-2 tw-w-3/12">
           <Card action={addReviewerButton()} heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>

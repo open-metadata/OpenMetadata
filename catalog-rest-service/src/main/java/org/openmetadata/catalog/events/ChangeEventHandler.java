@@ -129,7 +129,9 @@ public class ChangeEventHandler implements EventHandler {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
     // Entity was created by either POST .../entities or PUT .../entities
-    if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
+    if (responseCode == Status.CREATED.getStatusCode()
+        && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
+        && !responseContext.getEntity().getClass().equals(Thread.class)) {
       var entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();

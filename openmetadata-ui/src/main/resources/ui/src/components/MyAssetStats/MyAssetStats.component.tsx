@@ -30,6 +30,7 @@ type Props = {
   countDashboards: number;
   countPipelines: number;
   countServices: number;
+  countMlModal: number;
   countTables: number;
   countTopics: number;
   countTeams: number;
@@ -47,6 +48,7 @@ type Summary = {
 const MyAssetStats: FunctionComponent<Props> = ({
   countDashboards,
   countPipelines,
+  countMlModal,
   countServices,
   countTables,
   countTopics,
@@ -84,6 +86,13 @@ const MyAssetStats: FunctionComponent<Props> = ({
         count: countPipelines,
         link: getExplorePathWithSearch(undefined, 'pipelines'),
         dataTestId: 'pipelines',
+      },
+      mlModal: {
+        icon: Icons.MLMODAL,
+        data: 'ML Models',
+        count: countMlModal,
+        link: getExplorePathWithSearch(undefined, 'mlmodels'),
+        dataTestId: 'mlmodels',
       },
       service: {
         icon: Icons.SERVICE,

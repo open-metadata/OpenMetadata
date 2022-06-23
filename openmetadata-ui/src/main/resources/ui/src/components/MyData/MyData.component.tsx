@@ -22,11 +22,11 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
+import { getUserPath } from '../../constants/constants';
 import { filterList, observerOptions } from '../../constants/Mydata.constants';
-import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getExploreLinkByFilter } from '../../utils/CommonUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
@@ -51,6 +51,7 @@ const MyData: React.FC<MyDataProps> = ({
   countTeams,
   countUsers,
   ownedData,
+  countMlModal,
   followedData,
   feedData,
   feedFilter,
@@ -108,6 +109,7 @@ const MyData: React.FC<MyDataProps> = ({
       <div className="tw-mt-4">
         <MyAssetStats
           countDashboards={countDashboards}
+          countMlModal={countMlModal}
           countPipelines={countPipelines}
           countServices={countServices}
           countTables={countTables}
@@ -124,6 +126,8 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   const getRightPanel = useCallback(() => {
+    const currentUserDetails = AppState.getCurrentUserDetails();
+
     return (
       <div className="tw-mt-4">
         <div data-testid="my-data-container">
@@ -134,11 +138,7 @@ const MyData: React.FC<MyDataProps> = ({
                 {ownedData.length ? (
                   <Link
                     data-testid="my-data"
-                    to={getExploreLinkByFilter(
-                      Ownership.OWNER,
-                      AppState.userDetails,
-                      AppState.nonSecureUserDetails
-                    )}>
+                    to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="my-data-total-count">
@@ -163,10 +163,9 @@ const MyData: React.FC<MyDataProps> = ({
                 {followedData.length ? (
                   <Link
                     data-testid="following-data"
-                    to={getExploreLinkByFilter(
-                      Ownership.FOLLOWERS,
-                      AppState.userDetails,
-                      AppState.nonSecureUserDetails
+                    to={getUserPath(
+                      currentUserDetails?.name || '',
+                      'following'
                     )}>
                     <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
