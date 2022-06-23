@@ -16,6 +16,7 @@ import { isEqual, uniqueId } from 'lodash';
 import { Diff, EditorContentRef } from 'Models';
 import React, { useState } from 'react';
 import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../utils/TasksUtils';
 
 interface Props {
@@ -68,7 +69,7 @@ export const DescriptionTabs = ({
 
     return (
       <div className="tw-w-full tw-border tw-border-main tw-p-2 tw-rounded tw-my-3 tw-max-h-52 tw-overflow-y-auto">
-        <pre className="tw-whitespace-pre-wrap">
+        <pre className="tw-whitespace-pre-wrap tw-mb-0">
           {diffArr.length ? (
             elements
           ) : (
@@ -87,12 +88,17 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onChange}>
       <TabPane key="1" tab="Current">
-        <RichTextEditor
-          readonly
-          className="tw-my-0"
-          height="208px"
-          initialValue={description || 'No Description'}
-        />
+        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-4">
+          {description.trim() ? (
+            <RichTextEditorPreviewer
+              className="tw-p-2"
+              enableSeeMoreVariant={false}
+              markdown={description}
+            />
+          ) : (
+            <span className="tw-no-description tw-p-2">No description </span>
+          )}
+        </div>
       </TabPane>
       <TabPane key="2" tab="Diff">
         <DiffView diffArr={diffs} />

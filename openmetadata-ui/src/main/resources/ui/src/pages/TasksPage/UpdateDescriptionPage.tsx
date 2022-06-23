@@ -200,7 +200,7 @@ const UpdateDescription = () => {
           className="tw-col-span-2"
           key="update-description"
           style={{ ...cardStyles }}
-          title={`Update description for ${getSanitizeValue || entityType}`}>
+          title={`Task: ${message}`}>
           <div data-testid="assignees">
             <span className="tw-text-grey-muted">Assignees:</span>{' '}
             <Assignees

@@ -182,7 +182,7 @@ const RequestDescription = () => {
           className="tw-col-span-2"
           key="request-description"
           style={{ ...cardStyles }}
-          title={message}>
+          title={`Task: ${message}`}>
           <div data-testid="assignees">
             <span className="tw-text-grey-muted">Assignees:</span>{' '}
             <Assignees
