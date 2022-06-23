@@ -63,7 +63,7 @@ export const DescriptionTabs = ({
         );
       }
 
-      return <div key={uniqueId()}>{diff.value}</div>;
+      return <div key={uniqueId()}>No diff available</div>;
     });
 
     return (

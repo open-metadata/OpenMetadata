@@ -69,6 +69,7 @@ const UpdateDescription = () => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
+  const [currentDescription, setCurrentDescription] = useState<string>('');
 
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
@@ -117,7 +118,7 @@ const UpdateDescription = () => {
     }
   }, [entityData.columns]);
 
-  const currentDescription = () => {
+  const getDescription = () => {
     if (!isEmpty(columnObject) && !isUndefined(columnObject)) {
       return columnObject.description || '';
     } else {
@@ -185,6 +186,10 @@ const UpdateDescription = () => {
     }
   }, [entityData]);
 
+  useEffect(() => {
+    setCurrentDescription(getDescription());
+  }, [entityData, columnObject]);
+
   return (
     <TaskPageLayout>
       <TitleBreadcrumb
@@ -205,14 +210,16 @@ const UpdateDescription = () => {
               onSearch={onSearch}
             />
           </div>
-          <div data-testid="description-tabs">
-            <span>Description:</span>{' '}
-            <DescriptionTabs
-              description={currentDescription()}
-              markdownRef={markdownRef}
-              suggestion=""
-            />
-          </div>
+          {currentDescription && (
+            <div data-testid="description-tabs">
+              <span>Description:</span>{' '}
+              <DescriptionTabs
+                description={currentDescription}
+                markdownRef={markdownRef}
+                suggestion={currentDescription}
+              />
+            </div>
+          )}
 
           <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
             <Button className="ant-btn-link-custom" type="link" onClick={back}>

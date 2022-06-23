@@ -20,7 +20,7 @@ import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
@@ -63,7 +63,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const getThreads = (after?: string) => {
     setIsThreadLoading(true);
-    getAllFeeds(threadLink, after)
+    getAllFeeds(threadLink, after, ThreadType.Conversation)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setThreads((prevData) => {
@@ -229,7 +229,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         ) : (
           <Fragment>
             {showNewConversation || threads.length === 0 ? (
-              <div className="tw-pt-6">
+              <div className="tw-pt-2">
                 <p className="tw-ml-9 tw-mr-2 tw-my-2">
                   You are starting a new conversation
                 </p>

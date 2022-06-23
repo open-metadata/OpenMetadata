@@ -16,17 +16,19 @@ import { Operation } from 'fast-json-patch';
 import { configOptions } from '../constants/constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
-import { Post } from '../generated/entity/feed/thread';
+import { Post, ThreadType } from '../generated/entity/feed/thread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
   entityLink?: string,
-  after?: string
+  after?: string,
+  type?: ThreadType
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
       entityLink: entityLink,
       after,
+      type,
     },
   });
 };
@@ -111,5 +113,5 @@ export const updatePost: Function = (
 };
 
 export const getTask: Function = (taskID: string): Promise<AxiosResponse> => {
-  return APIClient.get(`/feed/task/${taskID}`);
+  return APIClient.get(`/feed/tasks/${taskID}`);
 };

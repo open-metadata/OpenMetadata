@@ -1257,3 +1257,10 @@ code {
 .leaf-node.Pending {
   border-color: #276ef1;
 }
+
+.ProseMirror .placeholder {
+  color: #6b7280 !important;
+}
+div.ant-typography-ellipsis-custom {
+  margin-bottom: 0px;
+}
