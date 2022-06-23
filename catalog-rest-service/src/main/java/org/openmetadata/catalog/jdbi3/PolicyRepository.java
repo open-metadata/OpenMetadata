@@ -162,7 +162,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     List<Policy> policies = new ArrayList<>(jsons.size());
     for (String json : jsons) {
       Policy policy = setFields(JsonUtils.readValue(json, Policy.class), fields);
-      if (!policy.getPolicyType().equals(PolicyType.AccessControl)) {
+      if (!policy.getPolicyType().equals(PolicyType.AccessControl) && !Boolean.TRUE.equals(policy.getEnabled())) {
         continue;
       }
       policies.add(policy);
@@ -189,6 +189,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
       if (original.getPolicyType() != updated.getPolicyType()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
       }
+      recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       recordChange("rules", original.getRules(), updated.getRules());
       updateLocation(original, updated);
     }

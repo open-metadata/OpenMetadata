@@ -69,6 +69,11 @@
     "policyType": {
       "$ref": "#/definitions/policyType"
     },
+    "enabled": {
+      "description": "Is the policy enabled.",
+      "type": "boolean",
+      "default": true
+    },
     "version": {
       "description": "Metadata version of the Policy.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"

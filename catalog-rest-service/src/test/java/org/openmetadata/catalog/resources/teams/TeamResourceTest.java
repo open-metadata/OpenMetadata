@@ -190,7 +190,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             patchEntity(
                 team.getId(), originalJson, team, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
         FORBIDDEN,
-        CatalogExceptionMessage.noPermission(randomUserName, "UpdateTeam"));
+        CatalogExceptionMessage.noPermission(randomUserName, "team:editUsers"));
 
     // Ensure user with UpdateTeam permission can add users to a team.
     User teamManagerUser = createTeamManager(test);
@@ -208,7 +208,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
-        new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.UpdateTeam);
+        new Rule()
+            .withName("TeamManagerPolicy-UpdateTeam")
+            .withAllow(true)
+            .withOperation(MetadataOperation.TEAM_EDIT_USERS);
 
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();

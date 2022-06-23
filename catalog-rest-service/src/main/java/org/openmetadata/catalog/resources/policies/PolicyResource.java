@@ -16,10 +16,7 @@ package org.openmetadata.catalog.resources.policies;
 import static org.openmetadata.catalog.security.SecurityUtil.ADMIN;
 import static org.openmetadata.catalog.security.SecurityUtil.BOT;
 import static org.openmetadata.catalog.security.SecurityUtil.OWNER;
-import static org.openmetadata.catalog.util.EntityUtil.compareOperation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -55,7 +51,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
@@ -70,8 +65,7 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -82,8 +76,6 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "policies")
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
-  public static final List<org.openmetadata.catalog.entity.policies.accessControl.Operation> OPERATIONS =
-      new ArrayList<>();
   public static final List<String> RESOURCES = new ArrayList<>();
 
   @Override
@@ -98,24 +90,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   @SuppressWarnings("unused") // Method is used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Load operations supported in policy authoring from JSON data file
-    String operationsFile = EntityUtil.getJsonDataResources(".*json/data/policy/Operations.json$").get(0);
-    try {
-      String json =
-          IOUtil.toString(Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(operationsFile)));
-      ObjectMapper mapper = new ObjectMapper();
-      JsonNode root =
-          mapper.readTree(Objects.requireNonNull(JsonUtils.class.getClassLoader().getResourceAsStream(operationsFile)));
-      JsonNode operationsNode = root.findValue("operations");
-      OPERATIONS.addAll(
-          JsonUtils.readObjects(
-              operationsNode.toString(), org.openmetadata.catalog.entity.policies.accessControl.Operation.class));
-      OPERATIONS.sort(compareOperation);
-      LOG.info("Loaded from file {} policy operations {}", operationsFile, OPERATIONS);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize the policy operations {}", operationsFile, e);
-    }
-
     // Set up the PolicyEvaluator, before loading seed data.
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
     policyEvaluator.setPolicyRepository(dao);
@@ -136,18 +110,13 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
   }
 
-  public static class OperationList
-      extends ResultList<org.openmetadata.catalog.entity.policies.accessControl.Operation> {
+  public static class OperationList extends ResultList<MetadataOperation> {
     @SuppressWarnings("unused")
     OperationList() {
       // Empty constructor needed for deserialization
     }
 
-    public OperationList(
-        List<org.openmetadata.catalog.entity.policies.accessControl.Operation> data,
-        String beforeCursor,
-        String afterCursor,
-        int total) {
+    public OperationList(List<MetadataOperation> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -318,27 +287,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @GET
-  @Path("/operations")
-  @Operation(
-      operationId = "listPolicyOperations",
-      summary = "Get a list of policy operations used in policy authoring",
-      tags = "policies",
-      description = "Get all the operations used in policy authoring",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "policy",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Operation.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Policy for instance {id} and version {version} is" + " " + "not found")
-      })
-  public OperationList getOperations(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
-      throws IOException {
-    return new OperationList(OPERATIONS, null, null, OPERATIONS.size());
-  }
-
-  @GET
   @Path("/resources")
   @Operation(
       operationId = "listPolicyResources",
@@ -460,7 +408,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
 
   private Policy getPolicy(CreatePolicy create, String user) {
     Policy policy =
-        copy(new Policy(), create, user).withPolicyType(create.getPolicyType()).withRules(create.getRules());
+        copy(new Policy(), create, user)
+            .withPolicyType(create.getPolicyType())
+            .withRules(create.getRules())
+            .withEnabled(create.getEnabled());
     if (create.getLocation() != null) {
       policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
     }

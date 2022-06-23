@@ -40,7 +40,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.policies.accessControl.Operation;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -85,7 +84,6 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<Operation> compareOperation = Comparator.comparing(Operation::getName);
 
   //
   // Matchers used for matching two items in a list
@@ -134,9 +132,6 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
   public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
-      (ref1, ref2) -> ref1.getName().equals(ref2.getName());
-
-  public static final BiPredicate<Operation, Operation> operationMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}
