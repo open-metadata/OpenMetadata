@@ -189,12 +189,15 @@ class OrmProfilerProcessor(Processor[Table]):
         if self.config.test_suite:
             test_record = self.get_record_test_def(table)
             if test_record:
+                if test_record.clear_sample_query_from_entity:
+                    self.metadata.update_profile_query(
+                        fqn=table.fullyQualifiedName.__root__,
+                        table=table,
+                        )
+                    return None
                 return test_record.profile_sample_query
 
-        if table.tableProfile:
-            return table.tableProfile.profileQuery
-
-        return None
+        return table.profileQuery
 
     def build_profiler(
         self,

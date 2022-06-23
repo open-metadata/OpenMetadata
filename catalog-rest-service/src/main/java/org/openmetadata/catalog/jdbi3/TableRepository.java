@@ -93,7 +93,7 @@ public class TableRepository extends EntityRepository<Table> {
   static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension";
   // Table fields that can be updated in a PUT request
   static final String TABLE_UPDATE_FIELDS =
-      "owner,tags,tableConstraints,tablePartition,dataModel,profileSample," + "extension";
+      "owner,tags,tableConstraints,tablePartition,dataModel,profileSample,profileQuery," + "extension";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -126,6 +126,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
+    table.setProfileQuery(fields.contains("profileQuery") ? table.getProfileQuery() : null);
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     getCustomMetrics(fields.contains("customMetrics"), table);
@@ -948,6 +949,7 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
+      recordChange("profileQuery", origTable.getProfileQuery(), updatedTable.getProfileQuery());
       updateConstraints(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }

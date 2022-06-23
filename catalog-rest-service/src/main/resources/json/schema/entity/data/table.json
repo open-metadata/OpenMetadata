@@ -711,6 +711,11 @@
       "maximum": 100,
       "default": null
     },
+    "profileQuery": {
+      "description": "Users' raw SQL query to fetch sample data and profile the table",
+      "type": "string",
+      "default": null
+    },
     "tableProfile": {
       "description": "Data profile for a table.",
       "type": "array",

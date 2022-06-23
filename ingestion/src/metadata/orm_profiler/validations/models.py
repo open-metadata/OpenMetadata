@@ -43,6 +43,7 @@ class TestDef(ConfigModel):
     partition_query_duration: Optional[int] = 1
     partition_values: Optional[List] = None
     profile_sample_query: Optional[str] = None
+    clear_sample_query_from_entity: bool = False
 
 
 class TestSuite(ConfigModel):
