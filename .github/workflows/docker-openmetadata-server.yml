@@ -23,13 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       input: ${{ github.event.inputs.tag }}
+      output: '0.10.4'
       
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        env:
-          input: '0.10.4'
-        run: echo $input
+        run: echo $output
         
       - run: echo $input
     
