@@ -13,8 +13,8 @@ name: docker-openmetadata-airflow docker
 on:
   workflow_dispatch:
     inputs:
-      tags:
-        description: "Release tag being built"
+      tag:
+        description: "Input tag"
   release:
     types: [published]
 
@@ -22,9 +22,6 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     steps:
-      - name: Printing tag
-        run: echo "Tag - ${{ github.event.inputs.tags }}"
-        
       - name: Check out the Repo
         uses: actions/checkout@v2
 
@@ -47,5 +44,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/airflow:0.10.1,openmetadata/airflow:latest'
+          tags: 'openmetadata/airflow:${{ github.event.inputs.tag }},openmetadata/airflow:latest'
           file: ./docker/airflow/Dockerfile
