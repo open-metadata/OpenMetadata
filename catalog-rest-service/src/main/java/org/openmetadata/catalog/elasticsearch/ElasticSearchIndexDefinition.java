@@ -48,7 +48,8 @@ public class ElasticSearchIndexDefinition {
     USER_SEARCH_INDEX("user_search_index", "/elasticsearch/user_index_mapping.json"),
     TEAM_SEARCH_INDEX("team_search_index", "/elasticsearch/team_index_mapping.json"),
     GLOSSARY_SEARCH_INDEX("glossary_search_index", "/elasticsearch/glossary_index_mapping.json"),
-    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json");
+    MLMODEL_SEARCH_INDEX("mlmodel_search_index", "/elasticsearch/mlmodel_index_mapping.json"),
+    TAG_SEARCH_INDEX("tag_search_index", "/elasticsearch/tag_index_mapping.json");
 
     public final String indexName;
     public final String indexMappingFile;

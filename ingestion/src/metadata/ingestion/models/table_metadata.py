@@ -273,3 +273,21 @@ class GlossaryTermESDocument(BaseModel):
     suggest: List[dict]
     deleted: bool
     doc_as_upsert: bool = True
+
+
+class TagESDocument(BaseModel):
+    """Elastic Search Mapping doc for Tag"""
+
+    entityType: str = "tag"
+    id: str
+    name: str
+    fullyQualifiedName: str
+    description: str
+    version: float
+    updatedAt: Optional[int]
+    updatedBy: Optional[str]
+    href: Optional[str]
+    suggest: List[dict]
+    deleted: bool
+    deprecated: bool
+    doc_as_upsert: bool = True
