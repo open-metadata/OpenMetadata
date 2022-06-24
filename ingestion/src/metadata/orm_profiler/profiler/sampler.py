@@ -109,7 +109,7 @@ class Sampler:
             columns = list(rnd.keys())
         return TableData(
             columns=columns,
-            rows=[list(row) for row in rnd.all()],
+            rows=[list(row) for row in rnd.fetchmany(100)],
         )
 
     def _fetch_sample_data_with_query_object(self) -> Query:
