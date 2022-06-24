@@ -209,6 +209,23 @@ const mockGlossaryList = [
   },
 ];
 
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+    })),
+  };
+});
+
+jest.mock('../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
 jest.mock('@fortawesome/react-fontawesome', () => ({
   FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
 }));
