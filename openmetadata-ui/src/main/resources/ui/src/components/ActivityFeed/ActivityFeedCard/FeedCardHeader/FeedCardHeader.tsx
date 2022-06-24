@@ -92,6 +92,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       EntityType.GLOSSARY,
       EntityType.GLOSSARY_TERM,
       EntityType.TYPE,
+      EntityType.MLMODEL,
     ];
 
     const entityLink = getEntityLink(entityType, entityFQN);

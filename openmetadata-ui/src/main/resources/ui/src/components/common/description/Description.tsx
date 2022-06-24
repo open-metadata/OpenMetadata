@@ -149,13 +149,13 @@ const Description: FC<DescriptionProps> = ({
       <div
         className={classNames(
           'tw-w-5 tw-min-w-max tw-flex',
-          description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+          description?.trim() ? 'tw-pl-1' : ''
         )}>
         <button
           className="focus:tw-outline-none tw-self-baseline"
           data-testid="edit-description"
           onClick={handleUpdate}>
-          <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
+          <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
         </button>
 
         <RequestDescriptionEl descriptionThread={thread} />
