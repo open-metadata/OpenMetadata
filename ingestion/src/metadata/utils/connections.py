@@ -86,6 +86,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     AirByteClient,
@@ -697,3 +700,14 @@ def _(connection: ModeClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+
+
+@get_connection.register
+def _(_: BackendConnection, verbose: bool = False):
+    """
+    Let's use Airflow's internal connection for this
+    """
+    from airflow import settings
+
+    with settings.Session() as session:
+        return session.get_bind()
