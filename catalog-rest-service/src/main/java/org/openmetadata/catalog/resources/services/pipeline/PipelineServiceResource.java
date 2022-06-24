@@ -299,7 +299,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
   }
