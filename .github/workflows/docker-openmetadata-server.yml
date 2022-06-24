@@ -25,10 +25,9 @@ jobs:
       input: ${{ github.event.inputs.tag }}
       
     steps:
-      - if: ${{ env.input == '' }}
+      - name: Check trigger type
+        if: ${{ env.input == '' }}
         run: echo "input=0.10.4" >> $GITHUB_ENV
-        
-      - run: echo $input
     
       - name: Check out the Repo
         uses: actions/checkout@v2
