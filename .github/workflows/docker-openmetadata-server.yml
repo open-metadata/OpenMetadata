@@ -27,9 +27,9 @@ jobs:
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        env:
-          output: '0.10.4'
-        run: echo " $output "
+        run: |
+          echo "0.10.4" > $input
+          echo '$input'
     
       - name: Check out the Repo
         uses: actions/checkout@v2
