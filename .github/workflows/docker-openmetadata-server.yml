@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        run: echo $output
+        run: ${{ $input == $output }}
         
       - run: echo $input
     
