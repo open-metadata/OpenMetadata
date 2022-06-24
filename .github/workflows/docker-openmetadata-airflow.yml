@@ -15,6 +15,7 @@ on:
     inputs:
       tag:
         description: "Input tag"
+        required: true
   release:
     types: [published]
 
