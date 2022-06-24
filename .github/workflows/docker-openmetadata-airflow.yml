@@ -51,5 +51,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/airflow:${{ github.event.inputs.tag }},openmetadata/airflow:latest'
+          tags: 'openmetadata/airflow:$input,openmetadata/airflow:latest'
           file: ./docker/airflow/Dockerfile
