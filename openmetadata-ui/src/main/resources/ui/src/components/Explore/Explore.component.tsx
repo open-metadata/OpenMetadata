@@ -657,38 +657,37 @@ const Explore: React.FC<ExploreProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-h-full">
-        <Card
-          data-testid="data-summary-container"
-          style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
-          <Fragment>
-            <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
-              <Button
-                className={classNames('tw-underline tw-pb-4')}
-                disabled={!getFilterCount(filters)}
-                size="custom"
-                theme="primary"
-                variant="link"
-                onClick={() => resetFilters(true)}>
-                Clear All
-              </Button>
-            </div>
-            <div className="tw-filter-seperator" />
-            {!error && (
-              <FacetFilter
-                aggregations={getAggrWithDefaultValue(
-                  aggregations,
-                  visibleFilters
-                )}
-                filters={getFacetedFilter()}
-                showDeletedOnly={showDeleted}
-                onSelectDeleted={handleShowDeleted}
-                onSelectHandler={handleSelectedFilter}
-              />
-            )}
-          </Fragment>
-        </Card>
-      </div>
+      <Card
+        className="tw-h-full"
+        data-testid="data-summary-container"
+        style={{ ...leftPanelAntCardStyle, marginTop: '16px' }}>
+        <Fragment>
+          <div className="tw-w-64 tw-mr-5 tw-flex-shrink-0">
+            <Button
+              className={classNames('tw-underline tw-pb-4')}
+              disabled={!getFilterCount(filters)}
+              size="custom"
+              theme="primary"
+              variant="link"
+              onClick={() => resetFilters(true)}>
+              Clear All
+            </Button>
+          </div>
+          <div className="tw-filter-seperator" />
+          {!error && (
+            <FacetFilter
+              aggregations={getAggrWithDefaultValue(
+                aggregations,
+                visibleFilters
+              )}
+              filters={getFacetedFilter()}
+              showDeletedOnly={showDeleted}
+              onSelectDeleted={handleShowDeleted}
+              onSelectHandler={handleSelectedFilter}
+            />
+          )}
+        </Fragment>
+      </Card>
     );
   };
 
