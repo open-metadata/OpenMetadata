@@ -189,11 +189,11 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
-jest.mock('../common/DeleteWidget/DeleteWidgetV1', () => {
+jest.mock('../common/DeleteWidget/DeleteWidgetModal', () => {
   return jest
     .fn()
     .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteWidgetV1</p> : null
+      visible ? <p>DeleteWidgetModal</p> : null
     );
 });
 
@@ -253,13 +253,13 @@ describe('Test UserDetails component', () => {
 
     expect(userDataCard.length).toBe(3);
 
-    expect(queryByText('DeleteWidgetV1')).toBeNull();
+    expect(queryByText('DeleteWidgetModal')).toBeNull();
 
     act(() => {
       fireEvent.click(handleDeleteUserModal[0]);
     });
 
-    expect(queryByText('DeleteWidgetV1')).toBeInTheDocument();
+    expect(queryByText('DeleteWidgetModal')).toBeInTheDocument();
   });
 
   it('Checking if Error is displayed when no users present', () => {

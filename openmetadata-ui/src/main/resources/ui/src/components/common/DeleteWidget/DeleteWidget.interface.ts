@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-export interface DeleteWidgetV1Props {
+export interface DeleteWidgetModalProps {
   visible: boolean;
   onCancel: () => void;
   allowSoftDelete?: boolean;

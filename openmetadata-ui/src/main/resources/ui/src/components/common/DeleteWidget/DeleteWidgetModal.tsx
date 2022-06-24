@@ -25,7 +25,7 @@ import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import Loader from '../../Loader/Loader';
-import { DeleteType, DeleteWidgetV1Props } from './DeleteWidget.interface';
+import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
 const DeleteWidgetV1 = ({
   visible,
@@ -35,7 +35,7 @@ const DeleteWidgetV1 = ({
   entityId,
   isRecursiveDelete,
   afterDeleteAction,
-}: DeleteWidgetV1Props) => {
+}: DeleteWidgetModalProps) => {
   const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);

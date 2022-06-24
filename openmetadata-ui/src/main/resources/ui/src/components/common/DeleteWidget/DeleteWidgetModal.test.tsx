@@ -14,10 +14,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DeleteWidgetV1Props } from './DeleteWidget.interface';
-import DeleteWidgetV1 from './DeleteWidgetV1';
+import { DeleteWidgetModalProps } from './DeleteWidget.interface';
+import DeleteWidgetModal from './DeleteWidgetModal';
 
-const mockProps: DeleteWidgetV1Props = {
+const mockProps: DeleteWidgetModalProps = {
   visible: true,
   onCancel: jest.fn(),
   entityName: 'entityName',
@@ -27,7 +27,7 @@ const mockProps: DeleteWidgetV1Props = {
 
 describe('Test DeleteWidgetV1 Component', () => {
   it('Component should render properly', async () => {
-    render(<DeleteWidgetV1 {...mockProps} />);
+    render(<DeleteWidgetModal {...mockProps} />);
 
     const deleteModal = await screen.findByTestId('delete-modal');
     const footer = await screen.findByTestId('footer');
@@ -47,7 +47,7 @@ describe('Test DeleteWidgetV1 Component', () => {
   });
 
   it('Delete click should work properly', async () => {
-    render(<DeleteWidgetV1 {...mockProps} />);
+    render(<DeleteWidgetModal {...mockProps} />);
     const inputBox = await screen.findByTestId('confirmation-text-input');
     const confirmButton = await screen.findByTestId('confirm-button');
     const hardDelete = await screen.findByTestId('hard-delete');
@@ -62,7 +62,7 @@ describe('Test DeleteWidgetV1 Component', () => {
   });
 
   it('Discard click should work properly', async () => {
-    render(<DeleteWidgetV1 {...mockProps} />);
+    render(<DeleteWidgetModal {...mockProps} />);
     const discardButton = await screen.findByTestId('discard-button');
 
     userEvent.click(discardButton);

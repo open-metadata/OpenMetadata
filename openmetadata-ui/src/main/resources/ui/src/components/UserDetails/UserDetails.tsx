@@ -18,7 +18,7 @@ import { getUserPath, PAGE_SIZE_BASE } from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName } from '../../utils/CommonUtils';
-import DeleteWidgetV1 from '../common/DeleteWidget/DeleteWidgetV1';
+import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import PopOver from '../common/popover/PopOver';
@@ -175,7 +175,7 @@ const UserDetails = ({
         />
       )}
 
-      <DeleteWidgetV1
+      <DeleteWidgetModal
         afterDeleteAction={onConfirmDeleteUser}
         entityId={deletingUser?.id || ''}
         entityName={deletingUser?.name || ''}
