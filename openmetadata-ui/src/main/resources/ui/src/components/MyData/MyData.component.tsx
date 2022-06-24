@@ -216,6 +216,8 @@ const MyData: React.FC<MyDataProps> = ({
     isMounted.current = true;
   }, []);
 
+  const newFeedsLength = activityFeeds && activityFeeds.length;
+
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
@@ -226,15 +228,16 @@ const MyData: React.FC<MyDataProps> = ({
             <Fragment>
               {getFilterDropDown()}
 
-              {activityFeeds && activityFeeds.length > 0 && (
+              {newFeedsLength ? (
                 <div className="tw-py-px tw-pt-3 tw-pb-3">
                   <button
                     className="tw-refreshButton "
                     onClick={onRefreshFeeds}>
-                    View {activityFeeds.length} new feeds
+                    View {newFeedsLength} new{' '}
+                    {newFeedsLength > 1 ? 'activities' : 'activity'}
                   </button>
                 </div>
-              )}
+              ) : null}
 
               <ActivityFeedList
                 withSidePanel
