@@ -42,6 +42,6 @@
       "type": "string"
     }
   },
-  "required": ["query", "sql", "serviceName"],
+  "required": ["query", "serviceName"],
   "additionalProperties": false
 }

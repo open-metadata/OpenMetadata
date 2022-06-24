@@ -300,7 +300,10 @@ public class FeedResource {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response closeTask(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Valid ResolveTask resolveTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
     return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName()).toResponse();
