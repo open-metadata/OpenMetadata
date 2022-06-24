@@ -331,7 +331,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                 alt="edit"
                 icon={Icons.EDIT_OUTLINE_PRIMARY}
                 title="Edit"
-                width="12px"
+                width="16px"
               />
             </span>
             <span>Edit</span>
@@ -464,7 +464,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
                     alt="edit"
                     icon="icon-edit"
                     title="Edit"
-                    width="12px"
+                    width="16px"
                   />
                 </button>
               ) : (
@@ -483,7 +483,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
       </div>
       <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
-          <div data-testid="description-container">
+          <div className="tw-mb-4" data-testid="description-container">
             <DescriptionV1
               removeBlur
               description={glossary?.description}

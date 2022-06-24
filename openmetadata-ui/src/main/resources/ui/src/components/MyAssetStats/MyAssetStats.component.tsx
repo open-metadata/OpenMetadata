@@ -25,6 +25,7 @@ import { UserType } from '../../enums/user.enum';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 type Props = {
   countDashboards: number;
@@ -125,34 +126,41 @@ const MyAssetStats: FunctionComponent<Props> = ({
   }, []);
 
   return (
-    <Card
-      data-testid="data-summary-container"
-      id="assetStatsCount"
-      style={{
-        border: '1px rgb(221, 227, 234) solid',
-        borderRadius: '8px',
-        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-        marginRight: '4px',
-        marginLeft: '4px',
-      }}>
-      {Object.values(dataSummary).map((data, index) => (
-        <div
-          className="tw-flex tw-items-center tw-justify-between"
-          data-testid={`${data.dataTestId}-summary`}
-          key={index}>
-          <div className="tw-flex">
-            <SVGIcons
-              alt="icon"
-              className="tw-h-4 tw-w-4 tw-self-center"
-              icon={data.icon}
-            />
-            {data.link ? (
-              data.adminOnly ? (
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+    <div className="ant-entity-card">
+      <Card
+        data-testid="data-summary-container"
+        id="assetStatsCount"
+        style={leftPanelAntCardStyle}>
+        {Object.values(dataSummary).map((data, index) => (
+          <div
+            className="tw-flex tw-items-center tw-justify-between"
+            data-testid={`${data.dataTestId}-summary`}
+            key={index}>
+            <div className="tw-flex">
+              <SVGIcons
+                alt="icon"
+                className="tw-h-4 tw-w-4 tw-self-center"
+                icon={data.icon}
+              />
+              {data.link ? (
+                data.adminOnly ? (
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Link
+                      className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
+                      data-testid={data.dataTestId}
+                      to={data.link}>
+                      <Button
+                        className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
+                        type="text">
+                        {data.data}
+                      </Button>
+                    </Link>
+                  </NonAdminAction>
+                ) : (
                   <Link
-                    className="tw-font-medium"
+                    className="tw-font-medium hover:tw-text-primary-hover hover:tw-underline"
                     data-testid={data.dataTestId}
                     to={data.link}>
                     <Button
@@ -161,27 +169,16 @@ const MyAssetStats: FunctionComponent<Props> = ({
                       {data.data}
                     </Button>
                   </Link>
-                </NonAdminAction>
+                )
               ) : (
-                <Link
-                  className="tw-font-medium"
-                  data-testid={data.dataTestId}
-                  to={data.link}>
-                  <Button
-                    className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
-                    type="text">
-                    {data.data}
-                  </Button>
-                </Link>
-              )
-            ) : (
-              <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
-            )}
+                <p className="tw-text-grey-body tw-pl-2">{data.data}</p>
+              )}
+            </div>
+            {!isNil(data.count) && getCountBadge(data.count, '', false)}
           </div>
-          {!isNil(data.count) && getCountBadge(data.count, '', false)}
-        </div>
-      ))}
-    </Card>
+        ))}
+      </Card>
+    </div>
   );
 };
 

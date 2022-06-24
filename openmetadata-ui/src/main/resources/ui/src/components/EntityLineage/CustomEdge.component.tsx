@@ -105,7 +105,7 @@ export const CustomEdge = ({
             <SVGIcons
               alt="times-circle"
               icon="icon-times-circle"
-              width="14px"
+              width="16px"
             />
           </button>
         </foreignObject>

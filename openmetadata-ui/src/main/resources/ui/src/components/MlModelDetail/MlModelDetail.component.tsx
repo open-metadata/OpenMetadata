@@ -456,6 +456,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 <div>
                   <ManageTabComponent
                     allowDelete
+                    allowSoftDelete
                     currentTier={mlModelTier?.tagFQN}
                     currentUser={mlModelDetail.owner}
                     entityId={mlModelDetail.id}

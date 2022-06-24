@@ -22,6 +22,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import PopOver from '../common/popover/PopOver';
+import { leftPanelAntCardStyle } from '../containers/PageLayout';
 
 const RecentSearchedTermsAntd: FunctionComponent = () => {
   const [recentlySearchedTerms, setRecentlySearchTerms] = useState<
@@ -39,15 +40,7 @@ const RecentSearchedTermsAntd: FunctionComponent = () => {
 
   return (
     <>
-      <Card
-        style={{
-          border: '1px rgb(221, 227, 234) solid',
-          borderRadius: '8px',
-          boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-          marginRight: '4px',
-          marginLeft: '4px',
-        }}
-        title="Recent Search Terms">
+      <Card style={leftPanelAntCardStyle} title="Recent Search Terms">
         {recentlySearchedTerms.length ? (
           recentlySearchedTerms.map((item, index) => {
             return (

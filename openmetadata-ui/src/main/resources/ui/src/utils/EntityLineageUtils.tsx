@@ -169,10 +169,7 @@ export const getLineageDataV1 = (
   currentData: { nodes: Node[]; edges: Edge[] }
 ) => {
   const [x, y] = [0, 0];
-  const nodes = [
-    ...(entityLineage['nodes'] as EntityReference[]),
-    entityLineage['entity'],
-  ];
+  const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
   const edgesV1 = [
     ...(entityLineage.downstreamEdges || []),
     ...(entityLineage.upstreamEdges || []),
