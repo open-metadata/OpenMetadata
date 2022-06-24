@@ -12,33 +12,78 @@
  */
 
 import React, {
+  ComponentType,
   forwardRef,
   Fragment,
   ReactNode,
   useImperativeHandle,
+  useMemo,
 } from 'react';
+import { UserManager, WebStorageStateStore } from 'oidc-client';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import {
   GoogleLoginResponse,
   useGoogleLogin,
   useGoogleLogout,
 } from 'react-google-login';
-import { oidcTokenKey } from '../../constants/constants';
+import Appbar from '../../components/app-bar/Appbar';
+import { oidcTokenKey, ROUTES } from '../../constants/constants';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,
   OidcUser,
 } from '../auth-provider/AuthProvider.interface';
 import { refreshTokenSetup } from '../auth-provider/refreshToken';
+import SigninPage from '../../pages/login';
+import PageNotFound from '../../pages/page-not-found';
+import { makeAuthenticator, makeUserManager } from 'react-oidc';
+import Loader from '../../components/Loader/Loader';
+import { isEmpty } from 'lodash';
+import AppState from '../../AppState';
 
 interface Props {
   children: ReactNode;
+  childComponentType: ComponentType;
+  userConfig: Record<string, string | boolean | WebStorageStateStore>;
+  onLoginFailure: () => void;
   onLoginSuccess: (user: OidcUser) => void;
   onLogoutSuccess: () => void;
 }
 
+const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
+  return makeAuthenticator({
+    userManager: userManager,
+    signinArgs: {
+      app: 'openmetadata',
+    },
+  })(type);
+};
+
 const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
-  ({ children, onLoginSuccess, onLogoutSuccess }: Props, ref) => {
-    const { authConfig, setIsAuthenticated } = useAuthContext();
+  (
+    {
+      childComponentType,
+      children,
+      onLoginSuccess,
+      onLogoutSuccess,
+      onLoginFailure,
+      userConfig,
+    }: Props,
+    ref
+  ) => {
+    const { userDetails, newUser } = AppState;
+    const {
+      authConfig,
+      isAuthDisabled,
+      isAuthenticated,
+      isSigningIn,
+      loading,
+      setIsAuthenticated,
+    } = useAuthContext();
+    const userManager = useMemo(
+      () => makeUserManager(userConfig),
+      [userConfig]
+    );
 
     const googleClientLogin = useGoogleLogin({
       clientId: authConfig.clientId,
@@ -54,17 +99,12 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
             picture: profileObj.imageUrl,
           },
         };
-        // eslint-disable-next-line no-console
-        console.log('Login Success: currentUser:', res);
         setIsAuthenticated(true);
         localStorage.setItem(oidcTokenKey, tokenObj.id_token);
         refreshTokenSetup(res);
         onLoginSuccess(user);
       },
-      onFailure: (res) => {
-        // eslint-disable-next-line no-console
-        console.log('Login failed: res:', res);
-      },
+      onFailure: onLoginFailure,
       cookiePolicy: 'single_host_origin',
       isSignedIn: true,
     });
@@ -74,10 +114,6 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
       onLogoutSuccess: () => {
         setIsAuthenticated(false);
         onLogoutSuccess();
-      },
-      onFailure: () => {
-        // eslint-disable-next-line no-console
-        console.log('Logout failed!');
       },
       cookiePolicy: 'single_host_origin',
     });
@@ -94,7 +130,40 @@ const GoogleAuthenticator = forwardRef<AuthenticatorRef, Props>(
       },
     }));
 
-    return <Fragment>{children}</Fragment>;
+    const AppWithAuth = getAuthenticator(childComponentType, userManager);
+
+    return (
+      <Fragment>
+        {!loading ? (
+          <>
+            <Appbar />
+            {/* {children} */}
+            <Switch>
+              <Route exact path={ROUTES.HOME}>
+                {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
+                  <Redirect to={ROUTES.SIGNIN} />
+                ) : (
+                  <Redirect to={ROUTES.MY_DATA} />
+                )}
+              </Route>
+              <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+              {!isSigningIn ? (
+                <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+              ) : null}
+              {isAuthenticated || isAuthDisabled ? (
+                <Fragment>{children}</Fragment>
+              ) : !isSigningIn && isEmpty(userDetails) && isEmpty(newUser) ? (
+                <Redirect to={ROUTES.SIGNIN} />
+              ) : (
+                <AppWithAuth />
+              )}
+            </Switch>
+          </>
+        ) : (
+          <Loader />
+        )}
+      </Fragment>
+    );
   }
 );
 

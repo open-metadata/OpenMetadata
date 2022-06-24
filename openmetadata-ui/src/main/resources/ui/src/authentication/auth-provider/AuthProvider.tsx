@@ -70,6 +70,7 @@ import {
   matchUserDetails,
 } from '../../utils/UserDataUtils';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
+import GoogleAuthenticator from '../authenticators/GoogleAuthenticator';
 import MsalAuthenticator from '../authenticators/MsalAuthenticator';
 import OidcAuthenticator from '../authenticators/OidcAuthenticator';
 import OktaAuthenticator from '../authenticators/OktaAuthenticator';
@@ -473,7 +474,23 @@ export const AuthProvider = ({
           </OktaAuthProvider>
         );
       }
-      case AuthTypes.GOOGLE:
+      case AuthTypes.GOOGLE: {
+        return authConfig ? (
+          <GoogleAuthenticator
+            childComponentType={childComponentType}
+            ref={authenticatorRef}
+            userConfig={getUserManagerConfig({
+              ...(authConfig as Record<string, string>),
+            })}
+            onLoginFailure={handleFailedLogin}
+            onLoginSuccess={handleSuccessfulLogin}
+            onLogoutSuccess={handleSuccessfulLogout}>
+            {children}
+          </GoogleAuthenticator>
+        ) : (
+          <Loader />
+        );
+      }
       case AuthTypes.CUSTOM_OIDC:
       case AuthTypes.AWS_COGNITO: {
         return authConfig ? (
