@@ -14,7 +14,7 @@
 import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Post } from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
 jest.mock('../../../AppState', () => ({
@@ -59,6 +59,7 @@ const mockFeedCardProps = {
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
   onReply: jest.fn(),
+  feedType: ThreadType.Conversation,
 };
 
 describe('Test ActivityFeedCard Component', () => {

@@ -30,7 +30,7 @@ import {
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
@@ -89,9 +89,9 @@ const UserPage = () => {
     );
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (threadType: ThreadType, after?: string) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(userData.id, FeedFilter.OWNER, after)
+    getFeedsWithFilter(userData.id, FeedFilter.ALL, after, threadType)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -227,9 +227,15 @@ const UserPage = () => {
 
   useEffect(() => {
     if (userData.id) {
-      getFeedData();
+      const threadType =
+        tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
+      getFeedData(threadType);
     }
-  }, [userData]);
+  }, [userData, tab]);
+
+  useEffect(() => {
+    setEntityThread([]);
+  }, [tab]);
 
   useEffect(() => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());

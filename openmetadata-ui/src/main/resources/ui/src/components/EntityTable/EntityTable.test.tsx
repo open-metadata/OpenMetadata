@@ -209,6 +209,23 @@ const mockGlossaryList = [
   },
 ];
 
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+    })),
+  };
+});
+
+jest.mock('../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
 jest.mock('@fortawesome/react-fontawesome', () => ({
   FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
 }));
@@ -321,13 +338,6 @@ describe('Test EntityTable Component', () => {
     );
 
     expect(requestDescriptionButton).toBeInTheDocument();
-
-    fireEvent.click(
-      requestDescriptionButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onEntityFieldSelect).toBeCalled();
 
     const descriptionThread = queryByTestId(tableRows[0], 'field-thread');
     const startDescriptionThread = queryByTestId(

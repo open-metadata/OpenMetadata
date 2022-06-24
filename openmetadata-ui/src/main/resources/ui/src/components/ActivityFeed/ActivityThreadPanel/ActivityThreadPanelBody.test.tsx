@@ -15,16 +15,17 @@ import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
-import ActivityThreadPanel from './ActivityThreadPanel';
+import { ThreadType } from '../../../generated/entity/feed/thread';
+import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
-const mockActivityThreadPanelProp = {
+const mockActivityThreadPanelBodyBodyProp = {
   threadLink: '',
   onCancel: jest.fn(),
-  open: true,
   postFeedHandler: jest.fn(),
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
+  threadType: ThreadType.Conversation,
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({
@@ -58,7 +59,7 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
   unobserve: mockunObserve,
 }));
 
-describe('Test ActivityThreadPanel Component', () => {
+describe('Test ActivityThreadPanelBodyBody Component', () => {
   beforeAll(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
@@ -68,20 +69,20 @@ describe('Test ActivityThreadPanel Component', () => {
 
   it('Check if it has all child elements', async () => {
     const { container } = render(
-      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      <ActivityThreadPanelBody {...mockActivityThreadPanelBodyBodyProp} />,
       { wrapper: MemoryRouter }
     );
-    const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
 
+    const panelHeader = await findByText(container, /FeedPanelHeader/i);
     const panelThreadList = await findByText(container, /ActivityThreadList/i);
 
-    expect(panelOverlay).toBeInTheDocument();
+    expect(panelHeader).toBeInTheDocument();
     expect(panelThreadList).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
     const { container } = render(
-      <ActivityThreadPanel {...mockActivityThreadPanelProp} />,
+      <ActivityThreadPanelBody {...mockActivityThreadPanelBodyBodyProp} />,
       { wrapper: MemoryRouter }
     );
 

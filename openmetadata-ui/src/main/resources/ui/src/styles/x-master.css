@@ -28,6 +28,18 @@ a:focus {
   text-decoration: none;
 }
 
+.list-reset {
+  margin: 0;
+}
+
+p {
+  margin-bottom: 0px;
+}
+
+pre {
+  font-family: 'Inter', sans-serif;
+}
+
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -985,6 +997,20 @@ code {
   -webkit-box-orient: vertical;
 }
 
+.ant-btn-text:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
+@media only screen and (min-width: 2000px) {
+  .centered-layout {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
+}
+
 .ant-card-body {
   padding: 14px;
 }
@@ -1128,6 +1154,90 @@ code {
 
 /* Feed popover CSS end */
 
+/* Antd custom button CSS */
+.ant-btn-link-custom,
+.ant-btn-link-custom:hover {
+  color: #7147e8;
+}
+.ant-btn-primary-custom {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+}
+.ant-btn-primary-custom:hover,
+.ant-btn-primary-custom span:hover {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  text-decoration: none;
+}
+/* Antd custom button CSS */
+
+.ant-select-assignee {
+  width: 100%;
+  margin: 8px 0px;
+  outline: none;
+}
+.ant-select-assignee:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #7147e8;
+}
+.ant-select-focused {
+  border-color: #7147e8;
+  outline: none;
+}
+
+/* Description tabs CSS */
+.ant-tabs-description {
+  margin-top: 8px;
+}
+
+.ant-tabs-description > .ant-tabs-nav {
+  margin-bottom: 0px;
+}
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover {
+  color: #7147e8;
+}
+.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
+  padding: 0px 16px;
+}
+.ant-tabs-ink-bar {
+  background: #7147e8;
+}
+/* Description tabs CSS */
+
+/* Task Detail Side CSS */
+
+.ant-layout-sider-task-detail {
+  background: #ffffff;
+  border: 1px solid #dde3ea;
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.16);
+  padding: 16px;
+  padding-top: 0px;
+  overflow-y: auto;
+}
+
+/* Task Detail Side CSS */
 .data-box {
   padding: 8px 12px;
 }
@@ -1180,20 +1290,9 @@ code {
   border-color: #276ef1;
 }
 
-.ant-btn:hover span {
-  text-decoration: underline;
-  color: #7147e8;
-  background-color: transparent;
+.ProseMirror .placeholder {
+  color: #6b7280 !important;
 }
-
-p {
+div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
-}
-
-@media only screen and (min-width: 2000px) {
-  .centered-layout {
-    margin-left: auto;
-    margin-right: auto;
-    width: auto;
-  }
 }

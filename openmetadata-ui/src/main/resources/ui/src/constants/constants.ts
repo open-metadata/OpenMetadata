@@ -77,6 +77,7 @@ export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
+export const PLACEHOLDER_TASK_ID = ':taskId';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -226,6 +227,12 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+
+  // Tasks Routes
+  REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
+
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
 };
 

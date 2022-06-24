@@ -605,6 +605,11 @@ declare module 'Models' {
     readonly value: string;
   }
 
+  export interface Diff {
+    removed: boolean;
+    added: boolean;
+    value: string;
+  }
   export interface ScrollHandle {
     left: boolean;
     right: boolean;

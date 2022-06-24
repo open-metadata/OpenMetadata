@@ -44,7 +44,7 @@ import {
   mentionRegEx,
 } from '../constants/feed.constants';
 import { SearchIndex } from '../enums/search.enum';
-import { Post, Thread } from '../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -401,4 +401,12 @@ export const updateThreadData = (
         showErrorToast(err);
       });
   }
+};
+
+export const getFeedAction = (type: ThreadType) => {
+  if (type === ThreadType.Task) {
+    return 'created a task';
+  }
+
+  return 'posted on';
 };

@@ -17,8 +17,9 @@ import classNames from 'classnames';
 import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
 import { SettledStatus } from '../../enums/axios.enum';
@@ -33,6 +34,7 @@ import {
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { useAuth } from '../../hooks/authHooks';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
 import {
   getHtmlForNonAdminAction,
@@ -53,6 +55,10 @@ import {
   makeData,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import {
+  getRequestDescriptionPath,
+  getUpdateDescriptionPath,
+} from '../../utils/TasksUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
@@ -86,10 +92,12 @@ const EntityTable = ({
   entityFieldThreads,
   isReadOnly = false,
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityFqn,
   tableConstraints,
 }: Props) => {
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+  const history = useHistory();
   const columns = React.useMemo(
     () => [
       {
@@ -361,9 +369,15 @@ const EntityTable = ({
 
   /* eslint-disable-next-line */
   const onRequestDescriptionHandler = (cell: any) => {
-    const columnName = getColumnName(cell);
-    onEntityFieldSelect?.(
-      `columns${ENTITY_LINK_SEPARATOR}${columnName}${ENTITY_LINK_SEPARATOR}description`
+    const field = 'columns';
+    const value = getColumnName(cell);
+    history.push(
+      getRequestDescriptionPath(
+        EntityType.TABLE,
+        entityFqn as string,
+        field,
+        value
+      )
     );
   };
 
@@ -382,6 +396,30 @@ const EntityTable = ({
       } else {
         return null;
       }
+    }
+  };
+
+  /* eslint-disable-next-line */
+  const handleUpdate = (column: Column, index: number, cell: any) => {
+    const check =
+      isAdminUser ||
+      hasEditAccess ||
+      isAuthDisabled ||
+      userPermissions[Operation.UpdateDescription];
+    if (check) {
+      handleEditColumn(column, index);
+    } else {
+      const field = 'columns';
+      const value = getColumnName(cell);
+
+      history.push(
+        getUpdateDescriptionPath(
+          EntityType.TABLE,
+          entityFqn as string,
+          field,
+          value
+        )
+      );
     }
   };
 
@@ -639,31 +677,19 @@ const EntityTable = ({
                               </div>
                               {!isReadOnly ? (
                                 <Fragment>
-                                  <NonAdminAction
-                                    html={getHtmlForNonAdminAction(
-                                      Boolean(owner)
-                                    )}
-                                    isOwner={hasEditAccess}
-                                    permission={Operation.UpdateDescription}
-                                    position="top">
-                                    <button
-                                      className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                      onClick={() => {
-                                        if (!isReadOnly) {
-                                          handleEditColumn(
-                                            row.original,
-                                            row.id
-                                          );
-                                        }
-                                      }}>
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="16px"
-                                      />
-                                    </button>
-                                  </NonAdminAction>
+                                  <button
+                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                    onClick={() =>
+                                      handleUpdate(row.original, row.id, cell)
+                                    }>
+                                    <SVGIcons
+                                      alt="edit"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="12px"
+                                    />
+                                  </button>
+
                                   {isNil(
                                     getThreadValue(
                                       getColumnName(cell),
