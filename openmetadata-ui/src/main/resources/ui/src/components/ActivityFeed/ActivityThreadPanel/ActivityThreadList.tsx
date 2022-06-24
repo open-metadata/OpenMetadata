@@ -14,6 +14,7 @@ import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { Post } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -68,14 +69,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                     <Card
                       className="ant-card-feed"
                       key={`${index} - card`}
-                      style={{
-                        border: '1px rgb(221, 227, 234) solid',
-                        borderRadius: '8px',
-                        marginBottom: '20px',
-                        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-                        marginRight: '4px',
-                        marginLeft: '4px',
-                      }}>
+                      style={leftPanelAntCardStyle}>
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed

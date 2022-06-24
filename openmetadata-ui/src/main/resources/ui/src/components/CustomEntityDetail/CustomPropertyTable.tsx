@@ -131,7 +131,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                           alt="edit"
                           icon={Icons.EDIT}
                           title="Edit"
-                          width="12px"
+                          width="16px"
                         />
                       </button>
                       <button
@@ -145,7 +145,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                           alt="delete"
                           icon={Icons.DELETE}
                           title="Delete"
-                          width="12px"
+                          width="16px"
                         />
                       </button>
                     </div>

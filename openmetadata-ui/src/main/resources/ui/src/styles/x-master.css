@@ -1179,3 +1179,21 @@ code {
 .leaf-node.Pending {
   border-color: #276ef1;
 }
+
+.ant-btn:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
+p {
+  margin-bottom: 0px;
+}
+
+@media only screen and (min-width: 2000px) {
+  .centered-layout {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
+}

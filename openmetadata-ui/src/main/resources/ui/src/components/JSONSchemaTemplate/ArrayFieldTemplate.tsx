@@ -58,7 +58,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
                 alt="delete"
                 icon={Icons.DELETE}
                 title="Delete"
-                width="14px"
+                width="16px"
               />
             </button>
           )}

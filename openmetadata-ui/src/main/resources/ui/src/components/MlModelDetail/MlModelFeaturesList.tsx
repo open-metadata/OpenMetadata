@@ -284,7 +284,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 alt="edit"
                                 icon="icon-edit"
                                 title="Edit"
-                                width="12px"
+                                width="16px"
                               />
                             </button>
                           ) : (
@@ -325,7 +325,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="12px"
+                          width="16px"
                         />
                       </button>
                     </NonAdminAction>

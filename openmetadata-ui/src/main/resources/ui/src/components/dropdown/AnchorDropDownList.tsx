@@ -73,7 +73,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                                 alt="external-link"
                                 className="tw-align-middle"
                                 icon="external-link"
-                                width="12px"
+                                width="16px"
                               />
                             </span>
                           ) : (
@@ -89,7 +89,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                                 alt="external-link"
                                 className="tw-align-middle"
                                 icon="external-link"
-                                width="12px"
+                                width="16px"
                               />
                             </span>
                           ) : (

@@ -191,97 +191,99 @@ const AddGlossary = ({
       header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
       layout={PageLayoutType['2ColRTL']}
       rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base">{header}</h6>
-      <div className="tw-pb-3" data-testid="add-glossary">
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            {requiredField('Name:')}
-          </label>
+      <div className="tw-form-container">
+        <h6 className="tw-heading tw-text-base">{header}</h6>
+        <div className="tw-pb-3" data-testid="add-glossary">
+          <Field>
+            <label className="tw-block tw-form-label" htmlFor="name">
+              {requiredField('Name:')}
+            </label>
 
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="name"
-            id="name"
-            name="name"
-            placeholder="Name"
-            type="text"
-            value={name}
-            onChange={handleValidation}
-          />
+            <input
+              className="tw-form-inputs tw-form-inputs-padding"
+              data-testid="name"
+              id="name"
+              name="name"
+              placeholder="Name"
+              type="text"
+              value={name}
+              onChange={handleValidation}
+            />
 
-          {showErrorMsg.name
-            ? errorMsg('Glossary name is required.')
-            : showErrorMsg.invalidName
-            ? errorMsg('Glossary name is invalid.')
-            : null}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="description">
-            {requiredField('Description:')}
-          </label>
-          <RichTextEditor
-            data-testid="description"
-            initialValue={description}
-            readonly={!allowAccess}
-            ref={markdownRef}
-          />
-          {showErrorMsg.description && errorMsg('Description is required.')}
-        </Field>
+            {showErrorMsg.name
+              ? errorMsg('Glossary name is required.')
+              : showErrorMsg.invalidName
+              ? errorMsg('Glossary name is invalid.')
+              : null}
+          </Field>
+          <Field>
+            <label
+              className="tw-block tw-form-label tw-mb-0"
+              htmlFor="description">
+              {requiredField('Description:')}
+            </label>
+            <RichTextEditor
+              data-testid="description"
+              initialValue={description}
+              readonly={!allowAccess}
+              ref={markdownRef}
+            />
+            {showErrorMsg.description && errorMsg('Description is required.')}
+          </Field>
 
-        <div>
-          <div className="tw-flex tw-items-center tw-mt-4">
-            <p className="w-form-label tw-mr-3">Reviewers: </p>
+          <div>
+            <div className="tw-flex tw-items-center tw-mt-4">
+              <span className="w-form-label tw-mr-3">Reviewers: </span>
+              <Button
+                className="tw-h-5 tw-px-2"
+                data-testid="add-reviewers"
+                size="x-small"
+                theme="primary"
+                variant="contained"
+                onClick={() => setShowRevieweModal(true)}>
+                <FontAwesomeIcon icon="plus" />
+              </Button>
+            </div>
+            <div className="tw-my-4" data-testid="reviewers-container">
+              {Boolean(reviewer.length) &&
+                reviewer.map((d, index) => {
+                  return (
+                    <Tags
+                      editable
+                      isRemovable
+                      className="tw-bg-gray-200"
+                      key={index}
+                      removeTag={handleReviewerRemove}
+                      tag={d.name}
+                      type="contained"
+                    />
+                  );
+                })}
+            </div>
+          </div>
+
+          <div className="tw-flex tw-justify-end">
             <Button
-              className="tw-h-5 tw-px-2"
-              data-testid="add-reviewers"
-              size="x-small"
+              data-testid="cancel-glossary"
+              size="regular"
               theme="primary"
-              variant="contained"
-              onClick={() => setShowRevieweModal(true)}>
-              <FontAwesomeIcon icon="plus" />
+              variant="text"
+              onClick={onCancel}>
+              Cancel
             </Button>
-          </div>
-          <div className="tw-my-4" data-testid="reviewers-container">
-            {Boolean(reviewer.length) &&
-              reviewer.map((d, index) => {
-                return (
-                  <Tags
-                    editable
-                    isRemovable
-                    className="tw-bg-gray-200"
-                    key={index}
-                    removeTag={handleReviewerRemove}
-                    tag={d.name}
-                    type="contained"
-                  />
-                );
-              })}
+            {getSaveButton()}
           </div>
         </div>
 
-        <div className="tw-flex tw-justify-end">
-          <Button
-            data-testid="cancel-glossary"
-            size="regular"
-            theme="primary"
-            variant="text"
-            onClick={onCancel}>
-            Cancel
-          </Button>
-          {getSaveButton()}
-        </div>
+        {showRevieweModal && (
+          <ReviewerModal
+            header="Add Reviewer"
+            reviewer={reviewer}
+            onCancel={onReviewerModalCancel}
+            onSave={handleReviewerSave}
+          />
+        )}
       </div>
-
-      {showRevieweModal && (
-        <ReviewerModal
-          header="Add Reviewer"
-          reviewer={reviewer}
-          onCancel={onReviewerModalCancel}
-          onSave={handleReviewerSave}
-        />
-      )}
     </PageLayout>
   );
 };

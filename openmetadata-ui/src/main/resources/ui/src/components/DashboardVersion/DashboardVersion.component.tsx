@@ -275,7 +275,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>

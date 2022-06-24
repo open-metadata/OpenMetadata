@@ -22,12 +22,13 @@ import {
   getTypeListByCategory,
 } from '../../../axiosAPIs/metadataTypeAPI';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
+import { PageLayoutType } from '../../../enums/layout.enum';
 import { Category, Type } from '../../../generated/entity/type';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
-import PageContainer from '../../containers/PageContainer';
+import PageContainerV1 from '../../containers/PageContainerV1';
 import PageLayout from '../../containers/PageLayout';
 import { Field } from '../../Field/Field';
 import { RightPanel } from './RightPanel';
@@ -164,89 +165,92 @@ const AddCustomProperty = () => {
   }, []);
 
   return (
-    <PageContainer>
-      <PageLayout
-        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-        rightPanel={<RightPanel />}>
-        <div
-          className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded"
-          data-testid="form-container">
-          <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
+    <PageContainerV1>
+      <div className="tw-self-center">
+        <PageLayout
+          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+          layout={PageLayoutType['2ColRTL']}
+          rightPanel={<RightPanel />}>
+          <div
+            className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"
+            data-testid="form-container">
+            <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
 
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="name">
-              {requiredField('Name:')}
-            </label>
-            <input
-              autoComplete="off"
-              className="tw-form-inputs tw-form-inputs-padding"
-              data-testid="name"
-              id="name"
-              name="name"
-              placeholder="Name"
-              type="text"
-              value={formData.name}
-              onChange={onChangeHandler}
-            />
-            {formErrorData?.name && errorMsg(formErrorData.name)}
-          </Field>
+            <Field>
+              <label className="tw-block tw-form-label" htmlFor="name">
+                {requiredField('Name:')}
+              </label>
+              <input
+                autoComplete="off"
+                className="tw-form-inputs tw-form-inputs-padding"
+                data-testid="name"
+                id="name"
+                name="name"
+                placeholder="Name"
+                type="text"
+                value={formData.name}
+                onChange={onChangeHandler}
+              />
+              {formErrorData?.name && errorMsg(formErrorData.name)}
+            </Field>
 
-          <Field>
-            <label className="tw-block tw-form-label" htmlFor="type">
-              {requiredField('Type:')}
-            </label>
-            <select
-              className="tw-form-inputs tw-form-inputs-padding"
-              data-testid="type"
-              id="type"
-              name="type"
-              placeholder="type"
-              value={formData.type || ''}
-              onChange={onChangeHandler}>
-              <option value="">Select type</option>
-              {getPropertyTypes().map((propertyType) => (
-                <option key={uniqueId()} value={propertyType.id}>
-                  {propertyType.displayName}
-                </option>
-              ))}
-            </select>
-            {formErrorData?.type && errorMsg(formErrorData.type)}
-          </Field>
-          <Field>
-            <label
-              className="tw-block tw-form-label tw-mb-0"
-              htmlFor="description">
-              Description:
-            </label>
-            <RichTextEditor
-              data-testid="description"
-              initialValue=""
-              ref={markdownRef}
-            />
-          </Field>
-          <Field className="tw-flex tw-justify-end">
-            <Button
-              data-testid="cancel-custom-field"
-              size="regular"
-              theme="primary"
-              variant="text"
-              onClick={onCancel}>
-              Back
-            </Button>
+            <Field>
+              <label className="tw-block tw-form-label" htmlFor="type">
+                {requiredField('Type:')}
+              </label>
+              <select
+                className="tw-form-inputs tw-form-inputs-padding"
+                data-testid="type"
+                id="type"
+                name="type"
+                placeholder="type"
+                value={formData.type || ''}
+                onChange={onChangeHandler}>
+                <option value="">Select type</option>
+                {getPropertyTypes().map((propertyType) => (
+                  <option key={uniqueId()} value={propertyType.id}>
+                    {propertyType.displayName}
+                  </option>
+                ))}
+              </select>
+              {formErrorData?.type && errorMsg(formErrorData.type)}
+            </Field>
+            <Field>
+              <label
+                className="tw-block tw-form-label tw-mb-0"
+                htmlFor="description">
+                Description:
+              </label>
+              <RichTextEditor
+                data-testid="description"
+                initialValue=""
+                ref={markdownRef}
+              />
+            </Field>
+            <Field className="tw-flex tw-justify-end">
+              <Button
+                data-testid="cancel-custom-field"
+                size="regular"
+                theme="primary"
+                variant="text"
+                onClick={onCancel}>
+                Back
+              </Button>
 
-            <Button
-              className="tw-px-3 tw-rounded"
-              data-testid="create-custom-field"
-              size="custom"
-              theme="primary"
-              type="submit"
-              onClick={onSave}>
-              Create
-            </Button>
-          </Field>
-        </div>
-      </PageLayout>
-    </PageContainer>
+              <Button
+                className="tw-px-3 tw-rounded"
+                data-testid="create-custom-field"
+                size="custom"
+                theme="primary"
+                type="submit"
+                onClick={onSave}>
+                Create
+              </Button>
+            </Field>
+          </div>
+        </PageLayout>
+      </div>
+    </PageContainerV1>
   );
 };
 

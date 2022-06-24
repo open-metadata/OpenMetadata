@@ -80,7 +80,7 @@ const DescriptionV1 = ({
               alt="edit"
               icon={Icons.EDIT_OUTLINE_PRIMARY}
               title="Edit"
-              width="12px"
+              width="16px"
             />
           </span>
           <span>Edit</span>
@@ -130,7 +130,7 @@ const DescriptionV1 = ({
         <div
           className={classNames(
             'tw-w-5 tw-min-w-max tw-flex',
-            description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+            description?.trim() ? 'tw-pl-1' : ''
           )}>
           {isUndefined(descriptionThread) &&
           onEntityFieldSelect &&

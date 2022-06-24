@@ -109,7 +109,7 @@ const GlossaryReferences: FunctionComponent<Props> = ({
               alt="delete"
               icon={Icons.DELETE}
               title="Delete"
-              width="12px"
+              width="16px"
             />
           </button>
         </div>

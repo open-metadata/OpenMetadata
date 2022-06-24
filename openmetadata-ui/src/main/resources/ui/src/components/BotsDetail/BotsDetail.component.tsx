@@ -210,7 +210,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               className="tw-ml-2 focus:tw-outline-none"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
-              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
+              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
             </button>
           </Fragment>
         )}

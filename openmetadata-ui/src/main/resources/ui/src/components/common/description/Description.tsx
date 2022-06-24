@@ -70,7 +70,7 @@ const Description = ({
       <div className="tw-px-3 tw-py-1 tw-flex">
         <div className="tw-relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-2.5"
+            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
             data-testid="description"
             id="center">
             {description?.trim() ? (
@@ -78,7 +78,7 @@ const Description = ({
                 blurClasses={
                   blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
                 }
-                className="tw-p-2"
+                className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
                 maxHtClass="tw-max-h-36"
@@ -102,7 +102,7 @@ const Description = ({
           <div
             className={classNames(
               'tw-w-5 tw-min-w-max tw-flex',
-              description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+              description?.trim() ? 'tw-pl-1' : ''
             )}>
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
@@ -117,7 +117,7 @@ const Description = ({
                   alt="edit"
                   icon="icon-edit"
                   title="Edit"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             </NonAdminAction>

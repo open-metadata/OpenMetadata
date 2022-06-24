@@ -540,7 +540,7 @@ const DashboardDetails = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>
@@ -581,7 +581,7 @@ const DashboardDetails = ({
                                           alt="edit"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="16px"
                                         />
                                       </button>
                                     </NonAdminAction>
