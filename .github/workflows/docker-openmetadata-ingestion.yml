@@ -60,7 +60,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'release' }}
+          push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
           # Update tags before every release
           tags: 'openmetadata/ingestion:$input,openmetadata/ingestion:latest'
           file: ./ingestion/Dockerfile
