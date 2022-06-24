@@ -170,6 +170,9 @@ public class SearchResource {
       case "glossary_search_index":
         searchSourceBuilder = buildGlossaryTermSearchBuilder(query, from, size);
         break;
+      case "tag_search_index":
+        searchSourceBuilder = buildTagSearchBuilder(query, from, size);
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
         break;
@@ -389,6 +392,23 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightGlossaryName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
+  private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder =
+        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DESCRIPTION, 3.0f).lenient(true);
+
+    HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
+    highlightTagName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
+    highlightDescription.highlighterType(UNIFIED);
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTagName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
 

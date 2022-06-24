@@ -35,6 +35,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.index.engine.DocumentMissingException;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
+import org.elasticsearch.index.query.WildcardQueryBuilder;
 import org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.script.Script;
@@ -54,6 +55,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.events.AbstractEventPublisher;
@@ -64,6 +66,7 @@ import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -134,6 +137,12 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
             break;
           case Entity.MLMODEL:
             updateMlModel(event);
+            break;
+          case Entity.TAG:
+            updateTag(event);
+            break;
+          case Entity.TAG_CATEGORY:
+            updateTagCategory(event);
             break;
           default:
             LOG.warn("Ignoring Entity Type {}", entityType);
@@ -467,6 +476,39 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     }
   }
 
+  private void updateTag(ChangeEvent event) throws IOException {
+    UpdateRequest updateRequest =
+        new UpdateRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+    TagIndex tagIndex;
+
+    switch (event.getEventType()) {
+      case ENTITY_CREATED:
+        tagIndex = new TagIndex((Tag) event.getEntity());
+        updateRequest.doc(JsonUtils.pojoToJson(tagIndex.buildESDoc()), XContentType.JSON);
+        updateRequest.docAsUpsert(true);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_UPDATED:
+        if (Objects.equals(event.getCurrentVersion(), event.getPreviousVersion())) {
+          updateRequest = applyChangeEvent(event);
+        } else {
+          tagIndex = new TagIndex((Tag) event.getEntity());
+          scriptedUpsert(tagIndex.buildESDoc(), updateRequest);
+        }
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_SOFT_DELETED:
+        softDeleteEntity(updateRequest);
+        updateElasticSearch(updateRequest);
+        break;
+      case ENTITY_DELETED:
+        DeleteRequest deleteRequest =
+            new DeleteRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName, event.getEntityId().toString());
+        deleteEntityFromElasticSearch(deleteRequest);
+        break;
+    }
+  }
+
   private void updateDatabase(ChangeEvent event) throws IOException {
     if (event.getEventType() == EventType.ENTITY_DELETED) {
       Database database = (Database) event.getEntity();
@@ -523,6 +565,16 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
       DashboardService dashboardService = (DashboardService) event.getEntity();
       DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX.indexName);
       request.setQuery(new TermQueryBuilder("service.name", dashboardService.getName()));
+      deleteEntityFromElasticSearchByQuery(request);
+    }
+  }
+
+  private void updateTagCategory(ChangeEvent event) throws IOException {
+    if (event.getEventType() == EventType.ENTITY_DELETED) {
+      TagCategory tagCategory = (TagCategory) event.getEntity();
+      DeleteByQueryRequest request = new DeleteByQueryRequest(ElasticSearchIndexType.TAG_SEARCH_INDEX.indexName);
+      String fqnMatch = tagCategory.getName() + ".*";
+      request.setQuery(new WildcardQueryBuilder("fullyQualifiedName", fqnMatch));
       deleteEntityFromElasticSearchByQuery(request);
     }
   }

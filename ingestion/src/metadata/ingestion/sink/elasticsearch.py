@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.tags.tagCategory import TagCategory
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import entityReference
@@ -45,6 +46,7 @@ from metadata.ingestion.models.table_metadata import (
     MlModelESDocument,
     PipelineESDocument,
     TableESDocument,
+    TagESDocument,
     TeamESDocument,
     TopicESDocument,
     UserESDocument,
@@ -64,6 +66,9 @@ from metadata.ingestion.sink.elasticsearch_mapping.pipeline_search_index_mapping
 )
 from metadata.ingestion.sink.elasticsearch_mapping.table_search_index_mapping import (
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
+)
+from metadata.ingestion.sink.elasticsearch_mapping.tag_search_index_mapping import (
+    TAG_ELASTICSEARCH_INDEX_MAPPING,
 )
 from metadata.ingestion.sink.elasticsearch_mapping.team_search_index_mapping import (
     TEAM_ELASTICSEARCH_INDEX_MAPPING,
@@ -109,6 +114,7 @@ class ElasticSearchConfig(ConfigModel):
     index_teams: Optional[bool] = True
     index_mlmodels: Optional[bool] = True
     index_glossary_terms: Optional[bool] = True
+    index_tags: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
@@ -117,6 +123,7 @@ class ElasticSearchConfig(ConfigModel):
     team_index_name: str = "team_search_index"
     glossary_term_index_name: str = "glossary_search_index"
     mlmodel_index_name: str = "mlmodel_search_index"
+    tag_index_name: str = "tag_search_index"
     scheme: str = "http"
     use_ssl: bool = False
     verify_certs: bool = False
@@ -207,6 +214,12 @@ class ElasticsearchSink(Sink[Entity]):
             self._check_or_create_index(
                 self.config.mlmodel_index_name,
                 MLMODEL_ELASTICSEARCH_INDEX_MAPPING,
+            )
+
+        if self.config.index_tags:
+            self._check_or_create_index(
+                self.config.tag_index_name,
+                TAG_ELASTICSEARCH_INDEX_MAPPING,
             )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
@@ -317,11 +330,21 @@ class ElasticsearchSink(Sink[Entity]):
                     request_timeout=self.config.timeout,
                 )
 
-            self.status.records_written(record.name.__root__)
+            if isinstance(record, TagCategory):
+                tag_docs = self._create_tag_es_doc(record)
+                for tag_doc in tag_docs:
+                    self.elasticsearch_client.index(
+                        index=self.config.tag_index_name,
+                        id=str(tag_doc.id),
+                        body=tag_doc.json(),
+                        request_timeout=self.config.timeout,
+                    )
+                    self.status.records_written(tag_doc.name)
+
         except Exception as e:
             logger.error(f"Failed to index entity {record} due to {e}")
-            print(traceback.format_exc())
-            print(sys.exc_info()[2])
+            logger.debug(traceback.format_exc())
+            logger.debug(sys.exc_info()[2])
 
     def _create_table_es_doc(self, table: Table):
         table_fqn = table.fullyQualifiedName.__root__
@@ -694,6 +717,30 @@ class ElasticsearchSink(Sink[Entity]):
         )
 
         return glossary_term_doc
+
+    def _create_tag_es_doc(self, tag_category: TagCategory):
+        tag_docs = []
+        for tag in tag_category.children:
+            suggest = [
+                {"input": [tag.name.__root__], "weight": 5},
+                {"input": [tag.fullyQualifiedName], "weight": 10},
+            ]
+            tag_doc = TagESDocument(
+                id=str(tag.id.__root__),
+                name=str(tag.name.__root__),
+                description=tag.description.__root__ if tag.description else "",
+                suggest=suggest,
+                fullyQualifiedName=tag.fullyQualifiedName,
+                version=tag.version.__root__,
+                updatedAt=tag.updatedAt.__root__,
+                updatedBy=tag.updatedBy,
+                href=tag.href.__root__,
+                deleted=tag.deleted,
+                deprecated=tag.deprecated,
+            )
+            tag_docs.append(tag_doc)
+
+        return tag_docs
 
     def _parse_columns(
         self,

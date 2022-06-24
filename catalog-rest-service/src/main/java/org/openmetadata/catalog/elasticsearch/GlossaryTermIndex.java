@@ -3,6 +3,7 @@ package org.openmetadata.catalog.elasticsearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -21,6 +22,7 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
     suggest.add(ElasticSearchSuggest.builder().input(glossaryTerm.getName()).weight(5).build());
     suggest.add(ElasticSearchSuggest.builder().input(glossaryTerm.getDisplayName()).weight(10).build());
     doc.put("suggest", suggest);
+    doc.put("entityType", Entity.GLOSSARY_TERM);
     return doc;
   }
 }
