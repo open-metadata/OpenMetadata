@@ -145,8 +145,8 @@ SNOWFLAKE_SQL_STATEMENT = """
           end_time
         FROM table(
           information_schema.query_history(
-            end_time_range_start => to_timestamp_ltz('{start_date}'),
-            end_time_range_end => to_timestamp_ltz('{end_date}'),
+            end_time_range_start => to_timestamp_ltz('{start_time}'),
+            end_time_range_end => to_timestamp_ltz('{end_time}'),
             RESULT_LIMIT => {result_limit}
             )
         )
@@ -296,6 +296,7 @@ MSSQL_SQL_USAGE_STATEMENT = """
       CROSS APPLY sys.Dm_exec_sql_text(p.plan_handle) AS t
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
+      WHERE s.last_execution_time between '{start_time}' and '{end_time}'
       ORDER BY s.last_execution_time DESC;
 """
 

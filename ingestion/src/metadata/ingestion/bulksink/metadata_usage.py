@@ -46,7 +46,7 @@ logger = ingestion_logger()
 
 
 class MetadataUsageSinkConfig(ConfigModel):
-    dirPath: str
+    filename: str
 
 
 class MetadataUsageBulkSink(BulkSink):
@@ -165,10 +165,10 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Iterate through files in the given directory
         """
-        check_dir = os.path.isdir(self.config.dirPath)
+        check_dir = os.path.isdir(self.config.filename)
         if check_dir:
-            for filename in os.listdir(self.config.dirPath):
-                full_file_name = os.path.join(self.config.dirPath, filename)
+            for filename in os.listdir(self.config.filename):
+                full_file_name = os.path.join(self.config.filename, filename)
                 if not os.path.isfile(full_file_name):
                     continue
                 with open(full_file_name) as file:
@@ -177,6 +177,7 @@ class MetadataUsageBulkSink(BulkSink):
     # Check here how to properly pick up ES and/or table query data
     def write_records(self) -> None:
         for file_handler in self.iterate_files():
+            self.table_usage_map = {}
             for usage_record in file_handler.readlines():
                 record = json.loads(usage_record)
                 table_usage = TableUsageCount(**json.loads(record))
@@ -199,8 +200,7 @@ class MetadataUsageBulkSink(BulkSink):
 
             if not table_entities:
                 logger.warning(
-                    f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
-
+                    f"Could not fetch table {table_usage.databaseName}.{table_usage.table}"
                 )
 
             for table_entity in table_entities:
@@ -322,5 +322,5 @@ class MetadataUsageBulkSink(BulkSink):
         return self.status
 
     def close(self):
-        shutil.rmtree(self.config.dirPath)
+        shutil.rmtree(self.config.filename)
         self.metadata.close()

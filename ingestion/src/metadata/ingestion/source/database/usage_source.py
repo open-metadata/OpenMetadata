@@ -12,9 +12,8 @@
 Usage Souce Module
 """
 import csv
-import traceback
 from abc import ABC
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -25,7 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 
 # This import verifies that the dependencies are available.
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.utils.connections import get_connection, test_connection
@@ -66,12 +65,19 @@ class UsageSource(Source[TableQuery], ABC):
         """
         return data.get("aborted", False)
 
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs
+        """
+        return self.sql_stmt.format(start_time=start_time, end_time=end_time)
+
     def _get_raw_extract_iter(self) -> Optional[Iterable[TableQuery]]:
         """
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
         """
         if self.config.sourceConfig.config.queryLogFilePath:
+            query_list = []
             with open(self.config.sourceConfig.config.queryLogFilePath, "r") as fin:
                 for i in csv.DictReader(fin):
                     query_dict = dict(i)
@@ -82,31 +88,57 @@ class UsageSource(Source[TableQuery], ABC):
                             query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S"
                         )
                     )
-                    yield TableQuery(
-                        query=query_dict["query_text"],
-                        userName=query_dict.get("user_name", ""),
-                        startTime=query_dict.get("start_time", ""),
-                        endTime=query_dict.get("end_time", ""),
-                        analysisDate=analysis_date.date(),
-                        aborted=self.get_aborted_status(query_dict),
-                        databaseName=self.get_database_name(query_dict),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=query_dict.get("schema_name"),
+                    query_list.append(
+                        TableQuery(
+                            query=query_dict["query_text"],
+                            userName=query_dict.get("user_name", ""),
+                            startTime=query_dict.get("start_time", ""),
+                            endTime=query_dict.get("end_time", ""),
+                            analysisDate=analysis_date.date(),
+                            aborted=self.get_aborted_status(query_dict),
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=query_dict.get("schema_name"),
+                        )
                     )
+            yield TableQueries(queries=query_list, analysis_date=datetime.utcnow())
+
         else:
-            rows = self.engine.execute(self.sql_stmt)
-            for row in rows:
-                row = dict(row)
-                yield TableQuery(
-                    query=row["query_text"],
-                    userName=row["user_name"],
-                    startTime=str(row["start_time"]),
-                    endTime=str(row["end_time"]),
-                    analysisDate=row["start_time"],
-                    aborted=self.get_aborted_status(row),
-                    databaseName=self.get_database_name(row),
-                    serviceName=self.config.serviceName,
-                    databaseSchema=row["schema_name"],
+            daydiff = self.end - self.start
+            for i in range(daydiff.days):
+                logger.info(
+                    f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
+                )
+                rows = self.engine.execute(
+                    self.get_sql_statement(
+                        start_time=self.start + timedelta(days=i),
+                        end_time=self.start + timedelta(days=i + 1),
+                    )
+                )
+                yield TableQueries(
+                    queries=[
+                        TableQuery(
+                            query=row["query_text"],
+                            userName=row["user_name"],
+                            startTime=str(row["start_time"]),
+                            endTime=str(row["end_time"]),
+                            analysisDate=row["start_time"],
+                            aborted=self.get_aborted_status(dict(row)),
+                            databaseName=self.get_database_name(dict(row)),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=row["schema_name"],
+                        )
+                        for row in rows
+                        if not filter_by_database(
+                            self.source_config.databaseFilterPattern,
+                            self.get_database_name(dict(row)),
+                        )
+                        and not filter_by_schema(
+                            self.source_config.schemaFilterPattern,
+                            schema_name=row["schema_name"],
+                        )
+                    ],
+                    analysisDate=self.start + timedelta(days=i),
                 )
 
     def next_record(self) -> Iterable[TableQuery]:
@@ -115,25 +147,9 @@ class UsageSource(Source[TableQuery], ABC):
         it groups to table and yields TableMetadata
         :return:
         """
-        for table_query in self._get_raw_extract_iter():
-            if table_query:
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_name=table_query.databaseName,
-                ):
-                    continue
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern,
-                    schema_name=table_query.databaseSchema,
-                ):
-                    continue
-
-                try:
-                    yield table_query
-                    logger.debug(f"Parsed Query: {table_query.query}")
-                except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.error(str(err))
+        for table_queries in self._get_raw_extract_iter():
+            if table_queries:
+                yield table_queries
 
     def get_report(self):
         """
