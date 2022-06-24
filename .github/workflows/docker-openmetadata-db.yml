@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "release tag being built"
+        description: "Input tag"
   release:
     types: [published]
 
@@ -47,5 +47,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/db:0.10.0,openmetadata/db:latest'
+          tags: 'openmetadata/db:${{ github.event.inputs.tag }},openmetadata/db:latest'
           file: ./docker/local-metadata/Dockerfile_mysql
