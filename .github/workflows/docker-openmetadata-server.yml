@@ -13,7 +13,7 @@ name: docker-openmetadata-server docker
 on:
   workflow_dispatch:
     inputs:
-      tags:
+      tag:
         description: "Input tag"
   release:
     types: [published]
@@ -22,6 +22,9 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     steps:
+      - name: Printing tag
+        run: echo " ${{github.events.inputs.tag}} "
+        
       - name: Check out the Repo
         uses: actions/checkout@v2
 
