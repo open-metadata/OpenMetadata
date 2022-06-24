@@ -435,9 +435,8 @@ export const navLinkSettings = [
     name: 'Teams & Users',
     to: ROUTES.TEAMS_AND_USERS,
     disabled: false,
-    isAdminOnly: true,
   },
-  { name: 'Webhooks', to: '/webhooks', disabled: false },
+  { name: 'Webhooks', to: '/webhooks', disabled: false, isAdminOnly: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =

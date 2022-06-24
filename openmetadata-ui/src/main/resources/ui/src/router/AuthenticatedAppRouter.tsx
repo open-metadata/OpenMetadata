@@ -156,12 +156,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
