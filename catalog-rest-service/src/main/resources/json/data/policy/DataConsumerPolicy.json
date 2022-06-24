@@ -8,19 +8,19 @@
   "rules": [
     {
       "name": "DataConsumerPolicy-editDescription",
-      "operation": "editDescription",
+      "operation": "EditDescription",
       "allow": true,
       "priority": 1000
     },
     {
       "name": "DataConsumerPolicy-editOwner",
-      "operation": "editOwner",
+      "operation": "EditOwner",
       "allow": true,
       "priority": 1000
     },
     {
       "name": "DataConsumerPolicy-editTags",
-      "operation": "editTags",
+      "operation": "EditTags",
       "allow": true,
       "priority": 1000
     }

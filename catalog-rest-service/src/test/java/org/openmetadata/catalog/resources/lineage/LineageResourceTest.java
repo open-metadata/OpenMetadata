@@ -114,11 +114,11 @@ public class LineageResourceTest extends CatalogApplicationTest {
       assertResponse(
           () -> addEdge(TABLES.get(1), TABLES.get(2), null, authHeaders),
           FORBIDDEN,
-          noPermission(userName, "editLineage"));
+          noPermission(userName, "EditLineage"));
       assertResponse(
           () -> deleteEdge(TABLES.get(1), TABLES.get(2), authHeaders),
           FORBIDDEN,
-          noPermission(userName, "editLineage"));
+          noPermission(userName, "EditLineage"));
       return;
     }
 

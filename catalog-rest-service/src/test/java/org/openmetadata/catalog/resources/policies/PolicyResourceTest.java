@@ -160,7 +160,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
-            "Found multiple rules with operation editTags within policy %s. "
+            "Found multiple rules with operation EditTags within policy %s. "
                 + "Please ensure that operation across all rules within the policy are distinct",
             policyName));
   }

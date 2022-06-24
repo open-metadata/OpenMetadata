@@ -573,13 +573,11 @@ declare module 'Models' {
   };
 
   export interface UserPermissions {
-    UpdateOwner: boolean;
-    UpdateDescription: boolean;
-    SuggestDescription: boolean;
-    UpdateLineage: boolean;
-    SuggestTags: boolean;
-    UpdateTags: boolean;
-    UpdateTeam: boolean;
+    EditOwner: boolean;
+    EditDescription: boolean;
+    EditLineage: boolean;
+    EditTags: boolean;
+    TeamEditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;

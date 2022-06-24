@@ -190,7 +190,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             patchEntity(
                 team.getId(), originalJson, team, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
         FORBIDDEN,
-        CatalogExceptionMessage.noPermission(randomUserName, "team:editUsers"));
+        CatalogExceptionMessage.noPermission(randomUserName, "TeamEditUsers"));
 
     // Ensure user with UpdateTeam permission can add users to a team.
     User teamManagerUser = createTeamManager(test);

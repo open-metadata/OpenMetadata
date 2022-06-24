@@ -8,25 +8,25 @@
   "rules": [
     {
       "name": "DataStewardPolicy-editDescription",
-      "operation": "editDescription",
+      "operation": "EditDescription",
       "allow": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-editLineage",
-      "operation": "editLineage",
+      "operation": "EditLineage",
       "allow": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-editOwner",
-      "operation": "editOwner",
+      "operation": "EditOwner",
       "allow": true,
       "priority": 1000
     },
     {
       "name": "DataStewardPolicy-editTags",
-      "operation": "editTags",
+      "operation": "EditTags",
       "allow": true,
       "priority": 1000
     }

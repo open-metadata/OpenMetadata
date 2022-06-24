@@ -98,7 +98,7 @@ export const mockGetPolicyWithRuleData = {
       allow: true,
       enabled: true,
       priority: 1000,
-      operation: 'editDescription',
+      operation: 'EditDescription',
       userRoleAttr: 'DataSteward',
     },
     {
@@ -106,7 +106,7 @@ export const mockGetPolicyWithRuleData = {
       allow: true,
       enabled: true,
       priority: 1000,
-      operation: 'editLineage',
+      operation: 'EditLineage',
       userRoleAttr: 'DataSteward',
     },
     {
@@ -114,7 +114,7 @@ export const mockGetPolicyWithRuleData = {
       allow: true,
       enabled: true,
       priority: 1000,
-      operation: 'editOwner',
+      operation: 'EditOwner',
       userRoleAttr: 'DataSteward',
     },
     {
@@ -122,7 +122,7 @@ export const mockGetPolicyWithRuleData = {
       allow: true,
       enabled: true,
       priority: 1000,
-      operation: 'editTags',
+      operation: 'EditTags',
       userRoleAttr: 'DataSteward',
     },
   ],

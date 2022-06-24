@@ -589,7 +589,7 @@ const DashboardDetails = ({
                                         Boolean(owner)
                                       )}
                                       isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
+                                      permission={Operation.EditDescription}
                                       position="top">
                                       <button
                                         className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -633,7 +633,7 @@ const DashboardDetails = ({
                                     Boolean(owner)
                                   )}
                                   isOwner={hasEditAccess()}
-                                  permission={Operation.UpdateTags}
+                                  permission={Operation.EditTags}
                                   position="left"
                                   trigger="click">
                                   <TagsContainer

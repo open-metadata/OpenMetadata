@@ -74,7 +74,7 @@ const Description: FC<DescriptionProps> = ({
     return (
       isAdminUser ||
       Boolean(hasEditAccess) ||
-      userPermissions[Operation.UpdateDescription] ||
+      userPermissions[Operation.EditDescription] ||
       isAuthDisabled
     );
   };
