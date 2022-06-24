@@ -517,6 +517,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  public final String getIDFromFQN(String fqn){
+      return dao.findIDFromFQN(fqn);
+  }
+
   protected void postDelete(T entity) {
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.

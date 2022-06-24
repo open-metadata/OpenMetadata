@@ -69,6 +69,10 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("name") String name,
       @Define("cond") String cond);
 
+  @SqlQuery("SELECT id FROM <table> WHERE <nameColumn> = :name")
+  String findIDFromName(
+      @Define("table") String table, @Define("nameColumn") String nameColumn, @Bind("name") String name);
+
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn, @Define("cond") String cond);
 
@@ -181,6 +185,10 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default String findJsonByFqn(String fqn, Include include) {
     return findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
+  }
+
+  default String findIDFromFQN(String fqn) {
+    return findIDFromName(getTableName(), getNameColumn(), fqn);
   }
 
   default int listCount(ListFilter filter) {

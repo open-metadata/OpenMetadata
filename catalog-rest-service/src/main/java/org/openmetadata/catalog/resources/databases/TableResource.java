@@ -374,6 +374,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
+  @DELETE
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "deleteTableWithFQN",
+      summary = "Delete a table with FQN",
+      tags = "tables",
+      description = "Delete a table by `fqn`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response deleteTableWithFQN(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "FQN of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
+      throws IOException {
+    String id = dao.getIDFromFQN(fqn);
+    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+  }
+
   @PUT
   @Path("/{id}/followers")
   @Operation(
