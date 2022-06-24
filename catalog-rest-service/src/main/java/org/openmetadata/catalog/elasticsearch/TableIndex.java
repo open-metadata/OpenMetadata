@@ -59,9 +59,7 @@ public class TableIndex implements ElasticSearchIndex {
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
-    if (table.getService() != null) {
-      doc.put("serviceType", table.getService().getType());
-    }
+    doc.put("serviceType", table.getServiceType());
     return doc;
   }
 
