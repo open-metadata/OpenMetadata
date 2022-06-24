@@ -29,9 +29,9 @@ jobs:
         if: ${{ env.input == '' }}
         env:
           input: '0.10.4'
-        run: echo '$input'
+        run: echo $input
         
-      - run: echo '$input'
+      - run: echo $input
     
       - name: Check out the Repo
         uses: actions/checkout@v2
