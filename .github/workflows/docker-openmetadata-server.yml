@@ -21,7 +21,14 @@ on:
 jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
+    env:
+      input: ${{ github.event.inputs.tag }}
+      
     steps:
+      - name: Checking the trigger type
+        if: ${{ env.input == '' }}
+        run: echo " The value is null "
+    
       - name: Check out the Repo
         uses: actions/checkout@v2
 
