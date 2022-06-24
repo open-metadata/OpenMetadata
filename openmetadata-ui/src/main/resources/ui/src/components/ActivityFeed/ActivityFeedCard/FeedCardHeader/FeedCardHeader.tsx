@@ -118,19 +118,21 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
             </span>
           ) : (
             <Fragment>
-              <span data-testid="entityType">{entityType} </span>
               {feedType === ThreadType.Conversation ? (
-                <Link data-testid="entitylink" to={prepareFeedLink()}>
-                  <button
-                    className="tw-text-info"
-                    disabled={AppState.isTourOpen}>
-                    <EntityPopOverCard
-                      entityFQN={entityFQN}
-                      entityType={entityType}>
-                      <span>{entityDisplayName()}</span>
-                    </EntityPopOverCard>
-                  </button>
-                </Link>
+                <Fragment>
+                  <span data-testid="entityType">{entityType} </span>
+                  <Link data-testid="entitylink" to={prepareFeedLink()}>
+                    <button
+                      className="tw-text-info"
+                      disabled={AppState.isTourOpen}>
+                      <EntityPopOverCard
+                        entityFQN={entityFQN}
+                        entityType={entityType}>
+                        <span>{entityDisplayName()}</span>
+                      </EntityPopOverCard>
+                    </button>
+                  </Link>
+                </Fragment>
               ) : (
                 <Link
                   data-testid="tasklink"

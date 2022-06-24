@@ -405,7 +405,7 @@ export const updateThreadData = (
 
 export const getFeedAction = (type: ThreadType) => {
   if (type === ThreadType.Task) {
-    return 'created a task for';
+    return 'created a task';
   }
 
   return 'posted on';
