@@ -132,7 +132,7 @@ const TeamsAndUsers = ({
                     currentTeam?.name
                   )}`}>
                   <p
-                    className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                    className="tag-category label-category tw-self-center tw-truncate"
                     data-testid="team-name"
                     title={team.displayName ?? team.name}>
                     {team.displayName ?? team.name}
@@ -185,7 +185,7 @@ const TeamsAndUsers = ({
                     activeUserTab
                   )}`}>
                   <p
-                    className="tag-category label-category tw-self-center tw-truncate tw-w-52"
+                    className="tag-category label-category tw-self-center tw-truncate"
                     data-testid="user-type"
                     title={capitalize(user.name)}>
                     {capitalize(user.name)}
