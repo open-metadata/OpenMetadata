@@ -117,7 +117,7 @@ describe('Glossary page should work properly', () => {
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();
-    cy.get('#center > .tw-heading')
+    cy.get('.tw-form-container > .tw-heading')
       .contains('Add Glossary')
       .should('be.visible');
 

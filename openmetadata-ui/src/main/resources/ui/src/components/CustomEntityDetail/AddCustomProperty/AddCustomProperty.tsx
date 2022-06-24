@@ -22,6 +22,7 @@ import {
   getTypeListByCategory,
 } from '../../../axiosAPIs/metadataTypeAPI';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
+import { PageLayoutType } from '../../../enums/layout.enum';
 import { Category, Type } from '../../../generated/entity/type';
 import { errorMsg, requiredField } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -168,6 +169,7 @@ const AddCustomProperty = () => {
       <div className="tw-self-center">
         <PageLayout
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+          layout={PageLayoutType['2ColRTL']}
           rightPanel={<RightPanel />}>
           <div
             className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"
