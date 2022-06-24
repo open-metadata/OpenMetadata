@@ -170,7 +170,7 @@ const AddCustomProperty = () => {
           classes="tw-max-w-full-hd tw-h-full tw-pt-4"
           rightPanel={<RightPanel />}>
           <div
-            className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded"
+            className="tw-bg-white tw-p-4 tw-border tw-border-main tw-rounded tw-form-container"
             data-testid="form-container">
             <h6 className="tw-heading tw-text-base">Add Custom Property</h6>
 

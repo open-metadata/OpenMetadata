@@ -99,7 +99,6 @@ describe('Glossary page should work properly', () => {
     cy.get(
         '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
       )
-    // cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -325,7 +324,6 @@ describe('Glossary page should work properly', () => {
     cy.get(
         '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
       )
-    // cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -382,7 +380,6 @@ describe('Glossary page should work properly', () => {
     cy.get(
         '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
       )
-    // cy.get('[data-testid="appbar-item-glossary"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
