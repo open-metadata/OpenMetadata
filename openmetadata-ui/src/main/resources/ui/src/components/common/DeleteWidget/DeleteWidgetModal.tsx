@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Modal, Radio, RadioChangeEvent } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { startCase } from 'lodash';
-import React, { Fragment, useState } from 'react';
+import React, { ChangeEvent, useCallback, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { deleteEntity } from '../../../axiosAPIs/miscAPI';
 import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
@@ -22,24 +23,24 @@ import jsonData from '../../../jsons/en';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
-import { DeleteSectionProps } from './DeleteWidget.interface';
-import DeleteWidgetBody from './DeleteWidgetBody';
+import { Button } from '../../buttons/Button/Button';
+import Loader from '../../Loader/Loader';
+import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';
 
-const DeleteWidget = ({
-  allowSoftDelete,
+const DeleteWidgetV1 = ({
+  visible,
   entityName,
   entityType,
-  hasPermission,
-  isAdminUser,
-  deletEntityMessage,
+  onCancel,
   entityId,
   isRecursiveDelete,
   afterDeleteAction,
-}: DeleteSectionProps) => {
+}: DeleteWidgetModalProps) => {
   const history = useHistory();
   const [entityDeleteState, setEntityDeleteState] =
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
+  const [name, setName] = useState<string>('');
+  const [value, setValue] = useState<DeleteType>(DeleteType.SOFT_DELETE);
 
   const prepareDeleteMessage = (softDelete = false) => {
     const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
@@ -48,12 +49,32 @@ const DeleteWidget = ({
     return softDelete ? softDeleteText : hardDeleteText;
   };
 
+  const DELETE_OPTION = [
+    {
+      title: `Soft delete ${entityType} “${entityName}”`,
+      description: prepareDeleteMessage(true),
+      type: DeleteType.SOFT_DELETE,
+    },
+    {
+      title: `Delete ${entityType} “${entityName}”`,
+      description: prepareDeleteMessage(),
+      type: DeleteType.HARD_DELETE,
+    },
+  ];
+
+  const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+
   const handleOnEntityDelete = (softDelete = false) => {
     setEntityDeleteState((prev) => ({ ...prev, state: true, softDelete }));
   };
 
   const handleOnEntityDeleteCancel = () => {
     setEntityDeleteState(ENTITY_DELETE_STATE);
+    setName('');
+    setValue(DeleteType.SOFT_DELETE);
+    onCancel();
   };
 
   const prepareEntityType = () => {
@@ -94,6 +115,7 @@ const DeleteWidget = ({
                 jsonData['api-success-messages']['delete-entity-success']
               )
             );
+
             if (afterDeleteAction) {
               afterDeleteAction();
             } else {
@@ -119,58 +141,97 @@ const DeleteWidget = ({
       });
   };
 
-  const getDeleteModal = () => {
-    if (entityDeleteState.state) {
-      return (
-        <EntityDeleteModal
-          bodyText={
-            deletEntityMessage ||
-            prepareDeleteMessage(entityDeleteState.softDelete)
-          }
-          entityName={entityName}
-          entityType={entityType}
-          loadingState={entityDeleteState.loading}
-          softDelete={entityDeleteState.softDelete}
-          onCancel={handleOnEntityDeleteCancel}
-          onConfirm={handleOnEntityDeleteConfirm}
-        />
-      );
-    } else {
-      return null;
-    }
+  const isNameMatching = useCallback(() => {
+    return (
+      name === 'DELETE' &&
+      (value === DeleteType.SOFT_DELETE || value === DeleteType.HARD_DELETE)
+    );
+  }, [name]);
+
+  const onChange = (e: RadioChangeEvent) => {
+    const value = e.target.value;
+    setValue(value);
+    handleOnEntityDelete(value === DeleteType.SOFT_DELETE);
+  };
+
+  const Footer = () => {
+    return (
+      <div className="tw-justify-end" data-testid="footer">
+        <Button
+          className="tw-mr-2"
+          data-testid="discard-button"
+          disabled={entityDeleteState.loading === 'waiting'}
+          size="regular"
+          theme="primary"
+          variant="text"
+          onClick={handleOnEntityDeleteCancel}>
+          Cancel
+        </Button>
+        {entityDeleteState.loading === 'waiting' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-8 tw-rounded-md disabled:tw-opacity-100"
+            data-testid="loading-button"
+            size="custom"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : (
+          <Button
+            className="tw-h-8 tw-px-3 tw-py-2 tw-rounded-md"
+            data-testid="confirm-button"
+            disabled={!isNameMatching()}
+            size="custom"
+            theme="primary"
+            variant="contained"
+            onClick={handleOnEntityDeleteConfirm}>
+            Confirm
+          </Button>
+        )}
+      </div>
+    );
   };
 
   return (
-    <Fragment>
-      <div className="tw-mt-1 tw-bg-white" data-testid="danger-zone-container">
-        <div className="tw-border tw-border-error-70 tw-rounded tw-mt-3">
-          {allowSoftDelete && (
-            <div className="tw-border-b" data-testid="soft-delete">
-              <DeleteWidgetBody
-                buttonText="Soft delete"
-                description={prepareDeleteMessage(true)}
-                hasPermission={hasPermission}
-                header={`Soft delete ${getTitleCase(entityType)} ${entityName}`}
-                isOwner={isAdminUser}
-                onClick={() => handleOnEntityDelete(true)}
-              />
-            </div>
-          )}
-          <div data-testid="hard-delete">
-            <DeleteWidgetBody
-              buttonText="Delete"
-              description={prepareDeleteMessage()}
-              hasPermission={hasPermission}
-              header={`Delete ${getTitleCase(entityType)} ${entityName}`}
-              isOwner={isAdminUser}
-              onClick={() => handleOnEntityDelete(false)}
-            />
-          </div>
-        </div>
+    <Modal
+      data-testid="delete-modal"
+      footer={Footer()}
+      okText="Delete"
+      title={`Delete ${entityName}`}
+      visible={visible}
+      onCancel={handleOnEntityDeleteCancel}>
+      <Radio.Group value={value} onChange={onChange}>
+        {DELETE_OPTION.map((option) => (
+          <Radio
+            data-testid={option.type}
+            key={option.type}
+            value={option.type}>
+            <p className="tw-text-sm tw-mb-1 tw-font-medium">{option.title}</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              {option.description}
+            </p>
+          </Radio>
+        ))}
+      </Radio.Group>
+      <div>
+        <p className="tw-mb-2">
+          Type <strong>DELETE</strong> to confirm
+        </p>
+        <input
+          autoComplete="off"
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="confirmation-text-input"
+          disabled={entityDeleteState.loading === 'waiting'}
+          name="entityName"
+          placeholder="DELETE"
+          type="text"
+          value={name}
+          onChange={handleOnChange}
+        />
       </div>
-      {getDeleteModal()}
-    </Fragment>
+    </Modal>
   );
 };
 
-export default DeleteWidget;
+export default DeleteWidgetV1;

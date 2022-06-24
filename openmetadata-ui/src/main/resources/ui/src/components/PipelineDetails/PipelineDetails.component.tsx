@@ -467,6 +467,7 @@ const PipelineDetails = ({
                 <div>
                   <ManageTabComponent
                     allowDelete
+                    allowSoftDelete
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={pipelineDetails.id}

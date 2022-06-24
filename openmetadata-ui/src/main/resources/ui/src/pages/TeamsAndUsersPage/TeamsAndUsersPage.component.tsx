@@ -27,11 +27,7 @@ import {
   getTeams,
   patchTeamDetail,
 } from '../../axiosAPIs/teamsAPI';
-import {
-  deleteUser,
-  getUsers,
-  updateUserDetail,
-} from '../../axiosAPIs/userAPI';
+import { getUsers, updateUserDetail } from '../../axiosAPIs/userAPI';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
@@ -58,7 +54,6 @@ import { formatUsersResponse } from '../../utils/APIUtils';
 import { isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { getAllUsersList } from '../../utils/UserDataUtils';
 
 const TeamsAndUsersPage = () => {
   const { teamAndUser } = useParams<Record<string, string>>();
@@ -245,22 +240,14 @@ const TeamsAndUsersPage = () => {
     history.push(ROUTES.CREATE_USER);
   };
 
-  const handleDeleteUser = (id: string) => {
-    setIsUsersLoading(true);
-    deleteUser(id)
-      .then(() => {
-        getAllUsersList();
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['delete-user-error']
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-        setIsUsersLoading(false);
-      });
+  const handleDeleteUser = () => {
+    setAllTabList(activeUserTab || '');
+    if (activeUserTab === UserType.USERS) {
+      setUsersCount((pre) => pre - 1);
+    }
+    if (activeUserTab === UserType.ADMINS) {
+      setAdminsCount((pre) => pre - 1);
+    }
   };
 
   /**

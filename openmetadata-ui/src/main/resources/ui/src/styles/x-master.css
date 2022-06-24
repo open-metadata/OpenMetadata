@@ -1117,6 +1117,15 @@ code {
   padding: 4px 8px;
 }
 
+.ant-modal-content {
+  border-radius: 6px;
+}
+
+.ant-modal-header {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
 /* Feed popover CSS end */
 
 .data-box {

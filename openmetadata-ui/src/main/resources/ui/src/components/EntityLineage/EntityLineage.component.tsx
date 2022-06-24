@@ -1233,11 +1233,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
-    setNodes(node);
-    setEdges(edge);
+    if (!deleted) {
+      const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
+      setNodes(node);
+      setEdges(edge);
 
-    resetViewEditState();
+      resetViewEditState();
+    }
   }, [lineageData, isNodeLoading, isEditMode]);
 
   useEffect(() => {
