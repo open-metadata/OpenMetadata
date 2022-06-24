@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        run: ${{ $input == $output }}
+        run: echo "input=0.10.4" >> $GITHUB_ENV
         
       - run: echo $input
     
