@@ -23,11 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       input: ${{ github.event.inputs.tag }}
-      output: '0.10.4'
       
     steps:
-      - name: Checking the trigger type
-        if: ${{ env.input == '' }}
+      - if: ${{ env.input == '' }}
         run: echo "input=0.10.4" >> $GITHUB_ENV
         
       - run: echo $input
@@ -54,5 +52,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/server:${{ github.event.inputs.env.input }},openmetadata/server:latest'
+          tags: 'openmetadata/server:$input,openmetadata/server:latest'
           file: ./docker/metadata/Dockerfile
