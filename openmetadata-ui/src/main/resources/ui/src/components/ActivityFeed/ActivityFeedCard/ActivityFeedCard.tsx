@@ -122,7 +122,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
     <div className={classNames(className, 'hover:tw-bg-gray-100')}>
       <Popover
         destroyTooltipOnHide
-        align={{ targetOffset: [0, -20] }}
+        align={{ targetOffset: [0, -35] }}
         content={
           <PopoverContent
             isAuthor={isAuthor}
