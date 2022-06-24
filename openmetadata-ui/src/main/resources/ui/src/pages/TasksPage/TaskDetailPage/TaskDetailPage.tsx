@@ -20,7 +20,7 @@ import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import {
@@ -61,7 +61,11 @@ import {
   updateThreadData,
 } from '../../../utils/FeedUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import {
+  getEntityLink,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -76,6 +80,7 @@ import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const TaskDetailPage = () => {
+  const history = useHistory();
   const { Content, Sider } = Layout;
   const { TabPane } = Tabs;
   const { isAdminUser } = useAuth();
@@ -239,9 +244,14 @@ const TaskDetailPage = () => {
     updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
       newValue: description,
     })
-      .then((res: AxiosResponse) => {
+      .then(() => {
         showSuccessToast('Task Resolved Successfully');
-        setTaskDetail(res.data);
+        history.push(
+          getEntityLink(
+            entityType as string,
+            entityData?.fullyQualifiedName as string
+          )
+        );
       })
       .catch((err: AxiosError) => showErrorToast(err));
   };
@@ -250,12 +260,17 @@ const TaskDetailPage = () => {
     if (showEdit) {
       setShowEdit(false);
     } else {
-      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
+      updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
         newValue: '',
       })
-        .then((res: AxiosResponse) => {
+        .then(() => {
           showSuccessToast('Task Closed Successfully');
-          setTaskDetail(res.data);
+          history.push(
+            getEntityLink(
+              entityType as string,
+              entityData?.fullyQualifiedName as string
+            )
+          );
         })
         .catch((err: AxiosError) => showErrorToast(err));
     }
@@ -609,7 +624,7 @@ const TaskDetailPage = () => {
               )}
 
               {taskDetail.task?.status === ThreadTaskStatus.Closed && (
-                <p className="tw-flex" data-testid="task-closed">
+                <div className="tw-flex" data-testid="task-closed">
                   <UserPopOverCard userName={taskDetail.task.closedBy || ''}>
                     <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
                       {taskDetail.task.closedBy}
@@ -621,7 +636,7 @@ const TaskDetailPage = () => {
                       getDayTimeByTimeStamp(taskDetail.task.closedAt as number)
                     )}
                   </span>
-                </p>
+                </div>
               )}
             </Card>
           </Content>
