@@ -45,6 +45,8 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         Metrics.SUM.value,
         Metrics.UNIQUE_COUNT.value,
         Metrics.UNIQUE_RATIO.value,
+        Metrics.EARLIEST_TIME.value,
+        Metrics.LATEST_TIME.value
         # Metrics.HISTOGRAM.value,  # TODO: enable it back after #4368
     ]
 

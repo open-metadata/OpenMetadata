@@ -42,6 +42,8 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
+from metadata.orm_profiler.metrics.static.latest_time import LatestTime
 from metadata.orm_profiler.registry import MetricRegistry
 
 
@@ -73,6 +75,8 @@ class Metrics(MetricRegistry):
     UNIQUE_COUNT = UniqueCount
     UNIQUE_RATIO = UniqueRatio
     COLUMN_NAMES = ColumnNames
+    EARLIEST_TIME = EarliestTime
+    LATEST_TIME = LatestTime
 
     # Composed Metrics
     DUPLICATE_COUNT = DuplicateCount

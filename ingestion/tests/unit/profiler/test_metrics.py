@@ -12,13 +12,15 @@
 """
 Test Metrics behavior
 """
+import datetime
 from unittest import TestCase
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import TEXT, Column, Integer, String, create_engine, DateTime
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
+from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.utils.connections import create_and_bind_session
 
@@ -33,7 +35,7 @@ class User(Base):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
-
+    dob = Column(DateTime)
 
 class MetricsTest(TestCase):
     """
@@ -57,6 +59,7 @@ class MetricsTest(TestCase):
                 nickname="johnny b goode",
                 comments="no comments",
                 age=30,
+                dob=datetime.datetime(1992, 5, 17)
             ),
             User(
                 name="Jane",
@@ -64,6 +67,7 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments="maybe some comments",
                 age=31,
+                dob=datetime.datetime(1991, 4, 4)
             ),
             User(
                 name="John",
@@ -71,6 +75,7 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments=None,
                 age=None,
+                dob=datetime.datetime(1982, 2, 2)
             ),
         ]
         cls.session.add_all(data)
@@ -114,6 +119,28 @@ class MetricsTest(TestCase):
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
         assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+
+    def test_earliest_time(self):
+        """
+        Check Earliest Time Metric
+        """
+        earliest_time = Metrics.EARLIEST_TIME.value
+        profiler = Profiler(
+            earliest_time, session=self.session, table=User, use_cols=[User.dob]
+        )
+        res = profiler.execute()._column_results
+        assert res.get(User.dob.name).get(Metrics.EARLIEST_TIME.name) == '1982-02-02 00:00:00.000000'
+
+    def test_latest_time(self):
+        """
+        Check Latest Time Metric
+        """
+        latest_time = Metrics.LATEST_TIME.value
+        profiler = Profiler(
+            latest_time, session=self.session, table=User, use_cols=[User.dob]
+        )
+        res = profiler.execute()._column_results
+        assert res.get(User.dob.name).get(Metrics.LATEST_TIME.name) == '1992-05-17 00:00:00.000000'
 
     def test_null_count(self):
         """
@@ -167,7 +194,7 @@ class MetricsTest(TestCase):
         col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
         profiler = Profiler(col_count, session=self.session, table=User)
         res = profiler.execute()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 6
+        assert res.get(Metrics.COLUMN_COUNT.name) == 7
 
     def test_avg(self):
         """

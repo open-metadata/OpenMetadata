@@ -432,6 +432,14 @@
           "description": "Variance of a column.",
           "type": "number"
         },
+        "earliestTime": {
+          "description": "Earliest time of a date column",
+          "type" : "string"
+        },
+        "latestTime" : {
+          "description": "Latest time of a date column",
+          "type": "string"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {

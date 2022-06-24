@@ -11,9 +11,7 @@
 
 """
 Test ORM Profiler workflow
-
 To run this we need OpenMetadata server up and running.
-
 No sample data is required beforehand
 """
 from copy import deepcopy
