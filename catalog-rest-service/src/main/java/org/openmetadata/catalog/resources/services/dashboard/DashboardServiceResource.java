@@ -25,7 +25,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -47,14 +50,18 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -67,6 +74,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
 
   static final String FIELDS = FIELD_OWNER;
+  private final Fernet fernet;
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -77,6 +85,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
 
   public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(DashboardService.class, new DashboardServiceRepository(dao), authorizer);
+    this.fernet = Fernet.getInstance();
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -103,6 +112,7 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       })
   public ResultList<DashboardService> list(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @QueryParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -128,7 +138,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+    ResultList<DashboardService> dashboardServices =
+        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, dashboardServices));
   }
 
   @GET
@@ -162,7 +174,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    DashboardService dashboardService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @GET
@@ -196,7 +209,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    DashboardService dashboardService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @GET
@@ -217,7 +231,21 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context SecurityContext securityContext,
       @Parameter(description = "dashboard service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return dao.listVersions(id);
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    DashboardService dashboardService = JsonUtils.readValue((String) json, DashboardService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, dashboardService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -247,7 +275,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    DashboardService dashboardService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, dashboardService);
   }
 
   @POST
@@ -268,7 +297,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -289,7 +320,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -325,5 +358,24 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
+  }
+
+  private ResultList<DashboardService> decryptOrNullify(
+      SecurityContext securityContext, ResultList<DashboardService> dashboardServices) {
+    Optional.ofNullable(dashboardServices.getData())
+        .orElse(Collections.emptyList())
+        .forEach(dashboardService -> decryptOrNullify(securityContext, dashboardService));
+    return dashboardServices;
+  }
+
+  private DashboardService decryptOrNullify(SecurityContext securityContext, DashboardService dashboardService) {
+    try {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } catch (AuthorizationException e) {
+      return dashboardService.withConnection(null);
+    }
+    fernet.encryptOrDecryptDashboardConnection(
+        dashboardService.getConnection(), dashboardService.getServiceType(), false);
+    return dashboardService;
   }
 }

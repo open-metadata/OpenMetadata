@@ -56,7 +56,7 @@ class OMetaChartTest(TestCase):
 
     service = CreateDashboardServiceRequest(
         name="test-service-chart",
-        serviceType=DashboardServiceType.Superset,
+        serviceType=DashboardServiceType.Looker,
         connection=DashboardConnection(
             config=LookerConnection(hostPort="http://hostPort", username="username")
         ),
@@ -68,6 +68,7 @@ class OMetaChartTest(TestCase):
         """
         Prepare ingredients
         """
+        print("are we coming here")
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.entity = Chart(
