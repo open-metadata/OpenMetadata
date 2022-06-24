@@ -32,6 +32,7 @@ import {
   getUserCurrentTab,
   profileInfo,
 } from '../../constants/usersprofile.constants';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
@@ -59,14 +60,19 @@ const tabs = [
     position: 1,
   },
   {
-    name: 'My Data',
+    name: 'Tasks',
     isProtected: false,
     position: 2,
   },
   {
-    name: 'Following',
+    name: 'My Data',
     isProtected: false,
     position: 3,
+  },
+  {
+    name: 'Following',
+    isProtected: false,
+    position: 4,
   },
 ];
 
@@ -623,7 +629,9 @@ const Users = ({
     isLoading: boolean
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+      const threadType =
+        activeTab === 2 ? ThreadType.Task : ThreadType.Conversation;
+      fetchFeedHandler(threadType, pagingObj.after);
     }
   };
 
@@ -682,8 +690,9 @@ const Users = ({
         />
       </div>
       <div>{activeTab === 1 && getFeedTabData()}</div>
-      <div>{activeTab === 2 && getEntityData(userData.owns || [])}</div>
-      <div>{activeTab === 3 && getEntityData(userData.follows || [])}</div>
+      <div>{activeTab === 2 && getFeedTabData()}</div>
+      <div>{activeTab === 3 && getEntityData(userData.owns || [])}</div>
+      <div>{activeTab === 4 && getEntityData(userData.follows || [])}</div>
     </PageLayout>
   );
 };

@@ -37,7 +37,8 @@ export const getAllFeeds: Function = (
 export const getFeedsWithFilter: Function = (
   userId?: string,
   filterType?: FeedFilter,
-  after?: string
+  after?: string,
+  type?: ThreadType
 ): Promise<AxiosResponse> => {
   let config = {};
 
@@ -47,12 +48,15 @@ export const getFeedsWithFilter: Function = (
         userId,
         filterType,
         after,
+        type,
       },
     };
   } else {
     config = {
       params: {
+        userId,
         after,
+        type,
       },
     };
   }
