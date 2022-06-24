@@ -14,10 +14,12 @@
 import { Card } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import TaskBadge from '../Shared/TaskBadge';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
@@ -103,9 +105,14 @@ const FeedListBody: FC<FeedListBodyProp> = ({
 
           return (
             <Card
-              className="ant-card-feed"
+              className="ant-card-feed tw-relative"
               key={`${index} - card`}
-              style={{ ...leftPanelAntCardStyle, marginTop: '20px' }}>
+              style={{
+                ...leftPanelAntCardStyle,
+                marginTop: '20px',
+                paddingTop: feed.type === ThreadType.Task ? '8px' : '',
+              }}>
+              {feed.type === ThreadType.Task && <TaskBadge />}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   isThread
@@ -114,6 +121,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   feed={mainFeed}
                   feedType={feed.type || ThreadType.Conversation}
                   isEntityFeed={isEntityFeed}
+                  taskDetails={feed.task}
                   updateThreadHandler={updateThreadHandler}
                   onReply={() => onReplyThread(feed.id)}
                 />
@@ -141,6 +149,16 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </Fragment>
                 ) : null}
               </div>
+              {feed.task && (
+                <div className="tw-border-t tw-border-main tw-py-1">
+                  <span className="tw-text-grey-muted">Assignees: </span>
+                  <span className="tw-ml-0.5 tw-align-middle">
+                    {feed.task.assignees
+                      .map((assignee) => getEntityName(assignee))
+                      .join(', ')}
+                  </span>
+                </div>
+              )}
             </Card>
           );
         })}

@@ -50,6 +50,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
+  taskDetails,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -156,6 +157,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               entityType={entityType as string}
               feedType={feedType}
               isEntityFeed={isEntityFeed}
+              taskDetails={taskDetails}
               timeStamp={feedDetail.postTs}
             />
             <FeedCardBody

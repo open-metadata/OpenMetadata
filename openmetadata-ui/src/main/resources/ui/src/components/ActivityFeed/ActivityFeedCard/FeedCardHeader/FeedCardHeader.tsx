@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../../AppState';
@@ -22,6 +22,7 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
@@ -31,6 +32,7 @@ import {
   getFeedAction,
 } from '../../../../utils/FeedUtils';
 import { getEntityLink } from '../../../../utils/TableUtils';
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -46,6 +48,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityField,
   isEntityFeed,
   feedType,
+  taskDetails,
 }) => {
   const entityDisplayName = () => {
     let displayName;
@@ -116,15 +119,29 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
           ) : (
             <Fragment>
               <span data-testid="entityType">{entityType} </span>
-              <Link data-testid="entitylink" to={prepareFeedLink()}>
-                <button className="tw-text-info" disabled={AppState.isTourOpen}>
-                  <EntityPopOverCard
-                    entityFQN={entityFQN}
-                    entityType={entityType}>
-                    <span>{entityDisplayName()}</span>
-                  </EntityPopOverCard>
-                </button>
-              </Link>
+              {feedType === ThreadType.Conversation ? (
+                <Link data-testid="entitylink" to={prepareFeedLink()}>
+                  <button
+                    className="tw-text-info"
+                    disabled={AppState.isTourOpen}>
+                    <EntityPopOverCard
+                      entityFQN={entityFQN}
+                      entityType={entityType}>
+                      <span>{entityDisplayName()}</span>
+                    </EntityPopOverCard>
+                  </button>
+                </Link>
+              ) : (
+                <Link
+                  data-testid="tasklink"
+                  to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+                  <button
+                    className="tw-text-info"
+                    disabled={AppState.isTourOpen}>
+                    {`#${taskDetails?.id}`} <span>{taskDetails?.type}</span>
+                  </button>
+                </Link>
+              )}
             </Fragment>
           )}
         </span>

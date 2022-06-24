@@ -13,7 +13,11 @@
 
 import { HTMLAttributes } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  TaskDetails,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 
@@ -33,6 +37,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
   lastReplyTimeStamp?: number;
   isFooterVisible?: boolean;
   isThread?: boolean;
+  taskDetails?: TaskDetails;
   onThreadSelect?: (id: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
   updateThreadHandler: ThreadUpdatedFunc;
@@ -40,7 +45,7 @@ export interface ActivityFeedCardProp extends HTMLAttributes<HTMLDivElement> {
 }
 export interface FeedHeaderProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'isEntityFeed' | 'feedType'> {
+    Pick<ActivityFeedCardProp, 'isEntityFeed' | 'feedType' | 'taskDetails'> {
   createdBy: string;
   timeStamp?: number;
   entityType: string;
