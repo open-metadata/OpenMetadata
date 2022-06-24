@@ -430,7 +430,6 @@ export const navLinkSettings = [
     name: 'Teams & Users',
     to: ROUTES.TEAMS_AND_USERS,
     disabled: false,
-    isAdminOnly: true,
   },
   { name: 'Webhooks', to: '/webhooks', disabled: false },
 ];
