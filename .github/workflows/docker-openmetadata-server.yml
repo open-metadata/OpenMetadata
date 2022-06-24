@@ -27,7 +27,8 @@ jobs:
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        run: echo " The value is null "
+        env.input: '0.10.4' 
+        run: echo " ${{ github.event.inputs.env.input }} "
     
       - name: Check out the Repo
         uses: actions/checkout@v2
@@ -51,5 +52,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/server:${{ github.event.inputs.tag }},openmetadata/server:latest'
+          tags: 'openmetadata/server:${{ github.event.inputs.env.input }},openmetadata/server:latest'
           file: ./docker/metadata/Dockerfile
