@@ -13,7 +13,7 @@ name: docker-openmetadata-server docker
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      tags:
         description: "Input tag"
   release:
     types: [published]
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Printing tag
-        run: echo " ${{github.events.inputs.tag}} "
+        run: echo " ${{github.events.inputs.tags}} "
         
       - name: Check out the Repo
         uses: actions/checkout@v2
@@ -47,5 +47,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/server:${{ github.event.inputs.tag }},openmetadata/server:latest'
+          tags: 'openmetadata/server:${{ github.event.inputs.tags }},openmetadata/server:latest'
           file: ./docker/metadata/Dockerfile
