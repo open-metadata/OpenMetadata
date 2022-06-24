@@ -14,6 +14,7 @@ Table Column Count Metric definition
 """
 # pylint: disable=duplicate-code
 
+import sqlalchemy
 from sqlalchemy import inspect, literal
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -56,4 +57,4 @@ class ColumnNames(StaticMetric):
             )
 
         col_names = ",".join(inspect(self.table).c.keys())
-        return literal(col_names)
+        return literal(col_names, type_=sqlalchemy.types.String)
