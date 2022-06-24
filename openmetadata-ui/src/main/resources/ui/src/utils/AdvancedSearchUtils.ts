@@ -54,22 +54,22 @@ export const getItemLabel = (key: string) => {
 
 export const getAdvancedField = (field: string) => {
   switch (field) {
-    case 'column_names':
+    case 'columns.name':
       return AdvancedFields.COLUMN;
 
-    case 'databaseschema':
+    case 'databaseSchema.name':
       return AdvancedFields.SCHEMA;
 
-    case 'database':
+    case 'database.name':
       return AdvancedFields.DATABASE;
 
-    case 'chart_names':
+    case 'charts.displayName':
       return AdvancedFields.CHART;
 
-    case 'task_names':
+    case 'tasks.displayName':
       return AdvancedFields.TASK;
 
-    case 'servicename':
+    case 'service.name':
       return AdvancedFields.SERVICE;
 
     default:
