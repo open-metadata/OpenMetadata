@@ -51,6 +51,7 @@ import {
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import io from 'socket.io-client';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -74,6 +75,8 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
+
+  const [isFeedsUpdated, setIsFeedsUpdated] = useState<boolean>(false);
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -426,6 +429,31 @@ const MyDataPage = () => {
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
+  useEffect(() => {
+    const socket = io('http://localhost:3000', {
+      path: '/api/v1/push/feed',
+      reconnectionAttempts: 3,
+    });
+
+    socket.connect();
+
+    socket.on('activityFeed', (data) => {
+      if (data) {
+        setIsFeedsUpdated(true);
+      }
+    });
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  const onRefreshFeeds = () => {
+    getFeedData(feedFilter);
+    setEntityThread([]);
+    setIsFeedsUpdated(false);
+  };
+
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
@@ -455,11 +483,13 @@ const MyDataPage = () => {
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
+            isFeedsUpdated={isFeedsUpdated}
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
+            onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

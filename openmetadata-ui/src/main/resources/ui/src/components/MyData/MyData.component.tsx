@@ -42,6 +42,8 @@ import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsA
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
+  onRefreshFeeds,
+  isFeedsUpdated,
   error,
   countDashboards,
   countPipelines,
@@ -228,8 +230,10 @@ const MyData: React.FC<MyDataProps> = ({
                 className=""
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
+                isFeedsUpdated={isFeedsUpdated}
                 postFeedHandler={postFeedHandler}
                 updateThreadHandler={updateThreadHandler}
+                onRefreshFeeds={onRefreshFeeds}
               />
             </Fragment>
           ) : (
