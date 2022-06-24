@@ -228,11 +228,11 @@ const MyData: React.FC<MyDataProps> = ({
 
               {activityFeeds && activityFeeds.length > 0 && (
                 <div className="tw-py-px tw-pt-3 tw-pb-3">
-                  <Button
-                    className="tw-w-full tw-bg-separator tw-px-4 tw-py-px tw-z-10  tw-font-medium tw-bg-gray-`00"
+                  <button
+                    className="tw-refreshButton "
                     onClick={onRefreshFeeds}>
-                    View {activityFeeds.length} new activity
-                  </Button>
+                    View {activityFeeds.length} new feeds
+                  </button>
                 </div>
               )}
 

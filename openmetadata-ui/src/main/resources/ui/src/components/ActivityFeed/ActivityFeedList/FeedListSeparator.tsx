@@ -27,7 +27,7 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
           style={{ borderBottomWidth: '0.5px' }}
         />
 
-        {relativeDay  ? (
+        {relativeDay ? (
           <span
             className="tw-bg-separator tw-px-4 tw-py-px tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium"
             data-testid="relativeday">
