@@ -32,6 +32,10 @@ a:focus {
   margin: 0;
 }
 
+p {
+  margin-bottom: 0px;
+}
+
 pre {
   font-family: 'Inter', sans-serif;
 }
@@ -993,7 +997,7 @@ code {
   -webkit-box-orient: vertical;
 }
 
-.ant-btn:hover span {
+.ant-btn-text:hover span {
   text-decoration: underline;
   color: #7147e8;
   background-color: transparent;
@@ -1201,18 +1205,21 @@ code {
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab:hover,
-.ant-tabs-task-detail
+.ant-tabs-custom-line
   > .ant-tabs-nav
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab.ant-tabs-tab-active
   .ant-tabs-tab-btn,
-.ant-tabs-task-detail
+.ant-tabs-custom-line
   > .ant-tabs-nav
   > .ant-tabs-nav-wrap
   > .ant-tabs-nav-list
   > .ant-tabs-tab:hover {
   color: #7147e8;
+}
+.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
+  padding: 0px 16px;
 }
 .ant-tabs-ink-bar {
   background: #7147e8;

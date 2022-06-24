@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { Tabs } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
@@ -28,6 +30,13 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   deletePostHandler,
   updateThreadHandler,
 }) => {
+  const { TabPane } = Tabs;
+  const [activeTab, setActiveTab] = useState<string>('1');
+
+  const onTabChange = (key: string) => {
+    setActiveTab(key);
+  };
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
   }, []);
@@ -47,14 +56,33 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           }
         )}
         id="thread-panel">
-        <ActivityThreadPanelBody
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          postFeedHandler={postFeedHandler}
-          threadLink={threadLink}
-          updateThreadHandler={updateThreadHandler}
-          onCancel={onCancel}
-        />
+        <Tabs
+          activeKey={activeTab}
+          className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
+          onChange={onTabChange}>
+          <TabPane key="1" tab="Tasks">
+            <ActivityThreadPanelBody
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              threadType={ThreadType.Task}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onCancel}
+            />
+          </TabPane>
+          <TabPane key="2" tab="Conversations">
+            <ActivityThreadPanelBody
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              threadType={ThreadType.Conversation}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onCancel}
+            />
+          </TabPane>
+        </Tabs>
       </div>
     </div>,
     document.body

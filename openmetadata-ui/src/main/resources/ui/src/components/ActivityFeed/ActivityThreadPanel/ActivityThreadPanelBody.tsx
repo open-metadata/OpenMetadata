@@ -44,6 +44,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   updateThreadHandler,
   className,
   showHeader = true,
+  threadType,
 }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -63,7 +64,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const getThreads = (after?: string) => {
     setIsThreadLoading(true);
-    getAllFeeds(threadLink, after, ThreadType.Conversation)
+    getAllFeeds(threadLink, after, threadType)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setThreads((prevData) => {
@@ -188,7 +189,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   useEffect(() => {
     getThreads();
-  }, [threadLink]);
+  }, [threadLink, threadType]);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
@@ -197,11 +198,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   return (
     <Fragment>
       <div id="thread-panel-body">
-        {showHeader ? (
+        {showHeader && threadType === ThreadType.Conversation ? (
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
             entityField={entityField as string}
-            noun="Conversations"
+            noun={
+              threadType === ThreadType.Conversation ? 'Conversations' : 'Tasks'
+            }
             onCancel={() => onCancel && onCancel()}
             onShowNewConversation={
               threads.length > 0 && isUndefined(selectedThread)

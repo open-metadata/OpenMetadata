@@ -69,7 +69,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                     <Card
                       className="ant-card-feed"
                       key={`${index} - card`}
-                      style={leftPanelAntCardStyle}>
+                      style={{ ...leftPanelAntCardStyle, marginTop: '20px' }}>
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed

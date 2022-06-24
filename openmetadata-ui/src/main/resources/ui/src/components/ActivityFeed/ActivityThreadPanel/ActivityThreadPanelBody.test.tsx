@@ -15,6 +15,7 @@ import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
 const mockActivityThreadPanelBodyBodyProp = {
@@ -24,6 +25,7 @@ const mockActivityThreadPanelBodyBodyProp = {
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
+  threadType: ThreadType.Conversation,
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({

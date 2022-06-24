@@ -49,6 +49,7 @@ import { Column } from '../../../generated/entity/data/table';
 import {
   Thread,
   ThreadTaskStatus,
+  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/CommonUtils';
@@ -491,11 +492,11 @@ const TaskDetailPage = () => {
               key="task-details"
               style={{ ...cardStyles, marginTop: '16px' }}>
               <p
-                className="tw-text-base tw-font-medium"
+                className="tw-text-base tw-font-medium tw-mb-4"
                 data-testid="task-title">
                 {`Task #${taskId}`} {taskDetail.message}
               </p>
-              <p className="tw-flex" data-testid="task-metadata">
+              <p className="tw-flex tw-mb-4" data-testid="task-metadata">
                 <TaskStatusElement
                   status={taskDetail.task?.status as ThreadTaskStatus}
                 />
@@ -665,7 +666,7 @@ const TaskDetailPage = () => {
             className="ant-layout-sider-task-detail"
             data-testid="task-right-sider"
             width={600}>
-            <Tabs className="ant-tabs-task-detail" onChange={onTabChange}>
+            <Tabs className="ant-tabs-custom-line" onChange={onTabChange}>
               <TabPane key="1" tab="Task">
                 {!isEmpty(taskFeedDetail) ? (
                   <div id="task-feed">
@@ -692,6 +693,7 @@ const TaskDetailPage = () => {
                     postFeedHandler={postFeedHandler}
                     showHeader={false}
                     threadLink={taskFeedDetail.about}
+                    threadType={ThreadType.Conversation}
                     updateThreadHandler={updateThreadHandler}
                   />
                 ) : null}

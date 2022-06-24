@@ -13,7 +13,7 @@
 
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
@@ -39,6 +39,7 @@ export interface ActivityThreadPanelBodyProp
       | 'createThread'
       | 'deletePostHandler'
     > {
+  threadType: ThreadType;
   showHeader?: boolean;
 }
 
