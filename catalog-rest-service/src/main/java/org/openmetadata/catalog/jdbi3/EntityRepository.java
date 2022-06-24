@@ -517,8 +517,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
-  public final String getIDFromFQN(String fqn){
-      return dao.findIDFromFQN(fqn);
+  public final String getIDFromFQN(String fqn) {
+    return dao.findIDFromFQN(fqn);
   }
 
   protected void postDelete(T entity) {
