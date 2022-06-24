@@ -19,8 +19,6 @@ import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 export type UpdatedFeedList = Array<Thread & { relativeDay: string }>;
 
 export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
-  onRefreshFeeds?: () => void;
-  isFeedsUpdated?: boolean;
   feedList: Thread[];
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
@@ -31,8 +29,6 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {
-  onRefreshFeeds?: () => void;
-  isFeedsUpdated?: boolean;
   relativeDay: string;
 }
 

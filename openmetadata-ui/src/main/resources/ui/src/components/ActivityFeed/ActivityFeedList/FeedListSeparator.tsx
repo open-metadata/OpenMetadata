@@ -12,12 +12,9 @@
  */
 
 import React, { FC } from 'react';
-import { Button } from '../../buttons/Button/Button';
 import { FeedListSeparatorProp } from './ActivityFeedList.interface';
 
 const FeedListSeparator: FC<FeedListSeparatorProp> = ({
-  isFeedsUpdated,
-  onRefreshFeeds,
   className,
   relativeDay,
 }) => {
@@ -29,15 +26,8 @@ const FeedListSeparator: FC<FeedListSeparatorProp> = ({
           data-testid="separator"
           style={{ borderBottomWidth: '0.5px' }}
         />
-        {isFeedsUpdated && (
-          <Button
-            className="tw-bg-separator tw-px-4 tw-py-px tw-z-10  tw-font-medium"
-            onClick={onRefreshFeeds}>
-            Refresh Feeds...
-          </Button>
-        )}
 
-        {relativeDay && !isFeedsUpdated ? (
+        {relativeDay  ? (
           <span
             className="tw-bg-separator tw-px-4 tw-py-px tw-rounded tw-z-10 tw-text-grey-muted tw-font-medium"
             data-testid="relativeday">

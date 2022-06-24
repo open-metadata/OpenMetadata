@@ -18,6 +18,7 @@ import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import io from 'socket.io-client';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -32,6 +33,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
 import {
   onErrorText,
   onUpdatedConversastionError,
@@ -51,7 +53,6 @@ import {
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import io from 'socket.io-client';
 
 const MyDataPage = () => {
   const location = useLocation();
@@ -76,7 +77,7 @@ const MyDataPage = () => {
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
-  const [isFeedsUpdated, setIsFeedsUpdated] = useState<boolean>(false);
+  const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -313,7 +314,6 @@ const MyDataPage = () => {
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
-
         setEntityThread((prevData) => [...prevData, ...data]);
       })
       .catch((err: AxiosError) => {
@@ -430,28 +430,31 @@ const MyDataPage = () => {
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   useEffect(() => {
-    const socket = io('http://localhost:3000', {
-      path: '/api/v1/push/feed',
+    const socket = io(ROUTES.HOME, {
+      path: ROUTES.ACTIVITY_PUSH_FEED,
       reconnectionAttempts: 3,
     });
 
-    socket.connect();
+    // socket.connect();
 
-    socket.on('activityFeed', (data) => {
-      if (data) {
-        setIsFeedsUpdated(true);
+    socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
+      if (newActivity) {
+        setActivityFeeds((prevActivities) => [
+          JSON.parse(newActivity),
+          ...prevActivities,
+        ]);
       }
     });
 
     return () => {
       socket.close();
+      socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
     };
   }, []);
 
   const onRefreshFeeds = () => {
-    getFeedData(feedFilter);
-    setEntityThread([]);
-    setIsFeedsUpdated(false);
+    setEntityThread((prevData) => [...activityFeeds, ...prevData]);
+    setActivityFeeds([]);
   };
 
   return (
@@ -466,6 +469,7 @@ const MyDataPage = () => {
       !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
+            activityFeeds={activityFeeds}
             countDashboards={countDashboards}
             countMlModal={countMlModal}
             countPipelines={countPipelines}
@@ -483,7 +487,6 @@ const MyDataPage = () => {
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
-            isFeedsUpdated={isFeedsUpdated}
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}

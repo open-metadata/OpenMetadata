@@ -42,8 +42,8 @@ import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsA
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
+  activityFeeds,
   onRefreshFeeds,
-  isFeedsUpdated,
   error,
   countDashboards,
   countPipelines,
@@ -225,15 +225,24 @@ const MyData: React.FC<MyDataProps> = ({
           {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
             <Fragment>
               {getFilterDropDown()}
+
+              {activityFeeds && activityFeeds.length > 0 && (
+                <div className="tw-py-px tw-pt-3 tw-pb-3">
+                  <Button
+                    className="tw-w-full tw-bg-separator tw-px-4 tw-py-px tw-z-10  tw-font-medium tw-bg-gray-`00"
+                    onClick={onRefreshFeeds}>
+                    View {activityFeeds.length} new activity
+                  </Button>
+                </div>
+              )}
+
               <ActivityFeedList
                 withSidePanel
                 className=""
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
-                isFeedsUpdated={isFeedsUpdated}
                 postFeedHandler={postFeedHandler}
                 updateThreadHandler={updateThreadHandler}
-                onRefreshFeeds={onRefreshFeeds}
               />
             </Fragment>
           ) : (

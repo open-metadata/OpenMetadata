@@ -27,8 +27,6 @@ import FeedListBody from './FeedListBody';
 import FeedListSeparator from './FeedListSeparator';
 
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
-  onRefreshFeeds,
-  isFeedsUpdated,
   className,
   feedList,
   withSidePanel = false,
@@ -118,9 +116,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               <div data-testid={`feed${i}`} key={i}>
                 <FeedListSeparator
                   className="tw-relative tw-mt-1 tw-mb-3.5"
-                  isFeedsUpdated={isFeedsUpdated}
                   relativeDay={d}
-                  onRefreshFeeds={onRefreshFeeds}
                 />
                 <FeedListBody
                   deletePostHandler={deletePostHandler}
