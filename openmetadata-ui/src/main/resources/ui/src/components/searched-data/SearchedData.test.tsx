@@ -38,8 +38,8 @@ const mockData = [
       type: 'team',
       fullyQualifiedName: 'Customer_Support',
     },
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier1',
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier1' },
     index: 'index1',
   },
   {
@@ -48,8 +48,8 @@ const mockData = [
     description: 'description2',
     fullyQualifiedName: 'fullyQualifiedName2',
     owner: 'owner2',
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier2',
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier2' },
     index: 'index1',
   },
   {
@@ -58,8 +58,8 @@ const mockData = [
     description: 'description3',
     fullyQualifiedName: 'fullyQualifiedName3',
     owner: 'owner3',
-    tags: ['tags1', 'tags2', 'tags3'],
-    tier: 'tier3',
+    tags: [{ tagFQN: 'tags1' }, { tagFQN: 'tags2' }, { tagFQN: 'tags3' }],
+    tier: { tagFQN: 'tier3' },
     index: 'index1',
   },
 ] as FormatedTableData[];

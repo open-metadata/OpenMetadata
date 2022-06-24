@@ -42,7 +42,6 @@ import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   ROUTES,
-  tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
 import {
@@ -53,6 +52,7 @@ import {
   INITIAL_FILTERS,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
+  tableSortingFields,
   tabsInfo,
   UPDATABLE_AGGREGATION,
   ZERO_SIZE,

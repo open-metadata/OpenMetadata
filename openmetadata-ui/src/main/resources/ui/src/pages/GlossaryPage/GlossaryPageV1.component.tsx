@@ -430,7 +430,7 @@ const GlossaryPageV1 = () => {
               const searchedGlossaries: string[] = [
                 ...new Set(
                   searchedTerms.map((item) => {
-                    return item.glossary_name;
+                    return item.name;
                   }) as string[]
                 ),
               ];

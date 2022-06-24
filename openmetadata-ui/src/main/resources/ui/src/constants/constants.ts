@@ -111,28 +111,6 @@ export const visibleFilters = [
   'servicename',
 ];
 
-export const tableSortingFields = [
-  {
-    name: 'Last Updated',
-    value: 'last_updated_timestamp',
-  },
-  { name: 'Weekly Usage', value: 'weekly_stats' },
-  { name: 'Relevance', value: '' },
-];
-
-export const entitySortingFields = [
-  {
-    name: 'Last Updated',
-    value: 'last_updated_timestamp',
-  },
-  { name: 'Relevance', value: '' },
-];
-
-export const sortingOrder = [
-  { name: 'Ascending', value: 'asc' },
-  { name: 'Descending', value: 'desc' },
-];
-
 export const facetFilterPlaceholder = [
   {
     name: 'Service',
