@@ -993,6 +993,20 @@ code {
   -webkit-box-orient: vertical;
 }
 
+.ant-btn:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
+@media only screen and (min-width: 2000px) {
+  .centered-layout {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
+}
+
 .ant-card-body {
   padding: 14px;
 }
@@ -1146,10 +1160,12 @@ code {
   color: #ffffff;
   border-color: #7147e8;
 }
-.ant-btn-primary-custom:hover {
+.ant-btn-primary-custom:hover,
+.ant-btn-primary-custom span:hover {
   background: #7147e8;
   color: #ffffff;
   border-color: #7147e8;
+  text-decoration: none;
 }
 /* Antd custom button CSS */
 
@@ -1272,17 +1288,4 @@ code {
 }
 div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
-}
-.ant-btn:hover span {
-  text-decoration: underline;
-  color: #7147e8;
-  background-color: transparent;
-}
-
-@media only screen and (min-width: 2000px) {
-  .centered-layout {
-    margin-left: auto;
-    margin-right: auto;
-    width: auto;
-  }
 }

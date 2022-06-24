@@ -181,7 +181,10 @@ const RequestDescription = () => {
   return (
     <TaskPageLayout>
       <TitleBreadcrumb
-        titleLinks={getBreadCrumbList(entityData, entityType as EntityType)}
+        titleLinks={[
+          ...getBreadCrumbList(entityData, entityType as EntityType),
+          { name: 'Create Task', activeTitle: true, url: '' },
+        ]}
       />
       <div className="tw-grid tw-grid-cols-3 tw-gap-x-2">
         <Card

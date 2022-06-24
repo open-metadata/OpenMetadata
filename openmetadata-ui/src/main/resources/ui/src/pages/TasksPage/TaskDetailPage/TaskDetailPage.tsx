@@ -477,10 +477,14 @@ const TaskDetailPage = () => {
         <Fragment>
           <Content style={{ ...contentStyles, overflowY: 'auto' }}>
             <TitleBreadcrumb
-              titleLinks={getBreadCrumbList(
-                entityData,
-                entityType as EntityType
-              )}
+              titleLinks={[
+                ...getBreadCrumbList(entityData, entityType as EntityType),
+                {
+                  name: `Task #${taskDetail.task?.id}`,
+                  activeTitle: true,
+                  url: '',
+                },
+              ]}
             />
             <EntityDetail />
             <Card

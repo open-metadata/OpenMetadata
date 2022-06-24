@@ -39,6 +39,7 @@ import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
+import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (
@@ -145,8 +146,7 @@ export const getBreadCrumbList = (
 ) => {
   const activeEntity = {
     name: getEntityName(entityData as unknown as EntityReference),
-    url: '',
-    activeTitle: true,
+    url: getEntityLink(entityType, entityData.fullyQualifiedName || ''),
   };
 
   const database = {
