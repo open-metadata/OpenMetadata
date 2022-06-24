@@ -226,6 +226,11 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+  ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+};
+
+export const SOCKET_EVENTS = {
+  ACTIVITY_FEED: 'activityFeed',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

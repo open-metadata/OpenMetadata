@@ -42,6 +42,8 @@ import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsA
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
+  activityFeeds,
+  onRefreshFeeds,
   error,
   countDashboards,
   countPipelines,
@@ -214,6 +216,8 @@ const MyData: React.FC<MyDataProps> = ({
     isMounted.current = true;
   }, []);
 
+  const newFeedsLength = activityFeeds && activityFeeds.length;
+
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
@@ -223,6 +227,18 @@ const MyData: React.FC<MyDataProps> = ({
           {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
             <Fragment>
               {getFilterDropDown()}
+
+              {newFeedsLength ? (
+                <div className="tw-py-px tw-pt-3 tw-pb-3">
+                  <button
+                    className="tw-refreshButton "
+                    onClick={onRefreshFeeds}>
+                    View {newFeedsLength} new{' '}
+                    {newFeedsLength > 1 ? 'activities' : 'activity'}
+                  </button>
+                </div>
+              ) : null}
+
               <ActivityFeedList
                 withSidePanel
                 className=""
