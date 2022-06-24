@@ -166,13 +166,15 @@ const RequestDescription = () => {
   useEffect(() => {
     const owner = entityData.owner;
     if (owner) {
-      setAssignees([
+      const defaultAssignee = [
         {
           label: getEntityName(owner),
           value: owner.id || '',
           type: owner.type,
         },
-      ]);
+      ];
+      setAssignees(defaultAssignee);
+      setOptions(defaultAssignee);
     }
   }, [entityData]);
 
