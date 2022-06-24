@@ -238,7 +238,6 @@ export const ROUTES = {
 
 export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
-
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
