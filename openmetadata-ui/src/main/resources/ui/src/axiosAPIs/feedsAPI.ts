@@ -54,7 +54,6 @@ export const getFeedsWithFilter: Function = (
   } else {
     config = {
       params: {
-        userId,
         after,
         type,
       },
