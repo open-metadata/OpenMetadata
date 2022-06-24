@@ -96,9 +96,9 @@ export const formatSearchGlossaryTermResponse = (hits) => {
   const term = hits.map((d) => {
     return {
       name: d._source.name,
-      displayName: d._source.display_name,
-      fqdn: d._source.fqdn,
-      type: d._source.entity_type,
+      displayName: d._source.displayName,
+      fqdn: d._source.fullyQualifiedName,
+      type: d._source.entityType || 'glossaryTerm',
       id: d._id,
     };
   });

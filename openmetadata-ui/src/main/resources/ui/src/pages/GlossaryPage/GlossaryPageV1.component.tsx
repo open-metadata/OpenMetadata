@@ -328,7 +328,7 @@ const GlossaryPageV1 = () => {
     const data = getTermDataFromGlossary(glossary, fqn);
     if (isEmpty(data)) {
       modifiedData = updateGlossaryListBySearchedTerms(modifiedData, [
-        { fqdn: arrFQN[arrFQN.length - 1] },
+        { fullyQualifiedName: arrFQN[arrFQN.length - 1] },
       ] as FormattedGlossarySuggestion[]);
     }
     selectDataByFQN(fqn, modifiedData);
@@ -396,7 +396,9 @@ const GlossaryPageV1 = () => {
             searchedTerms
           );
           setGlossariesList(arrData);
-          handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
+          handleExpandedKey(
+            getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName)
+          );
         })
         .catch((err: AxiosError) => {
           showErrorToast(
@@ -410,7 +412,9 @@ const GlossaryPageV1 = () => {
         searchedTerms
       );
       setGlossariesList(arrData);
-      handleExpandedKey(getHierarchicalKeysByFQN(searchedTerms[0].fqdn));
+      handleExpandedKey(
+        getHierarchicalKeysByFQN(searchedTerms[0].fullyQualifiedName)
+      );
     }
   };
 
@@ -430,7 +434,7 @@ const GlossaryPageV1 = () => {
               const searchedGlossaries: string[] = [
                 ...new Set(
                   searchedTerms.map((item) => {
-                    return item.name;
+                    return item.glossary.name;
                   }) as string[]
                 ),
               ];
