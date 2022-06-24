@@ -370,7 +370,7 @@ const TaskDetailPage = () => {
           </Ellipses>
         </div>
         {column.tags && column.tags.length ? (
-          <div className="tw-flex">
+          <div className="tw-flex tw-mt-4">
             <SVGIcons
               alt="icon-tag"
               className="tw-mr-1"
