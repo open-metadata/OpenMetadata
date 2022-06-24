@@ -26,6 +26,7 @@ public class MlModelIndex {
     doc.put("followers", ElasticSearchIndexUtils.parseFollowers(mlModel.getFollowers()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL);
+    doc.put("serviceType", mlModel.getServiceType());
     return doc;
   }
 }

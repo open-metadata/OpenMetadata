@@ -39,9 +39,7 @@ public class PipelineIndex implements ElasticSearchIndex {
     doc.put("task_suggest", taskSuggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.PIPELINE);
-    if (pipeline.getService() != null) {
-      doc.put("serviceType", pipeline.getService().getType());
-    }
+    doc.put("serviceType", pipeline.getServiceType());
     return doc;
   }
 }
