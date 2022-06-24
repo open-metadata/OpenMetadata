@@ -25,7 +25,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -52,9 +55,12 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -131,7 +137,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+    ResultList<MessagingService> messagingServices =
+        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
   }
 
   @GET
@@ -165,7 +173,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    MessagingService messagingService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @GET
@@ -199,7 +208,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MessagingService messagingService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @GET
@@ -220,7 +230,21 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       @Context SecurityContext securityContext,
       @Parameter(description = "messaging service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return dao.listVersions(id);
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    MessagingService messagingService = JsonUtils.readValue((String) json, MessagingService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, messagingService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -250,7 +274,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    MessagingService messagingService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, messagingService);
   }
 
   @POST
@@ -331,5 +356,22 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType());
+  }
+
+  private ResultList<MessagingService> decryptOrNullify(
+      SecurityContext securityContext, ResultList<MessagingService> messagingServices) {
+    Optional.ofNullable(messagingServices.getData())
+        .orElse(Collections.emptyList())
+        .forEach(messagingService -> decryptOrNullify(securityContext, messagingService));
+    return messagingServices;
+  }
+
+  private MessagingService decryptOrNullify(SecurityContext securityContext, MessagingService messagingService) {
+    try {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } catch (AuthorizationException e) {
+      return messagingService.withConnection(null);
+    }
+    return messagingService;
   }
 }

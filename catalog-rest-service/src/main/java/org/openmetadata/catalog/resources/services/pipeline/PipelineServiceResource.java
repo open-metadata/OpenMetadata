@@ -24,7 +24,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -46,14 +49,18 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -66,6 +73,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
 
   static final String FIELDS = "pipelines,owner";
+  private final Fernet fernet;
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -77,6 +85,7 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
 
   public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(PipelineService.class, new PipelineServiceRepository(dao), authorizer);
+    fernet = Fernet.getInstance();
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
@@ -131,7 +140,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<PipelineService> pipelineServices =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, pipelineServices));
   }
 
   @GET
@@ -165,7 +176,8 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    PipelineService pipelineService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, pipelineService);
   }
 
   @GET
@@ -199,7 +211,8 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    PipelineService pipelineService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, pipelineService);
   }
 
   @GET
@@ -220,7 +233,21 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
       @Context SecurityContext securityContext,
       @Parameter(description = "pipeline service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return dao.listVersions(id);
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    PipelineService pipelineService = JsonUtils.readValue((String) json, PipelineService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, pipelineService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -250,7 +277,8 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    PipelineService pipelineService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, pipelineService);
   }
 
   @POST
@@ -328,5 +356,23 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
+  }
+
+  private ResultList<PipelineService> decryptOrNullify(
+      SecurityContext securityContext, ResultList<PipelineService> pipelineServices) {
+    Optional.ofNullable(pipelineServices.getData())
+        .orElse(Collections.emptyList())
+        .forEach(pipelineService -> decryptOrNullify(securityContext, pipelineService));
+    return pipelineServices;
+  }
+
+  private PipelineService decryptOrNullify(SecurityContext securityContext, PipelineService pipelineService) {
+    try {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } catch (AuthorizationException e) {
+      return pipelineService.withConnection(null);
+    }
+    fernet.encryptOrDecryptPipelineConnection(pipelineService.getConnection(), pipelineService.getServiceType(), false);
+    return pipelineService;
   }
 }
