@@ -95,7 +95,7 @@ const ServiceConnectionDetails = ({
         return (
           <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
             <div className="tw-w-1/3 tw-flex">
-              <p className="tw-text-gray-400 tw-m-0">{title || key}:</p>
+              <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
               <PopOver
                 delay={0}
                 position="bottom"

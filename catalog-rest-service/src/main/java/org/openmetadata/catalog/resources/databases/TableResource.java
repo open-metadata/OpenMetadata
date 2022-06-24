@@ -114,7 +114,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
+      "tableConstraints,tablePartition,usageSummary,owner,profileSample,profileQuery,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests,"
           + "extension";
 
@@ -770,6 +770,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
             .withProfileSample(create.getProfileSample())
+            .withProfileQuery(create.getProfileQuery())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

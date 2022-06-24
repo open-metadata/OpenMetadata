@@ -472,6 +472,10 @@
           "exclusiveMinimum": 0,
           "maximum": 100
         },
+        "profileQuery": {
+          "description": "Users' raw SQL query to fetch sample data and profile the table",
+          "type": "string"
+        },
         "columnCount": {
           "description": "No.of columns in the table.",
           "type": "number"
@@ -705,6 +709,11 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "maximum": 100,
+      "default": null
+    },
+    "profileQuery": {
+      "description": "Users' raw SQL query to fetch sample data and profile the table",
+      "type": "string",
       "default": null
     },
     "tableProfile": {

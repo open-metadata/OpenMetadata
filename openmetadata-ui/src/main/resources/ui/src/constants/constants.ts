@@ -227,10 +227,18 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
+
+  ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+};
+
+export const SOCKET_EVENTS = {
+  ACTIVITY_FEED: 'activityFeed',
+
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

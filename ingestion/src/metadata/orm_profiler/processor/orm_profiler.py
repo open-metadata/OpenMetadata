@@ -152,9 +152,13 @@ class OrmProfilerProcessor(Processor[Table]):
             if is_partitioned(self.session, orm):
                 my_record_profile = (
                     self.get_record_test_def(table)
-                    if self.config.test_suite
+                    if self.config.test_suite and self.get_record_test_def(table)
                     else TestDef(table=table.fullyQualifiedName.__root__)
                 )
+
+                if my_record_profile.profile_sample_query:
+                    return None
+
                 start, end = get_start_and_end(
                     my_record_profile.partition_query_duration
                 )
@@ -169,6 +173,31 @@ class OrmProfilerProcessor(Processor[Table]):
                 return partition_details
 
         return None
+
+    def get_profile_sample_query(self, table: Table) -> Optional[str]:
+        """Get sample query from the test definition. We first check
+        if the profiler workflow config file contains a `profile_sample_query`
+        in one of the test case. If not we'll check the table entity itself,
+        first checking if the table entity has a tableProfile object and then
+        if it has a `profileQuery` field.
+
+        Args:
+            table: table object
+        Returns
+            Optional[str]
+        """
+        if self.config.test_suite:
+            test_record = self.get_record_test_def(table)
+            if test_record:
+                if test_record.clear_sample_query_from_entity:
+                    self.metadata.update_profile_query(
+                        fqn=table.fullyQualifiedName.__root__,
+                        profileSample=self.get_table_profile_sample(table),
+                    )
+                    return None
+                return test_record.profile_sample_query
+
+        return table.profileQuery
 
     def build_profiler(
         self,
@@ -191,6 +220,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 table=orm,
                 profile_sample=profile_sample,
                 partition_details=self.get_partition_details(orm, table),
+                profile_sample_query=self.get_profile_sample_query(table),
             )
 
         # Here we will need to add the logic to pass kwargs to the metrics
@@ -208,6 +238,7 @@ class OrmProfilerProcessor(Processor[Table]):
             profile_sample=profile_sample,
             timeout_seconds=self.config.profiler.timeout_seconds,
             partition_details=self.get_partition_details(orm, table),
+            profile_sample_query=self.get_profile_sample_query(table),
         )
 
     def profile_entity(
@@ -536,6 +567,7 @@ class OrmProfilerProcessor(Processor[Table]):
                     orm,
                     table,
                 ),
+                profile_sample_query=self.get_profile_sample_query(table),
             )
             return sampler.fetch_sample_data()
         except Exception as err:

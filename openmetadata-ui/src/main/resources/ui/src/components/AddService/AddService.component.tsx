@@ -265,38 +265,41 @@ const AddService = ({
   };
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-      header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-      layout={PageLayoutType['2ColRTL']}
-      rightPanel={fetchRightPanel()}>
-      <div className="tw-form-container">
-        {addIngestion ? (
-          <AddIngestion
-            isAirflowSetup
-            activeIngestionStep={activeIngestionStep}
-            handleCancelClick={() => handleAddIngestion(false)}
-            handleViewServiceClick={handleViewServiceClick}
-            heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
-            ingestionAction={ingestionAction}
-            ingestionProgress={ingestionProgress}
-            isIngestionCreated={isIngestionCreated}
-            isIngestionDeployed={isIngestionDeployed}
-            pipelineType={PipelineType.Metadata}
-            serviceCategory={serviceCategory}
-            serviceData={newServiceData as DataObj}
-            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-            showDeployButton={showDeployButton}
-            status={FormSubmitType.ADD}
-            onAddIngestionSave={onAddIngestionSave}
-            onAirflowStatusCheck={onAirflowStatusCheck}
-            onIngestionDeploy={onIngestionDeploy}
-          />
-        ) : (
-          addNewService()
-        )}
-      </div>
-    </PageLayout>
+    <div className="tw-self-center">
+      {' '}
+      <PageLayout
+        classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+        header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+        layout={PageLayoutType['2ColRTL']}
+        rightPanel={fetchRightPanel()}>
+        <div className="tw-form-container">
+          {addIngestion ? (
+            <AddIngestion
+              isAirflowSetup
+              activeIngestionStep={activeIngestionStep}
+              handleCancelClick={() => handleAddIngestion(false)}
+              handleViewServiceClick={handleViewServiceClick}
+              heading={`Add ${capitalize(PipelineType.Metadata)} Ingestion`}
+              ingestionAction={ingestionAction}
+              ingestionProgress={ingestionProgress}
+              isIngestionCreated={isIngestionCreated}
+              isIngestionDeployed={isIngestionDeployed}
+              pipelineType={PipelineType.Metadata}
+              serviceCategory={serviceCategory}
+              serviceData={newServiceData as DataObj}
+              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+              showDeployButton={showDeployButton}
+              status={FormSubmitType.ADD}
+              onAddIngestionSave={onAddIngestionSave}
+              onAirflowStatusCheck={onAirflowStatusCheck}
+              onIngestionDeploy={onIngestionDeploy}
+            />
+          ) : (
+            addNewService()
+          )}
+        </div>
+      </PageLayout>
+    </div>
   );
 };
 

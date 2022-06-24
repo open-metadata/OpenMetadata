@@ -34,6 +34,7 @@ const info = '#1890FF';
 const infoBG = '#1890FF40';
 const warning = '#FFC34E';
 const warningBG = '#FFC34E40';
+const feedBorder = '#D1E9FF';
 
 // status colors
 
@@ -88,6 +89,7 @@ module.exports = {
         hover: textBody,
         focus: primary,
         search: '#D5D6D9',
+        feed: feedBorder,
       },
       boxShadow: {
         modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
@@ -146,6 +148,8 @@ module.exports = {
         'border-lite': liteGrayBorder,
         'border-lite-60': liteGrayBorder60,
         'border-gray': grayBorder,
+        'feed-background': '#F8FBFF',
+        'feed-hover': '#EBF2F9',
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],

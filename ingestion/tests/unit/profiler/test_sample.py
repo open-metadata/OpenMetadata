@@ -214,3 +214,15 @@ class SampleTest(TestCase):
         # Order matters, this is how we'll present the data
         names = [str(col.__root__) for col in sample_data.columns]
         assert names == ["id", "name", "fullname", "nickname", "comments", "age"]
+
+    def test_sample_from_user_query(self):
+        """
+        Test sample data are returned based on user query
+        """
+        stmt = "SELECT id, name FROM users"
+        sampler = Sampler(session=self.session, table=User, profile_sample_query=stmt)
+        sample_data = sampler.fetch_sample_data()
+
+        assert len(sample_data.columns) == 2
+        names = [col.__root__ for col in sample_data.columns]
+        assert names == ["id", "name"]
