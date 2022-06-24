@@ -391,7 +391,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  void post_resolveTask_description_200() throws IOException {
+  void put_resolveTask_description_200() throws IOException {
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
             .withOldValue("old description")
@@ -433,10 +433,69 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(taskId, task.getId());
     assertEquals("accepted description", task.getNewValue());
     assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
-  void post_resolveTask_tags_200() throws IOException {
+  void put_closeTask_200() throws IOException {
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old description")
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    CreateThread create =
+        create()
+            .withMessage("Request Description for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    Thread threadTask = createAndCheck(create, userAuthHeaders);
+    TaskDetails task = threadTask.getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    String oldDescription =
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription();
+
+    closeTask(taskId, userAuthHeaders);
+
+    // closing the task should not affect description of the table
+    tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    assertEquals(
+        oldDescription,
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertNull(task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
+  }
+
+  @Test
+  void put_resolveTask_tags_200() throws IOException {
     String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
@@ -481,6 +540,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(taskId, task.getId());
     assertEquals(newValue, task.getNewValue());
     assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -1002,7 +1064,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   public static void closeTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/close");
-    TestUtils.put(target, null, Status.OK, authHeaders);
+    TestUtils.put(target, new ResolveTask().withNewValue(""), Status.OK, authHeaders);
   }
 
   public static ThreadList listTasks(

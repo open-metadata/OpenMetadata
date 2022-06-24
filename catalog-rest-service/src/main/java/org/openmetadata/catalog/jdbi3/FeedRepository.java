@@ -325,15 +325,33 @@ public class FeedRepository {
     // Update the attributes
     task.withNewValue(resolveTask.getNewValue());
     closeTask(thread, user);
-    dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
-  private void closeTask(Thread thread, String user) {
+  private void addClosingPost(Thread thread, String user) {
+    // Add a post to the task
+    Post post =
+        new Post()
+            .withId(UUID.randomUUID())
+            .withMessage("Closed the Task.")
+            .withFrom(user)
+            .withReactions(java.util.Collections.emptyList())
+            .withPostTs(System.currentTimeMillis());
+    try {
+      addPostToThread(thread.getId().toString(), post, user);
+    } catch (IOException exception) {
+      LOG.error("Unable to post a reply to the Task upon closing.", exception);
+    }
+  }
+
+  private void closeTask(Thread thread, String user) throws JsonProcessingException {
     TaskDetails task = thread.getTask();
     task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
     thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
+
+    dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
+    addClosingPost(thread, user);
   }
 
   private void storeMentions(Thread thread, String message) {
