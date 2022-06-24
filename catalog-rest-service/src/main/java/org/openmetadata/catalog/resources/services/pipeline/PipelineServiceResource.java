@@ -299,7 +299,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService create)
       throws IOException {
     PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (PipelineService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -320,7 +322,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreatePipelineService update)
       throws IOException {
     PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (PipelineService) response.getEntity());
+    return response;
   }
 
   @DELETE

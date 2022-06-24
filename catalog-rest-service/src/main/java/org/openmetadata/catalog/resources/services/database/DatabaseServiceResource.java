@@ -304,7 +304,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -325,7 +327,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @DELETE

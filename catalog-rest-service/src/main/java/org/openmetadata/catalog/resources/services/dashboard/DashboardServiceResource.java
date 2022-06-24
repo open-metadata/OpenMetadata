@@ -297,7 +297,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService create)
       throws IOException {
     DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -318,7 +320,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDashboardService update)
       throws IOException {
     DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (DashboardService) response.getEntity());
+    return response;
   }
 
   @DELETE
