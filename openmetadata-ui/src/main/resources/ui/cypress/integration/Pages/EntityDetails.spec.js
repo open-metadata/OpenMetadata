@@ -36,7 +36,9 @@ describe('Entity Details Page', () => {
 
     // check for delete section and delete button is available or not
     cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="delete-button"]')
+    cy.get('[data-testid="hard-delete"] > .tw-flex')
+      .scrollIntoView()
+      .find('[data-testid="delete-button"]')
       .should('be.visible')
       .click()
       .as('deleteBtn');

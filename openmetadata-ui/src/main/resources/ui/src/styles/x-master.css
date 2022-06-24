@@ -1125,6 +1125,15 @@ code {
   padding: 4px 8px;
 }
 
+.ant-modal-content {
+  border-radius: 6px;
+}
+
+.ant-modal-header {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
 /* Feed popover CSS end */
 
 /* Antd custom button CSS */
@@ -1263,4 +1272,17 @@ code {
 }
 div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
+}
+.ant-btn:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
+@media only screen and (min-width: 2000px) {
+  .centered-layout {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
 }

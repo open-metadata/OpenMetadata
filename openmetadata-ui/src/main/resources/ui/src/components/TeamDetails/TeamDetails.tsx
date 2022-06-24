@@ -564,7 +564,7 @@ const TeamDetails = ({
                       alt="edit"
                       icon="icon-edit"
                       title="Edit"
-                      width="12px"
+                      width="16px"
                     />
                   </button>
                 </NonAdminAction>
@@ -615,7 +615,6 @@ const TeamDetails = ({
           <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={currentTab}
-              className="tw-px-6"
               setActiveTab={(tab) => setCurrentTab(tab)}
               tabs={tabs}
             />

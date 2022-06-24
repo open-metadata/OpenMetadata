@@ -154,12 +154,12 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-2', className)}
+      className={classNames('tw-absolute tw-left-1', className)}
       position="bottom"
       size="small"
       title={title}
       trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="12px" />
+      <SVGIcons alt={title} icon={icon} width="16px" />
     </PopOver>
   );
 };

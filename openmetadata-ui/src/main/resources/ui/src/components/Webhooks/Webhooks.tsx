@@ -170,7 +170,7 @@ const Webhooks: FunctionComponent<WebhooksProps> = ({
 
   return data.length ? (
     <PageLayout leftPanel={fetchLeftPanel()} rightPanel={fetchRightPanel()}>
-      <div className="tw-bg-white" style={{ padding: '14px' }}>
+      <div style={{ padding: '14px' }}>
         {filteredData.length ? (
           <>
             <div className="tw-flex tw-justify-end tw-items-center">

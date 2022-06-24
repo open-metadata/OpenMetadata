@@ -18,12 +18,12 @@ import { getUserPath, PAGE_SIZE_BASE } from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { getEntityName } from '../../utils/CommonUtils';
+import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
 export type UserDetailsProps = {
@@ -37,7 +37,7 @@ export type UserDetailsProps = {
     cursorValue: string | number,
     activePage?: number
   ) => void;
-  handleDeleteUser: (id: string) => void;
+  handleDeleteUser: () => void;
 };
 
 interface DeleteUserInfo {
@@ -73,8 +73,8 @@ const UserDetails = ({
     history.push(getUserPath(name));
   };
 
-  const onConfirmDeleteUser = (id: string) => {
-    handleDeleteUser(id);
+  const onConfirmDeleteUser = () => {
+    handleDeleteUser();
     setDeletingUser(undefined);
   };
 
@@ -174,18 +174,15 @@ const UserDetails = ({
           totalCount={userPaging.total}
         />
       )}
-      {!isUndefined(deletingUser) && (
-        <ConfirmationModal
-          bodyText={`Are you sure you want to delete ${deletingUser.name}?`}
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Delete user"
-          onCancel={() => setDeletingUser(undefined)}
-          onConfirm={() => {
-            onConfirmDeleteUser(deletingUser.id);
-          }}
-        />
-      )}
+
+      <DeleteWidgetModal
+        afterDeleteAction={onConfirmDeleteUser}
+        entityId={deletingUser?.id || ''}
+        entityName={deletingUser?.name || ''}
+        entityType="user"
+        visible={!isUndefined(deletingUser)}
+        onCancel={() => setDeletingUser(undefined)}
+      />
     </div>
   );
 };

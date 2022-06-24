@@ -169,7 +169,7 @@ const Description: FC<DescriptionProps> = ({
       <div className="tw-px-3 tw-py-1 tw-flex">
         <div className="tw-relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-2.5"
+            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
             data-testid="description"
             id="center">
             {description?.trim() ? (
@@ -177,7 +177,7 @@ const Description: FC<DescriptionProps> = ({
                 blurClasses={
                   blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
                 }
-                className="tw-p-2"
+                className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
                 maxHtClass="tw-max-h-36"

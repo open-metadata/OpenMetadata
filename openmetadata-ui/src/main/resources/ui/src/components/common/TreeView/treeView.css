@@ -8,6 +8,9 @@
 .rc-tree-treenode-selected {
   background-color: #f4f0fd;
   border-left: 2px solid #7147e8;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-weight: 700;
 }
 
 .rc-tree .rc-tree-treenode {

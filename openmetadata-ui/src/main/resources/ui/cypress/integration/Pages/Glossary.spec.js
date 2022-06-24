@@ -96,10 +96,13 @@ describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.goToHomePage();
     // redirecting to glossary page
-    cy.get('[data-testid="appbar-item-glossary"]')
+    cy.get(
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();
+    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     // Todo: need to remove below uncaught exception once tree-view error resolves
     cy.on('uncaught:exception', () => {
       // return false to prevent the error from
@@ -114,7 +117,7 @@ describe('Glossary page should work properly', () => {
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();
-    cy.get('#center > .tw-heading')
+    cy.get('.tw-form-container > .tw-heading')
       .contains('Add Glossary')
       .should('be.visible');
 
@@ -318,10 +321,13 @@ describe('Glossary page should work properly', () => {
 
     addNewTagToEntity(entity, term);
 
-    cy.get('[data-testid="appbar-item-glossary"]')
+    cy.get(
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();
+    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     goToAssetsTab(term);
     cy.get('[data-testid="column"] > :nth-child(1)')
       .contains(entity)
@@ -371,11 +377,13 @@ describe('Glossary page should work properly', () => {
       .should('be.visible')
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-
-    cy.get('[data-testid="appbar-item-glossary"]')
+    cy.get(
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();
+    cy.get('[data-testid="menu-item-Glossaries"]').should('be.visible').click();
     cy.wait(500);
     goToAssetsTab(term);
     cy.get('.tableBody-cell')

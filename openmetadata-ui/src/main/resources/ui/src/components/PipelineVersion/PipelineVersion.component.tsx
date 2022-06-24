@@ -271,7 +271,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>
@@ -296,7 +296,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                                     alt="edit"
                                     icon="icon-edit"
                                     title="Edit"
-                                    width="10px"
+                                    width="16px"
                                   />
                                 </button>
                               </div>

@@ -22,17 +22,23 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useHistory } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { TERM_ADMIN } from '../../constants/constants';
+import { getUserPath, TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
+import {
+  getUserCurrentTab,
+  profileInfo,
+} from '../../constants/usersprofile.constants';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
+import UserCard from '../../pages/teams/UserCard';
 import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -46,13 +52,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
-import UserCard from '../../pages/teams/UserCard';
-import {
-  getUserCurrentTab,
-  profileInfo,
-} from '../../constants/usersprofile.constants';
-import { useHistory } from 'react-router-dom';
-import { getUserPath } from '../../constants/constants';
 const tabs = [
   {
     name: 'Activity',
@@ -255,7 +254,7 @@ const Users = ({
                   alt="edit"
                   icon="icon-edit"
                   title="Edit"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             </Fragment>
@@ -337,7 +336,7 @@ const Users = ({
                   alt="edit"
                   icon="icon-edit"
                   title="Edit"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             )}
@@ -450,7 +449,7 @@ const Users = ({
                   alt="edit"
                   icon="icon-edit"
                   title="Edit"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             )}

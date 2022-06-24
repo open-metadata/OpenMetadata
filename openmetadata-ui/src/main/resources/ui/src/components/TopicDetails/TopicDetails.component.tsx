@@ -463,6 +463,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 <div>
                   <ManageTabComponent
                     allowDelete
+                    allowSoftDelete
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={topicDetails.id}
