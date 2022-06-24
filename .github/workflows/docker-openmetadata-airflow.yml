@@ -18,7 +18,7 @@ on:
         required: true
   release:
     types: [published]
-
+ 
 jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
