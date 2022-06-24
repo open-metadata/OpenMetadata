@@ -191,9 +191,9 @@ export const getSearchedGlossaryTermTree = (
 ): GlossaryTermTreeNode[] => {
   const termTree: GlossaryTermTreeNode[] = [];
   for (const term of searchedTerms) {
-    const arrFQN = term.fqdn.split(FQN_SEPARATOR_CHAR);
+    const arrFQN = term.fullyQualifiedName.split(FQN_SEPARATOR_CHAR);
     const rootName = arrFQN[0];
-    termTree.push(createGlossaryTermNode(term.fqdn, rootName));
+    termTree.push(createGlossaryTermNode(term.fullyQualifiedName, rootName));
   }
   optimiseGlossaryTermTree(termTree);
 
