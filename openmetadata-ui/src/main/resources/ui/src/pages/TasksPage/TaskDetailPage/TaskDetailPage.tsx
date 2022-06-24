@@ -500,8 +500,16 @@ const TaskDetailPage = () => {
                 </span>
                 <span className="tw-flex">
                   <UserPopOverCard userName={taskDetail.createdBy || ''}>
-                    <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
-                      {taskDetail.createdBy}
+                    <span className="tw-flex">
+                      <ProfilePicture
+                        displayName={taskDetail.createdBy || ''}
+                        id=""
+                        name={taskDetail.createdBy || ''}
+                        width="20"
+                      />
+                      <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1">
+                        {taskDetail.createdBy}
+                      </span>
                     </span>
                   </UserPopOverCard>
                   <span className="tw-ml-1">created this task </span>
@@ -626,9 +634,17 @@ const TaskDetailPage = () => {
               {taskDetail.task?.status === ThreadTaskStatus.Closed && (
                 <div className="tw-flex" data-testid="task-closed">
                   <UserPopOverCard userName={taskDetail.task.closedBy || ''}>
-                    <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline">
-                      {taskDetail.task.closedBy}
-                    </span>{' '}
+                    <span className="tw-flex">
+                      <ProfilePicture
+                        displayName={taskDetail.task.closedBy}
+                        id=""
+                        name={taskDetail.task.closedBy || ''}
+                        width="20"
+                      />
+                      <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1">
+                        {taskDetail.task.closedBy}
+                      </span>{' '}
+                    </span>
                   </UserPopOverCard>
                   <span className="tw-ml-1"> closed this task </span>
                   <span className="tw-ml-1">
