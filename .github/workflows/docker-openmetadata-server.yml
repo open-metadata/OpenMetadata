@@ -27,8 +27,9 @@ jobs:
     steps:
       - name: Checking the trigger type
         if: ${{ env.input == '' }}
-        env.input: '0.10.4' 
-        run: echo " ${{ github.event.inputs.env.input }} "
+        env:
+          output: '0.10.4'
+        run: echo " $output "
     
       - name: Check out the Repo
         uses: actions/checkout@v2
