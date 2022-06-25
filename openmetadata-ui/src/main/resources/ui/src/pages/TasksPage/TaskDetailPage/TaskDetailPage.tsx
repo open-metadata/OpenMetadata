@@ -611,7 +611,9 @@ const TaskDetailPage = () => {
                   <Fragment>
                     {taskDetail.task?.type === TaskType.RequestDescription ? (
                       <RichTextEditor
+                        height="208px"
                         initialValue={taskDetail.task.suggestion || ''}
+                        placeHolder="Add description"
                       />
                     ) : (
                       <Fragment>
@@ -661,7 +663,7 @@ const TaskDetailPage = () => {
                     className="ant-btn-primary-custom"
                     type="primary"
                     onClick={onTaskResolve}>
-                    {showEdit ? 'Resolve' : 'Accept'}
+                    Resolve
                   </Button>
                 </div>
               )}
