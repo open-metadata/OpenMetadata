@@ -104,8 +104,10 @@ const Users = ({
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
-      fetchFeedHandler(threadType, undefined, value as FeedFilter);
-      setFeedFilter(value as FeedFilter);
+      if (value) {
+        fetchFeedHandler(threadType, undefined, value as FeedFilter);
+        setFeedFilter(value as FeedFilter);
+      }
       setShowFilterList(false);
     },
     [threadType]
