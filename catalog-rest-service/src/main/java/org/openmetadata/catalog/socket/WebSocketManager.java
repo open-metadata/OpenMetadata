@@ -105,6 +105,8 @@ public class WebSocketManager {
         broadCastMessageToClients(thread);
         return;
       case Announcement:
+      default:
+        return;
     }
   }
 
