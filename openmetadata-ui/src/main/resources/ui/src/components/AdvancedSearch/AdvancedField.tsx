@@ -126,7 +126,7 @@ const AdvancedField: FC<Props> = ({
               res.data.suggest['metadata-suggest'][0].options ?? [];
             const uniqueOptions = [
               // eslint-disable-next-line
-              ...new Set(suggestOptions.map((op: any) => op._source.name)),
+              ...new Set(suggestOptions.map((op: any) => op.text)),
             ];
             setOptions(
               uniqueOptions.map((op: unknown) => ({
