@@ -80,11 +80,17 @@ const PopoverContent: FC<Props> = ({
       const threadPanel = document.getElementById(
         'thread-panel'
       ) as HTMLElement;
+      const taskFeed = document.querySelector(
+        '.ant-layout-sider-task-detail'
+      ) as HTMLElement;
       if (!isNil(feedPanel)) {
         feedPanel.scrollTop = feedPanel.scrollHeight;
       }
       if (!isNil(threadPanel)) {
         threadPanel.scrollTop = threadPanel.scrollHeight;
+      }
+      if (!isNil(taskFeed)) {
+        taskFeed.scrollTop = taskFeed.scrollHeight;
       }
     }
   };

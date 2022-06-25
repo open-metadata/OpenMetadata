@@ -88,7 +88,7 @@ const UserDataCard = ({ item, onClick, onDelete, showTeams = true }: Props) => {
                 className="tw-cursor-pointer tw-opacity-0 group-hover:tw-opacity-100"
                 icon={Icons.DELETE}
                 title="Delete"
-                width="12px"
+                width="16px"
               />
             </span>
           </NonAdminAction>

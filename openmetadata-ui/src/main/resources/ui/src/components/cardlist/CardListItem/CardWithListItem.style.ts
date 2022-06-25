@@ -21,8 +21,8 @@ export const cardStyle = {
     default: '',
     active: 'tw-bg-primary-lite tw-border-b tw-border-primary',
     selected: 'tw-bg-primary tw-text-white',
-    title: 'tw-text-base tw-mb-0',
-    description: 'tw-font-medium tw-pr-2',
+    title: 'tw-text-base tw-mb-0 tw-font-semibold',
+    description: 'tw-font-medium tw-pr-2 tw-font-normal',
   },
   body: {
     base: 'tw-py-5 tw-px-10',

@@ -57,3 +57,8 @@ export const TOOLBAR_ITEMS = [
   ['link'],
   ['insertMention', 'insertRef', 'emoji'],
 ];
+
+export enum TaskOperation {
+  RESOLVE = 'resolve',
+  REJECT = 'close',
+}

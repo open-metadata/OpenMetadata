@@ -352,7 +352,8 @@ class CommonDbSourceService(
                     schema_name=schema_name,
                     query=view_definition,
                 ) or []
-        except SQLLineageException:
+        except Exception:
+            logger.debug(traceback.format_exc())
             logger.error("Could not parse query: Ingesting lineage failed")
 
     def test_connection(self) -> None:

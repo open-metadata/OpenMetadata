@@ -588,7 +588,7 @@ const RolesPage = () => {
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
             <h6
-              className="tw-heading tw-text-base"
+              className="tw-heading tw-text-base tw-mb-0"
               data-testid="left-panel-title">
               Roles
             </h6>
@@ -598,7 +598,7 @@ const RolesPage = () => {
           {roles &&
             roles.map((role) => (
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-my-2 tw-flex tw-justify-between ${getActiveCatClass(
                   role.name,
                   currentRole?.name
                 )}`}
@@ -1123,7 +1123,7 @@ const RolesPage = () => {
               <Loader />
             ) : (
               <div
-                className="tw-pb-3 tw-bg-white"
+                className="tw-pb-3"
                 data-testid="role-container"
                 style={{ padding: '14px' }}>
                 {getRolesContainer()}

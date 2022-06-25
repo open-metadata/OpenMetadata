@@ -124,7 +124,7 @@ class ModeSource(DashboardServiceSource):
             ),
         )
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method

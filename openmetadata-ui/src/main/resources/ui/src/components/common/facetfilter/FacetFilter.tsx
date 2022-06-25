@@ -206,7 +206,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
               <div data-testid={aggregation.title}>
                 <div className="tw-flex tw-justify-between tw-flex-col">
                   <h6
-                    className="tw-heading tw-mb-0"
+                    className="tw-heading tw-my-1"
                     data-testid="filter-heading">
                     {
                       facetFilterPlaceholder.find(
@@ -248,7 +248,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
                   </div>
                 </div>
                 <div
-                  className="sidebar-my-data-holder mt-2 mb-3"
+                  className="sidebar-my-data-holder"
                   data-testid={`filter-containers-${index}`}>
                   {getFilterItems(aggregation)}
                 </div>

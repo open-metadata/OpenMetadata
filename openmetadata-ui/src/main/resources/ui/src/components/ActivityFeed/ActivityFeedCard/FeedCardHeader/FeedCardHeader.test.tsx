@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
 
 const FQN = 'service.database.schema.table';
@@ -59,6 +60,7 @@ const mockFeedHeaderProps = {
   entityType: 'y',
   isEntityFeed: true,
   timeStamp: 1647322547179,
+  feedType: ThreadType.Conversation,
 };
 
 describe('Test Feedheader Component', () => {

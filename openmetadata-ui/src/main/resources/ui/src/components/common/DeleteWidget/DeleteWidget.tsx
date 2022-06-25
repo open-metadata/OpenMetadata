@@ -23,19 +23,8 @@ import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
+import { DeleteSectionProps } from './DeleteWidget.interface';
 import DeleteWidgetBody from './DeleteWidgetBody';
-
-interface DeleteSectionProps {
-  allowSoftDelete?: boolean;
-  entityName: string;
-  entityType: string;
-  deletEntityMessage?: string;
-  hasPermission: boolean;
-  isAdminUser?: boolean;
-  entityId: string;
-  isRecursiveDelete?: boolean;
-  afterDeleteAction?: () => void;
-}
 
 const DeleteWidget = ({
   allowSoftDelete,

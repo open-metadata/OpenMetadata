@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../../../AppState';
@@ -22,12 +22,17 @@ import {
   FqnPart,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../../../utils/CommonUtils';
-import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
+import {
+  getEntityFieldDisplay,
+  getFeedAction,
+} from '../../../../utils/FeedUtils';
 import { getEntityLink } from '../../../../utils/TableUtils';
+import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -42,6 +47,8 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   entityType,
   entityField,
   isEntityFeed,
+  feedType,
+  taskDetails,
 }) => {
   const entityDisplayName = () => {
     let displayName;
@@ -88,6 +95,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       EntityType.GLOSSARY,
       EntityType.GLOSSARY_TERM,
       EntityType.TYPE,
+      EntityType.MLMODEL,
     ];
 
     const entityLink = getEntityLink(entityType, entityFQN);
@@ -103,23 +111,39 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
       return (
         <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
-          posted on{' '}
+          {getFeedAction(feedType)}{' '}
           {isEntityFeed ? (
             <span className="tw-heading" data-testid="headerText-entityField">
               {getEntityFieldDisplay(entityField)}
             </span>
           ) : (
             <Fragment>
-              <span data-testid="entityType">{entityType} </span>
-              <Link data-testid="entitylink" to={prepareFeedLink()}>
-                <button className="tw-text-info" disabled={AppState.isTourOpen}>
-                  <EntityPopOverCard
-                    entityFQN={entityFQN}
-                    entityType={entityType}>
-                    <span>{entityDisplayName()}</span>
-                  </EntityPopOverCard>
-                </button>
-              </Link>
+              {feedType === ThreadType.Conversation ? (
+                <Fragment>
+                  <span data-testid="entityType">{entityType} </span>
+                  <Link data-testid="entitylink" to={prepareFeedLink()}>
+                    <button
+                      className="tw-text-info"
+                      disabled={AppState.isTourOpen}>
+                      <EntityPopOverCard
+                        entityFQN={entityFQN}
+                        entityType={entityType}>
+                        <span>{entityDisplayName()}</span>
+                      </EntityPopOverCard>
+                    </button>
+                  </Link>
+                </Fragment>
+              ) : (
+                <Link
+                  data-testid="tasklink"
+                  to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+                  <button
+                    className="tw-text-info"
+                    disabled={AppState.isTourOpen}>
+                    {`#${taskDetails?.id}`} <span>{taskDetails?.type}</span>
+                  </button>
+                </Link>
+              )}
             </Fragment>
           )}
         </span>

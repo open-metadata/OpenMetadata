@@ -202,14 +202,12 @@ class SupersetSource(DashboardServiceSource):
             ]
         return []
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
-        if not self.source_config.dbServiceName:
-            return
         for chart_id in self._get_charts_of_dashboard(dashboard_details):
             chart_json = self.all_charts.get(chart_id)
             datasource_fqn = (

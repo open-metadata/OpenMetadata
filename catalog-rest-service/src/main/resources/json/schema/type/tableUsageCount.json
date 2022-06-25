@@ -78,6 +78,6 @@
       "type": "string"
     }
   },
-  "required": ["tableName", "date", "databaseName", "serviceName"],
+  "required": ["table", "date", "databaseName", "serviceName"],
   "additionalProperties": false
 }

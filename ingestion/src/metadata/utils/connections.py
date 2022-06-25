@@ -86,6 +86,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
     AirByteClient,
@@ -266,7 +269,6 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     from confluent_kafka.admin import AdminClient, ConfigResource
     from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
-        Schema,
         SchemaRegistryClient,
     )
 
@@ -279,11 +281,22 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     if connection.schemaRegistryURL:
         connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
         schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
-        admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
-        admin_client_config["group.id"] = "openmetadata-consumer-1"
-        admin_client_config["auto.offset.reset"] = "earliest"
-        admin_client_config["enable.auto.commit"] = False
-        consumer_client = AvroConsumer(admin_client_config)
+        connection.schemaRegistryConfig["url"] = str(connection.schemaRegistryURL)
+        consumer_config = {
+            **connection.consumerConfig,
+            "bootstrap.servers": connection.bootstrapServers,
+        }
+        if "group.id" not in consumer_config:
+            consumer_config["group.id"] = "openmetadata-consumer"
+        if "auto.offset.reset" not in consumer_config:
+            consumer_config["auto.offset.reset"] = "earliest"
+
+        for key in connection.schemaRegistryConfig:
+            consumer_config["schema.registry." + key] = connection.schemaRegistryConfig[
+                key
+            ]
+        logger.debug(consumer_config)
+        consumer_client = AvroConsumer(consumer_config)
 
     return KafkaClient(
         admin_client=admin_client,
@@ -608,7 +621,7 @@ def _(connection: LookerConnection, verbose: bool = False):
         os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
-    client = looker_sdk.init31()
+    client = looker_sdk.init40()
     return LookerClient(client=client)
 
 
@@ -697,3 +710,14 @@ def _(connection: ModeClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+
+
+@get_connection.register
+def _(_: BackendConnection, verbose: bool = False):
+    """
+    Let's use Airflow's internal connection for this
+    """
+    from airflow import settings
+
+    with settings.Session() as session:
+        return session.get_bind()

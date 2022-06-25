@@ -11,31 +11,14 @@
  *  limitations under the License.
  */
 
-import { AxiosError, AxiosResponse } from 'axios';
+import { Tabs } from 'antd';
 import classNames from 'classnames';
-import { Operation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import AppState from '../../../AppState';
-import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
-import { observerOptions } from '../../../constants/Mydata.constants';
-import { Thread } from '../../../generated/entity/feed/thread';
-import { Paging } from '../../../generated/type/paging';
-import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
-import jsonData from '../../../jsons/en';
-import { getEntityField } from '../../../utils/FeedUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
-import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
-import DeleteConfirmationModal from '../DeleteConfirmationModal/DeleteConfirmationModal';
-import ActivityThread from './ActivityThread';
-import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
+import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
 const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   threadLink,
@@ -47,154 +30,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   deletePostHandler,
   updateThreadHandler,
 }) => {
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [selectedThread, setSelectedThread] = useState<Thread>();
-  const [selectedThreadId, setSelectedThreadId] = useState<string>('');
-  const [showNewConversation, setShowNewConversation] =
-    useState<boolean>(false);
+  const { TabPane } = Tabs;
+  const [activeTab, setActiveTab] = useState<string>('1');
 
-  const [confirmationState, setConfirmationState] = useState<ConfirmState>(
-    confirmStateInitialValue
-  );
-
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [isThreadLoading, setIsThreadLoading] = useState(false);
-
-  const getThreads = (after?: string) => {
-    setIsThreadLoading(true);
-    getAllFeeds(threadLink, after)
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
-        setThreads((prevData) => {
-          if (after) {
-            return [...prevData, ...data];
-          } else {
-            return [...data];
-          }
-        });
-        setPaging(pagingObj);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-thread-error']
-        );
-      })
-      .finally(() => {
-        setIsThreadLoading(false);
-      });
+  const onTabChange = (key: string) => {
+    setActiveTab(key);
   };
-
-  const onDiscard = () => {
-    setConfirmationState(confirmStateInitialValue);
-  };
-
-  const loadNewThreads = () => {
-    setTimeout(() => {
-      getThreads();
-    }, 500);
-  };
-
-  const onPostDelete = () => {
-    if (confirmationState.postId && confirmationState.threadId) {
-      deletePostHandler?.(confirmationState.threadId, confirmationState.postId);
-    }
-    onDiscard();
-    loadNewThreads();
-  };
-
-  const onConfirmation = (data: ConfirmState) => {
-    setConfirmationState(data);
-  };
-
-  const entityField = getEntityField(threadLink);
-
-  const onShowNewConversation = (value: boolean) => {
-    setShowNewConversation(value);
-  };
-
-  const postFeed = (value: string) => {
-    postFeedHandler?.(value, selectedThread?.id ?? selectedThreadId);
-    loadNewThreads();
-  };
-
-  const onThreadIdSelect = (id: string) => {
-    setSelectedThreadId(id);
-  };
-
-  const onThreadSelect = (id: string) => {
-    const thread = threads.find((f) => f.id === id);
-    if (thread) {
-      setSelectedThread(thread);
-    }
-  };
-
-  const onBack = () => {
-    setSelectedThread(undefined);
-  };
-
-  const onPostThread = (value: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-    const data = {
-      message: value,
-      from: currentUser,
-      about: threadLink,
-    };
-    createThread(data);
-    loadNewThreads();
-  };
-
-  const onUpdateThread = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadHandler(threadId, postId, isThread, data);
-    loadNewThreads();
-  };
-
-  const getLoader = () => {
-    return isThreadLoading ? <Loader /> : null;
-  };
-
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      getThreads(pagingObj.after);
-    }
-  };
-
-  useEffect(() => {
-    const escapeKeyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      }
-    };
-    document.addEventListener('keydown', escapeKeyHandler);
-
-    return () => {
-      document.removeEventListener('keydown', escapeKeyHandler);
-    };
-  }, []);
-
-  useEffect(() => {
-    onThreadSelect(selectedThread?.id as string);
-  }, [threads]);
-
-  useEffect(() => {
-    getThreads();
-  }, [threadLink]);
-
-  useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isThreadLoading);
-  }, [paging, isThreadLoading, isInView]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -204,7 +45,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
     <div className={classNames('tw-h-full', className)}>
       <FeedPanelOverlay
         className="tw-z-9997 tw-fixed tw-inset-0 tw-top-16 tw-h-full tw-w-3/5 tw-bg-black tw-opacity-40"
-        onCancel={onCancel}
+        onCancel={() => onCancel && onCancel()}
       />
       <div
         className={classNames(
@@ -215,73 +56,34 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           }
         )}
         id="thread-panel">
-        <FeedPanelHeader
-          className="tw-px-4 tw-shadow-sm"
-          entityField={entityField as string}
-          noun="Conversations"
-          onCancel={onCancel}
-          onShowNewConversation={
-            threads.length > 0 && isUndefined(selectedThread)
-              ? onShowNewConversation
-              : undefined
-          }
-        />
-
-        {!isUndefined(selectedThread) ? (
-          <Fragment>
-            <p
-              className="tw-py-3 tw-cursor-pointer link-text tw-pl-5"
-              onClick={onBack}>
-              {'< Back'}
-            </p>
-            <ActivityThread
-              className="tw-pb-4 tw-pl-5 tw-pr-2"
-              postFeed={postFeed}
-              selectedThread={selectedThread}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
+        <Tabs
+          activeKey={activeTab}
+          className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
+          onChange={onTabChange}>
+          <TabPane key="1" tab="Tasks">
+            <ActivityThreadPanelBody
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              threadType={ThreadType.Task}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onCancel}
             />
-          </Fragment>
-        ) : (
-          <Fragment>
-            {showNewConversation || threads.length === 0 ? (
-              <div className="tw-pt-6">
-                <p className="tw-ml-9 tw-mr-2 tw-my-2">
-                  You are starting a new conversation
-                </p>
-                <ActivityFeedEditor
-                  buttonClass="tw-mr-4"
-                  className="tw-ml-5 tw-mr-2"
-                  placeHolder="Enter a message"
-                  onSave={onPostThread}
-                />
-              </div>
-            ) : null}
-            <ActivityThreadList
-              className="tw-py-6 tw-px-5"
-              postFeed={postFeed}
-              selectedThreadId={selectedThreadId}
-              threads={threads}
-              updateThreadHandler={onUpdateThread}
-              onConfirmation={onConfirmation}
-              onThreadIdSelect={onThreadIdSelect}
-              onThreadSelect={onThreadSelect}
+          </TabPane>
+          <TabPane key="2" tab="Conversations">
+            <ActivityThreadPanelBody
+              createThread={createThread}
+              deletePostHandler={deletePostHandler}
+              postFeedHandler={postFeedHandler}
+              threadLink={threadLink}
+              threadType={ThreadType.Conversation}
+              updateThreadHandler={updateThreadHandler}
+              onCancel={onCancel}
             />
-            <div
-              data-testid="observer-element"
-              id="observer-element"
-              ref={elementRef as RefObject<HTMLDivElement>}>
-              {getLoader()}
-            </div>
-          </Fragment>
-        )}
+          </TabPane>
+        </Tabs>
       </div>
-      {confirmationState.state && (
-        <DeleteConfirmationModal
-          onDelete={onPostDelete}
-          onDiscard={onDiscard}
-        />
-      )}
     </div>,
     document.body
   );

@@ -148,6 +148,24 @@ const CustomPropertiesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/CustomPropertiesPage/CustomPropertiesPage'))
 );
 
+const RequestDescriptionPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage')
+  )
+);
+
+const UpdateDescriptionPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage')
+  )
+);
+
+const TaskDetailPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TasksPage/TaskDetailPage/TaskDetailPage'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -156,12 +174,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
@@ -300,6 +318,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddCustomProperty}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
+
+      <Route
+        exact
+        component={RequestDescriptionPage}
+        path={ROUTES.REQUEST_DESCRIPTION}
+      />
+
+      <Route
+        exact
+        component={UpdateDescriptionPage}
+        path={ROUTES.UPDATE_DESCRIPTION}
+      />
+
+      <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

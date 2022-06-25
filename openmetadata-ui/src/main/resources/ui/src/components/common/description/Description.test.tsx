@@ -41,6 +41,22 @@ const mockDescriptionProp = {
   onEntityFieldSelect: jest.fn(),
 };
 
+jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+    })),
+  };
+});
+jest.mock('../../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
 jest.mock('../../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
 }));

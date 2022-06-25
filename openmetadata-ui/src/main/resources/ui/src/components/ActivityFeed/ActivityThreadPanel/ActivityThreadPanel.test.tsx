@@ -72,11 +72,10 @@ describe('Test ActivityThreadPanel Component', () => {
       { wrapper: MemoryRouter }
     );
     const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
-    const panelHeader = await findByText(container, /FeedPanelHeader/i);
+
     const panelThreadList = await findByText(container, /ActivityThreadList/i);
 
     expect(panelOverlay).toBeInTheDocument();
-    expect(panelHeader).toBeInTheDocument();
     expect(panelThreadList).toBeInTheDocument();
   });
 

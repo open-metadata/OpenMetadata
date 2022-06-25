@@ -57,7 +57,7 @@ export interface TeamsAndUsersProps {
     [key: string]: string;
   };
   updateTeamHandler: (data: Team) => Promise<void>;
-  handleDeleteUser: (id: string) => void;
+  handleDeleteUser: () => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,

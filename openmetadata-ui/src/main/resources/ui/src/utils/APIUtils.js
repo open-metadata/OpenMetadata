@@ -61,6 +61,7 @@ export const formatUsersResponse = (hits) => {
       email: d._source.email,
       type: d._source.entity_type,
       id: d._source.user_id,
+      teams: d._source.teams,
     };
   });
 };

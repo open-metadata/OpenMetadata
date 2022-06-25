@@ -246,14 +246,14 @@ const ServicesPage = () => {
         style={leftPanelAntCardStyle}
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
-            <h6 className="tw-heading tw-text-base">Services</h6>
+            <h6 className="tw-heading tw-text-base tw-mb-0">Services</h6>
           </div>
         }>
         <>
           {getServiceTabs()?.map((tab, index) => {
             return (
               <div
-                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-my-2 tw-flex tw-justify-between ${getActiveCatClass(
                   tab.name,
                   serviceName
                 )}`}

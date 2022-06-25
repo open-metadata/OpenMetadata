@@ -1,12 +1,16 @@
 export const getUserCurrentTab = (tab: string) => {
   let currentTab = 1;
   switch (tab) {
-    case 'mydata':
+    case 'tasks':
       currentTab = 2;
 
       break;
-    case 'following':
+    case 'mydata':
       currentTab = 3;
+
+      break;
+    case 'following':
+      currentTab = 4;
 
       break;
     case 'activity':
@@ -24,10 +28,14 @@ export const profileInfo = [
   },
   {
     tab: 2,
-    path: 'mydata',
+    path: 'tasks',
   },
   {
     tab: 3,
+    path: 'mydata',
+  },
+  {
+    tab: 4,
     path: 'following',
   },
 ];

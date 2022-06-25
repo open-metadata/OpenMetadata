@@ -18,6 +18,7 @@ import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import io from 'socket.io-client';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -32,6 +33,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
 import {
   onErrorText,
   onUpdatedConversastionError,
@@ -74,6 +76,8 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
+
+  const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
@@ -310,7 +314,6 @@ const MyDataPage = () => {
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
-
         setEntityThread((prevData) => [...prevData, ...data]);
       })
       .catch((err: AxiosError) => {
@@ -426,6 +429,34 @@ const MyDataPage = () => {
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
+  useEffect(() => {
+    const socket = io(ROUTES.HOME, {
+      path: ROUTES.ACTIVITY_PUSH_FEED,
+      reconnectionAttempts: 3,
+    });
+
+    // socket.connect();
+
+    socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
+      if (newActivity) {
+        setActivityFeeds((prevActivities) => [
+          JSON.parse(newActivity),
+          ...prevActivities,
+        ]);
+      }
+    });
+
+    return () => {
+      socket.close();
+      socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+    };
+  }, []);
+
+  const onRefreshFeeds = () => {
+    setEntityThread((prevData) => [...activityFeeds, ...prevData]);
+    setActivityFeeds([]);
+  };
+
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
@@ -438,6 +469,7 @@ const MyDataPage = () => {
       !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
+            activityFeeds={activityFeeds}
             countDashboards={countDashboards}
             countMlModal={countMlModal}
             countPipelines={countPipelines}
@@ -460,6 +492,7 @@ const MyDataPage = () => {
             paging={paging}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
+            onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

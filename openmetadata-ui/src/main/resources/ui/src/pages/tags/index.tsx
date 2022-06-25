@@ -400,15 +400,21 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <Card data-testid="data-summary-container" style={leftPanelAntCardStyle}>
-        <>
-          <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-            <h6 className="tw-heading tw-text-base">Tag Categories</h6>
+      <Card
+        data-testid="data-summary-container"
+        style={leftPanelAntCardStyle}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
+            <span
+              className="tw-heading tw-text-base tw-my-0"
+              style={{ fontSize: '14px' }}>
+              Tag Categories
+            </span>
             <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
+                className={classNames('tw-h-7 tw-px-2 tw-my-2', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
                 data-testid="add-category"
@@ -423,6 +429,8 @@ const TagsPage = () => {
               </Button>
             </NonAdminAction>
           </div>
+        }>
+        <>
           {categories &&
             categories.map((category: TagCategory) => (
               <div
@@ -466,7 +474,7 @@ const TagsPage = () => {
               <Loader />
             ) : (
               <div
-                className="full-height tw-bg-white"
+                className="full-height"
                 data-testid="tags-container"
                 style={{ padding: '14px' }}>
                 {currentCategory && (
@@ -510,7 +518,7 @@ const TagsPage = () => {
                           data-testid="delete-tag-category-button"
                           size="small"
                           theme="primary"
-                          variant="contained"
+                          variant="outlined"
                           onClick={() => {
                             deleteTagHandler();
                           }}>
@@ -597,7 +605,7 @@ const TagsPage = () => {
                                           data-testid="editTagDescription"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="16px"
                                         />
                                       </button>
                                     </NonAdminAction>
@@ -660,7 +668,7 @@ const TagsPage = () => {
                                             alt="delete"
                                             icon="icon-delete"
                                             title="Delete"
-                                            width="12px"
+                                            width="16px"
                                           />
                                         )}
                                       </button>
