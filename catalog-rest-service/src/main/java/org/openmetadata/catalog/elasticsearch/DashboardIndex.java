@@ -23,7 +23,7 @@ public class DashboardIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> chartSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(dashboard.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getName()).weight(10).build());
+    suggest.add(ElasticSearchSuggest.builder().input(dashboard.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(dashboard.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(dashboard.getTags()));
     if (dashboard.getCharts() != null) {
