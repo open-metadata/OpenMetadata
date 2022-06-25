@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Card, Input } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, {
+  ChangeEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -70,6 +71,8 @@ const RequestDescription = () => {
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
+  const [title, setTitle] = useState<string>('');
+  const [suggestion, setSuggestion] = useState<string>('');
 
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
@@ -128,11 +131,20 @@ const RequestDescription = () => {
     }
   };
 
+  const onTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { value: newValue } = e.target;
+    setTitle(newValue);
+  };
+
+  const onSuggestionChange = (value: string) => {
+    setSuggestion(value);
+  };
+
   const onCreateTask = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message,
+        message: title || message,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -176,6 +188,7 @@ const RequestDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
+    setTitle(message);
   }, [entityData]);
 
   return (
@@ -191,9 +204,19 @@ const RequestDescription = () => {
           className="tw-col-span-2"
           key="request-description"
           style={{ ...cardStyles }}
-          title={`Task: ${message}`}>
+          title="Create Task">
+          <div data-testid="title">
+            <span>Title:</span>{' '}
+            <Input
+              placeholder="Task title"
+              style={{ margin: '4px 0px' }}
+              value={title}
+              onChange={onTitleChange}
+            />
+          </div>
+
           <div data-testid="assignees">
-            <span className="tw-text-grey-muted">Assignees:</span>{' '}
+            <span>Assignees:</span>{' '}
             <Assignees
               assignees={assignees}
               options={options}
@@ -203,16 +226,16 @@ const RequestDescription = () => {
           </div>
 
           <p data-testid="description-label">
-            <span>Description:</span>{' '}
-            <span className="tw-text-grey-muted">
-              description below will be suggested to the assignees
-            </span>
+            <span>Suggest description:</span>{' '}
           </p>
 
           <RichTextEditor
             className="tw-my-0"
             initialValue=""
+            placeHolder="Suggest description"
             ref={markdownRef}
+            style={{ marginTop: '4px' }}
+            onTextChange={onSuggestionChange}
           />
 
           <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
@@ -223,7 +246,7 @@ const RequestDescription = () => {
               className="ant-btn-primary-custom"
               type="primary"
               onClick={onCreateTask}>
-              Submit
+              {suggestion ? 'Suggest' : 'Submit'}
             </Button>
           </div>
         </Card>

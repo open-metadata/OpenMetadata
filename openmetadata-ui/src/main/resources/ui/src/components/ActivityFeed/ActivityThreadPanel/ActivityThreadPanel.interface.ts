@@ -41,6 +41,7 @@ export interface ActivityThreadPanelBodyProp
     > {
   threadType: ThreadType;
   showHeader?: boolean;
+  onTabChange?: (key: string) => void;
 }
 
 export interface ActivityThreadListProp
