@@ -144,7 +144,7 @@ export const getTagSuggestions: Function = (
 ): Promise<AxiosResponse> => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG}`,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
   return APIClient.get(`/search/suggest`, { params });
