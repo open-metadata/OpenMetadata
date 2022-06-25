@@ -16,7 +16,7 @@ import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
+import { isEmpty, isEqual, isUndefined, toLower, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
@@ -529,9 +529,7 @@ const TaskDetailPage = () => {
               <ColumnDetail column={columnObject} />
 
               <div className="tw-flex tw-mb-4" data-testid="task-assignees">
-                <span className="tw-text-grey-muted tw-self-center tw-mr-1">
-                  Assignees:
-                </span>
+                <span className="tw-text-grey-muted tw-mr-1">Assignees:</span>
                 {editAssignee ? (
                   <Fragment>
                     <Assignees
@@ -563,10 +561,24 @@ const TaskDetailPage = () => {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <span className="tw-self-center tw-mr-1">
-                      {taskDetail.task?.assignees
-                        ?.map((assignee) => getEntityName(assignee))
-                        ?.join(', ')}
+                    <span className="tw-self-center tw-mr-1 tw-grid tw-grid-cols-4">
+                      {taskDetail.task?.assignees?.map((assignee) => (
+                        <UserPopOverCard
+                          key={uniqueId()}
+                          type={assignee.type}
+                          userName={assignee.name || ''}>
+                          <span className="tw-flex tw-m-1.5 tw-mt-0">
+                            <ProfilePicture
+                              id=""
+                              name={getEntityName(assignee)}
+                              width="20"
+                            />
+                            <span className="tw-ml-1">
+                              {getEntityName(assignee)}
+                            </span>
+                          </span>
+                        </UserPopOverCard>
+                      ))}
                     </span>
                     {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <button

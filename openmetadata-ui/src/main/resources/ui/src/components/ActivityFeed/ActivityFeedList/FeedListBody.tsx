@@ -12,9 +12,12 @@
  */
 
 import { Card } from 'antd';
+import { uniqueId } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
 import { getEntityName } from '../../../utils/CommonUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
@@ -150,12 +153,26 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 ) : null}
               </div>
               {feed.task && (
-                <div className="tw-border-t tw-border-main tw-py-1">
+                <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
                   <span className="tw-text-grey-muted">Assignees: </span>
-                  <span className="tw-ml-0.5 tw-align-middle">
-                    {feed.task.assignees
-                      .map((assignee) => getEntityName(assignee))
-                      .join(', ')}
+                  <span className="tw-ml-0.5 tw-align-middle tw-grid tw-grid-cols-4">
+                    {feed.task.assignees.map((assignee) => (
+                      <UserPopOverCard
+                        key={uniqueId()}
+                        type={assignee.type}
+                        userName={assignee.name || ''}>
+                        <span className="tw-flex tw-m-1.5 tw-mt-0">
+                          <ProfilePicture
+                            id=""
+                            name={getEntityName(assignee)}
+                            width="20"
+                          />
+                          <span className="tw-ml-1">
+                            {getEntityName(assignee)}
+                          </span>
+                        </span>
+                      </UserPopOverCard>
+                    ))}
                   </span>
                 </div>
               )}

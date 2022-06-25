@@ -13,6 +13,7 @@
 
 import { Popover } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
@@ -27,22 +28,26 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
+  type?: string;
 }
 
-const UserPopOverCard: FC<Props> = ({ children, userName }) => {
+const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
   const history = useHistory();
   const [userData, setUserData] = useState<User>({} as User);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const getData = () => {
-    getUserByName(userName, 'profile,roles,teams,follows,owns')
-      .then((res: AxiosResponse) => {
-        setUserData(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      })
-      .finally(() => setIsLoading(false));
+    if (type === 'user') {
+      setIsLoading(true);
+      getUserByName(userName, 'profile,roles,teams,follows,owns')
+        .then((res: AxiosResponse) => {
+          setUserData(res.data);
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(err);
+        })
+        .finally(() => setIsLoading(false));
+    }
   };
 
   const onTitleClickHandler = (path: string) => {
@@ -117,6 +122,7 @@ const UserPopOverCard: FC<Props> = ({ children, userName }) => {
           {displayName !== name ? (
             <span className="tw-text-grey-muted">{name}</span>
           ) : null}
+          {isEmpty(userData) && <span>{userName}</span>}
         </div>
       </div>
     );
@@ -129,8 +135,14 @@ const UserPopOverCard: FC<Props> = ({ children, userName }) => {
           <Loader size="small" />
         ) : (
           <div className="tw-w-80">
-            <UserTeams />
-            <UserRoles />
+            {isEmpty(userData) ? (
+              <span>No data available</span>
+            ) : (
+              <Fragment>
+                <UserTeams />
+                <UserRoles />
+              </Fragment>
+            )}
           </div>
         )}
       </Fragment>
