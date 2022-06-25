@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -23,15 +24,21 @@ import React, {
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getUserPath } from '../../constants/constants';
-import { filterList, observerOptions } from '../../constants/Mydata.constants';
+import {
+  filterList,
+  observerOptions,
+  threadFilterList,
+} from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
@@ -53,8 +60,11 @@ const MyData: React.FC<MyDataProps> = ({
   countTeams,
   countUsers,
   ownedData,
+  pendingTaskCount,
   countMlModal,
   followedData,
+  threadTypeFilter,
+  onThreadTypeFilterChange,
   feedData,
   feedFilter,
   ownedDataCount,
@@ -68,6 +78,7 @@ const MyData: React.FC<MyDataProps> = ({
   updateThreadHandler,
 }: MyDataProps): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
+  const [showThreadTypeList, setShowThreadTypeList] = useState<boolean>(false);
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
 
@@ -78,10 +89,23 @@ const MyData: React.FC<MyDataProps> = ({
     feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
     setFieldListVisible(false);
   };
+
+  // Thread filter change handler
+  const handleThreadTypeDropDownChange = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    onThreadTypeFilterChange(
+      value === 'ALL' ? undefined : (value as ThreadType) ?? undefined
+    );
+    setShowThreadTypeList(false);
+  };
+
   const getFilterDropDown = () => {
     return (
-      <Fragment>
-        <div className="tw-relative tw-mt-5">
+      <div className="tw-flex">
+        {/* Feed filter */}
+        <div className="tw-relative tw-mt-5 tw-mr-5">
           <Button
             className="hover:tw-no-underline focus:tw-no-underline"
             data-testid="feeds"
@@ -102,7 +126,33 @@ const MyData: React.FC<MyDataProps> = ({
             />
           )}
         </div>
-      </Fragment>
+        {/* Thread filter */}
+        <div className="tw-relative tw-mt-5">
+          <Button
+            className="hover:tw-no-underline focus:tw-no-underline"
+            data-testid="thread-filter"
+            size="custom"
+            tag="button"
+            variant="link"
+            onClick={() => setShowThreadTypeList((visible) => !visible)}>
+            <span className="tw-font-medium tw-text-grey">
+              {
+                threadFilterList.find(
+                  (f) => f.value === (threadTypeFilter ?? 'ALL')
+                )?.name
+              }
+            </span>
+            <DropDownIcon />
+          </Button>
+          {showThreadTypeList && (
+            <DropDownList
+              dropDownList={threadFilterList}
+              value={threadTypeFilter}
+              onSelect={handleThreadTypeDropDownChange}
+            />
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -132,6 +182,41 @@ const MyData: React.FC<MyDataProps> = ({
 
     return (
       <div className="tw-mt-4">
+        {/* Pending task count card */}
+        {pendingTaskCount ? (
+          <div className="tw-mb-5" data-testid="my-tasks-container ">
+            <Card
+              bodyStyle={{ padding: 0 }}
+              extra={
+                <>
+                  <Link
+                    data-testid="my-data"
+                    to={getUserPath(
+                      currentUserDetails?.name || '',
+                      'tasks?feedFilter=ASSIGNED_TO'
+                    )}>
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
+                      View All
+                    </span>
+                  </Link>
+                </>
+              }
+              style={leftPanelAntCardStyle}
+              title={
+                <div className="tw-flex tw-item-center ">
+                  <SVGIcons
+                    alt="Pending tasks"
+                    className="tw-mr-2.5"
+                    icon={Icons.TASK}
+                    title="Tasks"
+                    width="16px"
+                  />
+                  {pendingTaskCount} Pending tasks
+                </div>
+              }
+            />
+          </div>
+        ) : null}
         <div data-testid="my-data-container">
           <EntityListWithAntd
             entityList={ownedData}
@@ -224,7 +309,9 @@ const MyData: React.FC<MyDataProps> = ({
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
+          {feedData?.length > 0 ||
+          feedFilter !== FeedFilter.ALL ||
+          threadTypeFilter ? (
             <Fragment>
               {getFilterDropDown()}
 

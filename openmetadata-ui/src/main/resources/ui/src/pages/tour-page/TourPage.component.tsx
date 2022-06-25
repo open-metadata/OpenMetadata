@@ -150,9 +150,11 @@ const TourPage = () => {
             ownedData={[]}
             ownedDataCount={1}
             paging={{} as Paging}
+            pendingTaskCount={0}
             postFeedHandler={handleOnClick}
             updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
+            onThreadTypeFilterChange={handleOnClick}
           />
         );
 
