@@ -16,7 +16,9 @@
 package org.openmetadata.catalog.elasticsearch;
 
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.catalog.Entity.FIELD_USAGE_SUMMARY;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +69,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagCategory;
+import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.util.ElasticSearchClientUtils;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -170,7 +173,7 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 
-  private UpdateRequest applyChangeEvent(ChangeEvent event) {
+  private UpdateRequest applyChangeEvent(ChangeEvent event) throws JsonProcessingException {
     String entityType = event.getEntityType();
     ElasticSearchIndexType esIndexType = esIndexDefinition.getIndexMappingByEntityType(entityType);
     UUID entityId = event.getEntityId();
@@ -202,6 +205,15 @@ public class ElasticSearchEventPublisher extends AbstractEventPublisher {
           fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+      }
+    }
+
+    for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
+      if (fieldChange.getName().equalsIgnoreCase(FIELD_USAGE_SUMMARY)) {
+        @SuppressWarnings("unchecked")
+        UsageDetails usageSummary = (UsageDetails) fieldChange.getNewValue();
+        fieldAddParams.put(fieldChange.getName(), JsonUtils.getMap(usageSummary));
+        scriptTxt.append("ctx._source.usageSummary = params.usageSummary;");
       }
     }
 

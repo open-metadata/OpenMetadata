@@ -13,24 +13,34 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.FIELD_USAGE_SUMMARY;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.UnhandledServerException;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
 
 @Slf4j
 public class UsageRepository {
@@ -55,17 +65,17 @@ public class UsageRepository {
   }
 
   @Transaction
-  public void create(String entityType, String id, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
-    addUsage(entityType, id, usage);
+    return addUsage(entityType, id, usage);
   }
 
   @Transaction
-  public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
+  public RestUtil.PutResponse createByName(String entityType, String fullyQualifiedName, DailyCount usage)
+      throws IOException {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
-    addUsage(entityType, ref.getId().toString(), usage);
-    LOG.info("Usage successfully posted by name");
+    return addUsage(entityType, ref.getId().toString(), usage);
   }
 
   @Transaction
@@ -73,21 +83,47 @@ public class UsageRepository {
     dao.usageDAO().computePercentile(entityType, date);
   }
 
-  private void addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
+  private RestUtil.PutResponse addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
+    Fields fields = new Fields(List.of("usageSummary"));
     // Insert usage record
     dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
 
     // If table usage was reported, add the usage count to schema and database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       // we accept usage for deleted entities
-      Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), Fields.EMPTY_FIELDS, Include.ALL);
+      Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
       dao.usageDAO()
           .insertOrUpdateCount(
               usage.getDate(), table.getDatabaseSchema().getId().toString(), Entity.DATABASE_SCHEMA, usage.getCount());
       dao.usageDAO()
           .insertOrUpdateCount(
               usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
+      dao.usageDAO().computePercentile(entityType, usage.getDate());
+      Table updated = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
+      ChangeDescription change = new ChangeDescription().withPreviousVersion(table.getVersion());
+      change
+          .getFieldsUpdated()
+          .add(
+              new FieldChange()
+                  .withName(FIELD_USAGE_SUMMARY)
+                  .withNewValue(updated.getUsageSummary())
+                  .withOldValue(table.getUsageSummary()));
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withEntity(updated)
+              .withChangeDescription(change)
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(table.getUpdatedBy())
+              .withTimestamp(System.currentTimeMillis())
+              .withCurrentVersion(updated.getVersion())
+              .withPreviousVersion(updated.getVersion());
+
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
+    throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotSupported(entityType));
   }
 
   public static class UsageDetailsMapper implements RowMapper<UsageDetails> {
