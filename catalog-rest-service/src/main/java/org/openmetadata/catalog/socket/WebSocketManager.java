@@ -94,13 +94,12 @@ public class WebSocketManager {
     switch (thread.getType()) {
       case Task:
         List<EntityReference> assignees = thread.getTask().getAssignees();
-        assignees
-            .forEach(
-                (e) -> {
-                  if (activityFeedEndpoints.containsKey(e.getId())) {
-                    activityFeedEndpoints.get(e.getId()).send(taskBroadcastChannel, jsonThread);
-                  }
-                });
+        assignees.forEach(
+            (e) -> {
+              if (activityFeedEndpoints.containsKey(e.getId())) {
+                activityFeedEndpoints.get(e.getId()).send(taskBroadcastChannel, jsonThread);
+              }
+            });
         return;
       case Conversation:
         broadCastMessageToClients(thread);
