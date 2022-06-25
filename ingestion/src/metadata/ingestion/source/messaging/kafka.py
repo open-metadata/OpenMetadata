@@ -186,7 +186,6 @@ class KafkaSource(Source[CreateTopicRequest]):
                 self.status.failure(topic_name, repr(err))
 
     def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
-        logger.debug(f"topic = {topic}")
         schema: Optional[Schema] = None
         try:
             registered_schema = self.schema_registry_client.get_latest_version(
