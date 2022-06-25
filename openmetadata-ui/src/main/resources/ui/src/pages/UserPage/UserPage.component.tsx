@@ -89,9 +89,18 @@ const UserPage = () => {
     );
   };
 
-  const getFeedData = (threadType: ThreadType, after?: string) => {
+  const getFeedData = (
+    threadType: ThreadType,
+    after?: string,
+    feedFilter?: FeedFilter
+  ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(userData.id, FeedFilter.ALL, after, threadType)
+    getFeedsWithFilter(
+      userData.id,
+      feedFilter || FeedFilter.ALL,
+      after,
+      threadType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
