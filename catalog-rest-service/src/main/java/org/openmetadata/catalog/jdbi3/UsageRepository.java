@@ -121,7 +121,7 @@ public class UsageRepository {
               .withCurrentVersion(updated.getVersion())
               .withPreviousVersion(updated.getVersion());
 
-      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotSupported(entityType));
   }
