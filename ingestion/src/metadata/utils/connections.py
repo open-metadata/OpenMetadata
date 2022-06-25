@@ -269,7 +269,6 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     from confluent_kafka.admin import AdminClient, ConfigResource
     from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
-        Schema,
         SchemaRegistryClient,
     )
 
@@ -282,11 +281,22 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     if connection.schemaRegistryURL:
         connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
         schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
-        admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
-        admin_client_config["group.id"] = "openmetadata-consumer-1"
-        admin_client_config["auto.offset.reset"] = "earliest"
-        admin_client_config["enable.auto.commit"] = False
-        consumer_client = AvroConsumer(admin_client_config)
+        connection.schemaRegistryConfig["url"] = str(connection.schemaRegistryURL)
+        consumer_config = {
+            **connection.consumerConfig,
+            "bootstrap.servers": connection.bootstrapServers,
+        }
+        if "group.id" not in consumer_config:
+            consumer_config["group.id"] = "openmetadata-consumer"
+        if "auto.offset.reset" not in consumer_config:
+            consumer_config["auto.offset.reset"] = "earliest"
+
+        for key in connection.schemaRegistryConfig:
+            consumer_config["schema.registry." + key] = connection.schemaRegistryConfig[
+                key
+            ]
+        logger.debug(consumer_config)
+        consumer_client = AvroConsumer(consumer_config)
 
     return KafkaClient(
         admin_client=admin_client,
