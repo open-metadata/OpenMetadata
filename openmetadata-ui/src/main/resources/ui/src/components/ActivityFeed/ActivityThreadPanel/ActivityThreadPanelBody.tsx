@@ -14,7 +14,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
@@ -22,10 +22,12 @@ import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
+import { useAfterMount } from '../../../hooks/useAfterMount';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -45,6 +47,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   className,
   showHeader = true,
   threadType,
+  onTabChange,
 }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -195,6 +198,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
+  useAfterMount(() => {
+    if (threadType === ThreadType.Task && !isThreadLoading) {
+      isEqual(threads.length, 0) && onTabChange && onTabChange('2');
+    }
+  }, [threads, isThreadLoading]);
+
   return (
     <Fragment>
       <div id="thread-panel-body">
@@ -233,15 +242,23 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Fragment>
             {showNewConversation || threads.length === 0 ? (
               <div className="tw-pt-2">
-                <p className="tw-ml-9 tw-mr-2 tw-my-2">
-                  You are starting a new conversation
-                </p>
-                <ActivityFeedEditor
-                  buttonClass="tw-mr-4"
-                  className="tw-ml-5 tw-mr-2"
-                  placeHolder="Enter a message"
-                  onSave={onPostThread}
-                />
+                <Fragment>
+                  {threadType === ThreadType.Conversation ? (
+                    <Fragment>
+                      <p className="tw-ml-9 tw-mr-2 tw-my-2">
+                        You are starting a new conversation
+                      </p>
+                      <ActivityFeedEditor
+                        buttonClass="tw-mr-4"
+                        className="tw-ml-5 tw-mr-2"
+                        placeHolder="Enter a message"
+                        onSave={onPostThread}
+                      />
+                    </Fragment>
+                  ) : (
+                    <ErrorPlaceHolder>No tasks yet</ErrorPlaceHolder>
+                  )}
+                </Fragment>
               </div>
             ) : null}
             <ActivityThreadList

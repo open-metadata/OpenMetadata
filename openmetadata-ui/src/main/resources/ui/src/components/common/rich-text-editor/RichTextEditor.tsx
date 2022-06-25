@@ -14,6 +14,7 @@
 /* eslint-disable */
 
 import { Editor, Viewer } from '@toast-ui/react-editor';
+import classNames from 'classnames';
 import React, {
   createRef,
   forwardRef,
@@ -37,6 +38,8 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       initialValue = '',
       readonly,
       height,
+      className,
+      style,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -62,7 +65,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }, [initialValue]);
 
     return (
-      <div className="tw-my-4">
+      <div className={classNames(className, 'tw-my-4')} style={style}>
         {readonly ? (
           <div
             className="tw-border tw-border-main tw-p-2 tw-rounded"

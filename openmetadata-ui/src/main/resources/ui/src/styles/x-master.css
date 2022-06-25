@@ -1231,7 +1231,7 @@ code {
 .ant-layout-sider-task-detail {
   background: #ffffff;
   border: 1px solid #dde3ea;
-  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.16);
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.06);
   padding: 16px;
   padding-top: 0px;
   overflow-y: auto;

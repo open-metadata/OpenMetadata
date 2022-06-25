@@ -61,6 +61,7 @@ import {
   getEntityType,
   updateThreadData,
 } from '../../../utils/FeedUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import {
   getEntityLink,
@@ -329,7 +330,7 @@ const TaskDetailPage = () => {
       entityFQN &&
         fetchEntityDetail(
           entityType as EntityType,
-          entityFQN as string,
+          getEncodedFqn(entityFQN as string),
           setEntityData
         );
       fetchTaskFeed(taskDetail.id);
@@ -457,17 +458,16 @@ const TaskDetailPage = () => {
     );
   };
 
+  const isOwner = entityData.owner?.id === currentUser?.id;
+  const isAssignee = taskDetail.task?.assignees?.some(
+    (assignee) => assignee.id === currentUser?.id
+  );
+
+  const isTaskClosed = taskDetail.task?.status === ThreadTaskStatus.Closed;
+  const isCreator = taskDetail.createdBy === currentUser?.name;
+
   const hasEditAccess = () => {
-    const isOwner = entityData.owner?.id === currentUser?.id;
-    const isAssignee = taskDetail.task?.assignees?.some(
-      (assignee) => assignee.id === currentUser?.id
-    );
-
-    const isTaskClosed = taskDetail.task?.status === ThreadTaskStatus.Closed;
-
-    return (
-      (isAdminUser || isAuthDisabled || isAssignee || isOwner) && !isTaskClosed
-    );
+    return isAdminUser || isAuthDisabled || isAssignee || isOwner;
   };
 
   return (
@@ -568,7 +568,7 @@ const TaskDetailPage = () => {
                         ?.map((assignee) => getEntityName(assignee))
                         ?.join(', ')}
                     </span>
-                    {hasEditAccess() && (
+                    {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <button
                         className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
                         data-testid="edit-suggestion"
@@ -586,7 +586,7 @@ const TaskDetailPage = () => {
               </div>
 
               <div data-testid="task-description-tabs">
-                <span className="tw-text-grey-muted">Description:</span>{' '}
+                <p className="tw-text-grey-muted tw-mb-1">Description:</p>{' '}
                 {!isEmpty(taskDetail) && (
                   <Fragment>
                     {showEdit ? (
@@ -598,7 +598,7 @@ const TaskDetailPage = () => {
                     ) : (
                       <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
                         {getCurrentDescription()}
-                        {hasEditAccess() && (
+                        {hasEditAccess() && !isTaskClosed && (
                           <button
                             className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
                             data-testid="edit-suggestion"
@@ -617,7 +617,7 @@ const TaskDetailPage = () => {
                 )}
               </div>
 
-              {hasEditAccess() && (
+              {hasEditAccess() && !isTaskClosed && (
                 <div
                   className="tw-flex tw-justify-end"
                   data-testid="task-cta-buttons">

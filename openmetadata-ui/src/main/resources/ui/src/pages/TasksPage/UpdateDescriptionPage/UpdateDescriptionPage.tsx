@@ -207,7 +207,7 @@ const UpdateDescription = () => {
           style={{ ...cardStyles }}
           title={`Task: ${message}`}>
           <div data-testid="assignees">
-            <span className="tw-text-grey-muted">Assignees:</span>{' '}
+            <span>Assignees:</span>{' '}
             <Assignees
               assignees={assignees}
               options={options}

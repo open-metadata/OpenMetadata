@@ -15,7 +15,7 @@ export const cardStyles = {
   border: '1px rgb(221, 227, 234) solid',
   borderRadius: '8px',
   marginBottom: '20px',
-  boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
+  boxShadow: '1px 1px 6px rgb(0 0 0 / 6%)',
   marginTop: '8px',
 };
 
@@ -25,4 +25,4 @@ export const contentStyles = {
   paddingTop: 0,
 };
 
-export const background = { background: '#ffffff' };
+export const background = { background: '#F8F9FA' };

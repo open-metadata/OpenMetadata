@@ -193,7 +193,7 @@ const RequestDescription = () => {
           style={{ ...cardStyles }}
           title={`Task: ${message}`}>
           <div data-testid="assignees">
-            <span className="tw-text-grey-muted">Assignees:</span>{' '}
+            <span>Assignees:</span>{' '}
             <Assignees
               assignees={assignees}
               options={options}
@@ -203,16 +203,15 @@ const RequestDescription = () => {
           </div>
 
           <p data-testid="description-label">
-            <span>Description:</span>{' '}
-            <span className="tw-text-grey-muted">
-              description below will be suggested to the assignees
-            </span>
+            <span>Suggest description:</span>{' '}
           </p>
 
           <RichTextEditor
             className="tw-my-0"
             initialValue=""
+            placeHolder="Suggest description"
             ref={markdownRef}
+            style={{ marginTop: '4px' }}
           />
 
           <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
