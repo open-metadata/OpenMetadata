@@ -72,6 +72,7 @@ const RequestDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [title, setTitle] = useState<string>('');
+  const [suggestion, setSuggestion] = useState<string>('');
 
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
@@ -133,6 +134,10 @@ const RequestDescription = () => {
   const onTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { value: newValue } = e.target;
     setTitle(newValue);
+  };
+
+  const onSuggestionChange = (value: string) => {
+    setSuggestion(value);
   };
 
   const onCreateTask = () => {
@@ -230,6 +235,7 @@ const RequestDescription = () => {
             placeHolder="Suggest description"
             ref={markdownRef}
             style={{ marginTop: '4px' }}
+            onTextChange={onSuggestionChange}
           />
 
           <div className="tw-flex tw-justify-end" data-testid="cta-buttons">
@@ -240,7 +246,7 @@ const RequestDescription = () => {
               className="ant-btn-primary-custom"
               type="primary"
               onClick={onCreateTask}>
-              Submit
+              {suggestion ? 'Suggest' : 'Submit'}
             </Button>
           </div>
         </Card>

@@ -40,6 +40,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       height,
       className,
       style,
+      onTextChange,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -52,6 +53,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
         ?.getInstance()
         .getMarkdown() as string;
       setEditorValue(value);
+      onTextChange && onTextChange(value);
     };
 
     useImperativeHandle(ref, () => ({

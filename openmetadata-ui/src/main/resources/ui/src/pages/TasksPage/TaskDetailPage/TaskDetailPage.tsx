@@ -243,22 +243,25 @@ const TaskDetailPage = () => {
   };
 
   const onTaskResolve = () => {
-    const description =
-      markdownRef.current?.getEditorContent() || taskDetail.task?.suggestion;
+    const description = markdownRef.current?.getEditorContent();
 
-    updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
-      newValue: description,
-    })
-      .then(() => {
-        showSuccessToast('Task Resolved Successfully');
-        history.push(
-          getEntityLink(
-            entityType as string,
-            entityData?.fullyQualifiedName as string
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
+    const data = { newValue: description };
+
+    if (description) {
+      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
+        .then(() => {
+          showSuccessToast('Task Resolved Successfully');
+          history.push(
+            getEntityLink(
+              entityType as string,
+              entityData?.fullyQualifiedName as string
+            )
+          );
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+    } else {
+      showErrorToast('Cannot accept empty description');
+    }
   };
 
   const onTaskReject = () => {
@@ -444,15 +447,16 @@ const TaskDetailPage = () => {
 
   const getCurrentDescription = () => {
     let newDescription;
+    let oldDescription;
     if (taskDetail.task?.status === ThreadTaskStatus.Open) {
       newDescription = taskDetail.task.suggestion;
+      oldDescription = !isEmpty(columnObject)
+        ? columnObject.description
+        : entityData.description;
     } else {
       newDescription = taskDetail.task?.newValue;
+      oldDescription = taskDetail.task?.oldValue;
     }
-
-    const oldDescription = !isEmpty(columnObject)
-      ? columnObject.description
-      : entityData.description;
 
     const diffs = getDescriptionDiff(
       oldDescription || '',
@@ -610,11 +614,24 @@ const TaskDetailPage = () => {
                 {!isEmpty(taskDetail) && (
                   <Fragment>
                     {taskDetail.task?.type === TaskType.RequestDescription ? (
-                      <RichTextEditor
-                        height="208px"
-                        initialValue={taskDetail.task.suggestion || ''}
-                        placeHolder="Add description"
-                      />
+                      <Fragment>
+                        {taskDetail.task.status === ThreadTaskStatus.Open ? (
+                          <RichTextEditor
+                            height="208px"
+                            initialValue={taskDetail.task.suggestion || ''}
+                            placeHolder="Add description"
+                            ref={markdownRef}
+                          />
+                        ) : (
+                          <DiffView
+                            className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
+                            diffArr={getDescriptionDiff(
+                              taskDetail.task.oldValue || '',
+                              taskDetail.task.newValue || ''
+                            )}
+                          />
+                        )}
+                      </Fragment>
                     ) : (
                       <Fragment>
                         {showEdit ? (
@@ -663,7 +680,7 @@ const TaskDetailPage = () => {
                     className="ant-btn-primary-custom"
                     type="primary"
                     onClick={onTaskResolve}>
-                    Resolve
+                    Accept
                   </Button>
                 </div>
               )}
