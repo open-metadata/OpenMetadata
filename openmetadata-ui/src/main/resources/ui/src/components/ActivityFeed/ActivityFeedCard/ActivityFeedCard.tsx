@@ -26,6 +26,7 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
@@ -117,11 +118,10 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   }, [feed]);
 
   return (
-    <div className={classNames(className)}>
+    <div className={classNames(className, 'hover:tw-bg-gray-100')}>
       <Popover
         destroyTooltipOnHide
         align={{ targetOffset: [0, -20] }}
-        color="#434850"
         content={
           <PopoverContent
             isAuthor={isAuthor}
@@ -142,11 +142,11 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         zIndex={9999}
         onVisibleChange={handleVisibleChange}>
         <div className="tw-flex">
-          <Popover content={<></>} trigger="click">
+          <UserPopOverCard userName={feedDetail.from}>
             <span className="tw-cursor-pointer" data-testid="authorAvatar">
-              <ProfilePicture id="" name={feedDetail.from} width="28" />
+              <ProfilePicture id="" name={feedDetail.from} width="32" />
             </span>
-          </Popover>
+          </UserPopOverCard>
           <div className="tw-flex tw-flex-col">
             <FeedCardHeader
               createdBy={feedDetail.from}

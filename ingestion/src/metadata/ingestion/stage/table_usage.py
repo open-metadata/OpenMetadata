@@ -11,6 +11,7 @@
 
 import json
 import pathlib
+import traceback
 
 from metadata.generated.schema.entity.data.table import SqlQuery
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -95,35 +96,22 @@ class TableUsageStage(Stage[QueryParserData]):
         if record is None:
             return None
         for table in record.tables:
+            table_joins = record.joins.get(table)
             try:
                 self._add_sql_query(record=record, table=table)
                 table_usage_count = self.table_usage.get(table)
                 if table_usage_count is not None:
                     table_usage_count.count = table_usage_count.count + 1
-                    if record.columns.get("join") is not None:
-                        table_usage_count.joins.append(
-                            get_table_column_join(
-                                table,
-                                record.tableAliases,
-                                record.columns["join"],
-                                record.database,
-                            )
-                        )
+                    if table_joins:
+                        table_usage_count.joins.extend(table_joins)
                 else:
                     joins = []
-                    if record.columns.get("join") is not None:
-                        tbl_column_join = get_table_column_join(
-                            table,
-                            record.tableAliases,
-                            record.columns["join"],
-                            record.database,
-                        )
-                        if tbl_column_join is not None:
-                            joins.append(tbl_column_join)
+                    if table_joins:
+                        joins.extend(table_joins)
 
                     table_usage_count = TableUsageCount(
                         table=table,
-                        database=record.database,
+                        databaseName=record.databaseName,
                         date=record.date,
                         joins=joins,
                         serviceName=record.serviceName,
@@ -132,7 +120,9 @@ class TableUsageStage(Stage[QueryParserData]):
                     )
 
             except Exception as exc:
-                logger.error("Error in staging record {}".format(exc))
+                logger.error("Error in staging record - {}".format(exc))
+                logger.error(traceback.format_exc())
+
             self.table_usage[table] = table_usage_count
             logger.info(f"Successfully record staged for {table}")
 
@@ -141,8 +131,9 @@ class TableUsageStage(Stage[QueryParserData]):
 
     def close(self):
         for key, value in self.table_usage.items():
-            value.sqlQueries = self.table_queries.get(key, [])
-            data = value.json()
-            self.file.write(json.dumps(data))
-            self.file.write("\n")
+            if value:
+                value.sqlQueries = self.table_queries.get(key, [])
+                data = value.json()
+                self.file.write(json.dumps(data))
+                self.file.write("\n")
         self.file.close()

@@ -138,8 +138,8 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
       <p>Lineage data is not available for deleted entities.</p>
     ),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
-  getLayoutedElements: jest.fn().mockReturnValue([]),
-  getLineageData: jest.fn().mockReturnValue([]),
+  getLayoutedElementsV1: jest.fn().mockReturnValue([]),
+  getLineageDataV1: jest.fn().mockReturnValue([]),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),

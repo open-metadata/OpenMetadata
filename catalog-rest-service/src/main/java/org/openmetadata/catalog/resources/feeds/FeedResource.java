@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +42,7 @@ import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PATCH;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -52,6 +54,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
+import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -61,7 +64,12 @@ import org.openmetadata.catalog.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.CreateTaskDetails;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.TaskDetails;
+import org.openmetadata.catalog.type.TaskStatus;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -168,16 +176,50 @@ public class FeedResource {
       @Parameter(description = "Filter threads by whether they are resolved or not. By default resolved is false")
           @DefaultValue("false")
           @QueryParam("resolved")
-          boolean resolved)
+          boolean resolved,
+      @Parameter(
+              description =
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+              schema = @Schema(implementation = ThreadType.class))
+          @QueryParam("type")
+          ThreadType threadType,
+      @Parameter(
+              description =
+                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when threadType is set to Task",
+              schema = @Schema(implementation = TaskStatus.class))
+          @DefaultValue("Open")
+          @QueryParam("taskStatus")
+          TaskStatus taskStatus)
       throws IOException {
     RestUtil.validateCursors(before, after);
 
     ResultList<Thread> threads;
     if (before != null) { // Reverse paging
       threads =
-          dao.list(entityLink, limitPosts, userId, filterType, limitParam, before, resolved, PaginationType.BEFORE);
+          dao.list(
+              entityLink,
+              limitPosts,
+              userId,
+              filterType,
+              limitParam,
+              before,
+              resolved,
+              PaginationType.BEFORE,
+              threadType,
+              taskStatus);
     } else { // Forward paging or first page
-      threads = dao.list(entityLink, limitPosts, userId, filterType, limitParam, after, resolved, PaginationType.AFTER);
+      threads =
+          dao.list(
+              entityLink,
+              limitPosts,
+              userId,
+              filterType,
+              limitParam,
+              after,
+              resolved,
+              PaginationType.AFTER,
+              threadType,
+              taskStatus);
     }
     addHref(uriInfo, threads.getData());
     return threads;
@@ -199,6 +241,69 @@ public class FeedResource {
       })
   public Thread get(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
     return addHref(uriInfo, dao.get(id));
+  }
+
+  @GET
+  @Path("/tasks/{id}")
+  @Operation(
+      operationId = "getTaskByID",
+      summary = "Get a task thread by task id",
+      tags = "feeds",
+      description = "Get a task thread by `task id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
+      })
+  public Thread getTask(@Context UriInfo uriInfo, @PathParam("id") String id) throws IOException {
+    return addHref(uriInfo, dao.getTask(Integer.parseInt(id)));
+  }
+
+  @PUT
+  @Path("/tasks/{id}/resolve")
+  @Operation(
+      operationId = "resolveTask",
+      summary = "Resolve a task",
+      tags = "feeds",
+      description = "Resolve a task.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response resolveTask(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") String id,
+      @Valid ResolveTask resolveTask)
+      throws IOException {
+    Thread task = dao.getTask(Integer.parseInt(id));
+    return dao.resolveTask(uriInfo, task, securityContext.getUserPrincipal().getName(), resolveTask).toResponse();
+  }
+
+  @PUT
+  @Path("/tasks/{id}/close")
+  @Operation(
+      operationId = "closeTask",
+      summary = "Close a task",
+      tags = "feeds",
+      description = "Close a task without making any changes to the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The task thread.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response closeTask(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id)
+      throws IOException {
+    Thread task = dao.getTask(Integer.parseInt(id));
+    return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName()).toResponse();
   }
 
   @PATCH
@@ -249,11 +354,17 @@ public class FeedResource {
               schema = @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink,
+      @Parameter(
+              description =
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+              schema = @Schema(implementation = ThreadType.class))
+          @QueryParam("type")
+          ThreadType threadType,
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, isResolved);
+    return dao.getThreadsCount(entityLink, threadType, isResolved);
   }
 
   @POST
@@ -269,7 +380,8 @@ public class FeedResource {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Thread.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
+  public Response createThread(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateThread create)
       throws IOException {
     Thread thread = getThread(securityContext, create);
     addHref(uriInfo, dao.create(thread));
@@ -392,6 +504,8 @@ public class FeedResource {
         .withAbout(create.getAbout())
         .withAddressedTo(create.getAddressedTo())
         .withReactions(Collections.emptyList())
+        .withType(create.getType())
+        .withTask(getTaskDetails(create.getTaskDetails()))
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
   }
@@ -403,5 +517,26 @@ public class FeedResource {
         .withFrom(create.getFrom())
         .withReactions(Collections.emptyList())
         .withPostTs(System.currentTimeMillis());
+  }
+
+  private TaskDetails getTaskDetails(CreateTaskDetails create) {
+    if (create != null) {
+      return new TaskDetails()
+          .withAssignees(formatAssignees(create.getAssignees()))
+          .withType(create.getType())
+          .withStatus(TaskStatus.Open)
+          .withOldValue(create.getOldValue())
+          .withSuggestion(create.getSuggestion());
+    }
+    return null;
+  }
+
+  private List<EntityReference> formatAssignees(List<EntityReference> assignees) {
+    List<EntityReference> result = new ArrayList<>();
+    assignees.forEach(
+        assignee -> {
+          result.add(new EntityReference().withId(assignee.getId()).withType(assignee.getType()));
+        });
+    return result;
   }
 }

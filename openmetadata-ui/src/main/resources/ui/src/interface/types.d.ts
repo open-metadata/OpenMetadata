@@ -399,7 +399,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'mlmodelServices';
 
   export type SampleData = {
     columns: Array<string>;
@@ -602,5 +603,10 @@ declare module 'Models' {
   export interface SelectableOption {
     readonly label: string;
     readonly value: string;
+  }
+
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
   }
 }

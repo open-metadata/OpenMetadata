@@ -110,6 +110,7 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -238,6 +239,7 @@ export const Icons = {
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
+  MLMODAL: 'mlmodal',
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
@@ -569,6 +571,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TOPIC:
       IconComponent = IconTopic;
+
+      break;
+    case Icons.MLMODAL:
+      IconComponent = IconMlModal;
 
       break;
     case Icons.DASHBOARD:

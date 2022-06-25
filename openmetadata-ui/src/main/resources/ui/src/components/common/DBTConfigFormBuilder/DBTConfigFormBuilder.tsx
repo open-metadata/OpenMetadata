@@ -20,6 +20,7 @@ import {
 import { getSeparator } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import { Field } from '../../Field/Field';
+import { DBTCloudConfig } from './DBTCloudConfig';
 import { DBTConfigFormProps } from './DBTConfigForm.interface';
 import { DBTSources } from './DBTFormConstants';
 import { DBT_SOURCES } from './DBTFormEnum';
@@ -48,6 +49,25 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
     setDbtConfig((pre) => {
       return { ...pre, [key]: val };
     });
+  };
+
+  const getCloudConfigFields = () => {
+    return (
+      <DBTCloudConfig
+        cancelText={cancelText}
+        dbtCloudAccountId={dbtConfig.dbtCloudAccountId}
+        dbtCloudAuthToken={dbtConfig.dbtCloudAuthToken}
+        handleCloudAccountIdChange={(val) => {
+          updateDbtConfig('dbtCloudAccountId', val);
+        }}
+        handleCloudAuthTokenChange={(val) => {
+          updateDbtConfig('dbtCloudAuthToken', val);
+        }}
+        okText={okText}
+        onCancel={onCancel}
+        onSubmit={onSubmit}
+      />
+    );
   };
 
   const getLocalConfigFields = () => {
@@ -132,6 +152,9 @@ const DBTConfigFormBuilder: FunctionComponent<DBTConfigFormProps> = ({
 
   const getFields = () => {
     switch (source) {
+      case DBT_SOURCES.cloud: {
+        return getCloudConfigFields();
+      }
       case DBT_SOURCES.local: {
         return getLocalConfigFields();
       }

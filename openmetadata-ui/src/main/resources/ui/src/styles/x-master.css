@@ -747,6 +747,12 @@ body .profiler-graph .recharts-active-dot circle {
   pointer-events: all;
   cursor: pointer;
 }
+.react-flow__node-default .react-flow__handle,
+.react-flow__node-group .react-flow__handle,
+.react-flow__node-input .react-flow__handle,
+.react-flow__node-output .react-flow__handle {
+  background-color: #7147e8 !important;
+}
 
 .react-flow__edge .react-flow__edge-path {
   stroke-width: 2px;
@@ -754,6 +760,14 @@ body .profiler-graph .recharts-active-dot circle {
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 2px solid rgb(229, 231, 235) !important;
 }
 
 /* EntityVersion  */
@@ -920,6 +934,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -969,6 +987,10 @@ code {
 
 .ant-card-body {
   padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
 }
 
 .ant-card-head-title {
@@ -1077,13 +1099,74 @@ code {
 }
 
 .ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
   display: none;
 }
 .ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
   border-radius: 6px;
   border: 1px solid #dde3ea;
 }
 
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
+}
+
 /* Feed popover CSS end */
+
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #07a35a;
+}
+
+.data-box.Failed {
+  background-color: #e54937;
+}
+
+.data-box.Pending {
+  background-color: #276ef1;
+}
+
+.data-box.Successful.selected,
+.data-box.Failed.selected,
+.data-box.Pending.selected {
+  background-color: #7147e8;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful {
+  border-color: #07a35a;
+}
+
+.leaf-node.Failed {
+  border-color: #e54937;
+}
+
+.leaf-node.Pending {
+  border-color: #276ef1;
+}

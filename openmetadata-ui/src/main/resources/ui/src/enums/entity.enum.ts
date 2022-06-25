@@ -25,6 +25,7 @@ export enum EntityType {
   MESSAGING_SERVICE = 'messagingService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
+  MLMODEL_SERVICE = 'mlmodelService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -47,6 +48,13 @@ export enum ChangeType {
 export enum EntityLineageDirection {
   TOP_BOTTOM = 'TB',
   LEFT_RIGHT = 'LR',
+}
+
+export enum EntityLineageNodeType {
+  INPUT = 'input',
+  OUTPUT = 'output',
+  DEFAULT = 'default',
+  NOT_CONNECTED = 'not-connected',
 }
 
 export enum TabSpecificField {

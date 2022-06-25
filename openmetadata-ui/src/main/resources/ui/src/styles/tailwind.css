@@ -216,7 +216,7 @@
   }
 
   .tw-form-container {
-    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form;
+    @apply tw-bg-white tw-py-7 tw-px-5 tw-border tw-rounded-lg tw-shadow-form tw-w-700;
   }
 
   /* Dropdown CSS start */

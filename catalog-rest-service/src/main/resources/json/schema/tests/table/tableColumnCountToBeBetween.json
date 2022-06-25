@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/table/tableColumnCountToBeBetween.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "TableColumnCountToBeBetween",
+    "description": "This schema defines the test TableColumnCountToBeBetween. Test the number of columns to be between min max value.",
+    "type": "object",
+    "javaType": "org.openmetadata.catalog.tests.table.TableColumnCountToBeBetween",
+    "properties": {
+      "minColValue": {
+        "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of column",
+        "type": "integer"
+      },
+      "maxColValue": {
+        "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum number of column",
+        "type": "integer"
+      }
+    },
+    "anyOf": [{ "required": ["minValue"] }, { "required": ["maxValue"] }],
+    "additionalProperties": false
+  }
+  

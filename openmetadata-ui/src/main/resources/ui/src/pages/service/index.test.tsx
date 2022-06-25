@@ -46,6 +46,12 @@ const mockData = {
   },
   name: 'aws_redshift',
   serviceType: 'Redshift',
+  connection: {
+    config: {
+      username: 'test_user',
+      password: 'test_pass',
+    },
+  },
 };
 
 const mockDatabase = {

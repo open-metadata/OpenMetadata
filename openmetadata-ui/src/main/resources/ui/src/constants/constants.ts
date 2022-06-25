@@ -37,6 +37,7 @@ export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
+export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const imageTypes = {
@@ -180,6 +181,7 @@ export const ROUTES = {
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
   SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
+  EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
   SERVICES: '/services',
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
   ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
@@ -206,6 +208,7 @@ export const ROUTES = {
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
+  USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
   WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook',
@@ -360,9 +363,12 @@ export const getEditWebhookPath = (webhookName: string) => {
   return path;
 };
 
-export const getUserPath = (username: string) => {
-  let path = ROUTES.USER_PROFILE;
+export const getUserPath = (username: string, tab?: string) => {
+  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
   path = path.replace(PLACEHOLDER_USER_NAME, username);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -416,10 +422,8 @@ export const navLinkSettings = [
     disabled: false,
     isAdminOnly: true,
   },
-  { name: 'Glossaries', to: '/glossary', disabled: false },
   { name: 'Roles', to: '/roles', disabled: false, isAdminOnly: true },
   { name: 'Services', to: '/services', disabled: false },
-  { name: 'Tags', to: '/tags', disabled: false },
   {
     name: 'Teams & Users',
     to: ROUTES.TEAMS_AND_USERS,

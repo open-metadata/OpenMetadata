@@ -38,6 +38,7 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
 });
 
 const TasksDAGViewProps = {
+  selectedExec: {},
   tasks: [
     {
       name: 'task1',
@@ -60,8 +61,8 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
     .fn()
     .mockReturnValue(<p>Task data is not available for deleted entities.</p>),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
-  getLayoutedElements: jest.fn().mockReturnValue([]),
-  getLineageData: jest.fn().mockReturnValue([]),
+  getLayoutedElementsV1: jest.fn().mockReturnValue([]),
+  getLineageDataV1: jest.fn().mockReturnValue([]),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),

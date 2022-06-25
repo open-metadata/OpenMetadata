@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { isNil } from 'lodash';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
@@ -21,6 +22,39 @@ export const getMlModelByFQN: Function = (
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
   const url = getURLWithQueryFields(`mlmodels/name/${fqn}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
+export const getMlmodels = (
+  serviceName: string,
+  paging: string,
+  arrQueryFields: string[]
+): Promise<AxiosResponse> => {
+  const url = `${getURLWithQueryFields(
+    `/mlmodels`,
+    arrQueryFields
+  )}&service=${serviceName}${paging ? paging : ''}`;
+
+  return APIClient.get(url);
+};
+
+export const getAllMlModal = (
+  paging: string,
+  arrQueryFields: string,
+  limit?: number
+): Promise<AxiosResponse> => {
+  const searchParams = new URLSearchParams();
+
+  if (!isNil(limit)) {
+    searchParams.set('limit', `${limit}`);
+  }
+
+  const url = getURLWithQueryFields(
+    `/mlmodels`,
+    arrQueryFields,
+    `${searchParams.toString()}${paging ? `&${paging}` : ''}`
+  );
 
   return APIClient.get(url);
 };
