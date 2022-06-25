@@ -235,7 +235,7 @@ const GlossaryPageV1 = () => {
         '',
         forceReset ? 1 : assetData.currPage,
         PAGE_SIZE,
-        `(tags:"${tagName}")`,
+        `(tags.tagFQN:"${tagName}")`,
         '',
         '',
         myDataSearchIndex
