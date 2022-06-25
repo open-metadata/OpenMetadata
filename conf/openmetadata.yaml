@@ -173,7 +173,7 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "customOidc", "openmetadata"
+  authProvider: ${AIRFLOW_AUTH_PROVIDER:-"no-auth"} # Possible values are "no-auth", "azure", "google", "okta", "auth0", "custom-oidc", "openmetadata"
   authConfig:
     azure:
       clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
