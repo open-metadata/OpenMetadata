@@ -703,7 +703,7 @@ const ServicePage: FunctionComponent = () => {
         if (resService.data) {
           const { description, serviceType } = resService.data;
           setServiceDetails(resService.data);
-          setConnectionDetails(resService.data.connection.config);
+          setConnectionDetails(resService.data?.connection?.config);
           setDescription(description);
           setSlashedTableName([
             {
@@ -773,14 +773,14 @@ const ServicePage: FunctionComponent = () => {
         .then((res: AxiosResponse) => {
           setDescription(updatedHTML);
           setServiceDetails(res.data);
-          setIsEdit(false);
         })
         .catch((error: AxiosError) => {
           showErrorToast(
             error,
             jsonData['api-error-messages']['update-description-error']
           );
-        });
+        })
+        .finally(() => setIsEdit(false));
     } else {
       setIsEdit(false);
     }
