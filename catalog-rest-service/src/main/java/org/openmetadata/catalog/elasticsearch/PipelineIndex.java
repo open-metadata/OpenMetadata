@@ -23,7 +23,7 @@ public class PipelineIndex implements ElasticSearchIndex {
     List<ElasticSearchSuggest> serviceSuggest = new ArrayList<>();
     List<ElasticSearchSuggest> taskSuggest = new ArrayList<>();
     suggest.add(ElasticSearchSuggest.builder().input(pipeline.getFullyQualifiedName()).weight(5).build());
-    suggest.add(ElasticSearchSuggest.builder().input(pipeline.getName()).weight(10).build());
+    suggest.add(ElasticSearchSuggest.builder().input(pipeline.getDisplayName()).weight(10).build());
     serviceSuggest.add(ElasticSearchSuggest.builder().input(pipeline.getService().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(ElasticSearchIndexUtils.parseTags(pipeline.getTags()));
     if (pipeline.getTasks() != null) {
