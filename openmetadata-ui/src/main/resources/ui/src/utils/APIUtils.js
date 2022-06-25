@@ -57,10 +57,10 @@ export const formatUsersResponse = (hits) => {
   return hits.map((d) => {
     return {
       name: d._source.name,
-      displayName: d._source.display_name,
+      displayName: d._source.displayName,
       email: d._source.email,
-      type: d._source.entity_type,
-      id: d._source.user_id,
+      type: d._source.entityType,
+      id: d._source.id,
       teams: d._source.teams,
     };
   });
@@ -70,9 +70,9 @@ export const formatTeamsResponse = (hits) => {
   return hits.map((d) => {
     return {
       name: d._source.name,
-      displayName: d._source.display_name,
-      type: d._source.entity_type,
-      id: d._source.team_id,
+      displayName: d._source.displayName,
+      type: d._source.entityType,
+      id: d._source.id,
     };
   });
 };
@@ -252,7 +252,6 @@ export const getDateFromTimestamp = (ts) => {
 };
 
 export const getEntityByTypeAndId = (id, entityType) => {
-  // const {entityType, id} = entity;
   switch (entityType) {
     case 'Table': {
       return getTableDetails(id);
