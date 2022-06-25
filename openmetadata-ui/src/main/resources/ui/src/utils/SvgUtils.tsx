@@ -89,6 +89,7 @@ import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
+import IconTask from '../assets/svg/ic-task.svg';
 import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
@@ -301,6 +302,7 @@ export const Icons = {
   REACTION: 'reaction',
   FEED_DELETE: 'feed-delete',
   ALERT_BELL: 'alert-bell',
+  TASK: 'ic-task',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -880,6 +882,10 @@ const SVGIcons: FunctionComponent<Props> = ({
 
       break;
 
+    case Icons.TASK:
+      IconComponent = IconTask;
+
+      break;
     default:
       IconComponent = null;
 

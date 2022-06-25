@@ -21,4 +21,6 @@ export enum FeedFilter {
   OWNER = 'OWNER',
   FOLLOWS = 'FOLLOWS',
   MENTIONS = 'MENTIONS',
+  ASSIGNED_BY = 'ASSIGNED_BY',
+  ASSIGNED_TO = 'ASSIGNED_TO',
 }

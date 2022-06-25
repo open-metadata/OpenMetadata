@@ -16,7 +16,13 @@ import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
@@ -40,7 +46,7 @@ import {
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -71,8 +77,10 @@ const MyDataPage = () => {
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
+  const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
+  const [threadType, setThreadType] = useState<ThreadType>();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
@@ -309,9 +317,13 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (filterType: FeedFilter, after?: string) => {
+  const getFeedData = (
+    filterType: FeedFilter,
+    after?: string,
+    type?: ThreadType
+  ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(currentUser?.id, filterType, after)
+    getFeedsWithFilter(currentUser?.id, filterType, after, type)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -410,15 +422,32 @@ const MyDataPage = () => {
       });
   };
 
+  // Fetch tasks list to show cound for Pending tasks
+  const fetchMyTaskData = useCallback(() => {
+    if (!currentUser || !currentUser.id) {
+      return;
+    }
+
+    getFeedsWithFilter(
+      currentUser.id,
+      FeedFilter.ASSIGNED_TO,
+      undefined,
+      ThreadType.Task
+    ).then(
+      (res: AxiosResponse) => res.data && setPendingTaskCount(res.data.length)
+    );
+  }, [currentUser]);
+
   useEffect(() => {
     fetchOMDMode();
     fetchData(true);
+    fetchMyTaskData();
   }, []);
 
   useEffect(() => {
-    getFeedData(feedFilter);
+    getFeedData(feedFilter, undefined, threadType);
     setEntityThread([]);
-  }, [feedFilter]);
+  }, [feedFilter, threadType]);
 
   useEffect(() => {
     if (
@@ -485,9 +514,12 @@ const MyDataPage = () => {
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}
+            pendingTaskCount={pendingTaskCount}
             postFeedHandler={postFeedHandler}
+            threadTypeFilter={threadType}
             updateThreadHandler={updateThreadHandler}
             onRefreshFeeds={onRefreshFeeds}
+            onThreadTypeFilterChange={setThreadType}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>
