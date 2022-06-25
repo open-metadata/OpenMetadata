@@ -18,6 +18,7 @@ import { startCase } from 'lodash';
 import React, { FC, useState } from 'react';
 import {
   getAdvancedFieldOptions,
+  getTagSuggestions,
   getUserSuggestions,
 } from '../../axiosAPIs/miscAPI';
 import { MISC_FIELDS } from '../../constants/advanceSearch.constants';
@@ -118,22 +119,41 @@ const AdvancedField: FC<Props> = ({
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      getUserSuggestions(query)
-        .then((res: AxiosResponse) => {
-          const suggestOptions =
-            res.data.suggest['metadata-suggest'][0].options ?? [];
-          const uniqueOptions = [
-            // eslint-disable-next-line
-            ...new Set(suggestOptions.map((op: any) => op._source.name)),
-          ];
-          setOptions(
-            uniqueOptions.map((op: unknown) => ({
-              label: op as string,
-              value: op as string,
-            }))
-          );
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
+      if (field.key === 'tags') {
+        getTagSuggestions(query)
+          .then((res: AxiosResponse) => {
+            const suggestOptions =
+              res.data.suggest['metadata-suggest'][0].options ?? [];
+            const uniqueOptions = [
+              // eslint-disable-next-line
+              ...new Set(suggestOptions.map((op: any) => op._source.name)),
+            ];
+            setOptions(
+              uniqueOptions.map((op: unknown) => ({
+                label: op as string,
+                value: op as string,
+              }))
+            );
+          })
+          .catch((err: AxiosError) => showErrorToast(err));
+      } else {
+        getUserSuggestions(query)
+          .then((res: AxiosResponse) => {
+            const suggestOptions =
+              res.data.suggest['metadata-suggest'][0].options ?? [];
+            const uniqueOptions = [
+              // eslint-disable-next-line
+              ...new Set(suggestOptions.map((op: any) => op._source.name)),
+            ];
+            setOptions(
+              uniqueOptions.map((op: unknown) => ({
+                label: op as string,
+                value: op as string,
+              }))
+            );
+          })
+          .catch((err: AxiosError) => showErrorToast(err));
+      }
     }
   };
 
