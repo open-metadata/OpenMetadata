@@ -108,6 +108,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  isLoading,
   deleted,
   addLineageHandler,
   removeLineageHandler,
@@ -682,6 +683,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               source: `${params.source}`,
               target: `${params.target}`,
               type: isEditMode ? 'buttonedge' : 'custom',
+              style: { strokeWidth: '2px' },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
               },
@@ -1278,6 +1280,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return deleted ? (
     getDeletedLineagePlaceholder()
   ) : (
@@ -1306,7 +1312,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               onDrop={onDrop}
               onEdgesChange={onEdgesChange}
               onInit={(reactFlowInstance: ReactFlowInstance) => {
-                onLoad(reactFlowInstance);
+                onLoad(reactFlowInstance, nodes.length);
                 setReactFlowInstance(reactFlowInstance);
               }}
               onNodeClick={(_e, node) => onNodeClick(node)}
