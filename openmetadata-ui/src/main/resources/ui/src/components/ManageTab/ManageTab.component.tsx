@@ -65,6 +65,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   deletEntityMessage,
   handleIsJoinable,
   afterDeleteAction,
+  manageSectionType,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -396,6 +397,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             isListLoading={isUserLoading}
             listOwners={listOwners}
             listVisible={listVisible}
+            manageSectionType={manageSectionType}
             owner={owner || ({} as EntityReference)}
             ownerName={currentUser?.displayName || currentUser?.name || ''}
             ownerSearchText={searchText}

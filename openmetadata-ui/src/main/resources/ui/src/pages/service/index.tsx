@@ -53,6 +53,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -1054,7 +1055,7 @@ const ServicePage: FunctionComponent = () => {
                         serviceDetails?.owner?.type || '',
                         serviceDetails?.owner?.id || ''
                       )}
-                      manageSectionType={serviceCategory.slice(0, -1)}
+                      manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.SERVICE}
                       onSave={handleUpdateOwner}
                     />
                   </div>
