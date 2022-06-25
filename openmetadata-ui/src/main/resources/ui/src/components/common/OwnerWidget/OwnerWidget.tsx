@@ -104,7 +104,7 @@ const OwnerWidget = ({
   };
 
   const isOwnerEditable = () => {
-    if (!isAuthDisabled || !isAdminUser) {
+    if (!isAuthDisabled || Boolean(isAdminUser)) {
       if (ownerName) {
         return hasEditAccess(owner?.type || '', owner?.id || '');
       } else {
@@ -120,7 +120,7 @@ const OwnerWidget = ({
       }
     }
 
-    return isAuthDisabled || isAdminUser;
+    return !isAuthDisabled || Boolean(isAdminUser);
   };
 
   const ownerDescription =
