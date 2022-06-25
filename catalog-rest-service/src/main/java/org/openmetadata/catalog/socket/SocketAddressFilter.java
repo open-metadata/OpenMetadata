@@ -15,6 +15,7 @@ package org.openmetadata.catalog.socket;
 
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import io.socket.engineio.server.utils.ParseQS;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
@@ -35,9 +36,18 @@ public class SocketAddressFilter implements Filter {
   private static final Logger LOG = LoggerFactory.getLogger(SocketAddressFilter.class);
   private JwtFilter jwtFilter;
 
+  private final boolean enableSecureSocketConnection;
+
   public SocketAddressFilter(
       AuthenticationConfiguration authenticationConfiguration, AuthorizerConfiguration authorizerConf) {
-    jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
+    enableSecureSocketConnection = authorizerConf.getEnableSecureSocketConnection();
+    if (enableSecureSocketConnection) {
+      jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
+    }
+  }
+
+  public SocketAddressFilter() {
+    enableSecureSocketConnection = false;
   }
 
   @Override
@@ -47,19 +57,24 @@ public class SocketAddressFilter implements Filter {
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-    String tokenWithType = httpServletRequest.getHeader("Authorization");
+    Map<String, String> query = ParseQS.decode(httpServletRequest.getQueryString());
 
     HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
-    requestWrapper.addHeader("RemoteAddress", request.getRemoteAddr());
-    requestWrapper.addHeader("Authorization", tokenWithType);
+    requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
+    requestWrapper.addHeader("UserId", query.get("userId"));
+    //    requestWrapper.addHeader("ChannelType", query.get("channelType"));
 
-    String token = JwtFilter.extractToken(tokenWithType);
-    // validate token
-    DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
-    // validate Domain and Username
-    Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    claims.putAll(jwt.getClaims());
-    jwtFilter.validateAndReturnUsername(claims);
+    if (enableSecureSocketConnection) {
+      String tokenWithType = httpServletRequest.getHeader("Authorization");
+      requestWrapper.addHeader("Authorization", tokenWithType);
+      String token = JwtFilter.extractToken(tokenWithType);
+      // validate token
+      DecodedJWT jwt = jwtFilter.validateAndReturnDecodedJwtToken(token);
+      // validate Domain and Username
+      Map<String, Claim> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      claims.putAll(jwt.getClaims());
+      jwtFilter.validateAndReturnUsername(claims);
+    }
     // Goes to default servlet.
     chain.doFilter(requestWrapper, response);
   }

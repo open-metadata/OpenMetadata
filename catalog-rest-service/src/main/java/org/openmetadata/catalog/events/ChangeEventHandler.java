@@ -18,7 +18,7 @@ import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -50,12 +50,10 @@ import org.openmetadata.catalog.util.RestUtil;
 public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
   private FeedRepository feedDao;
-  private ObjectMapper mapper;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
-    this.mapper = new ObjectMapper();
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -63,6 +61,7 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
+      handleWebSocket(responseContext);
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent == null) {
         return null;
@@ -104,8 +103,7 @@ public class ChangeEventHandler implements EventHandler {
             }
             EntityLink about = EntityLink.parse(thread.getAbout());
             feedDao.create(thread, entity.getId(), owner, about);
-            String json = mapper.writeValueAsString(thread);
-            WebSocketManager.getInstance().broadCastMessageToClients(json);
+            WebSocketManager.getInstance().broadCastMessageToClients(thread);
           }
         }
       }
@@ -113,6 +111,18 @@ public class ChangeEventHandler implements EventHandler {
       LOG.error("Failed to capture change event for method {} due to ", method, e);
     }
     return null;
+  }
+
+  private void handleWebSocket(ContainerResponseContext responseContext) {
+    int responseCode = responseContext.getStatus();
+    if (responseCode == Status.CREATED.getStatusCode() && responseContext.getEntity().getClass().equals(Thread.class)) {
+      Thread thread = (Thread) responseContext.getEntity();
+      try {
+        WebSocketManager.getInstance().handleWebSocket(thread);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
