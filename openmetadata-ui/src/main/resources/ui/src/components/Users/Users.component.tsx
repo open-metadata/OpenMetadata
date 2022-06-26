@@ -214,7 +214,7 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between">
+        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between tw-px-3">
           {isDisplayNameEdit ? (
             <div className="tw-flex tw-items-center tw-gap-1 ">
               <input
@@ -280,7 +280,7 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between">
+        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -591,7 +591,7 @@ const Users = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-pt-4" data-testid="left-panel">
+      <div className="tw-pt-4 user-profile-antd-card" data-testid="left-panel">
         <Card
           className="ant-card-feed tw-relative"
           key="inherited-roles-card"
@@ -605,23 +605,24 @@ const Users = ({
                 <img
                   alt="profile"
                   className="tw-w-full"
-                  height="100px"
+                  height="150px"
                   referrerPolicy="no-referrer"
                   src={userData.profile?.images?.image}
-                  width="100px"
+                  width="300px"
                 />
               </div>
             ) : (
               <ProfilePicture
                 displayName={userData?.displayName || userData.name}
+                height="150"
                 id={userData?.id || ''}
                 name={userData?.name || ''}
                 textClass="tw-text-5xl"
-                width="260"
+                width="300"
               />
             )}
             {getDisplayNameComponent()}
-            <p className="tw-mt-2">{userData.email}</p>
+            <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
             {getDescriptionComponent()}
           </div>
         </Card>

@@ -1296,3 +1296,8 @@ code {
 div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
 }
+
+.user-profile-antd-card .ant-card-body:first-child {
+  padding: 0px;
+  overflow: hidden;
+}
