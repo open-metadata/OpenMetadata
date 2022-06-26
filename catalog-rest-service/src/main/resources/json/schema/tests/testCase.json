@@ -1,0 +1,117 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCase.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCase",
+  "description": "TestCase a test definition to capture data quality tests against data entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.tests.TestCase",
+  "definitions": {
+    "testPlatform": {
+      "javaType": "org.openmetadata.catalog.tests.TestPlatform",
+      "description": "This schema defines the platform where tests are defined and ran.",
+      "type": "string",
+      "enum": ["OpenMetadata", "GreatExpectations", "DBT", "Deequ"]
+    },
+    "dataType": {
+      "javaType": "org.openmetadata.catalog.type.TestCaseParameterDataType",
+      "description": "This enum defines the type of data stored in a column.",
+      "type": "string",
+      "enum": [
+        "NUMBER",
+        "INT",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "TIMESTAMP",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "ARRAY",
+        "MAP",
+        "SET"
+      ]
+    },
+    "testCaseParameterDefinition": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.test.TestCaseParameter",
+      "description": "This schema defines the parameters that can be passed for a Test Case.",
+      "properties": {
+        "name": {
+          "description": "name of the parameter.",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "Display Name that identifies this column name.",
+          "type": "string"
+        },
+        "dataType": {
+          "description": "Data type of the column (int, date etc.).",
+          "$ref": "#/definitions/dataType"
+        },
+        "description": {
+          "description": "Description of the parameter.",
+          "$ref": "../type/basic.json#/definitions/markdown"
+        }
+      }
+    },
+    "testCaseParameterValue": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.test.TestCaseParameterValue",
+      "description": "This schema defines the parameter values that can be passed for a Test Case.",
+      "properties": {
+        "name": {
+          "description": "name of the parameter. Must match the parameter names in testCaseParameterDefinition",
+          "type": "string"
+        },
+        "value": {
+          "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this test case definition instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test case.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of the testcase.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "testPlatform": {
+      "$ref": "#/definitions/testPlatform"
+    },
+    "parameterDefinition": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testCaseParameterDefinition"
+      }
+    },
+    "parameterValues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testCaseParameterValue"
+      }
+    },
+    "owner": {
+      "description": "Owner of this TestCase definition.",
+      "$ref": "../type/entityReference.json",
+      "default": null
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}
