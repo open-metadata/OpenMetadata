@@ -591,13 +591,13 @@ const Users = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-pt-4 user-profile-antd-card" data-testid="left-panel">
+      <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
           className="ant-card-feed tw-relative"
           key="inherited-roles-card"
           style={{
             ...leftPanelAntCardStyle,
-            marginTop: '20px',
+            marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
             {userData.profile?.images?.image ? (
