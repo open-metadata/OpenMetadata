@@ -119,6 +119,48 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
+  public IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline) {
+    HttpResponse<String> response;
+    try {
+      String toggleEndPoint;
+      String toggleUrl;
+      JSONObject requestPayload = new JSONObject();
+      requestPayload.put("dag_id", ingestionPipeline.getName());
+      // If the pipeline is currently enabled, disable it
+      if (ingestionPipeline.getEnabled().equals(Boolean.TRUE)) {
+        toggleEndPoint = "%s/rest_api/api?api=disable_dag";
+        toggleUrl = String.format(toggleEndPoint, serviceURL);
+        response = post(toggleUrl, requestPayload.toString());
+        if (response.statusCode() == 200) {
+          ingestionPipeline.setEnabled(false);
+          return ingestionPipeline;
+        } else if (response.statusCode() == 404) {
+          ingestionPipeline.setDeployed(false);
+          return ingestionPipeline;
+        }
+        // otherwise, enable it back
+      } else {
+        toggleEndPoint = "%s/rest_api/api?api=enable_dag";
+        toggleUrl = String.format(toggleEndPoint, serviceURL);
+        response = post(toggleUrl, requestPayload.toString());
+        if (response.statusCode() == 200) {
+          ingestionPipeline.setEnabled(true);
+          return ingestionPipeline;
+        } else if (response.statusCode() == 404) {
+          ingestionPipeline.setDeployed(false);
+          return ingestionPipeline;
+        }
+      }
+    } catch (Exception e) {
+      throw PipelineServiceClientException.byMessage(ingestionPipeline.getName(), e.getMessage());
+    }
+    throw PipelineServiceClientException.byMessage(
+        ingestionPipeline.getName(),
+        "Failed to toggle ingestion pipeline state",
+        Response.Status.fromStatusCode(response.statusCode()));
+  }
+
+  @Override
   public IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
