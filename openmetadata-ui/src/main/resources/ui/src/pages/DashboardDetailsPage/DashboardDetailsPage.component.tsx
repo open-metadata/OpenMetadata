@@ -422,7 +422,7 @@ const DashboardDetailsPage = () => {
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.LINEAGE: {
-        if (!isEmpty(dashboardDetails) && !deleted) {
+        if (!deleted) {
           if (isEmpty(entityLineage)) {
             getLineageData();
           }

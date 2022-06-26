@@ -14,9 +14,10 @@
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import { getUserPath } from '../../../../constants/constants';
 import {
   EntityType,
   FqnPart,
@@ -34,6 +35,7 @@ import {
 import { getEntityLink } from '../../../../utils/TableUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../../utils/TimeUtils';
+import Ellipses from '../../../common/Ellipses/Ellipses';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
@@ -50,6 +52,10 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   feedType,
   taskDetails,
 }) => {
+  const history = useHistory();
+  const onTitleClickHandler = (name: string) => {
+    history.push(getUserPath(name));
+  };
   const entityDisplayName = () => {
     let displayName;
     if (entityType === EntityType.TABLE) {
@@ -110,43 +116,77 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   const getFeedLinkElement = () => {
     if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
       return (
-        <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
-          {getFeedAction(feedType)}{' '}
+        <Ellipses rows={1}>
+          <span className="tw-pl-1 tw-font-normal" data-testid="headerText">
+            {getFeedAction(feedType)}{' '}
+            {isEntityFeed ? (
+              <span className="tw-heading" data-testid="headerText-entityField">
+                {getEntityFieldDisplay(entityField)}
+              </span>
+            ) : (
+              <Fragment>
+                <span data-testid="entityType">{entityType} </span>
+                <Link data-testid="entitylink" to={prepareFeedLink()}>
+                  <button
+                    className="tw-text-info"
+                    disabled={AppState.isTourOpen}>
+                    <EntityPopOverCard
+                      entityFQN={entityFQN}
+                      entityType={entityType}>
+                      <span>{entityDisplayName()}</span>
+                    </EntityPopOverCard>
+                  </button>
+                </Link>
+              </Fragment>
+            )}
+          </span>
+        </Ellipses>
+      );
+    } else {
+      return null;
+    }
+  };
+
+  const getTaskLinkElement = () => {
+    if (!isUndefined(entityFQN) && !isUndefined(entityType)) {
+      return (
+        <div className="tw-flex tw-flex-wrap">
+          <span className="tw-px-1">created a task</span>
+          <Link
+            data-testid="tasklink"
+            to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
+            <button className="tw-text-info" disabled={AppState.isTourOpen}>
+              {`#${taskDetails?.id}`} <span>{taskDetails?.type}</span>
+            </button>
+          </Link>
+          <span className="tw-px-1">for</span>
           {isEntityFeed ? (
             <span className="tw-heading" data-testid="headerText-entityField">
               {getEntityFieldDisplay(entityField)}
             </span>
           ) : (
-            <Fragment>
-              {feedType === ThreadType.Conversation ? (
-                <Fragment>
-                  <span data-testid="entityType">{entityType} </span>
-                  <Link data-testid="entitylink" to={prepareFeedLink()}>
-                    <button
-                      className="tw-text-info"
-                      disabled={AppState.isTourOpen}>
-                      <EntityPopOverCard
-                        entityFQN={entityFQN}
-                        entityType={entityType}>
-                        <span>{entityDisplayName()}</span>
-                      </EntityPopOverCard>
-                    </button>
-                  </Link>
-                </Fragment>
-              ) : (
-                <Link
-                  data-testid="tasklink"
-                  to={getTaskDetailPath(toString(taskDetails?.id)).pathname}>
-                  <button
-                    className="tw-text-info"
-                    disabled={AppState.isTourOpen}>
-                    {`#${taskDetails?.id}`} <span>{taskDetails?.type}</span>
+            <span className="tw-flex">
+              <span className="tw-pr-1">{entityType}</span>
+
+              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+                <Link data-testid="entitylink" to={prepareFeedLink()}>
+                  <button disabled={AppState.isTourOpen}>
+                    <Ellipses
+                      className="tw-w-28"
+                      rows={1}
+                      style={{
+                        color: 'rgb(24, 144, 255)',
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                      }}>
+                      {entityDisplayName()}
+                    </Ellipses>
                   </button>
                 </Link>
-              )}
-            </Fragment>
+              </EntityPopOverCard>
+            </span>
           )}
-        </span>
+        </div>
       );
     } else {
       return null;
@@ -157,10 +197,16 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     <div className={classNames('tw-flex', className)}>
       <div className="tw-flex tw-m-0 tw-pl-2 tw-leading-4">
         <UserPopOverCard userName={createdBy}>
-          <span className="thread-author tw-cursor-pointer">{createdBy}</span>
+          <span
+            className="thread-author tw-cursor-pointer"
+            onClick={() => onTitleClickHandler(createdBy)}>
+            {createdBy}
+          </span>
         </UserPopOverCard>
 
-        {getFeedLinkElement()}
+        {feedType === ThreadType.Conversation
+          ? getFeedLinkElement()
+          : getTaskLinkElement()}
         <span
           className="tw-text-grey-muted tw-pl-2 tw-text-xs tw--mb-0.5"
           data-testid="timestamp">

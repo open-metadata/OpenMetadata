@@ -88,9 +88,12 @@ export const getHeaderLabel = (
   );
 };
 
-export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
+export const onLoad = (
+  reactFlowInstance: ReactFlowInstance,
+  length?: number
+) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(zoomValue);
+  length && length <= 1 && reactFlowInstance.zoomTo(zoomValue);
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -217,6 +220,7 @@ export const getLineageDataV1 = (
       source: `${edge.fromEntity}`,
       target: `${edge.toEntity}`,
       type: isEditMode ? edgeType : 'custom',
+      style: { strokeWidth: '2px' },
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },

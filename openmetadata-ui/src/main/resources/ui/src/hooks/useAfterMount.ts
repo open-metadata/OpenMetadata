@@ -13,14 +13,18 @@
 
 import { useEffect, useState } from 'react';
 
-export const useAfterMount = (fnCallback: () => void) => {
+export const useAfterMount = (
+  fnCallback: () => void,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  deps?: ReadonlyArray<any>
+) => {
   const [isMounting, setIsMounting] = useState(true);
 
   useEffect(() => {
     if (!isMounting) {
       fnCallback();
     }
-  }, [isMounting]);
+  }, [isMounting, ...(deps || [])]);
 
   useEffect(() => {
     setIsMounting(false);

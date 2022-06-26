@@ -12,7 +12,7 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { diffLines } from 'diff';
+import { diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
 import { Diff } from 'Models';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
@@ -92,7 +92,7 @@ export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
 ): Diff[] => {
-  return diffLines(oldValue, newValue, { ignoreWhitespace: false });
+  return diffWordsWithSpace(oldValue, newValue);
 };
 
 export const fetchOptions = (

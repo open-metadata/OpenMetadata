@@ -16,8 +16,13 @@ import React from 'react';
 const TaskBadge = () => {
   return (
     <span
-      className="tw-text-grey-muted tw-border tw-border-main tw-rounded tw-px-2  tw-absolute tw-left-4 tw--top-3"
-      style={{ background: '#DCE3EC' }}>
+      className="tw-rounded tw-px-2  tw-absolute tw-left-4 tw--top-3"
+      style={{
+        color: '#485056',
+        background: '#EBF5FF',
+        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.06)',
+        borderRadius: '4px',
+      }}>
       Task
     </span>
   );
