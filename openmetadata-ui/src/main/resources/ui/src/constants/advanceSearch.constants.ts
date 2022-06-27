@@ -22,37 +22,37 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: 'Service',
-    key: 'servicename',
+    key: 'service.name',
   },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
   {
     label: 'Column',
-    key: 'column_names',
+    key: 'columns.name',
   },
 
   {
     label: 'Schema',
-    key: 'databaseschema',
+    key: 'databaseSchema.name',
   },
   {
     label: 'Database',
-    key: 'database',
+    key: 'database.name',
   },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
   {
     label: 'Chart',
-    key: 'chart_names',
+    key: 'charts.displayName',
   },
 ];
 
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: 'Task',
-    key: 'task_names',
+    key: 'tasks.displayName',
   },
 ];
 

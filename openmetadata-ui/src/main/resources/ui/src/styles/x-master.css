@@ -1298,6 +1298,11 @@ div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
 }
 
+.user-profile-antd-card .ant-card-body:first-child {
+  padding: 0px;
+  overflow: hidden;
+}
+
 .ant-input:hover,
 .ant-input:focus {
   border-color: #7147e8;

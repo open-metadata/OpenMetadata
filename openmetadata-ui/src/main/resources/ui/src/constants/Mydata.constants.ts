@@ -12,11 +12,11 @@
  */
 
 import { FilterObject } from 'Models';
+import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import { getFilterString } from '../utils/FilterUtils';
 
-export const myDataSearchIndex =
-  'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index';
+export const myDataSearchIndex = `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}`;
 
 export const myDataEntityCounts = {
   tableCount: 0,
