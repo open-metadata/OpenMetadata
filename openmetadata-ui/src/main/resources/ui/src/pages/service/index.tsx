@@ -175,6 +175,7 @@ const ServicePage: FunctionComponent = () => {
       },
 
       isProtected: !isAdminUser && !isAuthDisabled,
+      isHidden: !isAdminUser && !isAuthDisabled,
       position: 3,
     },
     {
@@ -925,6 +926,7 @@ const ServicePage: FunctionComponent = () => {
                 entityFqn={serviceFQN}
                 entityName={serviceFQN}
                 entityType={serviceCategory.slice(0, -1)}
+                hasEditAccess={isAdminUser || isAuthDisabled}
                 isEdit={isEdit}
                 onCancel={onCancel}
                 onDescriptionEdit={onDescriptionEdit}
@@ -1033,7 +1035,7 @@ const ServicePage: FunctionComponent = () => {
                       </Button>
                     </div>
                     <ServiceConnectionDetails
-                      connectionDetails={connectionDetails as ConfigData}
+                      connectionDetails={connectionDetails || {}}
                       serviceCategory={serviceCategory}
                       serviceFQN={serviceDetails?.serviceType || ''}
                     />

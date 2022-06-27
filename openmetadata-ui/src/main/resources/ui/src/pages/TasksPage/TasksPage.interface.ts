@@ -27,3 +27,13 @@ export interface Option {
   'data-testid'?: string;
   'data-usertype'?: string;
 }
+
+export interface TaskAction {
+  label: string;
+  key: string;
+}
+
+export enum TaskActionMode {
+  VIEW = 'view',
+  EDIT = 'edit',
+}

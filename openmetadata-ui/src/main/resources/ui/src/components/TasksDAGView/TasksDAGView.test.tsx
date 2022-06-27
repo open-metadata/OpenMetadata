@@ -37,19 +37,51 @@ jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   };
 });
 
+const mockNodes = [
+  {
+    className: 'leaf-node Success',
+    data: { label: 'Task 1' },
+    id: 'task1',
+    position: { x: 0, y: 0 },
+    sourcePosition: 'right',
+    targetPosition: 'left',
+    type: 'input',
+  },
+  {
+    className: 'leaf-node Failed',
+    data: { label: 'Task 2' },
+    id: 'task2',
+    position: { x: 450, y: 0 },
+    sourcePosition: 'right',
+    targetPosition: 'left',
+    type: 'output',
+  },
+];
+
+const mockEdges = [
+  {
+    id: 'task1-task2',
+    markerEnd: {
+      type: 'arrowclosed',
+    },
+    source: 'task1',
+    target: 'task2',
+    type: 'custom',
+  },
+];
+
+const tasks = [
+  {
+    name: 'task1',
+  },
+  {
+    name: 'task2',
+  },
+];
+
 const TasksDAGViewProps = {
   selectedExec: {},
-  tasks: [
-    {
-      name: 'task1',
-    },
-    {
-      name: 'task2',
-    },
-    {
-      name: 'task3',
-    },
-  ],
+  tasks,
 };
 
 jest.mock('../../utils/EntityLineageUtils', () => ({
@@ -61,7 +93,10 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
     .fn()
     .mockReturnValue(<p>Task data is not available for deleted entities.</p>),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
-  getLayoutedElementsV1: jest.fn().mockReturnValue([]),
+  getLayoutedElementsV1: jest.fn().mockImplementation(() => ({
+    node: mockNodes,
+    edge: mockEdges,
+  })),
   getLineageDataV1: jest.fn().mockReturnValue([]),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
