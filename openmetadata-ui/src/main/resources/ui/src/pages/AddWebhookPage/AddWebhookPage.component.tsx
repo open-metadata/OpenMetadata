@@ -58,14 +58,16 @@ const AddWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <AddWebhook
-        allowAccess={isAdminUser || isAuthDisabled}
-        header="Add Webhook"
-        mode={FormSubmitType.ADD}
-        saveState={status}
-        onCancel={handleCancel}
-        onSave={handleSave}
-      />
+      <div className="tw-self-center">
+        <AddWebhook
+          allowAccess={isAdminUser || isAuthDisabled}
+          header="Add Webhook"
+          mode={FormSubmitType.ADD}
+          saveState={status}
+          onCancel={handleCancel}
+          onSave={handleSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

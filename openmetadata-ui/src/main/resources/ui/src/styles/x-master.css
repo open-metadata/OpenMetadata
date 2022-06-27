@@ -1309,3 +1309,7 @@ div.ant-typography-ellipsis-custom {
   border-right-width: 0px;
   box-shadow: none;
 }
+
+.add-webhook-container #center {
+  padding-right: 0px;
+}

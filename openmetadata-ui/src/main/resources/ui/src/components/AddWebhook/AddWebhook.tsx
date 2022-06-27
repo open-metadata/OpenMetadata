@@ -440,7 +440,7 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
 
   const fetchRightPanel = () => {
     return (
-      <>
+      <div className="tw-px-2">
         <h6 className="tw-heading tw-text-base">Configure Webhooks</h6>
         <div className="tw-mb-5">
           OpenMetadata can be configured to automatically send out event
@@ -453,393 +453,423 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
           case. Use advanced configuration to set up a shared secret key to
           verify the webhook events using HMAC signature.
         </div>
-      </>
+      </div>
     );
   };
 
   return (
-    <PageLayout
-      classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
-      layout={PageLayoutType['2ColRTL']}
-      rightPanel={fetchRightPanel()}>
-      <h6 className="tw-heading tw-text-base" data-testid="header">
-        {header}
-      </h6>
-      <div className="tw-pb-3" data-testid="formContainer">
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="name">
-            {requiredField('Name:')}
-          </label>
-          {!data?.name ? (
-            <input
-              className="tw-form-inputs tw-form-inputs-padding"
-              data-testid="name"
-              id="name"
-              name="name"
-              placeholder="name"
-              type="text"
-              value={name}
-              onChange={handleValidation}
-            />
-          ) : (
-            <input
-              disabled
-              className="tw-form-inputs tw-form-inputs-padding tw-cursor-not-allowed"
-              id="name"
-              name="name"
-              value={name}
-            />
-          )}
-          {showErrorMsg.name
-            ? errorMsg('Webhook name is required.')
-            : showErrorMsg.invalidName
-            ? errorMsg('Webhook name is invalid.')
-            : null}
-        </Field>
-        <Field>
-          <label
-            className="tw-block tw-form-label tw-mb-0"
-            htmlFor="description">
-            Description:
-          </label>
-          <RichTextEditor
-            data-testid="description"
-            initialValue={description}
-            readonly={!allowAccess}
-            ref={markdownRef}
-          />
-        </Field>
-        <Field>
-          <label className="tw-block tw-form-label" htmlFor="endpoint-url">
-            {requiredField('Endpoint URL:')}
-          </label>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="endpoint-url"
-            disabled={!allowAccess}
-            id="endpoint-url"
-            name="endpoint-url"
-            placeholder="http(s)://www.example.com"
-            type="text"
-            value={endpointUrl}
-            onChange={handleValidation}
-          />
-          {showErrorMsg.endpointUrl
-            ? errorMsg('Webhook endpoint is required.')
-            : showErrorMsg.invalidEndpointUrl
-            ? errorMsg('Webhook endpoint is invalid.')
-            : null}
-        </Field>
-        <Field>
-          <div className="tw-flex tw-pt-1">
-            <label>Active</label>
-            <div
-              className={classNames('toggle-switch', { open: active })}
-              data-testid="active"
-              onClick={() => {
-                allowAccess && setActive((prev) => !prev);
-              }}>
-              <div className="switch" />
-            </div>
-          </div>
-        </Field>
-        {getSeparator(
-          <span className="tw-text-base tw-px-0.5">
-            {requiredField('Event Filters', true)}
-          </span>,
-          'tw-mt-3'
-        )}
-        <Field>
-          <div
-            className="filter-group tw-justify-between tw-mb-3"
-            data-testid="cb-entity-created">
-            <div className="tw-flex">
-              <input
-                checked={!isEmpty(createEvents)}
-                className="tw-mr-1 custom-checkbox"
-                data-testid="entity-created-checkbox"
-                disabled={!allowAccess}
-                type="checkbox"
-                onChange={(e) => {
-                  toggleEventFilters(EventType.EntityCreated, e.target.checked);
-                }}
+    <div className="add-webhook-container">
+      <PageLayout
+        classes="tw-max-w-full-hd tw-bg-white tw-pt-4"
+        layout={PageLayoutType['2ColRTL']}
+        rightPanel={fetchRightPanel()}>
+        <div className="tw-form-container tw-p">
+          <h6 className="tw-heading tw-text-base" data-testid="header">
+            {header}
+          </h6>
+          <div className="tw-pb-3" data-testid="formContainer">
+            <Field>
+              <label className="tw-block tw-form-label" htmlFor="name">
+                {requiredField('Name:')}
+              </label>
+              {!data?.name ? (
+                <input
+                  className="tw-form-inputs tw-form-inputs-padding"
+                  data-testid="name"
+                  id="name"
+                  name="name"
+                  placeholder="name"
+                  type="text"
+                  value={name}
+                  onChange={handleValidation}
+                />
+              ) : (
+                <input
+                  disabled
+                  className="tw-form-inputs tw-form-inputs-padding tw-cursor-not-allowed"
+                  id="name"
+                  name="name"
+                  value={name}
+                />
+              )}
+              {showErrorMsg.name
+                ? errorMsg('Webhook name is required.')
+                : showErrorMsg.invalidName
+                ? errorMsg('Webhook name is invalid.')
+                : null}
+            </Field>
+            <Field>
+              <label
+                className="tw-block tw-form-label tw-mb-0"
+                htmlFor="description">
+                Description:
+              </label>
+              <RichTextEditor
+                data-testid="description"
+                initialValue={description}
+                readonly={!allowAccess}
+                ref={markdownRef}
               />
-              <div
-                className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                data-testid="checkbox-label">
-                <div className="tw-ml-1">Trigger when entity is created</div>
-              </div>
-            </div>
-          </div>
-          <DropDown
-            className="tw-bg-white"
-            disabled={!allowAccess || isEmpty(createEvents)}
-            dropDownList={getEntitiesList()}
-            hiddenItems={getHiddenEntitiesList(createEvents.entities)}
-            label="select entities"
-            selectedItems={createEvents.entities}
-            type="checkbox"
-            onSelect={(_e, value) =>
-              handleEntitySelection(EventType.EntityCreated, value as string)
-            }
-          />
-        </Field>
-        <Field>
-          <div
-            className="filter-group tw-justify-between tw-mb-3"
-            data-testid="cb-entity-created">
-            <div className="tw-flex">
+            </Field>
+            <Field>
+              <label className="tw-block tw-form-label" htmlFor="endpoint-url">
+                {requiredField('Endpoint URL:')}
+              </label>
               <input
-                checked={!isEmpty(updateEvents)}
-                className="tw-mr-1 custom-checkbox"
-                data-testid="entity-updated-checkbox"
+                className="tw-form-inputs tw-form-inputs-padding"
+                data-testid="endpoint-url"
                 disabled={!allowAccess}
-                type="checkbox"
-                onChange={(e) => {
-                  toggleEventFilters(EventType.EntityUpdated, e.target.checked);
-                }}
+                id="endpoint-url"
+                name="endpoint-url"
+                placeholder="http(s)://www.example.com"
+                type="text"
+                value={endpointUrl}
+                onChange={handleValidation}
               />
-              <div
-                className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                data-testid="checkbox-label">
-                <div className="tw-ml-1">Trigger when entity is updated</div>
+              {showErrorMsg.endpointUrl
+                ? errorMsg('Webhook endpoint is required.')
+                : showErrorMsg.invalidEndpointUrl
+                ? errorMsg('Webhook endpoint is invalid.')
+                : null}
+            </Field>
+            <Field>
+              <div className="tw-flex tw-pt-1">
+                <label>Active</label>
+                <div
+                  className={classNames('toggle-switch', { open: active })}
+                  data-testid="active"
+                  onClick={() => {
+                    allowAccess && setActive((prev) => !prev);
+                  }}>
+                  <div className="switch" />
+                </div>
               </div>
-            </div>
-          </div>
-          <DropDown
-            className="tw-bg-white"
-            disabled={!allowAccess || isEmpty(updateEvents)}
-            dropDownList={getEntitiesList()}
-            hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
-            label="select entities"
-            selectedItems={updateEvents.entities}
-            type="checkbox"
-            onSelect={(_e, value) =>
-              handleEntitySelection(EventType.EntityUpdated, value as string)
-            }
-          />
-        </Field>
-        <Field>
-          <div
-            className="filter-group tw-justify-between tw-mb-3"
-            data-testid="cb-entity-created">
-            <div className="tw-flex">
-              <input
-                checked={!isEmpty(deleteEvents)}
-                className="tw-mr-1 custom-checkbox"
-                data-testid="entity-deleted-checkbox"
-                disabled={!allowAccess}
-                type="checkbox"
-                onChange={(e) => {
-                  toggleEventFilters(EventType.EntityDeleted, e.target.checked);
-                }}
-              />
-              <div
-                className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
-                data-testid="checkbox-label">
-                <div className="tw-ml-1">Trigger when entity is deleted</div>
-              </div>
-            </div>
-          </div>
-          <DropDown
-            className="tw-bg-white"
-            disabled={!allowAccess || isEmpty(deleteEvents)}
-            dropDownList={getEntitiesList()}
-            hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
-            label="select entities"
-            selectedItems={deleteEvents.entities}
-            type="checkbox"
-            onSelect={(_e, value) =>
-              handleEntitySelection(EventType.EntityDeleted, value as string)
-            }
-          />
-          {showErrorMsg.eventFilters
-            ? errorMsg('Webhook event filters are required.')
-            : showErrorMsg.invalidEventFilters
-            ? errorMsg('Webhook event filters are invalid.')
-            : null}
-        </Field>
-        <Field>
-          <div className="tw-flex tw-justify-end tw-pt-1">
-            <Button
-              data-testid="show-advanced"
-              size="regular"
-              theme="primary"
-              variant="text"
-              onClick={() => setShowAdv((prev) => !prev)}>
-              {showAdv ? 'Hide Advanced Config' : 'Show Advanced Config'}
-            </Button>
-          </div>
-        </Field>
-        {showAdv ? (
-          <>
+            </Field>
             {getSeparator(
-              <span className="tw-text-base tw-px-0.5">Advanced Config</span>,
+              <span className="tw-text-base tw-px-0.5">
+                {requiredField('Event Filters', true)}
+              </span>,
               'tw-mt-3'
             )}
             <Field>
-              <div className="tw-flex tw-gap-4 tw-w-full">
-                <div className="tw-flex-1">
-                  <label
-                    className="tw-block tw-form-label"
-                    htmlFor="batch-size">
-                    Batch Size:
-                  </label>
+              <div
+                className="filter-group tw-justify-between tw-mb-3"
+                data-testid="cb-entity-created">
+                <div className="tw-flex">
                   <input
-                    className="tw-form-inputs tw-form-inputs-padding"
-                    data-testid="batch-size"
+                    checked={!isEmpty(createEvents)}
+                    className="tw-mr-1 custom-checkbox"
+                    data-testid="entity-created-checkbox"
                     disabled={!allowAccess}
-                    id="batch-size"
-                    name="batch-size"
-                    placeholder="10"
-                    type="number"
-                    value={batchSize}
-                    onChange={handleValidation}
+                    type="checkbox"
+                    onChange={(e) => {
+                      toggleEventFilters(
+                        EventType.EntityCreated,
+                        e.target.checked
+                      );
+                    }}
                   />
-                </div>
-                <div className="tw-flex-1">
-                  <label
-                    className="tw-block tw-form-label"
-                    htmlFor="connection-timeout">
-                    Connection Timeout (s):
-                  </label>
-                  <input
-                    className="tw-form-inputs tw-form-inputs-padding"
-                    data-testid="connection-timeout"
-                    disabled={!allowAccess}
-                    id="connection-timeout"
-                    name="connection-timeout"
-                    placeholder="10"
-                    type="number"
-                    value={connectionTimeout}
-                    onChange={handleValidation}
-                  />
+                  <div
+                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
+                    data-testid="checkbox-label">
+                    <div className="tw-ml-1">
+                      Trigger when entity is created
+                    </div>
+                  </div>
                 </div>
               </div>
+              <DropDown
+                className="tw-bg-white"
+                disabled={!allowAccess || isEmpty(createEvents)}
+                dropDownList={getEntitiesList()}
+                hiddenItems={getHiddenEntitiesList(createEvents.entities)}
+                label="select entities"
+                selectedItems={createEvents.entities}
+                type="checkbox"
+                onSelect={(_e, value) =>
+                  handleEntitySelection(
+                    EventType.EntityCreated,
+                    value as string
+                  )
+                }
+              />
             </Field>
             <Field>
-              {allowAccess ? (
-                !data ? (
-                  <>
-                    <label
-                      className="tw-block tw-form-label tw-my-0"
-                      htmlFor="secret-key">
-                      Secret Key:
-                    </label>
-                    <div className="tw-flex tw-items-center">
+              <div
+                className="filter-group tw-justify-between tw-mb-3"
+                data-testid="cb-entity-created">
+                <div className="tw-flex">
+                  <input
+                    checked={!isEmpty(updateEvents)}
+                    className="tw-mr-1 custom-checkbox"
+                    data-testid="entity-updated-checkbox"
+                    disabled={!allowAccess}
+                    type="checkbox"
+                    onChange={(e) => {
+                      toggleEventFilters(
+                        EventType.EntityUpdated,
+                        e.target.checked
+                      );
+                    }}
+                  />
+                  <div
+                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
+                    data-testid="checkbox-label">
+                    <div className="tw-ml-1">
+                      Trigger when entity is updated
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DropDown
+                className="tw-bg-white"
+                disabled={!allowAccess || isEmpty(updateEvents)}
+                dropDownList={getEntitiesList()}
+                hiddenItems={getHiddenEntitiesList(updateEvents.entities)}
+                label="select entities"
+                selectedItems={updateEvents.entities}
+                type="checkbox"
+                onSelect={(_e, value) =>
+                  handleEntitySelection(
+                    EventType.EntityUpdated,
+                    value as string
+                  )
+                }
+              />
+            </Field>
+            <Field>
+              <div
+                className="filter-group tw-justify-between tw-mb-3"
+                data-testid="cb-entity-created">
+                <div className="tw-flex">
+                  <input
+                    checked={!isEmpty(deleteEvents)}
+                    className="tw-mr-1 custom-checkbox"
+                    data-testid="entity-deleted-checkbox"
+                    disabled={!allowAccess}
+                    type="checkbox"
+                    onChange={(e) => {
+                      toggleEventFilters(
+                        EventType.EntityDeleted,
+                        e.target.checked
+                      );
+                    }}
+                  />
+                  <div
+                    className="tw-flex tw-items-center filters-title tw-truncate custom-checkbox-label"
+                    data-testid="checkbox-label">
+                    <div className="tw-ml-1">
+                      Trigger when entity is deleted
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DropDown
+                className="tw-bg-white"
+                disabled={!allowAccess || isEmpty(deleteEvents)}
+                dropDownList={getEntitiesList()}
+                hiddenItems={getHiddenEntitiesList(deleteEvents.entities)}
+                label="select entities"
+                selectedItems={deleteEvents.entities}
+                type="checkbox"
+                onSelect={(_e, value) =>
+                  handleEntitySelection(
+                    EventType.EntityDeleted,
+                    value as string
+                  )
+                }
+              />
+              {showErrorMsg.eventFilters
+                ? errorMsg('Webhook event filters are required.')
+                : showErrorMsg.invalidEventFilters
+                ? errorMsg('Webhook event filters are invalid.')
+                : null}
+            </Field>
+            <Field>
+              <div className="tw-flex tw-justify-end tw-pt-1">
+                <Button
+                  data-testid="show-advanced"
+                  size="regular"
+                  theme="primary"
+                  variant="text"
+                  onClick={() => setShowAdv((prev) => !prev)}>
+                  {showAdv ? 'Hide Advanced Config' : 'Show Advanced Config'}
+                </Button>
+              </div>
+            </Field>
+            {showAdv ? (
+              <>
+                {getSeparator(
+                  <span className="tw-text-base tw-px-0.5">
+                    Advanced Config
+                  </span>,
+                  'tw-mt-3'
+                )}
+                <Field>
+                  <div className="tw-flex tw-gap-4 tw-w-full">
+                    <div className="tw-flex-1">
+                      <label
+                        className="tw-block tw-form-label"
+                        htmlFor="batch-size">
+                        Batch Size:
+                      </label>
                       <input
-                        readOnly
                         className="tw-form-inputs tw-form-inputs-padding"
-                        data-testid="secret-key"
-                        id="secret-key"
-                        name="secret-key"
-                        placeholder="secret key"
-                        type="text"
-                        value={secretKey}
+                        data-testid="batch-size"
+                        disabled={!allowAccess}
+                        id="batch-size"
+                        name="batch-size"
+                        placeholder="10"
+                        type="number"
+                        value={batchSize}
+                        onChange={handleValidation}
                       />
-                      <Button
-                        className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
-                        data-testid="generate-secret"
-                        size="custom"
-                        theme="default"
-                        variant="text"
-                        onClick={generateSecret}>
-                        {generatingSecret ? (
-                          <Loader size="small" type="default" />
-                        ) : (
-                          <SVGIcons
-                            alt="generate"
-                            icon={Icons.SYNC}
-                            width="16"
+                    </div>
+                    <div className="tw-flex-1">
+                      <label
+                        className="tw-block tw-form-label"
+                        htmlFor="connection-timeout">
+                        Connection Timeout (s):
+                      </label>
+                      <input
+                        className="tw-form-inputs tw-form-inputs-padding"
+                        data-testid="connection-timeout"
+                        disabled={!allowAccess}
+                        id="connection-timeout"
+                        name="connection-timeout"
+                        placeholder="10"
+                        type="number"
+                        value={connectionTimeout}
+                        onChange={handleValidation}
+                      />
+                    </div>
+                  </div>
+                </Field>
+                <Field>
+                  {allowAccess ? (
+                    !data ? (
+                      <>
+                        <label
+                          className="tw-block tw-form-label tw-my-0"
+                          htmlFor="secret-key">
+                          Secret Key:
+                        </label>
+                        <div className="tw-flex tw-items-center">
+                          <input
+                            readOnly
+                            className="tw-form-inputs tw-form-inputs-padding"
+                            data-testid="secret-key"
+                            id="secret-key"
+                            name="secret-key"
+                            placeholder="secret key"
+                            type="text"
+                            value={secretKey}
                           />
-                        )}
-                      </Button>
-                      {secretKey ? (
-                        <>
-                          <CopyToClipboardButton copyText={secretKey} />
                           <Button
-                            className="tw-h-8 tw-ml-4"
-                            data-testid="clear-secret"
+                            className="tw-w-8 tw-h-8 tw--ml-8 tw-rounded-md"
+                            data-testid="generate-secret"
                             size="custom"
                             theme="default"
                             variant="text"
-                            onClick={resetSecret}>
-                            <SVGIcons
-                              alt="Delete"
-                              icon={Icons.DELETE}
-                              width="16px"
-                            />
+                            onClick={generateSecret}>
+                            {generatingSecret ? (
+                              <Loader size="small" type="default" />
+                            ) : (
+                              <SVGIcons
+                                alt="generate"
+                                icon={Icons.SYNC}
+                                width="16"
+                              />
+                            )}
                           </Button>
-                        </>
-                      ) : null}
-                    </div>
-                  </>
-                ) : data.secretKey ? (
-                  <div className="tw-flex tw-items-center">
-                    <input
-                      readOnly
-                      className="tw-form-inputs tw-form-inputs-padding"
-                      data-testid="secret-key"
-                      id="secret-key"
-                      name="secret-key"
-                      placeholder="secret key"
-                      type="text"
-                      value={secretKey}
-                    />
-                    <CopyToClipboardButton copyText={secretKey} />
+                          {secretKey ? (
+                            <>
+                              <CopyToClipboardButton copyText={secretKey} />
+                              <Button
+                                className="tw-h-8 tw-ml-4"
+                                data-testid="clear-secret"
+                                size="custom"
+                                theme="default"
+                                variant="text"
+                                onClick={resetSecret}>
+                                <SVGIcons
+                                  alt="Delete"
+                                  icon={Icons.DELETE}
+                                  width="16px"
+                                />
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : data.secretKey ? (
+                      <div className="tw-flex tw-items-center">
+                        <input
+                          readOnly
+                          className="tw-form-inputs tw-form-inputs-padding"
+                          data-testid="secret-key"
+                          id="secret-key"
+                          name="secret-key"
+                          placeholder="secret key"
+                          type="text"
+                          value={secretKey}
+                        />
+                        <CopyToClipboardButton copyText={secretKey} />
+                      </div>
+                    ) : null
+                  ) : null}
+                </Field>
+              </>
+            ) : null}
+            <Field>
+              {data && mode === 'edit' ? (
+                <div className="tw-flex tw-justify-between">
+                  <Button
+                    data-testid="cancel-webhook"
+                    size="regular"
+                    theme="primary"
+                    variant="outlined"
+                    onClick={onCancel}>
+                    <FontAwesomeIcon
+                      className="tw-text-sm tw-align-middle tw-pr-1.5"
+                      icon={faArrowLeft}
+                    />{' '}
+                    <span>Back</span>
+                  </Button>
+                  <div className="tw-flex tw-justify-end">
+                    {getDeleteButton()}
+                    {getSaveButton()}
                   </div>
-                ) : null
-              ) : null}
+                </div>
+              ) : (
+                <div className="tw-flex tw-justify-end">
+                  <Button
+                    data-testid="cancel-webhook"
+                    size="regular"
+                    theme="primary"
+                    variant="text"
+                    onClick={onCancel}>
+                    Cancel
+                  </Button>
+                  {getSaveButton()}
+                </div>
+              )}
             </Field>
-          </>
-        ) : null}
-        <Field>
-          {data && mode === 'edit' ? (
-            <div className="tw-flex tw-justify-between">
-              <Button
-                data-testid="cancel-webhook"
-                size="regular"
-                theme="primary"
-                variant="outlined"
-                onClick={onCancel}>
-                <FontAwesomeIcon
-                  className="tw-text-sm tw-align-middle tw-pr-1.5"
-                  icon={faArrowLeft}
-                />{' '}
-                <span>Back</span>
-              </Button>
-              <div className="tw-flex tw-justify-end">
-                {getDeleteButton()}
-                {getSaveButton()}
-              </div>
-            </div>
-          ) : (
-            <div className="tw-flex tw-justify-end">
-              <Button
-                data-testid="cancel-webhook"
-                size="regular"
-                theme="primary"
-                variant="text"
-                onClick={onCancel}>
-                Cancel
-              </Button>
-              {getSaveButton()}
-            </div>
-          )}
-        </Field>
-        {data && isDelete && (
-          <ConfirmationModal
-            bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
-            cancelText="Cancel"
-            confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
-            confirmText="Delete"
-            header="Are you sure?"
-            onCancel={() => setIsDelete(false)}
-            onConfirm={handleDelete}
-          />
-        )}
-      </div>
-    </PageLayout>
+            {data && isDelete && (
+              <ConfirmationModal
+                bodyText={`You want to delete webhook ${data.name} permanently? This action cannot be reverted.`}
+                cancelText="Cancel"
+                confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
+                confirmText="Delete"
+                header="Are you sure?"
+                onCancel={() => setIsDelete(false)}
+                onConfirm={handleDelete}
+              />
+            )}
+          </div>
+        </div>
+      </PageLayout>
+    </div>
   );
 };
 
