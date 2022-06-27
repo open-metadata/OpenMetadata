@@ -411,7 +411,7 @@ def _(connection: GluePipelineClient) -> None:
     from botocore.client import ClientError
 
     try:
-        connection.client.list_workflows()
+        connection.client.get_paginator("get_databases")
     except ClientError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
