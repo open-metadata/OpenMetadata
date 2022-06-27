@@ -35,7 +35,6 @@ import {
   ExploreSearchData,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import Loader from '../../components/Loader/Loader';
 import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
@@ -312,44 +311,40 @@ const ExplorePage: FunctionComponent = () => {
 
   return (
     <Fragment>
-      {isLoading || isLoadingForData ? (
-        <Loader />
-      ) : (
-        <PageContainerV1>
-          <Explore
-            error={error}
-            fetchCount={fetchCounts}
-            fetchData={fetchData}
-            handleFilterChange={handleFilterChange}
-            handlePathChange={handlePathChange}
-            handleSearchText={handleSearchText}
-            initialFilter={initialFilter}
-            isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
-            searchFilter={searchFilter}
-            searchQuery={searchQuery}
-            searchResult={searchResult}
-            searchText={searchText}
-            showDeleted={showDeleted}
-            sortValue={initialSortField}
-            tab={tab}
-            tabCounts={{
-              table: tableCount,
-              topic: topicCount,
-              dashboard: dashboardCount,
-              pipeline: pipelineCount,
-              dbtModel: dbtModelCount,
-              mlModel: mlModelCount,
-            }}
-            updateDashboardCount={handleDashboardCount}
-            updateDbtModelCount={handleDbtModelCount}
-            updateMlModelCount={handleMlModelCount}
-            updatePipelineCount={handlePipelineCount}
-            updateTableCount={handleTableCount}
-            updateTopicCount={handleTopicCount}
-            onShowDeleted={(checked) => setShowDeleted(checked)}
-          />
-        </PageContainerV1>
-      )}
+      <PageContainerV1>
+        <Explore
+          error={error}
+          fetchCount={fetchCounts}
+          fetchData={fetchData}
+          handleFilterChange={handleFilterChange}
+          handlePathChange={handlePathChange}
+          handleSearchText={handleSearchText}
+          initialFilter={initialFilter}
+          isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
+          searchFilter={searchFilter}
+          searchQuery={searchQuery}
+          searchResult={searchResult}
+          searchText={searchText}
+          showDeleted={showDeleted}
+          sortValue={initialSortField}
+          tab={tab}
+          tabCounts={{
+            table: tableCount,
+            topic: topicCount,
+            dashboard: dashboardCount,
+            pipeline: pipelineCount,
+            dbtModel: dbtModelCount,
+            mlModel: mlModelCount,
+          }}
+          updateDashboardCount={handleDashboardCount}
+          updateDbtModelCount={handleDbtModelCount}
+          updateMlModelCount={handleMlModelCount}
+          updatePipelineCount={handlePipelineCount}
+          updateTableCount={handleTableCount}
+          updateTopicCount={handleTopicCount}
+          onShowDeleted={(checked) => setShowDeleted(checked)}
+        />
+      </PageContainerV1>
     </Fragment>
   );
 };
