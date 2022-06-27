@@ -13,7 +13,12 @@ Metadata DAG function builder
 """
 from pathlib import Path
 
-from airflow import DAG
+from metadata.generated.schema.metadataIngestion.workflow import (
+    BulkSink,
+    OpenMetadataWorkflowConfig,
+    Processor,
+    Stage,
+)
 from openmetadata.workflows.ingestion.common import (
     build_dag,
     build_source,
@@ -21,12 +26,7 @@ from openmetadata.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    BulkSink,
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Stage,
-)
+from airflow import DAG
 
 try:
     from airflow.operators.python import PythonOperator
@@ -56,7 +56,7 @@ def build_usage_config_from_file(
 
     return OpenMetadataWorkflowConfig(
         source=source,
-        processor=Processor(type="query-parser", config={"filter": ""}),
+        processor=Processor(type="query-parser", config={}),
         stage=Stage(
             type="table-usage",
             config={"filename": filename},
