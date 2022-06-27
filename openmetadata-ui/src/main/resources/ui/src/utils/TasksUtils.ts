@@ -110,7 +110,7 @@ export const fetchOptions = (
       const suggestOptions = hits.map((hit: any) => ({
         label: hit._source.name ?? hit._source.display_name,
         value: hit._id,
-        type: hit._source.entityType,
+        type: hit._source.entity_type,
       }));
 
       setOptions(suggestOptions);

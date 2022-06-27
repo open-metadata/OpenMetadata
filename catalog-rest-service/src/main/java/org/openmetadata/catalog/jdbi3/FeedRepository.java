@@ -22,6 +22,7 @@ import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.catalog.type.Relationship.CREATED;
 import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
 import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
+import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.EntityUtil.populateEntityReferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -44,6 +45,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.feed.CloseTask;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
 import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
@@ -173,9 +175,10 @@ public class FeedRepository {
     return populateAssignees(task);
   }
 
-  public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user) throws IOException {
+  public PatchResponse<Thread> closeTask(UriInfo uriInfo, Thread thread, String user, CloseTask closeTask)
+      throws IOException {
     // Update the attributes
-    closeTask(thread, user);
+    closeTask(thread, user, closeTask.getComment());
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
@@ -324,17 +327,49 @@ public class FeedRepository {
 
     // Update the attributes
     task.withNewValue(resolveTask.getNewValue());
-    closeTask(thread, user);
+    closeTask(thread, user, null);
     Thread updatedHref = FeedResource.addHref(uriInfo, thread);
     return new PatchResponse<>(Status.OK, updatedHref, RestUtil.ENTITY_UPDATED);
   }
 
-  private void addClosingPost(Thread thread, String user) {
+  private String getTagFQNs(List<TagLabel> tags) {
+    return tags.stream().map(TagLabel::getTagFQN).collect(Collectors.joining(", "));
+  }
+
+  private void addClosingPost(Thread thread, String user, String closingComment) throws IOException {
     // Add a post to the task
+    String message;
+    if (closingComment != null) {
+      message = String.format("Closed the Task with comment - %s", closingComment);
+    } else {
+      // The task was resolved with an update.
+      // Add a default message to the Task thread with updated description/tag
+      TaskDetails task = thread.getTask();
+      TaskType type = task.getType();
+      String oldValue = StringUtils.EMPTY;
+      if (List.of(TaskType.RequestDescription, TaskType.UpdateDescription).contains(type)) {
+        if (task.getOldValue() != null) {
+          oldValue = task.getOldValue();
+        }
+        message =
+            String.format("Resolved the Task with Description - %s", getPlaintextDiff(oldValue, task.getNewValue()));
+      } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
+        List<TagLabel> tags;
+        if (task.getOldValue() != null) {
+          tags = JsonUtils.readObjects(task.getOldValue(), TagLabel.class);
+          oldValue = getTagFQNs(tags);
+        }
+        tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
+        String newValue = getTagFQNs(tags);
+        message = String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(oldValue, newValue));
+      } else {
+        message = "Resolved the Task.";
+      }
+    }
     Post post =
         new Post()
             .withId(UUID.randomUUID())
-            .withMessage("Closed the Task.")
+            .withMessage(message)
             .withFrom(user)
             .withReactions(java.util.Collections.emptyList())
             .withPostTs(System.currentTimeMillis());
@@ -345,13 +380,13 @@ public class FeedRepository {
     }
   }
 
-  private void closeTask(Thread thread, String user) throws JsonProcessingException {
+  private void closeTask(Thread thread, String user, String closingComment) throws IOException {
     TaskDetails task = thread.getTask();
     task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
     thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
 
     dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
-    addClosingPost(thread, user);
+    addClosingPost(thread, user, closingComment);
   }
 
   private void storeMentions(Thread thread, String message) {
@@ -742,13 +777,15 @@ public class FeedRepository {
   }
 
   private boolean fieldsChanged(Thread original, Thread updated) {
-    // Patch supports isResolved, message, and reactions for now
+    // Patch supports isResolved, message, task assignees, and reactions for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
         || (Collections.isEmpty(original.getReactions()) && !Collections.isEmpty(updated.getReactions()))
         || (!Collections.isEmpty(original.getReactions()) && Collections.isEmpty(updated.getReactions()))
         || original.getReactions().size() != updated.getReactions().size()
-        || !original.getReactions().containsAll(updated.getReactions());
+        || !original.getReactions().containsAll(updated.getReactions())
+        || original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
+        || !original.getTask().getAssignees().containsAll(updated.getTask().getAssignees());
   }
 
   /** Limit the number of posts within each thread. */

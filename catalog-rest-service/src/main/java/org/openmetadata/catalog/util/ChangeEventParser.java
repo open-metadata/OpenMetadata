@@ -310,7 +310,7 @@ public final class ChangeEventParser {
     return getPlainTextUpdateMessage(updatedField, oldValue.toString(), newValue.toString());
   }
 
-  private static String getPlaintextDiff(String oldValue, String newValue) {
+  public static String getPlaintextDiff(String oldValue, String newValue) {
     // create a configured DiffRowGenerator
     String addMarker = "<!add>";
     String removeMarker = "<!remove>";

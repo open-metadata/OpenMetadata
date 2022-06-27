@@ -168,7 +168,7 @@ const TaskDetailPage = () => {
     taskDetail.task?.status,
     ThreadTaskStatus.Closed
   );
-  // const isTaskOpen = isEqual(taskDetail.task?.status, ThreadTaskStatus.Open);
+
   const isCreator = isEqual(taskDetail.createdBy, currentUser?.name);
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
@@ -271,8 +271,8 @@ const TaskDetailPage = () => {
 
     const patch = compare(taskDetail, updatedTask);
     updateThread(taskDetail.id, patch)
-      .then((res: AxiosResponse) => {
-        setTaskDetail(res.data);
+      .then(() => {
+        fetchTaskDetail();
       })
       .catch((err: AxiosError) => showErrorToast(err));
     setEditAssignee(false);
@@ -293,14 +293,16 @@ const TaskDetailPage = () => {
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot accept empty description');
+      showErrorToast(
+        'Cannot accept an empty description. Please add a description.'
+      );
     }
   };
 
   const onTaskReject = () => {
     if (comment) {
       updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
-        newValue: comment,
+        comment,
       })
         .then(() => {
           showSuccessToast('Task Closed Successfully');
@@ -313,7 +315,7 @@ const TaskDetailPage = () => {
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot close task without comment');
+      showErrorToast('Cannot close task without a comment');
     }
     setModalVisible(false);
   };
@@ -825,7 +827,7 @@ const TaskDetailPage = () => {
                 disabled: !comment,
                 className: 'ant-btn-primary-custom',
               }}
-              okText="Close"
+              okText="Close with comment"
               title={`Close Task #${taskDetail.task?.id} ${taskDetail.message}`}
               visible={modalVisible}
               width={700}
