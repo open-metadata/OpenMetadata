@@ -21,7 +21,6 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
 import MyData from './MyData.component';
@@ -315,8 +314,6 @@ jest.mock('../RecentSearchedTerms/RecentSearchedTermsAntd', () => {
     .mockReturnValue(<div>RecentSearchedTermsAntd.component</div>);
 });
 
-const feedFilterHandler = jest.fn();
-
 const fetchData = jest.fn();
 const postFeed = jest.fn();
 
@@ -334,13 +331,10 @@ const mockProp: MyDataProps = {
   ownedDataCount: 5,
   error: '',
   feedData: formatDataResponse(mockData.data.hits.hits),
-  feedFilter: FeedFilter.ALL,
-  feedFilterHandler: feedFilterHandler,
   fetchData: fetchData,
   fetchFeedHandler: mockFetchFeedHandler,
   followedData: formatDataResponse(mockData.data.hits.hits),
   isFeedLoading: false,
-  onThreadTypeFilterChange: jest.fn(),
   ownedData: formatDataResponse(mockData.data.hits.hits),
   paging: mockPaging,
   postFeedHandler: postFeed,

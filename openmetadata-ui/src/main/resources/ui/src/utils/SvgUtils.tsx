@@ -61,6 +61,7 @@ import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFitView from '../assets/svg/fitview.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
+import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
@@ -71,6 +72,7 @@ import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
 import IconHome from '../assets/svg/ic-home.svg';
 import IconIncreaseArrow from '../assets/svg/ic-increase-arrow.svg';
@@ -78,6 +80,7 @@ import IconIssues from '../assets/svg/ic-issues.svg';
 import IconLineage from '../assets/svg/ic-lineage.svg';
 import IconLossArrow from '../assets/svg/ic-loss-arrow.svg';
 import IconManage from '../assets/svg/ic-manage.svg';
+import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
@@ -87,6 +90,7 @@ import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
+import IconStar from '../assets/svg/ic-star.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
 import IconTask from '../assets/svg/ic-task.svg';
@@ -303,6 +307,10 @@ export const Icons = {
   FEED_DELETE: 'feed-delete',
   ALERT_BELL: 'alert-bell',
   TASK: 'ic-task',
+  ALL_APPLICATION: 'all-application',
+  FOLDER: 'ic-folder',
+  STAR: 'ic-star',
+  MENTIONS: 'ic-mentions',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -884,6 +892,22 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.TASK:
       IconComponent = IconTask;
+
+      break;
+    case Icons.ALL_APPLICATION:
+      IconComponent = IconAllApplication;
+
+      break;
+    case Icons.FOLDER:
+      IconComponent = IconFolder;
+
+      break;
+    case Icons.STAR:
+      IconComponent = IconStar;
+
+      break;
+    case Icons.MENTIONS:
+      IconComponent = IconMentions;
 
       break;
     default:

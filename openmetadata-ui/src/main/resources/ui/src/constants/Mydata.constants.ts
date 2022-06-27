@@ -51,25 +51,6 @@ export const getFilters = (
   }`;
 };
 
-export const filterList = [
-  { name: 'All Activity', value: 'ALL' },
-  { name: 'My Data', value: 'OWNER' },
-  { name: 'Mentions', value: 'MENTIONS' },
-  { name: 'Following', value: 'FOLLOWS' },
-];
-
-export const threadFilterList = [
-  { name: 'All Thread', value: 'ALL' },
-  { name: 'Task', value: 'Task' },
-  { name: 'Conversation', value: 'Conversation' },
-];
-
-export const filterListTasks = [
-  { name: 'All Activity', value: 'ALL' },
-  { name: 'Assigned to me', value: 'ASSIGNED_TO' },
-  { name: 'Created by me', value: 'ASSIGNED_BY' },
-];
-
 export const observerOptions = {
   root: null,
   rootMargin: '0px',

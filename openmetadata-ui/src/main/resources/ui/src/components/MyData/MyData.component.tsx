@@ -24,22 +24,15 @@ import React, {
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getUserPath } from '../../constants/constants';
-import {
-  filterList,
-  observerOptions,
-  threadFilterList,
-} from '../../constants/Mydata.constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
-import DropDownList from '../dropdown/DropDownList';
 import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
@@ -63,13 +56,9 @@ const MyData: React.FC<MyDataProps> = ({
   pendingTaskCount,
   countMlModal,
   followedData,
-  threadTypeFilter,
-  onThreadTypeFilterChange,
   feedData,
-  feedFilter,
   ownedDataCount,
   followedDataCount,
-  feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
   deletePostHandler,
@@ -77,84 +66,10 @@ const MyData: React.FC<MyDataProps> = ({
   paging,
   updateThreadHandler,
 }: MyDataProps): React.ReactElement => {
-  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
-  const [showThreadTypeList, setShowThreadTypeList] = useState<boolean>(false);
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-
-  const handleDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
-    setFieldListVisible(false);
-  };
-
-  // Thread filter change handler
-  const handleThreadTypeDropDownChange = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    onThreadTypeFilterChange(
-      value === 'ALL' ? undefined : (value as ThreadType) ?? undefined
-    );
-    setShowThreadTypeList(false);
-  };
-
-  const getFilterDropDown = () => {
-    return (
-      <div className="tw-flex">
-        {/* Feed filter */}
-        <div className="tw-relative tw-mt-5 tw-mr-5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="feeds"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-font-medium tw-text-grey">
-              {filterList.find((f) => f.value === feedFilter)?.name}
-            </span>
-            <DropDownIcon />
-          </Button>
-          {fieldListVisible && (
-            <DropDownList
-              dropDownList={filterList}
-              value={feedFilter}
-              onSelect={handleDropDown}
-            />
-          )}
-        </div>
-        {/* Thread filter */}
-        <div className="tw-relative tw-mt-5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="thread-filter"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setShowThreadTypeList((visible) => !visible)}>
-            <span className="tw-font-medium tw-text-grey">
-              {
-                threadFilterList.find(
-                  (f) => f.value === (threadTypeFilter ?? 'ALL')
-                )?.name
-              }
-            </span>
-            <DropDownIcon />
-          </Button>
-          {showThreadTypeList && (
-            <DropDownList
-              dropDownList={threadFilterList}
-              value={threadTypeFilter}
-              onSelect={handleThreadTypeDropDownChange}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
+  const [feedFilter, setFeedFilter] = useState(FeedFilter.ALL);
+  const [threadType, setThreadType] = useState<ThreadType>();
 
   const getLeftPanel = () => {
     return (
@@ -289,7 +204,7 @@ const MyData: React.FC<MyDataProps> = ({
       !isLoading &&
       isMounted.current
     ) {
-      fetchFeedHandler(feedFilter, pagingObj.after);
+      fetchFeedHandler(feedFilter, pagingObj.after, threadType);
     }
   };
 
@@ -301,6 +216,15 @@ const MyData: React.FC<MyDataProps> = ({
     isMounted.current = true;
   }, []);
 
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      setFeedFilter(feedType);
+      setThreadType(threadType);
+      fetchFeedHandler(feedType, paging.after, threadType);
+    },
+    [paging]
+  );
+
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
   return (
@@ -311,10 +235,8 @@ const MyData: React.FC<MyDataProps> = ({
         <Fragment>
           {feedData?.length > 0 ||
           feedFilter !== FeedFilter.ALL ||
-          threadTypeFilter ? (
+          threadType ? (
             <Fragment>
-              {getFilterDropDown()}
-
               {newFeedsLength ? (
                 <div className="tw-py-px tw-pt-3 tw-pb-3">
                   <button
@@ -333,6 +255,7 @@ const MyData: React.FC<MyDataProps> = ({
                 feedList={feedData}
                 postFeedHandler={postFeedHandler}
                 updateThreadHandler={updateThreadHandler}
+                onFeedFiltersUpdate={handleFeedFilterChange}
               />
             </Fragment>
           ) : (

@@ -31,19 +31,19 @@ export interface MyDataProps {
   countDashboards: number;
   followedDataCount: number;
   pendingTaskCount: number;
-  threadTypeFilter?: ThreadType;
-  onThreadTypeFilterChange: (value?: ThreadType) => void;
   ownedDataCount: number;
   countPipelines: number;
   userDetails?: User;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
   feedData: Thread[];
-  feedFilter: FeedFilter;
   paging: Paging;
   isFeedLoading: boolean;
-  feedFilterHandler: (v: FeedFilter) => void;
-  fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
+  fetchFeedHandler: (
+    filterType: FeedFilter,
+    after?: string,
+    threadType?: ThreadType
+  ) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;

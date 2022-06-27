@@ -94,7 +94,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <div
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
+          'tw-text-gray-700 tw-flex tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null,
           {
             'tw-cursor-not-allowed': item.disabled,
@@ -105,6 +105,9 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
         key={index}
         role="menuitem"
         onClick={(e) => !item.disabled && onSelect?.(e, item.value)}>
+        {item.icon}
+        {/* Spacer if icon is there */}
+        {item.icon && <span className="tw-p-1" />}
         <p
           className={classNames('tw-truncate', widthClass)}
           title={item.name as string}>

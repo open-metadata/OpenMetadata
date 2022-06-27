@@ -79,8 +79,6 @@ const MyDataPage = () => {
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
-  const [threadType, setThreadType] = useState<ThreadType>();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
@@ -89,10 +87,6 @@ const MyDataPage = () => {
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const { socket } = useWebSocketConnector();
-
-  const feedFilterHandler = (filter: FeedFilter) => {
-    setFeedFilter(filter);
-  };
 
   const setTableCount = (count = 0) => {
     setCountTables(count);
@@ -318,11 +312,12 @@ const MyDataPage = () => {
   };
 
   const getFeedData = (
-    filterType: FeedFilter,
+    filterType?: FeedFilter,
     after?: string,
     type?: ThreadType
   ) => {
     setIsFeedLoading(true);
+    after && setEntityThread([]);
     getFeedsWithFilter(currentUser?.id, filterType, after, type)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
@@ -445,9 +440,8 @@ const MyDataPage = () => {
   }, []);
 
   useEffect(() => {
-    getFeedData(feedFilter, undefined, threadType);
-    setEntityThread([]);
-  }, [feedFilter, threadType]);
+    getFeedData();
+  }, []);
 
   useEffect(() => {
     if (
@@ -505,8 +499,6 @@ const MyDataPage = () => {
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}
-            feedFilter={feedFilter}
-            feedFilterHandler={feedFilterHandler}
             fetchFeedHandler={getFeedData}
             followedData={followedData || []}
             followedDataCount={followedDataCount}
@@ -516,10 +508,8 @@ const MyDataPage = () => {
             paging={paging}
             pendingTaskCount={pendingTaskCount}
             postFeedHandler={postFeedHandler}
-            threadTypeFilter={threadType}
             updateThreadHandler={updateThreadHandler}
             onRefreshFeeds={onRefreshFeeds}
-            onThreadTypeFilterChange={setThreadType}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

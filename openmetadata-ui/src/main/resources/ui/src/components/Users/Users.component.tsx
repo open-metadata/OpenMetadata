@@ -29,11 +29,7 @@ import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { getUserPath, TERM_ADMIN } from '../../constants/constants';
-import {
-  filterList,
-  filterListTasks,
-  observerOptions,
-} from '../../constants/Mydata.constants';
+import { observerOptions } from '../../constants/Mydata.constants';
 import {
   getUserCurrentTab,
   profileInfo,
@@ -54,6 +50,10 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import {
+  filterList,
+  filterListTasks,
+} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';

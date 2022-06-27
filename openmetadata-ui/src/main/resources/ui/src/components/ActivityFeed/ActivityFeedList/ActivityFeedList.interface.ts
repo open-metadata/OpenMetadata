@@ -12,7 +12,8 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
@@ -26,6 +27,7 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   postFeedHandler?: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  onFeedFiltersUpdate?: (feedType: FeedFilter, threadType?: ThreadType) => void;
 }
 
 export interface FeedListSeparatorProp extends HTMLAttributes<HTMLDivElement> {

@@ -29,7 +29,6 @@ import {
   mockFeedData,
   mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -136,10 +135,6 @@ const TourPage = () => {
             countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
-            feedFilter={FeedFilter.ALL}
-            feedFilterHandler={() => {
-              setMyDataSearchResult(mockFeedData);
-            }}
             fetchData={() => {
               setMyDataSearchResult(mockFeedData);
             }}
@@ -154,7 +149,6 @@ const TourPage = () => {
             postFeedHandler={handleOnClick}
             updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
-            onThreadTypeFilterChange={handleOnClick}
           />
         );
 
