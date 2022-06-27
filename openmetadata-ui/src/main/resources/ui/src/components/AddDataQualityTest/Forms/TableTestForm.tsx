@@ -136,6 +136,22 @@ const TableTestForm = ({
           minValue: isEmpty(minValue) ? undefined : minValue,
         };
 
+      case TableTestType.TableColumnCountToBeBetween:
+        return {
+          minColValue: isEmpty(minValue) ? undefined : minValue,
+          maxColValue: isEmpty(maxValue) ? undefined : maxValue,
+        };
+
+      case TableTestType.TableColumnNameToExist:
+        return {
+          columnName: isEmpty(columnName) ? undefined : columnName,
+        };
+
+      case TableTestType.TableColumnToMatchSet:
+        return {
+          columnNames: isEmpty(columnNameSet) ? undefined : columnNameSet,
+        };
+
       case TableTestType.TableColumnCountToEqual:
         return {
           columnCount: isEmpty(value) ? undefined : value,
