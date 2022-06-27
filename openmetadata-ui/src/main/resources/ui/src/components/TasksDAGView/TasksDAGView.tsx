@@ -12,11 +12,10 @@
  */
 
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   Edge,
   MarkerType,
-  Node,
   useEdgesState,
   useNodesState,
 } from 'react-flow-renderer';
@@ -56,13 +55,8 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
     []
   );
 
-  const nodes: Node[] = useMemo(() => {
-    const posY = 0;
-    let posX = 0;
-    const deltaX = 250;
-
-    return tasks.map((task, index) => {
-      posX += deltaX;
+  useEffect(() => {
+    const nodes = tasks.map((task, index) => {
       const taskStatus = getTaskExecStatus(
         task.name,
         selectedExec?.taskStatus || []
@@ -75,13 +69,11 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
         data: {
           label: getEntityName(task as EntityReference),
         },
-        position: { x: posX, y: posY },
+        position: { x: 0, y: 0 },
       };
     });
-  }, [tasks, selectedExec]);
 
-  const edges: Edge[] = useMemo(() => {
-    return tasks.reduce((prev, task) => {
+    const edges = tasks.reduce((prev, task) => {
       const src = replaceSpaceWith_(task.name);
       const taskEdges = (task.downstreamTasks || []).map((dwTask) => {
         const dest = replaceSpaceWith_(dwTask);
@@ -94,24 +86,21 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
           type: 'custom',
           source: src,
           target: dest,
-          label: '',
         } as Edge;
       });
 
       return [...prev, ...taskEdges];
     }, [] as Edge[]);
-  }, [tasks]);
 
-  useEffect(() => {
     const { node: nodeValue, edge: edgeValue } = getLayoutedElementsV1({
       node: nodes,
       edge: edges,
     });
     setNodesData(nodeValue);
     setEdgesData(edgeValue);
-  }, [nodes, edges]);
+  }, [tasks, selectedExec]);
 
-  return (
+  return nodesData.length ? (
     <ReactFlow
       data-testid="react-flow-component"
       edges={edgesData}
@@ -123,9 +112,13 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       zoomOnDoubleClick={false}
       zoomOnScroll={false}
       onEdgesChange={onEdgesChange}
-      onInit={onLoad}
+      onInit={(reactFlowInstance) => {
+        onLoad(reactFlowInstance, nodesData.length, true);
+      }}
       onNodesChange={onNodesChange}
     />
+  ) : (
+    <Fragment />
   );
 };
 
