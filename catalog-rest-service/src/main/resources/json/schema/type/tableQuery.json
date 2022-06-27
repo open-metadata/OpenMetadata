@@ -48,10 +48,6 @@
     }
   },
   "properties": {
-    "analysisDate": {
-      "description": "Date of execution of SQL query",
-      "$ref": "./basic.json#/definitions/dateTime"
-    },
     "queries": {
       "description": "Date of execution of SQL query",
       "type": "array",

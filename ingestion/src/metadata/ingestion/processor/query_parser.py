@@ -332,7 +332,7 @@ class QueryParserProcessor(Processor):
                     logger.debug(traceback.format_exc())
                     logger.debug(record.query)
                     logger.error(err)
-            return QueryParserData(parsedData=data, analysisDate=queries.analysisDate)
+            return QueryParserData(parsedData=data)
 
     def close(self):
         pass

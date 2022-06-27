@@ -56,10 +56,6 @@
       "items": {
         "$ref": "#/definitions/parsedData"
       }
-    },
-    "analysisDate": {
-      "description": "Date of execution of SQL query",
-      "$ref": "./basic.json#/definitions/dateTime"
     }
   },
 

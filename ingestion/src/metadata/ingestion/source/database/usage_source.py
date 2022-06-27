@@ -137,8 +137,7 @@ class UsageSource(Source[TableQuery], ABC):
                             self.source_config.schemaFilterPattern,
                             schema_name=row["schema_name"],
                         )
-                    ],
-                    analysisDate=self.start + timedelta(days=i),
+                    ]
                 )
 
     def next_record(self) -> Iterable[TableQuery]:
