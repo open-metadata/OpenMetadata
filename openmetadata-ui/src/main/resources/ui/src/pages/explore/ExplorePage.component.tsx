@@ -65,8 +65,6 @@ const ExplorePage: FunctionComponent = () => {
     () => getQueryParam(getSearchFilter(location.search)),
     [location.search]
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
   const { searchQuery, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
@@ -208,9 +206,6 @@ const ExplorePage: FunctionComponent = () => {
           err,
           jsonData['api-error-messages']['fetch-entity-count-error']
         );
-      })
-      .finally(() => {
-        setIsLoading(false);
       });
   };
 
@@ -249,12 +244,10 @@ const ExplorePage: FunctionComponent = () => {
             resAggDatabaseSchema,
             resAggServiceName,
           });
-          setIsLoadingForData(false);
         }
       )
       .catch((err: AxiosError) => {
         setError(err.response?.data?.responseMessage);
-        setIsLoadingForData(false);
       });
   };
 
@@ -268,7 +261,6 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     setSearchResult(undefined);
-    setIsLoadingForData(true);
     fetchData([
       {
         queryString: searchText,
