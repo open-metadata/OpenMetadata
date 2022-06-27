@@ -19,7 +19,13 @@ if non-sqlalchemy package is not installed
 
 
 @dataclass
-class GlueClient:
+class GlueDBClient:
+    def __init__(self, client) -> None:
+        self.client = client
+
+
+@dataclass
+class GluePipelineClient:
     def __init__(self, client) -> None:
         self.client = client
 

@@ -121,9 +121,12 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             tableType={table.tableType as TableType}
             tags={table.tags}
             tier={
-              (table.tier || getTierFromSearchTableTags(table.tags))?.split(
-                FQN_SEPARATOR_CHAR
-              )[1]
+              (
+                table.tier?.tagFQN ||
+                getTierFromSearchTableTags(
+                  (table.tags || []).map((tag) => tag.tagFQN)
+                )
+              )?.split(FQN_SEPARATOR_CHAR)[1]
             }
             usage={table.weeklyPercentileRank}
           />

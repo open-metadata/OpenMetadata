@@ -415,14 +415,15 @@ public class TagResource {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
-
+    RestUtil.PutResponse response;
     if (primaryTag.equals(create.getName())) { // Not changing the name
-      tag = addHref(categoryHref, dao.createOrUpdate(uriInfo, tag).getEntity());
+      response = dao.createOrUpdate(uriInfo, tag);
     } else {
       Tag origTag = getTag(securityContext, create, FullyQualifiedName.build(categoryName)).withName(primaryTag);
-      tag = addHref(categoryHref, dao.createOrUpdate(uriInfo, origTag, tag).getEntity());
+      response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
-    return Response.ok(tag).build();
+    tag = addHref(categoryHref, (Tag) response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -459,16 +460,17 @@ public class TagResource {
     Tag tag = getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag));
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, categoryName);
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
-
+    RestUtil.PutResponse response;
     // TODO clean this up
     if (secondaryTag.equals(create.getName())) { // Not changing the name
-      tag = addHref(parentHRef, dao.createOrUpdate(uriInfo, tag).getEntity());
+      response = dao.createOrUpdate(uriInfo, tag);
     } else {
       Tag origTag =
           getTag(securityContext, create, FullyQualifiedName.build(categoryName, primaryTag)).withName(secondaryTag);
-      tag = addHref(parentHRef, dao.createOrUpdate(uriInfo, origTag, tag).getEntity());
+      response = dao.createOrUpdate(uriInfo, origTag, tag);
     }
-    return Response.ok(tag).build();
+    addHref(parentHRef, (Tag) response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE
@@ -478,14 +480,15 @@ public class TagResource {
       summary = "Delete tag category",
       tags = "tags",
       description = "Delete a tag category and all the tags under it.")
-  public TagCategory deleteCategory(
+  public Response deleteCategory(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag category id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     TagCategory tagCategory = daoCategory.delete(uriInfo, id);
-    return addHref(uriInfo, tagCategory);
+    addHref(uriInfo, tagCategory);
+    return new RestUtil.DeleteResponse<>(tagCategory, RestUtil.ENTITY_DELETED).toResponse();
   }
 
   @DELETE
@@ -495,7 +498,7 @@ public class TagResource {
       summary = "Delete tag",
       tags = "tags",
       description = "Delete a tag and all the tags under it.")
-  public Tag deleteTags(
+  public Response deleteTags(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Tag id", schema = @Schema(type = "string")) @PathParam("category") String category,
@@ -504,7 +507,8 @@ public class TagResource {
     SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
     Tag tag = dao.delete(uriInfo, id);
     URI categoryHref = RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category);
-    return addHref(categoryHref, tag);
+    addHref(categoryHref, tag);
+    return new RestUtil.DeleteResponse<>(tag, RestUtil.ENTITY_DELETED).toResponse();
   }
 
   private TagCategory addHref(UriInfo uriInfo, TagCategory category) {
