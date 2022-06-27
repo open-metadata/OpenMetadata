@@ -1,0 +1,21 @@
+source:
+  type: metabase
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Metabase
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      dbServiceName: <dbServiceName>
+  sourceConfig:
+    config:
+      dashboardFilterPattern: <dashboard name regex list>
+      chartFilterPattern: <chart name regex list>
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
