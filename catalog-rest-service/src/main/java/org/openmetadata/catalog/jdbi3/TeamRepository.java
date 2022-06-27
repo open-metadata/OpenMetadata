@@ -113,6 +113,11 @@ public class TeamRepository extends EntityRepository<Team> {
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
+  private List<EntityReference> getUsers(UUID teamID) throws IOException {
+    List<String> userIds = findTo(teamID, TEAM, Relationship.HAS, Entity.USER);
+    return EntityUtil.populateEntityReferences(userIds, Entity.USER);
+  }
+
   private List<EntityReference> getOwns(Team team) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.getEntityReferences(
