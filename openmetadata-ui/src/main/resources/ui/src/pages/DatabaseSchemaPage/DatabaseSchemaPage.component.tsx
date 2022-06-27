@@ -686,6 +686,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     id="activityfeed">
                     <div />
                     <ActivityFeedList
+                      hideFeedFilter
+                      hideThreadFilter
                       isEntityFeed
                       withSidePanel
                       className=""

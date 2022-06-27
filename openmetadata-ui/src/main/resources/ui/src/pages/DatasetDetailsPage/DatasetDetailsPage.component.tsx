@@ -60,6 +60,7 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
@@ -73,7 +74,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -244,9 +245,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN), after)
+    !after && setEntityThread([]);
+    getAllFeeds(
+      getEntityFeedLink(EntityType.TABLE, tableFQN),
+      after,
+      threadType,
+      feedType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {

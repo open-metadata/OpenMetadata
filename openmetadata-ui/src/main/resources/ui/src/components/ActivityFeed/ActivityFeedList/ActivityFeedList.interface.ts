@@ -24,6 +24,8 @@ export interface ActivityFeedListProp extends HTMLAttributes<HTMLDivElement> {
   withSidePanel?: boolean;
   isEntityFeed?: boolean;
   entityName?: string;
+  hideFeedFilter?: boolean;
+  hideThreadFilter?: boolean;
   postFeedHandler?: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;

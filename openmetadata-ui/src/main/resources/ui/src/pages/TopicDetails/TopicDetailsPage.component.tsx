@@ -41,10 +41,11 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -144,9 +145,18 @@ const TopicDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const fetchActivityFeed = (after?: string) => {
+  const fetchActivityFeed = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.TOPIC, topicFQN),
+      after,
+      threadType,
+      feedType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {

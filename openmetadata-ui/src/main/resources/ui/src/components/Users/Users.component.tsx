@@ -678,6 +678,8 @@ const Users = ({
         </div>
         <div className="tw-mt-3.5">
           <ActivityFeedList
+            hideFeedFilter
+            hideThreadFilter
             withSidePanel
             className=""
             deletePostHandler={deletePostHandler}

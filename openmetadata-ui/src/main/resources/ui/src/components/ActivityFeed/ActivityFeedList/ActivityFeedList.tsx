@@ -42,6 +42,8 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   deletePostHandler,
   updateThreadHandler,
   onFeedFiltersUpdate,
+  hideFeedFilter,
+  hideThreadFilter,
 }) => {
   const { updatedFeedList, relativeDays } =
     getFeedListWithRelativeDays(feedList);
@@ -133,56 +135,61 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   }, [threadType, feedFilter]);
 
   const getFilterDropDown = () => {
-    return (
+    return hideFeedFilter && hideThreadFilter ? null : (
       <div className="tw-flex tw-justify-between">
         {/* Feed filter */}
-        <div className="tw-relative tw-mt-5 tw-mr-5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="feeds"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-font-medium tw-text-grey">
-              {feedFilterList.find((f) => f.value === feedFilter)?.name}
-            </span>
-            <DropDownIcon />
-          </Button>
-          {fieldListVisible && (
-            <DropDownList
-              dropDownList={feedFilterList}
-              value={feedFilter}
-              onSelect={handleDropDown}
-            />
-          )}
-        </div>
+        {!hideFeedFilter && (
+          <div className="tw-relative tw-mt-5 tw-mr-5">
+            <Button
+              className="hover:tw-no-underline focus:tw-no-underline"
+              data-testid="feeds"
+              size="custom"
+              tag="button"
+              variant="link"
+              onClick={() => setFieldListVisible((visible) => !visible)}>
+              <span className="tw-font-medium tw-text-grey">
+                {feedFilterList.find((f) => f.value === feedFilter)?.name}
+              </span>
+              <DropDownIcon />
+            </Button>
+            {fieldListVisible && (
+              <DropDownList
+                dropDownList={feedFilterList}
+                value={feedFilter}
+                onSelect={handleDropDown}
+              />
+            )}
+          </div>
+        )}
         {/* Thread filter */}
-        <div className="tw-relative tw-mt-5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="thread-filter"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setShowThreadTypeList((visible) => !visible)}>
-            <SVGIcons alt="filter" icon={Icons.FILTERS} width="14px" />
-            <span className="tw-font-medium tw-text-grey tw-ml-1">
-              {
-                threadFilterList.find((f) => f.value === (threadType ?? 'ALL'))
-                  ?.name
-              }
-            </span>
-            <DropDownIcon />
-          </Button>
-          {showThreadTypeList && (
-            <DropDownList
-              dropDownList={threadFilterList}
-              value={threadType}
-              onSelect={handleThreadTypeDropDownChange}
-            />
-          )}
-        </div>
+        {!hideThreadFilter && (
+          <div className="tw-relative tw-mt-5">
+            <Button
+              className="hover:tw-no-underline focus:tw-no-underline"
+              data-testid="thread-filter"
+              size="custom"
+              tag="button"
+              variant="link"
+              onClick={() => setShowThreadTypeList((visible) => !visible)}>
+              <SVGIcons alt="filter" icon={Icons.FILTERS} width="14px" />
+              <span className="tw-font-medium tw-text-grey tw-ml-1">
+                {
+                  threadFilterList.find(
+                    (f) => f.value === (threadType ?? 'ALL')
+                  )?.name
+                }
+              </span>
+              <DropDownIcon />
+            </Button>
+            {showThreadTypeList && (
+              <DropDownList
+                dropDownList={threadFilterList}
+                value={threadType}
+                onSelect={handleThreadTypeDropDownChange}
+              />
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -206,9 +213,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   return (
     <div className={classNames(className)} id="feedData">
+      {getFilterDropDown()}
       {feedList.length > 0 ? (
         <Fragment>
-          {getFilterDropDown()}
           {relativeDays.map((d, i) => {
             return (
               <div data-testid={`feed${i}`} key={i}>
@@ -245,7 +252,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         </Fragment>
       ) : (
         <Fragment>
-          {entityName ? (
+          {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
           ) : (
             <Fragment>
