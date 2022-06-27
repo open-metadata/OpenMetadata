@@ -40,6 +40,7 @@ const NavBar = ({
   pathname,
   username,
   isSearchBoxOpen,
+  hasNotification,
   handleSearchBoxOpen,
   handleFeatureModal,
   handleSearchChange,
@@ -141,6 +142,17 @@ const NavBar = ({
               ))}
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
+            <button className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 tw-relative tw-inline-block tw-flex tw-items-center">
+              <Link to={`${ROUTES.USER_PROFILE}/tasks?feedFilter=ASSIGNED_TO`}>
+                <SVGIcons
+                  alt="Alert bell icon"
+                  className="tw-align-middle tw-mr-2"
+                  icon={Icons.ALERT_BELL}
+                  width="20"
+                />
+                {hasNotification ? <span className="tw-bell-badge" /> : null}
+              </Link>
+            </button>
             <button
               className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="whatsnew-modal"
