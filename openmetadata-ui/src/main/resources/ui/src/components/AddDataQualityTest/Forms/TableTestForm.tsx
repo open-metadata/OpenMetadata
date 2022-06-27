@@ -108,19 +108,29 @@ const TableTestForm = ({
 
   const validateForm = () => {
     const errMsg = cloneDeep(isShowError);
-
-    const isTableRowCountToBeBetweenTest =
-      tableTest === TableTestType.TableRowCountToBeBetween;
-
     errMsg.tableTest = isEmpty(tableTest);
 
-    if (isTableRowCountToBeBetweenTest) {
-      errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
-      if (!isUndefined(minValue) && !isUndefined(maxValue)) {
-        errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
-      }
-    } else {
-      errMsg.values = isEmpty(value);
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
+        if (!isUndefined(minValue) && !isUndefined(maxValue)) {
+          errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
+        }
+
+        break;
+      case TableTestType.TableColumnNameToExist:
+        errMsg.columnName = isEmpty(columnName);
+
+        break;
+
+      case TableTestType.TableColumnToMatchSet:
+        errMsg.columnNameSet = isEmpty(columnNameSet);
+
+        break;
+
+      default:
+        errMsg.values = isEmpty(value);
     }
 
     setIsShowError(errMsg);
