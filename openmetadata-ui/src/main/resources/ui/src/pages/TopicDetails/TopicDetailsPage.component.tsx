@@ -177,6 +177,15 @@ const TopicDetailsPage: FunctionComponent = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    fetchActivityFeed(after, filterType, type);
+  };
+
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.ACTIVITY_FEED: {
@@ -575,7 +584,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={fetchActivityFeed}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followTopicHandler={followTopic}
           followers={followers}
           isSampleDataLoading={isSampleDataLoading}

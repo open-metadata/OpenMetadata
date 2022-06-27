@@ -210,7 +210,6 @@ const PipelineDetailsPage = () => {
     threadType?: ThreadType
   ) => {
     setIsentityThreadLoading(true);
-    !after && setEntityThread([]);
     getAllFeeds(
       getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
       after,
@@ -235,6 +234,15 @@ const PipelineDetailsPage = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, filterType, type);
   };
 
   const fetchServiceDetails = (type: string, fqn: string) => {
@@ -723,7 +731,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}

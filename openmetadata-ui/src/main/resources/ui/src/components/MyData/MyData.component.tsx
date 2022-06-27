@@ -217,12 +217,12 @@ const MyData: React.FC<MyDataProps> = ({
   }, []);
 
   const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
+    (feedType: FeedFilter, threadType?: ThreadType) => {
       setFeedFilter(feedType);
       setThreadType(threadType);
-      fetchFeedHandler(feedType, paging.after, threadType);
+      fetchFeedHandler(feedType, undefined, threadType);
     },
-    [paging]
+    [fetchFeedHandler]
   );
 
   const newFeedsLength = activityFeeds && activityFeeds.length;

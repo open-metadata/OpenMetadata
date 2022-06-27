@@ -317,7 +317,6 @@ const MyDataPage = () => {
     type?: ThreadType
   ) => {
     setIsFeedLoading(true);
-    after && setEntityThread([]);
     getFeedsWithFilter(currentUser?.id, filterType, after, type)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
@@ -334,6 +333,14 @@ const MyDataPage = () => {
         setIsFeedLoading(false);
       });
   };
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+      !after && setEntityThread([]);
+      getFeedData(filterType, after, type);
+    },
+    [getFeedData, setEntityThread]
+  );
 
   const postFeedHandler = (value: string, id: string) => {
     const data = {
@@ -499,7 +506,7 @@ const MyDataPage = () => {
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}
-            fetchFeedHandler={getFeedData}
+            fetchFeedHandler={handleFeedFetchFromFeedList}
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}

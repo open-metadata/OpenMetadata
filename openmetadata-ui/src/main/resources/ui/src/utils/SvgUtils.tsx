@@ -63,6 +63,7 @@ import IconFitView from '../assets/svg/fitview.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
+import IconCommentGrey from '../assets/svg/ic-comment-grey.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
@@ -311,6 +312,7 @@ export const Icons = {
   FOLDER: 'ic-folder',
   STAR: 'ic-star',
   MENTIONS: 'ic-mentions',
+  COMMENT_GREY: 'ic-comment-grey',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -908,6 +910,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.MENTIONS:
       IconComponent = IconMentions;
+
+      break;
+    case Icons.COMMENT_GREY:
+      IconComponent = IconCommentGrey;
 
       break;
     default:

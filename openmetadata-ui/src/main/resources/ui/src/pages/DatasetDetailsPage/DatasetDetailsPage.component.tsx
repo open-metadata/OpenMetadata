@@ -251,7 +251,6 @@ const DatasetDetailsPage: FunctionComponent = () => {
     threadType?: ThreadType
   ) => {
     setIsentityThreadLoading(true);
-    !after && setEntityThread([]);
     getAllFeeds(
       getEntityFeedLink(EntityType.TABLE, tableFQN),
       after,
@@ -276,6 +275,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, feedType, threadType);
   };
 
   const fetchTableDetail = () => {
@@ -1028,7 +1036,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followTableHandler={followTable}
           followers={followers}
           handleAddColumnTestCase={handleAddColumnTestCase}

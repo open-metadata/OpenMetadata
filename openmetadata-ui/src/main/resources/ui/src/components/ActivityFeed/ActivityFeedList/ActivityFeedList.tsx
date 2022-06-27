@@ -13,7 +13,14 @@
 
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { FC, Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
@@ -59,13 +66,15 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [threadType, setThreadType] = useState<ThreadType>();
 
-  const handleDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setFeedFilter((value as FeedFilter) || FeedFilter.ALL);
-    setFieldListVisible(false);
-  };
+  const handleDropDown = useCallback(
+    (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
+      const feedType = (value as FeedFilter) || FeedFilter.ALL;
+      setFeedFilter(feedType);
+      setFieldListVisible(false);
+      onFeedFiltersUpdate && onFeedFiltersUpdate(feedType, threadType);
+    },
+    [setFeedFilter, setFieldListVisible, onFeedFiltersUpdate, threadType]
+  );
 
   const onDiscard = () => {
     setConfirmationState(confirmStateInitialValue);
@@ -112,15 +121,16 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   };
 
   // Thread filter change handler
-  const handleThreadTypeDropDownChange = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setThreadType(
-      value === 'ALL' ? undefined : (value as ThreadType) ?? undefined
-    );
-    setShowThreadTypeList(false);
-  };
+  const handleThreadTypeDropDownChange = useCallback(
+    (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
+      const threadType =
+        value === 'ALL' ? undefined : (value as ThreadType) ?? undefined;
+      setThreadType(threadType);
+      setShowThreadTypeList(false);
+      onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
+    },
+    [feedFilter, onFeedFiltersUpdate, setThreadType, setShowThreadTypeList]
+  );
 
   const feedFilterList = useMemo(
     () =>
@@ -130,9 +140,9 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     [isEntityFeed]
   );
 
-  useEffect(() => {
-    onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
-  }, [threadType, feedFilter]);
+  //   useEffect(() => {
+  //     onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
+  //   }, [threadType, feedFilter]);
 
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
