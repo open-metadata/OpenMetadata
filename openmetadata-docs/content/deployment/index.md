@@ -5,4 +5,4 @@ slug: /deployment
 
 # Deployment
 
-Some deployment info
+We support different kinds of deployment
