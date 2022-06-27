@@ -1280,7 +1280,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
-  if (isLoading || nodes.length === 0) {
+  if (isLoading || (nodes.length === 0 && !deleted)) {
     return <Loader />;
   }
 
