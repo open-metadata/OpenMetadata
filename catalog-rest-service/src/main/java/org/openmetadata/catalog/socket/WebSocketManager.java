@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.socket;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
@@ -90,24 +89,22 @@ public class WebSocketManager {
   }
 
   public void sendToManyWithUUID(List<UUID> receivers, String event, String message) {
-    receivers
-        .forEach(
-            (e) -> {
-              if (activityFeedEndpoints.containsKey(e)) {
-                activityFeedEndpoints.get(e).send(event, message);
-              }
-            });
+    receivers.forEach(
+        (e) -> {
+          if (activityFeedEndpoints.containsKey(e)) {
+            activityFeedEndpoints.get(e).send(event, message);
+          }
+        });
   }
 
   public void sendToManyWithString(List<String> receivers, String event, String message) {
-    receivers
-        .forEach(
-            (e) -> {
-              UUID key = UUID.fromString(e);
-              if (activityFeedEndpoints.containsKey(key)) {
-                activityFeedEndpoints.get(key).send(event, message);
-              }
-            });
+    receivers.forEach(
+        (e) -> {
+          UUID key = UUID.fromString(e);
+          if (activityFeedEndpoints.containsKey(key)) {
+            activityFeedEndpoints.get(key).send(event, message);
+          }
+        });
   }
 
   public static class WebSocketManagerBuilder {
