@@ -67,12 +67,20 @@ const TableTestForm = ({
   const [value, setValue] = useState<number | undefined>(
     data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
+  const [columnName, setcolumnName] = useState<string | undefined>(
+    data?.testCase?.config?.columnName
+  );
+  const [columnNameSet, setcolumnNameSet] = useState<string | undefined>(
+    data?.testCase?.config?.columnNames
+  );
   const [isShowError, setIsShowError] = useState({
     minOrMax: false,
     values: false,
     minMaxValue: false,
     allTestAdded: false,
     tableTest: false,
+    columnName: false,
+    columnNameSet: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -196,6 +204,18 @@ const TableTestForm = ({
 
         break;
 
+      case 'column-name':
+        setcolumnName(value as unknown as string);
+        errorMsg.columnName = false;
+
+        break;
+
+      case 'column-name-set':
+        setcolumnNameSet(value as unknown as string);
+        errorMsg.columnNameSet = false;
+
+        break;
+
       default:
         break;
     }
@@ -220,6 +240,48 @@ const TableTestForm = ({
           onChange={handleValidation}
         />
         {isShowError.values && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
+  const getValueColTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name">
+          Column Name
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="column-name"
+          id="columnn-ame"
+          name="column-name"
+          placeholder="col1"
+          type="text"
+          value={columnName}
+          onChange={handleValidation}
+        />
+        {isShowError.columnName && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
+  const getValueColSetTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name-set">
+          Column Names
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="column-name-set"
+          id="column-name-set"
+          name="column-name-set"
+          placeholder="col1, col2, col3"
+          type="text"
+          value={columnNameSet}
+          onChange={handleValidation}
+        />
+        {isShowError.columnNameSet && errorMsg('Value is required.')}
       </Field>
     );
   };
@@ -264,6 +326,20 @@ const TableTestForm = ({
           errorMsg('Min value should be lower than Max value.')}
       </Fragment>
     );
+  };
+
+  const getTableTestConfig = () => {
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        return getMinMaxField();
+      case TableTestType.TableColumnNameToExist:
+        return getValueColTextField();
+      case TableTestType.TableColumnToMatchSet:
+        return getValueColSetTextField();
+      default:
+        return getValueField();
+    }
   };
 
   return (
@@ -314,11 +390,7 @@ const TableTestForm = ({
             />
           </Field>
 
-          <Field>
-            {tableTest === TableTestType.TableRowCountToBeBetween
-              ? getMinMaxField()
-              : getValueField()}
-          </Field>
+          <Field>{getTableTestConfig()}</Field>
         </div>
         <Field className="tw-flex tw-justify-end">
           <Button
