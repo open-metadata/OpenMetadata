@@ -916,6 +916,7 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconCommentGrey;
 
       break;
+
     default:
       IconComponent = null;
 
