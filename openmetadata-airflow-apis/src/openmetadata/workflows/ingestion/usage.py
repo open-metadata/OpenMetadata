@@ -13,12 +13,7 @@ Metadata DAG function builder
 """
 from pathlib import Path
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    BulkSink,
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Stage,
-)
+from airflow import DAG
 from openmetadata.workflows.ingestion.common import (
     build_dag,
     build_source,
@@ -26,7 +21,12 @@ from openmetadata.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
-from airflow import DAG
+from metadata.generated.schema.metadataIngestion.workflow import (
+    BulkSink,
+    OpenMetadataWorkflowConfig,
+    Processor,
+    Stage,
+)
 
 try:
     from airflow.operators.python import PythonOperator
