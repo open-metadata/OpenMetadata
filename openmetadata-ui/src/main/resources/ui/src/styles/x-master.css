@@ -766,10 +766,6 @@ body .profiler-graph .recharts-active-dot circle {
   background-color: #7147e8 !important;
 }
 
-.react-flow__edge .react-flow__edge-path {
-  stroke-width: 2px;
-}
-
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
 }
@@ -779,7 +775,12 @@ body .profiler-graph .recharts-active-dot circle {
 .react-flow__node-input,
 .react-flow__node-output {
   padding: 0 !important;
-  border: 2px solid rgb(229, 231, 235) !important;
+  border: 0 !important;
+  border-radius: 0px !important;
+}
+
+.react-flow__attribution > a {
+  color: #fff !important;
 }
 
 /* EntityVersion  */
@@ -1231,7 +1232,7 @@ code {
 .ant-layout-sider-task-detail {
   background: #ffffff;
   border: 1px solid #dde3ea;
-  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.16);
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.06);
   padding: 16px;
   padding-top: 0px;
   overflow-y: auto;
@@ -1295,4 +1296,11 @@ code {
 }
 div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
+}
+
+.ant-input:hover,
+.ant-input:focus {
+  border-color: #7147e8;
+  border-right-width: 0px;
+  box-shadow: none;
 }

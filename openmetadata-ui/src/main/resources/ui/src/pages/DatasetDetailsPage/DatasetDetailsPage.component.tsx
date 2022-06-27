@@ -410,7 +410,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       }
 
       case TabSpecificField.LINEAGE: {
-        if (!isEmpty(tableDetails) && !deleted) {
+        if (!deleted) {
           if (isEmpty(entityLineage)) {
             getLineageData();
           }

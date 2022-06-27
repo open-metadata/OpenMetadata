@@ -417,6 +417,31 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   }
 
   @POST
+  @Path("/toggleIngestion/{id}")
+  @Operation(
+      operationId = "toggleIngestionPipelineEnabled",
+      summary = "Set an Ingestion pipeline either as Enabled or Disabled",
+      tags = "IngestionPipelines",
+      description = "Toggle an ingestion pipeline state by id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The ingestion",
+            content =
+                @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class))),
+        @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
+      })
+  public Response toggleIngestion(
+      @Context UriInfo uriInfo, @PathParam("id") String id, @Context SecurityContext securityContext)
+      throws IOException {
+    Fields fields = getFields(FIELD_OWNER);
+    IngestionPipeline pipeline = dao.get(uriInfo, id, fields);
+    // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
+    pipelineServiceClient.toggleIngestion(pipeline);
+    return createOrUpdate(uriInfo, securityContext, pipeline, ADMIN | BOT | OWNER);
+  }
+
+  @POST
   @Path("/testConnection")
   @Operation(
       operationId = "testConnection",

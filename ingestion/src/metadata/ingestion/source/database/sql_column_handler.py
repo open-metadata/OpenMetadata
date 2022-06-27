@@ -116,6 +116,7 @@ class SqlColumnHandlerMixin:
         parsed_string["dataLength"] = self._check_col_length(
             parsed_string["dataType"], column["type"]
         )
+        parsed_string["description"] = column.get("comment")
         if column["raw_data_type"] == "array":
             array_data_type_display = (
                 repr(column["type"])

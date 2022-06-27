@@ -68,3 +68,12 @@ def _(*_, **__):
     use it for a random sample.
     """
     return "ABS(CHECKSUM(NewId()))"
+
+
+@compiles(RandomNumFn, Dialects.ClickHouse)
+def _(*_, **__):
+    """
+    ClickHouse random returns a number between 0 and 4,294,967,295.
+    We need to divide it by 4294967295 to get a number between 0 and 1.
+    """
+    return "toInt8(RAND(10)/4294967295*100)"

@@ -216,9 +216,7 @@ const CustomNode = (props: NodeProps) => {
     <div className="nowheel">
       {/* Node label could be simple text or reactNode */}
       <div
-        className={classNames('tw-px-2 tw-bg-primary-lite tw-relative ', {
-          'tw-border-b': !isEmpty(columns),
-        })}
+        className="tw--mx-2 tw--my-0.5 tw-px-2 tw-bg-primary-lite tw-relative tw-border tw-border-primary-hover tw-rounded-md"
         data-testid="node-label">
         {getHandle(type, isConnectable, isNewNode)}
         {label}{' '}
@@ -231,7 +229,7 @@ const CustomNode = (props: NodeProps) => {
 
       {isExpanded && (
         <div
-          className={classNames('tw-bg-border-lite-60', {
+          className={classNames('tw-bg-border-lite-60 tw-border', {
             'tw-py-3': !isEmpty(columns),
           })}>
           <section className={classNames('tw-px-3')} id="table-columns">

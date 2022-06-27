@@ -347,7 +347,7 @@ const PipelineDetailsPage = () => {
   const fetchTabSpecificData = (tabField = '') => {
     switch (tabField) {
       case TabSpecificField.LINEAGE: {
-        if (!isEmpty(pipelineDetails) && !deleted) {
+        if (!deleted) {
           if (isEmpty(entityLineage)) {
             getLineageData();
           }

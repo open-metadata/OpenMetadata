@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from 'antd';
+import { Button, Card, Input } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize, isEmpty, isNil, isUndefined } from 'lodash';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, {
+  ChangeEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -70,6 +71,7 @@ const UpdateDescription = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [currentDescription, setCurrentDescription] = useState<string>('');
+  const [title, setTitle] = useState<string>('');
 
   const entityTier = useMemo(() => {
     const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
@@ -138,11 +140,16 @@ const UpdateDescription = () => {
     }
   };
 
+  const onTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const { value: newValue } = e.target;
+    setTitle(newValue);
+  };
+
   const onCreateTask = () => {
     if (assignees.length) {
       const data: CreateThread = {
         from: currentUser?.name as string,
-        message,
+        message: title || message,
         about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
@@ -186,6 +193,7 @@ const UpdateDescription = () => {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
+    setTitle(message);
   }, [entityData]);
 
   useEffect(() => {
@@ -205,9 +213,18 @@ const UpdateDescription = () => {
           className="tw-col-span-2"
           key="update-description"
           style={{ ...cardStyles }}
-          title={`Task: ${message}`}>
+          title="Create Task">
+          <div data-testid="title">
+            <span>Title:</span>{' '}
+            <Input
+              placeholder="Task title"
+              style={{ margin: '4px 0px' }}
+              value={title}
+              onChange={onTitleChange}
+            />
+          </div>
           <div data-testid="assignees">
-            <span className="tw-text-grey-muted">Assignees:</span>{' '}
+            <span>Assignees:</span>{' '}
             <Assignees
               assignees={assignees}
               options={options}

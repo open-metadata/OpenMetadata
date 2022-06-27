@@ -16,7 +16,7 @@ import { Button, Card, Layout, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
+import { isEmpty, isEqual, isUndefined, toLower, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
@@ -39,7 +39,7 @@ import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TaskOperation } from '../../../constants/feed.constants';
@@ -47,6 +47,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column } from '../../../generated/entity/data/table';
 import {
+  TaskType,
   Thread,
   ThreadTaskStatus,
   ThreadType,
@@ -61,6 +62,7 @@ import {
   getEntityType,
   updateThreadData,
 } from '../../../utils/FeedUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import {
   getEntityLink,
@@ -72,11 +74,13 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
+  getDescriptionDiff,
 } from '../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
+import { DiffView } from '../shared/DiffView';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import { EntityData, Option } from '../TasksPage.interface';
 
@@ -136,7 +140,7 @@ const TaskDetailPage = () => {
   }, [taskDetail, entityData]);
 
   const currentDescription = () => {
-    if (entityField) {
+    if (entityField && !isEmpty(columnObject)) {
       return columnObject.description || '';
     } else {
       return entityData.description || '';
@@ -239,22 +243,25 @@ const TaskDetailPage = () => {
   };
 
   const onTaskResolve = () => {
-    const description =
-      markdownRef.current?.getEditorContent() || taskDetail.task?.suggestion;
+    const description = markdownRef.current?.getEditorContent();
 
-    updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, {
-      newValue: description,
-    })
-      .then(() => {
-        showSuccessToast('Task Resolved Successfully');
-        history.push(
-          getEntityLink(
-            entityType as string,
-            entityData?.fullyQualifiedName as string
-          )
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
+    const data = { newValue: description };
+
+    if (description) {
+      updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
+        .then(() => {
+          showSuccessToast('Task Resolved Successfully');
+          history.push(
+            getEntityLink(
+              entityType as string,
+              entityData?.fullyQualifiedName as string
+            )
+          );
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+    } else {
+      showErrorToast('Cannot accept empty description');
+    }
   };
 
   const onTaskReject = () => {
@@ -329,7 +336,7 @@ const TaskDetailPage = () => {
       entityFQN &&
         fetchEntityDetail(
           entityType as EntityType,
-          entityFQN as string,
+          getEncodedFqn(entityFQN as string),
           setEntityData
         );
       fetchTaskFeed(taskDetail.id);
@@ -439,35 +446,36 @@ const TaskDetailPage = () => {
   };
 
   const getCurrentDescription = () => {
-    let markdown;
+    let newDescription;
+    let oldDescription;
     if (taskDetail.task?.status === ThreadTaskStatus.Open) {
-      markdown = taskDetail.task.suggestion;
+      newDescription = taskDetail.task.suggestion;
+      oldDescription = !isEmpty(columnObject)
+        ? columnObject.description
+        : entityData.description;
     } else {
-      markdown = taskDetail.task?.newValue;
+      newDescription = taskDetail.task?.newValue;
+      oldDescription = taskDetail.task?.oldValue;
     }
 
-    return markdown ? (
-      <RichTextEditorPreviewer
-        className="tw-p-2"
-        enableSeeMoreVariant={false}
-        markdown={markdown}
-      />
-    ) : (
-      <span className="tw-no-description tw-p-2">No description </span>
+    const diffs = getDescriptionDiff(
+      oldDescription || '',
+      newDescription || ''
     );
+
+    return <DiffView className="tw-p-2" diffArr={diffs} />;
   };
 
+  const isOwner = entityData.owner?.id === currentUser?.id;
+  const isAssignee = taskDetail.task?.assignees?.some(
+    (assignee) => assignee.id === currentUser?.id
+  );
+
+  const isTaskClosed = taskDetail.task?.status === ThreadTaskStatus.Closed;
+  const isCreator = taskDetail.createdBy === currentUser?.name;
+
   const hasEditAccess = () => {
-    const isOwner = entityData.owner?.id === currentUser?.id;
-    const isAssignee = taskDetail.task?.assignees?.some(
-      (assignee) => assignee.id === currentUser?.id
-    );
-
-    const isTaskClosed = taskDetail.task?.status === ThreadTaskStatus.Closed;
-
-    return (
-      (isAdminUser || isAuthDisabled || isAssignee || isOwner) && !isTaskClosed
-    );
+    return isAdminUser || isAuthDisabled || isAssignee || isOwner;
   };
 
   return (
@@ -529,9 +537,7 @@ const TaskDetailPage = () => {
               <ColumnDetail column={columnObject} />
 
               <div className="tw-flex tw-mb-4" data-testid="task-assignees">
-                <span className="tw-text-grey-muted tw-self-center tw-mr-1">
-                  Assignees:
-                </span>
+                <span className="tw-text-grey-muted tw-mr-1">Assignees:</span>
                 {editAssignee ? (
                   <Fragment>
                     <Assignees
@@ -563,14 +569,32 @@ const TaskDetailPage = () => {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <span className="tw-self-center tw-mr-1">
-                      {taskDetail.task?.assignees
-                        ?.map((assignee) => getEntityName(assignee))
-                        ?.join(', ')}
+                    <span
+                      className={classNames('tw-self-center tw-mr-1 tw-flex', {
+                        'tw-grid tw-grid-cols-4':
+                          (taskDetail.task?.assignees || []).length > 2,
+                      })}>
+                      {taskDetail.task?.assignees?.map((assignee) => (
+                        <UserPopOverCard
+                          key={uniqueId()}
+                          type={assignee.type}
+                          userName={assignee.name || ''}>
+                          <span className="tw-flex tw-m-1.5 tw-mt-0">
+                            <ProfilePicture
+                              id=""
+                              name={getEntityName(assignee)}
+                              width="20"
+                            />
+                            <span className="tw-ml-1">
+                              {getEntityName(assignee)}
+                            </span>
+                          </span>
+                        </UserPopOverCard>
+                      ))}
                     </span>
-                    {hasEditAccess() && (
+                    {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <button
-                        className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                        className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pt-0 tw-pl-0"
                         data-testid="edit-suggestion"
                         onClick={() => setEditAssignee(true)}>
                         <SVGIcons
@@ -586,52 +610,77 @@ const TaskDetailPage = () => {
               </div>
 
               <div data-testid="task-description-tabs">
-                <span className="tw-text-grey-muted">Description:</span>{' '}
+                <p className="tw-text-grey-muted tw-mb-1">Description:</p>{' '}
                 {!isEmpty(taskDetail) && (
                   <Fragment>
-                    {showEdit ? (
-                      <DescriptionTabs
-                        description={currentDescription()}
-                        markdownRef={markdownRef}
-                        suggestion={taskDetail.task?.suggestion || ''}
-                      />
-                    ) : (
-                      <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                        {getCurrentDescription()}
-                        {hasEditAccess() && (
-                          <button
-                            className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
-                            data-testid="edit-suggestion"
-                            onClick={() => setShowEdit(true)}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              title="Edit"
-                              width="12px"
-                            />
-                          </button>
+                    {taskDetail.task?.type === TaskType.RequestDescription ? (
+                      <Fragment>
+                        {taskDetail.task.status === ThreadTaskStatus.Open ? (
+                          <RichTextEditor
+                            height="208px"
+                            initialValue={taskDetail.task.suggestion || ''}
+                            placeHolder="Add description"
+                            ref={markdownRef}
+                          />
+                        ) : (
+                          <DiffView
+                            className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
+                            diffArr={getDescriptionDiff(
+                              taskDetail.task.oldValue || '',
+                              taskDetail.task.newValue || ''
+                            )}
+                          />
                         )}
-                      </div>
+                      </Fragment>
+                    ) : (
+                      <Fragment>
+                        {showEdit ? (
+                          <DescriptionTabs
+                            description={currentDescription()}
+                            markdownRef={markdownRef}
+                            suggestion={taskDetail.task?.suggestion || ''}
+                          />
+                        ) : (
+                          <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                            {getCurrentDescription()}
+                            {hasEditAccess() && !isTaskClosed && (
+                              <button
+                                className="focus:tw-outline-none tw-self-baseline tw-p-2 tw-pl-0"
+                                data-testid="edit-suggestion"
+                                onClick={() => setShowEdit(true)}>
+                                <SVGIcons
+                                  alt="edit"
+                                  icon="icon-edit"
+                                  title="Edit"
+                                  width="12px"
+                                />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </Fragment>
                     )}
                   </Fragment>
                 )}
               </div>
 
-              {hasEditAccess() && (
+              {hasEditAccess() && !isTaskClosed && (
                 <div
                   className="tw-flex tw-justify-end"
                   data-testid="task-cta-buttons">
-                  <Button
-                    className="ant-btn-link-custom"
-                    type="link"
-                    onClick={onTaskReject}>
-                    {showEdit ? 'Cancel' : 'Reject'}
-                  </Button>
+                  {showEdit && (
+                    <Button
+                      className="ant-btn-link-custom"
+                      type="link"
+                      onClick={onTaskReject}>
+                      Cancel
+                    </Button>
+                  )}
                   <Button
                     className="ant-btn-primary-custom"
                     type="primary"
                     onClick={onTaskResolve}>
-                    {showEdit ? 'Submit' : 'Accept'}
+                    Accept
                   </Button>
                 </div>
               )}

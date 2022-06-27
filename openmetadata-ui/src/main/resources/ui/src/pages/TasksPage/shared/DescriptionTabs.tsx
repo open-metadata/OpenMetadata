@@ -12,12 +12,13 @@
  */
 
 import { Tabs } from 'antd';
-import { isEqual, uniqueId } from 'lodash';
+import { isEqual } from 'lodash';
 import { Diff, EditorContentRef } from 'Models';
 import React, { useState } from 'react';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
+import { DiffView } from './DiffView';
 
 interface Props {
   description: string;
@@ -42,42 +43,9 @@ export const DescriptionTabs = ({
       if (newDescription) {
         setDiffs(getDescriptionDiff(description, newDescription));
       }
+    } else {
+      setDiffs([]);
     }
-  };
-
-  const DiffView = ({ diffArr }: { diffArr: Diff[] }) => {
-    const elements = diffArr.map((diff) => {
-      if (diff.added) {
-        return (
-          <ins className="diff-added" key={uniqueId()}>
-            {diff.value}
-          </ins>
-        );
-      }
-      if (diff.removed) {
-        return (
-          <del
-            key={uniqueId()}
-            style={{ color: '#b30000', background: '#fadad7' }}>
-            {diff.value}
-          </del>
-        );
-      }
-
-      return <div key={uniqueId()}>No diff available</div>;
-    });
-
-    return (
-      <div className="tw-w-full tw-border tw-border-main tw-p-2 tw-rounded tw-my-3 tw-max-h-52 tw-overflow-y-auto">
-        <pre className="tw-whitespace-pre-wrap tw-mb-0">
-          {diffArr.length ? (
-            elements
-          ) : (
-            <span className="tw-text-grey-muted">No diff available</span>
-          )}
-        </pre>
-      </div>
-    );
   };
 
   return (
@@ -101,13 +69,17 @@ export const DescriptionTabs = ({
         </div>
       </TabPane>
       <TabPane key="2" tab="Diff">
-        <DiffView diffArr={diffs} />
+        <DiffView
+          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-3"
+          diffArr={diffs}
+        />
       </TabPane>
       <TabPane key="3" tab="New">
         <RichTextEditor
           className="tw-my-0"
           height="208px"
           initialValue={suggestion}
+          placeHolder="Update description"
           ref={markdownRef}
         />
       </TabPane>

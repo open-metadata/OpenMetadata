@@ -603,6 +603,21 @@ class ElasticsearchSink(Sink[Entity]):
         for ml_model_hyper_parameter in ml_model.mlHyperParameters:
             ml_model_hyper_parameters.append(ml_model_hyper_parameter.name)
 
+        service_entity = ESEntityReference(
+            id=str(ml_model.service.id.__root__),
+            name=ml_model.service.name,
+            displayName=ml_model.service.displayName
+            if ml_model.service.displayName
+            else "",
+            description=ml_model.service.description.__root__
+            if ml_model.service.description
+            else "",
+            type=ml_model.service.type,
+            fullyQualifiedName=ml_model.service.fullyQualifiedName,
+            deleted=ml_model.service.deleted,
+            href=ml_model.service.href.__root__,
+        )
+
         ml_model_doc = MlModelESDocument(
             ml_model_id=str(ml_model.id.__root__),
             deleted=ml_model.deleted,
@@ -618,6 +633,7 @@ class ElasticsearchSink(Sink[Entity]):
             fqdn=ml_model_fqn,
             owner=ml_model.owner,
             followers=ml_model_followers,
+            service=service_entity,
         )
 
         return ml_model_doc

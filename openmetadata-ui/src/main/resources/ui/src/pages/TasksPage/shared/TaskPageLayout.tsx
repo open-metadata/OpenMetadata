@@ -22,7 +22,7 @@ const TaskPageLayout: FC<Props> = ({ children }) => {
   const { Content, Sider } = Layout;
 
   return (
-    <Layout style={background}>
+    <Layout style={{ ...background, height: '100vh' }}>
       <Sider style={background} width={180} />
       <Content style={contentStyles}>{children}</Content>
       <Sider style={background} width={180} />

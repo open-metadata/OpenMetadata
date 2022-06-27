@@ -34,6 +34,7 @@ export interface EntityLineageProp {
   entityLineage: EntityLineage;
   deleted?: boolean;
   isOwner?: boolean;
+  isLoading?: boolean;
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
   addLineageHandler: (edge: Edge) => Promise<void>;
   removeLineageHandler: (data: EdgeData) => void;

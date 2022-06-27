@@ -54,3 +54,10 @@ def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)
     return f"MOD({value}, {base})"
+
+
+@compiles(ModuloFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handles modulo function for ClickHouse"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"modulo({value}, {base})"

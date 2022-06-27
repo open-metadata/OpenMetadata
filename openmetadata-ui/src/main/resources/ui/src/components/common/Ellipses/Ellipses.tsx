@@ -13,17 +13,21 @@
 
 import { Typography } from 'antd';
 import { EllipsisConfig } from 'antd/lib/typography/Base';
-import React, { FC } from 'react';
+import classNames from 'classnames';
+import React, { CSSProperties, FC } from 'react';
 
 interface Props extends EllipsisConfig {
   children: React.ReactNode;
+  className?: string;
+  style?: CSSProperties;
 }
 
-const Ellipses: FC<Props> = ({ children, ...props }) => {
+const Ellipses: FC<Props> = ({ children, className, style, ...props }) => {
   return (
     <Typography.Paragraph
-      className="ant-typography-ellipsis-custom"
-      ellipsis={props}>
+      className={classNames('ant-typography-ellipsis-custom', className)}
+      ellipsis={props}
+      style={style}>
       {children}
     </Typography.Paragraph>
   );
