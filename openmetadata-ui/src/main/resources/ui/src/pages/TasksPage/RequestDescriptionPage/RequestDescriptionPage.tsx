@@ -153,6 +153,7 @@ const RequestDescription = () => {
           })),
           suggestion: markdownRef.current?.getEditorContent(),
           type: TaskType.RequestDescription,
+          oldValue: '',
         },
         type: ThreadType.Task,
       };

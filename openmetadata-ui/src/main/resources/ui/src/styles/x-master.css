@@ -1160,17 +1160,31 @@ code {
 .ant-btn-link-custom:hover {
   color: #7147e8;
 }
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
   background: #7147e8;
   color: #ffffff;
   border-color: #7147e8;
 }
+
+.ant-dropdown-button.ant-btn-primary-dropdown
+  > .ant-btn-primary.ant-btn-icon-only {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  border-left-color: #ffffff;
+}
 .ant-btn-primary-custom:hover,
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
   background: #7147e8;
   color: #ffffff;
   border-color: #7147e8;
   text-decoration: none;
+}
+
+.ant-btn-group .ant-btn-primary:first-child:not(:last-child) {
+  border-right-color: #ffffff;
 }
 /* Antd custom button CSS */
 
@@ -1303,4 +1317,9 @@ div.ant-typography-ellipsis-custom {
   border-color: #7147e8;
   border-right-width: 0px;
   box-shadow: none;
+}
+
+.ant-dropdown-menu-item-selected {
+  color: #7147e8;
+  background-color: #7147e825;
 }

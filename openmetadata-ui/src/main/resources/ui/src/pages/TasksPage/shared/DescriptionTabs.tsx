@@ -24,19 +24,23 @@ interface Props {
   description: string;
   suggestion: string;
   markdownRef: React.MutableRefObject<EditorContentRef | undefined>;
+  placeHolder?: string;
+  onChange?: (value: string) => void;
 }
 
 export const DescriptionTabs = ({
   description,
   suggestion,
   markdownRef,
+  placeHolder,
+  onChange,
 }: Props) => {
   const { TabPane } = Tabs;
 
   const [diffs, setDiffs] = useState<Diff[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
 
-  const onChange = (key: string) => {
+  const onTabChange = (key: string) => {
     setActiveTab(key);
     if (isEqual(key, '2')) {
       const newDescription = markdownRef.current?.getEditorContent();
@@ -54,7 +58,7 @@ export const DescriptionTabs = ({
       className="ant-tabs-description"
       size="small"
       type="card"
-      onChange={onChange}>
+      onChange={onTabChange}>
       <TabPane key="1" tab="Current">
         <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-4">
           {description.trim() ? (
@@ -79,8 +83,9 @@ export const DescriptionTabs = ({
           className="tw-my-0"
           height="208px"
           initialValue={suggestion}
-          placeHolder="Update description"
+          placeHolder={placeHolder ?? 'Update description'}
           ref={markdownRef}
+          onTextChange={onChange}
         />
       </TabPane>
     </Tabs>
