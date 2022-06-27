@@ -62,7 +62,6 @@ public class SocketAddressFilter implements Filter {
     HeaderRequestWrapper requestWrapper = new HeaderRequestWrapper(httpServletRequest);
     requestWrapper.addHeader("RemoteAddress", httpServletRequest.getRemoteAddr());
     requestWrapper.addHeader("UserId", query.get("userId"));
-    //    requestWrapper.addHeader("ChannelType", query.get("channelType"));
 
     if (enableSecureSocketConnection) {
       String tokenWithType = httpServletRequest.getHeader("Authorization");
