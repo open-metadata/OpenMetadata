@@ -1280,60 +1280,56 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
-  if (isLoading) {
+  if (isLoading || nodes.length === 0) {
     return <Loader />;
   }
 
   return deleted ? (
     getDeletedLineagePlaceholder()
   ) : (
-    <Fragment>
-      <div
-        className={classNames(
-          'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
-        )}
-        data-testid="lineage-container">
-        <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
-          <ReactFlowProvider>
-            <ReactFlow
-              data-testid="react-flow-component"
-              edgeTypes={{ buttonedge: CustomEdge }}
-              edges={edges}
-              maxZoom={2}
-              minZoom={0.5}
-              nodeTypes={nodeTypes}
-              nodes={nodes}
-              nodesConnectable={isEditMode}
-              selectNodesOnDrag={false}
-              zoomOnDoubleClick={false}
-              zoomOnScroll={false}
-              onConnect={onConnect}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              onEdgesChange={onEdgesChange}
-              onInit={(reactFlowInstance: ReactFlowInstance) => {
-                onLoad(reactFlowInstance, nodes.length);
-                setReactFlowInstance(reactFlowInstance);
-              }}
-              onNodeClick={(_e, node) => onNodeClick(node)}
-              onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={dragHandle}
-              onNodeDragStart={dragHandle}
-              onNodeDragStop={dragHandle}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}
-              onNodesChange={onNodesChange}>
-              {getCustomControlElements()}
-              {getGraphBackGround()}
-            </ReactFlow>
-          </ReactFlowProvider>
-        </div>
-        {getEntityDrawer()}
-        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-        {getConfirmationModal()}
+    <div
+      className={classNames('tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4')}
+      data-testid="lineage-container">
+      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+        <ReactFlowProvider>
+          <ReactFlow
+            data-testid="react-flow-component"
+            edgeTypes={{ buttonedge: CustomEdge }}
+            edges={edges}
+            maxZoom={2}
+            minZoom={0.5}
+            nodeTypes={nodeTypes}
+            nodes={nodes}
+            nodesConnectable={isEditMode}
+            selectNodesOnDrag={false}
+            zoomOnDoubleClick={false}
+            zoomOnScroll={false}
+            onConnect={onConnect}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onEdgesChange={onEdgesChange}
+            onInit={(reactFlowInstance: ReactFlowInstance) => {
+              onLoad(reactFlowInstance, nodes.length);
+              setReactFlowInstance(reactFlowInstance);
+            }}
+            onNodeClick={(_e, node) => onNodeClick(node)}
+            onNodeContextMenu={onNodeContextMenu}
+            onNodeDrag={dragHandle}
+            onNodeDragStart={dragHandle}
+            onNodeDragStop={dragHandle}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onNodeMouseMove={onNodeMouseMove}
+            onNodesChange={onNodesChange}>
+            {getCustomControlElements()}
+            {getGraphBackGround()}
+          </ReactFlow>
+        </ReactFlowProvider>
       </div>
-    </Fragment>
+      {getEntityDrawer()}
+      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+      {getConfirmationModal()}
+    </div>
   );
 };
 

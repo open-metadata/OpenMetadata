@@ -307,7 +307,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="dashboard-url">
-                {getDashboardURL(dashboardService.connection.config)}
+                {getDashboardURL(dashboardService.connection?.config)}
               </span>
             </div>
           </>
@@ -323,7 +323,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
-                {pipelineService.connection.config?.hostPort}
+                {pipelineService.connection?.config?.hostPort || '--'}
               </span>
             </div>
           </>
@@ -340,7 +340,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
-                {mlmodel.connection.config?.registryUri}
+                {mlmodel.connection?.config?.registryUri || '--'}
               </span>
             </div>
             <div className="tw-mb-1 tw-truncate" data-testid="additional-field">
@@ -348,7 +348,7 @@ const ServicesPage = () => {
               <span
                 className=" tw-ml-1 tw-font-normal tw-text-grey-body"
                 data-testid="pipeline-url">
-                {mlmodel.connection.config?.trackingUri}
+                {mlmodel.connection?.config?.trackingUri || '--'}
               </span>
             </div>
           </>
@@ -508,7 +508,7 @@ const ServicesPage = () => {
           <p className="tw-text-lg tw-text-center">
             {noServicesText(searchText)}
           </p>
-          <p className="tw-text-lg tw-text-center">
+          <div className="tw-text-lg tw-text-center">
             <NonAdminAction
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
@@ -522,7 +522,7 @@ const ServicesPage = () => {
               </Button>
             </NonAdminAction>{' '}
             to add new {servicesDisplayName[serviceName]}
-          </p>
+          </div>
         </div>
       </div>
     );
