@@ -1,0 +1,21 @@
+source:
+  type: clickhouse
+  serviceName: local_clickhouse
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+  sourceConfig:
+    config:
+      schemaFilterPattern:
+        excludes: []
+      markDeletedTables: false
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
