@@ -46,7 +46,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../.gitbook/assets/image (61).png>)
+![Add a New Service from the Database Services Page](<../../.gitbook/assets/image (61) (1).png>)
 
 ### 3. Select the Service Type
 

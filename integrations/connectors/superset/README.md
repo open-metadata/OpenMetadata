@@ -1,12 +1,12 @@
 ---
 description: >-
-  In this section, we provide the guides and reference to use the Superset
+  In this section, we provide the guides and reference to use the Mode
   connector.
 ---
 
-# Superset
+# Mode
 
-Configure and schedule Superset **metadata** workflows from the OpenMetadata UI.
+Configure and schedule [Mode](https://mode.com/) **metadata** workflows from the OpenMetadata UI.
 
 * [Requirements](./#requirements)
 * [Metadata Ingestion](./#metadata-ingestion)
@@ -23,7 +23,9 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 ## **Requirements**
 
-#### **OpenMetadata (version 0.10 or later)**
+#### **OpenMetadata (version 0.11.0 or later)**
+
+Mode Business Plan or higher is required to access the APIs which are used by OpenMetadata for metadata ingestion. Click [here](https://mode.com/compare-plans/) for a list of all the plans for mode.
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../overview/run-openmetadata-with-prefect.md) guide.
 
@@ -37,7 +39,7 @@ The first step is ingesting the metadata from your sources. Under Settings, you 
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/Screenshot 2022-06-27 at 4.35.53 PM.png>)
 
 ### 2. Create a New Service
 
@@ -47,9 +49,9 @@ Click on the _Add New Service_ button to start the Service creation.
 
 ### 3. Select the Service Type
 
-Select Superset as the service type and click _Next_.
+Select Mode as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (74).png>)
+![Select service type](<../../../.gitbook/assets/Screenshot 2022-06-27 at 4.41.28 PM.png>)
 
 ### 4. Name and Describe your Service
 
@@ -57,45 +59,41 @@ Provide a name and description for your service as illustrated below.
 
 #### Service Name
 
-OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Superset services that you might be ingesting metadata from.
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Mode services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (43).png>)
+![Enter a service name](<../../../.gitbook/assets/image (22).png>)
 
 ### 5. Configure the Service Connection
 
-In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Superset service as desired.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Mode service as desired.
 
-![](<../../../.gitbook/assets/image (136).png>)
+![](<../../../.gitbook/assets/image (40).png>)
 
 <details>
 
 <summary>Connection Options</summary>
 
-**Username**
-
-Enter the username of your Superset user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
-
-**Password**
-
-Enter the password for your Superset user in the _Password_ field.
-
 **Host and Port**
 
-Enter the fully qualified hostname and port number for your Superset deployment in the _Host and Port_ field.
+Enter the fully qualified hostname and port number for your Mode deployment in the _Host and Port_ field.
 
-**Database Service Name (optional)**
+**Access Token and Access Token Password**
 
-Enter the Database Service Name for the Lineage creation.
+Enter the access token for the Mode workspace. Click [here](https://mode.com/developer/api-reference/authentication/) for the documentation regarding generation of _access token_ and _access token password_.
+
+**Workspace Name**
+
+Enter the workspace name of your Mode environment.
 
 </details>
 
-![](<../../../.gitbook/assets/image (5) (1) (1).png>)
+![](<../../../.gitbook/assets/image (3).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](<../../../.gitbook/assets/image (30) (1).png>)
+![](../../../.gitbook/assets/image.png)
 
 <details>
 
@@ -157,7 +155,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (18) (1) (1).png>)
+![](<../../../.gitbook/assets/image (65).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,9 +163,9 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![](<../../../.gitbook/assets/image (36) (1) (1) (1).png>)
-
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+![](<../../../.gitbook/assets/image (1).png>)
 
 ## Run using Airflow SDK
 

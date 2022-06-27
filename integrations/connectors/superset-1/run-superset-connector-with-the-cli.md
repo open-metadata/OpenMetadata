@@ -2,9 +2,9 @@
 description: Use the 'metadata' CLI to run a one-time ingestion
 ---
 
-# Run Mode Connector with the CLI
+# Run Superset Connector with the CLI
 
-Configure and schedule mode **metadata** workflows using CLI.
+Configure and schedule Superset **metadata** workflows using CLI.
 
 * [Requirements](run-superset-connector-with-the-cli.md#requirements)
 * [Metadata Ingestion](run-superset-connector-with-the-cli.md#metadata-ingestion)
@@ -15,15 +15,15 @@ Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up 
 
 ### Python requirements
 
-To run the Mode ingestion, you will need to install:
+To run the Superset ingestion, you will need to install:
 
 ```
-pip3 install 'openmetadata-ingestion[mode]'
+pip3 install 'openmetadata-ingestion[superset]'
 ```
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/supersetConnection.json) you can find the structure to create a connection to Mode.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/supersetConnection.json) you can find the structure to create a connection to Superset.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -31,32 +31,23 @@ The workflow is modeled around the following [JSON Schema](https://github.com/op
 
 ### 1. Define the YAML Config
 
-This is a sample config for Mode:
+This is a sample config for Superset:
 
 ```json
 source:
-  type: mode
-  serviceName: local_mode
+  type: superset
+  serviceName: local_superset
   serviceConnection:
     config:
-      access_token: access_token
-      access_token_password: access_token_password
-      workspace_name: workspace_name
-      type: Mode
+      hostPort: http://localhost:8080
+      username: admin
+      password: admin
+      dbServiceName: local_mysql
+      type: Superset
   sourceConfig:
     config:
-      chartFilterPattern:
-        includes:
-          - Gross Margin %
-          - Total Defect*
-          - "Number"
-        excludes:
-          - Total Revenue
-      dashboardFilterPattern:
-        includes:
-          - Supplier Quality Analysis Sample
-          - "Customer"
-      dbServiceName: local_redshift
+      chartFilterPattern: {}
+      dashboardFilterPattern: {}
 sink:
   type: metadata-rest
   config: {}
@@ -68,11 +59,12 @@ workflowConfig:
 
 #### Source Configuration - Service Connection
 
-You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/modeConnection.json).
+You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/dashboard/supersetConnection.json).
 
-* **Host and Port**: Enter the fully qualified hostname and port number for your Mode deployment in the _Host and Port_ field.
-* **Access Token and Access Token Password**: Enter the access token for the Mode workspace. Click [here](https://mode.com/developer/api-reference/authentication/) for the documentation regarding generation of _access token_ and _access token password_.
-* **Workspace Name**: Enter the workspace name of your Mode environment.
+* **username**: Enter the username of your Superset user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
+* **password**: Enter the password for your Superset user in the _Password_ field.
+* **hostPort**: Enter the fully qualified hostname and port number for your Superset deployment in the _Host and Port_ field.
+* **dbServiceName**: If you want create Lineage enter the database Service name.
 
 #### Source Configuration - Source Config
 

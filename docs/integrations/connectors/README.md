@@ -38,9 +38,10 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 * [Looker](../../../integrations/connectors/looker/)
 * [Metabase](../../../integrations/connectors/metabase/)
+* [Mode](../../../integrations/connectors/superset/)
 * Power BI
 * [Redash](../../../integrations/connectors/redash/)
-* [Superset](../../../integrations/connectors/superset/)
+* [Superset](../../../integrations/connectors/superset-1/)
 * [Tableau](tableau.md)
 
 #### Messaging Services

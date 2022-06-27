@@ -43,7 +43,7 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61) (1).png>)
 
 ### 3. Select the Service Type
 
@@ -201,7 +201,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (40) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (40) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
