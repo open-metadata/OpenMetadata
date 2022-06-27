@@ -17,7 +17,7 @@
     },
     "description": {
       "description": "Description of the tag category",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "categoryType": {
       "$ref": "../../entity/tags/tagCategory.json#/definitions/tagCategoryType"

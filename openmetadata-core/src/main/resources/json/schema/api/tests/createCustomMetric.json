@@ -7,7 +7,7 @@
   "properties": {
     "description": {
       "description": "Description of the custom metric.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "name": {
       "description": "Name that identifies this Custom Metric.",

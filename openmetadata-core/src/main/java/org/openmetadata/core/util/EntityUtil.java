@@ -17,7 +17,15 @@ import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.core.util.CommonUtil.nullOrEmpty;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -30,12 +38,26 @@ import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.type.CustomField;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.entity.type.CustomProperty;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventFilter;
+import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.FailureDetails;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.MlFeature;
+import org.openmetadata.catalog.type.MlHyperParameter;
+import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.Task;
+import org.openmetadata.catalog.type.UsageDetails;
+import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.core.entity.Entity;
-import org.openmetadata.core.entity.interfaces.EntityInterface;
 import org.openmetadata.core.exception.CatalogExceptionMessage;
 import org.openmetadata.core.exception.EntityNotFoundException;
+import org.openmetadata.core.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.core.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.core.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.core.util.MessageParser.EntityLink;
@@ -44,7 +66,6 @@ import org.slf4j.LoggerFactory;
 
 public final class EntityUtil {
   private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
-
   //
   // Comparators used for sorting list based on the given type
   //
@@ -60,15 +81,12 @@ public final class EntityUtil {
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
-  public static final Comparator<CustomField> compareCustomField = Comparator.comparing(CustomField::getName);
+  public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
 
   //
   // Matchers used for matching two items in a list
   //
   public static final BiPredicate<Object, Object> objectMatch = Object::equals;
-
-  public static final BiPredicate<EntityInterface, EntityInterface> entityMatch =
-      (ref1, ref2) -> ref1.getId().equals(ref2.getId());
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
@@ -82,12 +100,12 @@ public final class EntityUtil {
 
   public static final BiPredicate<Column, Column> columnMatch =
       (column1, column2) ->
-          column1.getName().equals(column2.getName())
+          column1.getName().equalsIgnoreCase(column2.getName())
               && column1.getDataType() == column2.getDataType()
               && column1.getArrayDataType() == column2.getArrayDataType();
 
   public static final BiPredicate<Column, Column> columnNameMatch =
-      (column1, column2) -> column1.getName().equals(column2.getName());
+      (column1, column2) -> column1.getName().equalsIgnoreCase(column2.getName());
 
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
@@ -111,7 +129,7 @@ public final class EntityUtil {
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
-  public static final BiPredicate<CustomField, CustomField> customFieldMatch =
+  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}
@@ -153,6 +171,7 @@ public final class EntityUtil {
     return entity;
   }
 
+  // TODO delete
   public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
     if (list != null) {
       for (EntityReference ref : list) {
@@ -162,6 +181,18 @@ public final class EntityUtil {
       list.sort(compareEntityReference);
     }
     return list;
+  }
+
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
+    if (list == null) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityRelationshipRecord ref : list) {
+      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+    }
+    refs.sort(compareEntityReference);
+    return refs;
   }
 
   public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
@@ -174,7 +205,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink) throws IOException {
+  public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
 
@@ -263,11 +294,6 @@ public final class EntityUtil {
   /** Entity version extension name prefix formed by `entityType.version`. Example - `table.version` */
   public static String getVersionExtensionPrefix(String entityType) {
     return String.format("%s.%s", entityType, "version");
-  }
-
-  /** Entity attribute extension name formed by `entityType.attributeName`. Example - `table.<customAttributeName>` */
-  public static String getAttributeExtensionPrefix(String entityType, String attributeName) {
-    return String.format("%s.%s", entityType, attributeName);
   }
 
   public static Double getVersion(String extension) {

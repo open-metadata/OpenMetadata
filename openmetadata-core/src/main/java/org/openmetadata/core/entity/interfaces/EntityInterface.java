@@ -60,6 +60,10 @@ public interface EntityInterface {
 
   String getFullyQualifiedName();
 
+  default Object getExtension() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -80,7 +84,7 @@ public interface EntityInterface {
 
   void setUpdatedAt(Long updatedAt);
 
-  <T extends EntityInterface> T withHref(URI href);
+  void setHref(URI href);
 
   default void setTags(List<TagLabel> tags) {
     /* no-op implementation to be overridden */
@@ -89,6 +93,12 @@ public interface EntityInterface {
   default void setOwner(EntityReference owner) {
     /* no-op implementation to be overridden */
   }
+
+  default void setExtension(Object extension) {
+    /* no-op implementation to be overridden */
+  }
+
+  <T extends EntityInterface> T withHref(URI href);
 
   @JsonIgnore
   default EntityReference getEntityReference() {

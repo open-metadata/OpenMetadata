@@ -26,10 +26,22 @@
               "$ref": "./column/columnValuesToBeNotInSet.json"
             },
             {
+              "$ref": "./column/columnValuesToBeInSet.json"
+            },
+            {
               "$ref": "column/columnValuesToBeBetween.json"
             },
             {
               "$ref": "./column/columnValuesMissingCountToBeEqual.json"
+            },
+            {
+              "$ref": "./column/columnValueMaxToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMinToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValuesSumToBeBetween.json"
             },
             {
               "$ref": "./column/columnValuesLengthsToBeBetween.json"
@@ -42,9 +54,13 @@
             "columnValuesToBeNotNull",
             "columnValuesToMatchRegex",
             "columnValuesToBeNotInSet",
+            "columnValuesToBeInSet",
             "columnValuesToBeBetween",
             "columnValuesMissingCountToBeEqual",
-            "columnValueLengthsToBeBetween"
+            "columnValueLengthsToBeBetween",
+            "columnValueMaxToBeBetween",
+            "columnValueMinToBeBetween",
+            "columnValuesSumToBeBetween"
           ]
         }
       },
@@ -62,7 +78,7 @@
     },
     "description": {
       "description": "Description of the testcase.",
-      "type": "string"
+      "$ref": "../type/basic.json#/definitions/markdown"
     },
     "columnName": {
       "description": "Name of the column in a table.",
