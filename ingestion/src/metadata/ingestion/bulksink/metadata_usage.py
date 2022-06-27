@@ -10,8 +10,8 @@
 #  limitations under the License.
 import json
 import os
-import traceback
 import shutil
+import traceback
 from datetime import datetime
 from typing import List, Optional
 
@@ -202,6 +202,7 @@ class MetadataUsageBulkSink(BulkSink):
                 logger.warning(
                     f"Could not fetch table {table_usage.databaseName}.{table_usage.table}"
                 )
+                continue
 
             for table_entity in table_entities:
                 if table_entity is not None:
