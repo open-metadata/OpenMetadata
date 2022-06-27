@@ -27,6 +27,8 @@ jobs:
     - name: Push content
       id: push_content
       uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
       with:
         source-directory: openmetadata-docs/content/
         target-directory: content/
@@ -39,6 +41,8 @@ jobs:
     - name: Push images
       id: push_images
       uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
       with:
         source-directory: openmetadata-docs/images/
         target-directory: public/images/
@@ -51,6 +55,8 @@ jobs:
     - name: Push ingestion
       id: push_ingestion
       uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_SSH_DEPLOY_KEY }}
       with:
         source-directory: openmetadata-docs/ingestion/
         target-directory: public/ingestion/
