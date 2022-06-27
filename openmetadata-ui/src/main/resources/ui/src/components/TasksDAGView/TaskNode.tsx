@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'react-flow-renderer';
 
@@ -27,10 +26,8 @@ const renderHandle = (position: Position) => {
   const styles = { ...handleStyles } as CSSProperties;
   let type: HandleType;
   if (position === Position.Left) {
-    styles.left = '-14px';
     type = 'target';
   } else {
-    styles.right = '-14px';
     type = 'source';
   }
 
@@ -59,10 +56,10 @@ const TaskNode = (props: NodeProps) => {
   const { label } = data;
 
   return (
-    <div className="tw-relative nowheel ">
+    <div className="task-node tw-relative nowheel tw-px-2 tw-bg-primary-lite tw-border tw-border-primary-hover tw-rounded-md">
       {getHandle(type)}
       {/* Node label could be simple text or reactNode */}
-      <div className={classNames('tw-px-2')} data-testid="node-label">
+      <div className="tw-px-2 tw-py-3" data-testid="node-label">
         {label}
       </div>
     </div>

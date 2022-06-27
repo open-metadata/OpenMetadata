@@ -1269,12 +1269,6 @@ code {
   background-color: #276ef1;
 }
 
-.data-box.Successful.selected,
-.data-box.Failed.selected,
-.data-box.Pending.selected {
-  background-color: #7147e8;
-}
-
 .exec-date-time {
   position: absolute;
   left: 15px;
@@ -1293,16 +1287,31 @@ code {
   -ms-transform: rotate(-70deg);
 }
 
-.leaf-node.Successful {
+.leaf-node.Successful .task-node {
   border-color: #07a35a;
+  background-color: #07a35a40;
 }
 
-.leaf-node.Failed {
+.leaf-node.Failed .task-node {
   border-color: #e54937;
+  background-color: #e5493740;
 }
 
-.leaf-node.Pending {
+.leaf-node.Pending .task-node {
   border-color: #276ef1;
+  background-color: #276ef140;
+}
+
+.leaf-node.Successful .react-flow__handle {
+  background-color: #07a35a !important;
+}
+
+.leaf-node.Failed .react-flow__handle {
+  background-color: #e54937 !important;
+}
+
+.leaf-node.Pending .react-flow__handle {
+  background-color: #276ef1 !important;
 }
 
 .ProseMirror .placeholder {
