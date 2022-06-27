@@ -30,7 +30,7 @@ jobs:
       with:
         source-directory: openmetadata-docs/content/
         target-directory: content/
-        destination-github-username: 'OpenMetadata'
+        destination-github-username: 'open-metadata'
         destination-repository-name: 'docs'
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
@@ -42,7 +42,7 @@ jobs:
       with:
         source-directory: openmetadata-docs/images/
         target-directory: public/images/
-        destination-github-username: 'OpenMetadata'
+        destination-github-username: 'open-metadata'
         destination-repository-name: 'docs'
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
@@ -54,7 +54,7 @@ jobs:
       with:
         source-directory: openmetadata-docs/ingestion/
         target-directory: public/ingestion/
-        destination-github-username: 'OpenMetadata'
+        destination-github-username: 'open-metadata'
         destination-repository-name: 'docs'
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
