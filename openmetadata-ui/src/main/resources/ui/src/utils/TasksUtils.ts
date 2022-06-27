@@ -33,7 +33,11 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
-import { EntityData, Option } from '../pages/TasksPage/TasksPage.interface';
+import {
+  EntityData,
+  Option,
+  TaskActionMode,
+} from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
 import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
@@ -249,3 +253,14 @@ export const fetchEntityDetail = (
       break;
   }
 };
+
+export const TASK_ACTION_LIST = [
+  {
+    label: 'Accept Suggestion',
+    key: TaskActionMode.VIEW,
+  },
+  {
+    label: 'Edit & Accept Suggestion',
+    key: TaskActionMode.EDIT,
+  },
+];
