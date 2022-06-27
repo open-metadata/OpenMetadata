@@ -1,6 +1,5 @@
 package org.openmetadata.catalog.socket;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -11,8 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.openmetadata.catalog.entity.feed.Thread;
-import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,16 +18,14 @@ public class WebSocketManager {
   private static WebSocketManager INSTANCE;
   private final EngineIoServer mEngineIoServer;
   private final SocketIoServer mSocketIoServer;
-  private final String feedBroadcastChannel = "activityFeed";
-  private final String taskBroadcastChannel = "taskChannel";
-  private final ObjectMapper mapper;
+  public static final String feedBroadcastChannel = "activityFeed";
+  public static final String taskBroadcastChannel = "taskChannel";
 
   private final Map<UUID, SocketIoSocket> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     mEngineIoServer = new EngineIoServer(eiOptions);
     mSocketIoServer = new SocketIoServer(mEngineIoServer);
-    mapper = new ObjectMapper();
     intilizateHandlers();
   }
 
@@ -84,30 +79,35 @@ public class WebSocketManager {
     return activityFeedEndpoints;
   }
 
-  public void broadCastMessageToClients(Thread thread) throws JsonProcessingException {
-    String jsonThread = mapper.writeValueAsString(thread);
-    activityFeedEndpoints.forEach((key, value) -> value.send(feedBroadcastChannel, jsonThread));
+  public void broadCastMessageToAll(String event, String message) {
+    activityFeedEndpoints.forEach((key, value) -> value.send(event, message));
   }
 
-  public void handleWebSocket(Thread thread) throws JsonProcessingException {
-    String jsonThread = mapper.writeValueAsString(thread);
-    switch (thread.getType()) {
-      case Task:
-        List<EntityReference> assignees = thread.getTask().getAssignees();
-        assignees.forEach(
+  public void sendToOne(UUID receiver, String event, String message) {
+    if (activityFeedEndpoints.containsKey(receiver)) {
+      activityFeedEndpoints.get(receiver).send(event, message);
+    }
+  }
+
+  public void sendToManyWithUUID(List<UUID> receivers, String event, String message) {
+    receivers
+        .forEach(
             (e) -> {
-              if (activityFeedEndpoints.containsKey(e.getId())) {
-                activityFeedEndpoints.get(e.getId()).send(taskBroadcastChannel, jsonThread);
+              if (activityFeedEndpoints.containsKey(e)) {
+                activityFeedEndpoints.get(e).send(event, message);
               }
             });
-        return;
-      case Conversation:
-        broadCastMessageToClients(thread);
-        return;
-      case Announcement:
-      default:
-        return;
-    }
+  }
+
+  public void sendToManyWithString(List<String> receivers, String event, String message) {
+    receivers
+        .forEach(
+            (e) -> {
+              UUID key = UUID.fromString(e);
+              if (activityFeedEndpoints.containsKey(key)) {
+                activityFeedEndpoints.get(key).send(event, message);
+              }
+            });
   }
 
   public static class WebSocketManagerBuilder {

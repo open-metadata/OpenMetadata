@@ -13,12 +13,14 @@
 
 package org.openmetadata.catalog.events;
 
+import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,10 +40,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
-import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.*;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -50,10 +49,12 @@ import org.openmetadata.catalog.util.RestUtil;
 public class ChangeEventHandler implements EventHandler {
   private CollectionDAO dao;
   private FeedRepository feedDao;
+  private ObjectMapper mapper;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.dao = jdbi.onDemand(CollectionDAO.class);
     this.feedDao = new FeedRepository(dao);
+    this.mapper = new ObjectMapper();
   }
 
   public Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
@@ -103,7 +104,8 @@ public class ChangeEventHandler implements EventHandler {
             }
             EntityLink about = EntityLink.parse(thread.getAbout());
             feedDao.create(thread, entity.getId(), owner, about);
-            WebSocketManager.getInstance().broadCastMessageToClients(thread);
+            String jsonThread = mapper.writeValueAsString(thread);
+            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
           }
         }
       }
@@ -118,7 +120,32 @@ public class ChangeEventHandler implements EventHandler {
     if (responseCode == Status.CREATED.getStatusCode() && responseContext.getEntity().getClass().equals(Thread.class)) {
       Thread thread = (Thread) responseContext.getEntity();
       try {
-        WebSocketManager.getInstance().handleWebSocket(thread);
+        String jsonThread = mapper.writeValueAsString(thread);
+        switch (thread.getType()) {
+          case Task:
+            List<EntityReference> assignees = thread.getTask().getAssignees();
+            assignees.forEach(
+                (e) -> {
+                  if (Entity.USER.equals(e.getType())) {
+                    WebSocketManager.getInstance()
+                        .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
+                  } else if (Entity.TEAM.equals(e.getType())) {
+                    // fetch all that are there in the team
+                    List<String> userIds =
+                        dao.relationshipDAO()
+                            .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                    WebSocketManager.getInstance()
+                        .sendToManyWithString(userIds, WebSocketManager.taskBroadcastChannel, jsonThread);
+                  }
+                });
+            return;
+          case Conversation:
+            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
+            return;
+          case Announcement:
+          default:
+            return;
+        }
       } catch (JsonProcessingException e) {
         throw new RuntimeException(e);
       }
