@@ -16,6 +16,8 @@ on:
     inputs:
       tag:
         description: "Release tag being built"
+  release:
+    types: [published]
 
 jobs:
   publish-test:
