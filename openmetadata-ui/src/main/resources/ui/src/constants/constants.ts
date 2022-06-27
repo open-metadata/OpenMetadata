@@ -216,6 +216,7 @@ export const ROUTES = {
 
 export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
+  TASK_CHANNEL: 'taskChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
