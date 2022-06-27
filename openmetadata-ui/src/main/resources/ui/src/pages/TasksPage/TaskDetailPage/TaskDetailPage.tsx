@@ -249,10 +249,20 @@ const TaskDetailPage = () => {
   };
 
   const onTaskUpdate = () => {
-    const newAssignees = assignees.map((assignee) => ({
-      id: assignee.value,
-      type: assignee.type,
-    }));
+    const newAssignees = assignees.map((assignee) => {
+      const existingAssignee = (taskDetail.task?.assignees || []).find(
+        (exAssignee) => isEqual(exAssignee.id, assignee.value)
+      );
+
+      if (existingAssignee) {
+        return existingAssignee;
+      } else {
+        return {
+          id: assignee.value,
+          type: assignee.type,
+        };
+      }
+    });
 
     const updatedTask = {
       ...taskDetail,
