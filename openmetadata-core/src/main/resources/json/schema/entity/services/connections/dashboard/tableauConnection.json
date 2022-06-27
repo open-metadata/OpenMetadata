@@ -64,11 +64,6 @@
       "type": "string",
       "default": "tableau_prod"
     },
-    "dbServiceName": {
-      "title": "Database Service Name",
-      "description": "Database Service Name in order to add data lineage.",
-      "type": "string"
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

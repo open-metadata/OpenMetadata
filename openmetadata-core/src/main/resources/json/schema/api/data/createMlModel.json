@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the ML model instance. How it was trained and for what it is used.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model",
@@ -67,8 +67,12 @@
     "owner": {
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the pipeline service where this pipeline is hosted in",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["name", "algorithm"],
+  "required": ["name", "algorithm", "service"],
   "additionalProperties": false
 }

@@ -18,7 +18,6 @@ import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import io from 'socket.io-client';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -33,7 +32,8 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
+import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
+import { SOCKET_EVENTS } from '../../constants/constants';
 import {
   onErrorText,
   onUpdatedConversastionError,
@@ -80,6 +80,7 @@ const MyDataPage = () => {
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const { socket } = useWebSocketConnector();
 
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
@@ -430,27 +431,21 @@ const MyDataPage = () => {
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   useEffect(() => {
-    const socket = io(ROUTES.HOME, {
-      path: ROUTES.ACTIVITY_PUSH_FEED,
-      reconnectionAttempts: 3,
-    });
-
-    // socket.connect();
-
-    socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
-      if (newActivity) {
-        setActivityFeeds((prevActivities) => [
-          JSON.parse(newActivity),
-          ...prevActivities,
-        ]);
-      }
-    });
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
+        if (newActivity) {
+          setActivityFeeds((prevActivities) => [
+            JSON.parse(newActivity),
+            ...prevActivities,
+          ]);
+        }
+      });
+    }
 
     return () => {
-      socket.close();
-      socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+      socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
     };
-  }, []);
+  }, [socket]);
 
   const onRefreshFeeds = () => {
     setEntityThread((prevData) => [...activityFeeds, ...prevData]);

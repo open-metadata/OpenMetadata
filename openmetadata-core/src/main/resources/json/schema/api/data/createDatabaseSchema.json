@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of the schema instance. What it has and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "owner": {
       "description": "Owner of this schema",
