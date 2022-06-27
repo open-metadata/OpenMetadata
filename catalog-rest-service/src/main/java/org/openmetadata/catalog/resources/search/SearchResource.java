@@ -65,7 +65,7 @@ public class SearchResource {
   private static final Integer MAX_AGGREGATE_SIZE = 50;
   private static final Integer MAX_RESULT_HITS = 10000;
   private static final String NAME = "name";
-  private static final String DISPLAY_NAME = "display_name";
+  private static final String DISPLAY_NAME = "displayName";
   private static final String DESCRIPTION = "description";
   private static final String UNIFIED = "unified";
 
