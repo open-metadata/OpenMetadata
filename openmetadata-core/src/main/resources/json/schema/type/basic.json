@@ -101,6 +101,10 @@
       "description": "SQL query statement. Example - 'select * from orders'.",
       "type": "string"
     },
+    "sqlFunction": {
+      "description": "SQL function. Example - 'AVG()`, `COUNT()`, etc..",
+      "type": "string"
+    },
     "markdown": {
       "$comment" : "@om-field-type",
       "description": "Text in Markdown format",
