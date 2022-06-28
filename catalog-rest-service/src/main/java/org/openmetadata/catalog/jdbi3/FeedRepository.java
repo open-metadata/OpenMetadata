@@ -167,11 +167,14 @@ public class FeedRepository {
   }
 
   public Thread get(String id) throws IOException {
-    return EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
+    Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
+    sortPosts(thread);
+    return thread;
   }
 
   public Thread getTask(Integer id) throws IOException {
     Thread task = EntityUtil.validate(id.toString(), dao.feedDAO().findByTaskId(id), Thread.class);
+    sortPosts(task);
     return populateAssignees(task);
   }
 
@@ -387,6 +390,7 @@ public class FeedRepository {
 
     dao.feedDAO().update(thread.getId().toString(), JsonUtils.pojoToJson(thread));
     addClosingPost(thread, user, closingComment);
+    sortPosts(thread);
   }
 
   private void storeMentions(Thread thread, String message) {
@@ -437,6 +441,8 @@ public class FeedRepository {
 
     // Add mentions into field relationship table
     storeMentions(thread, post.getMessage());
+
+    sortPostsInThreads(List.of(thread));
 
     return thread;
   }
@@ -689,6 +695,7 @@ public class FeedRepository {
               });
     }
 
+    sortPosts(thread);
     String change = patchUpdate(thread, post, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PatchResponse<>(Status.OK, updated, change);
   }
@@ -717,6 +724,7 @@ public class FeedRepository {
 
     // Update the attributes
     String change = patchUpdate(original, updated) ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    sortPosts(updated);
     Thread updatedHref = FeedResource.addHref(uriInfo, updated);
     return new PatchResponse<>(Status.OK, updatedHref, change);
   }
@@ -789,13 +797,23 @@ public class FeedRepository {
                 || !original.getTask().getAssignees().containsAll(updated.getTask().getAssignees())));
   }
 
+  private void sortPosts(Thread thread) {
+    thread.getPosts().sort(Comparator.comparing(Post::getPostTs));
+  }
+
+  private void sortPostsInThreads(List<Thread> threads) {
+    for (Thread t : threads) {
+      sortPosts(t);
+    }
+  }
+
   /** Limit the number of posts within each thread. */
   private void limitPostsInThreads(List<Thread> threads, int limitPosts) {
     for (Thread t : threads) {
       List<Post> posts = t.getPosts();
+      sortPosts(t);
       if (posts.size() > limitPosts) {
         // Only keep the last "n" number of posts
-        posts.sort(Comparator.comparing(Post::getPostTs));
         posts = posts.subList(posts.size() - limitPosts, posts.size());
         t.withPosts(posts);
       }
@@ -850,6 +868,7 @@ public class FeedRepository {
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountTasksAssignedTo(userTeamJsonPostgres, userTeamJsonMysql, status.toString());
+    sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -883,6 +902,7 @@ public class FeedRepository {
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, status.toString());
+    sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -904,6 +924,7 @@ public class FeedRepository {
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountThreadsByOwner(userId, teamIds, type, isResolved);
+    sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -946,6 +967,7 @@ public class FeedRepository {
         dao.feedDAO()
             .listCountThreadsByMentions(
                 user.getName(), teamNames, type, isResolved, Relationship.MENTIONED_IN.ordinal());
+    sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
 
@@ -969,6 +991,7 @@ public class FeedRepository {
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO().listCountThreadsByFollows(userId, teamIds, type, isResolved, Relationship.FOLLOWS.ordinal());
+    sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
 
