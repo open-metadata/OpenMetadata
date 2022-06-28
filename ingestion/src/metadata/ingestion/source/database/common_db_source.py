@@ -326,7 +326,6 @@ class CommonDbSourceService(
         # Disable the DictConfigurator.configure method while importing LineageRunner
         configure = DictConfigurator.configure
         DictConfigurator.configure = lambda _: None
-        from sqllineage.exceptions import SQLLineageException
         from sqllineage.runner import LineageRunner
 
         # Reverting changes after import is done
