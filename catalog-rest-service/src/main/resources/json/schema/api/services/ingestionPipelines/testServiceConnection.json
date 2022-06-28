@@ -19,13 +19,16 @@
         },
         {
           "$ref": "../../../entity/services/pipelineService.json#/definitions/pipelineConnection"
+        },
+        {
+          "$ref": "../../../entity/services/mlmodelService.json#/definitions/mlModelConnection"
         }
       ]
     },
     "connectionType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "type": "string",
-      "enum": ["Database", "Dashboard", "Messaging", "Pipeline"],
+      "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel"],
       "javaEnums": [
         {
           "name": "Database"
@@ -38,6 +41,9 @@
         },
         {
           "name": "Pipeline"
+        },
+        {
+          "name": "MlModel"
         }
       ]
     }

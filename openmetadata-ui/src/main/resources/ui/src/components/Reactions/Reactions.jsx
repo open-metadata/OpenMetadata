@@ -108,8 +108,9 @@ const Reactions = ({ reactions, onReactionSelect }) => {
             <SVGIcons
               alt="add-reaction"
               icon={Icons.ADD_REACTION}
+              style={{ verticalAlign: 'text-bottom' }}
               title="Add reactions"
-              width="16px"
+              width="18px"
             />
           </Button>
         </Popover>

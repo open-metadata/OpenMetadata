@@ -608,18 +608,19 @@ const Users = ({
                   height="150px"
                   referrerPolicy="no-referrer"
                   src={userData.profile?.images?.image}
-                  width="300px"
                 />
               </div>
             ) : (
-              <ProfilePicture
-                displayName={userData?.displayName || userData.name}
-                height="150"
-                id={userData?.id || ''}
-                name={userData?.name || ''}
-                textClass="tw-text-5xl"
-                width="300"
-              />
+              <div style={{ width: 'inherit' }}>
+                <ProfilePicture
+                  displayName={userData?.displayName || userData.name}
+                  height="150"
+                  id={userData?.id || ''}
+                  name={userData?.name || ''}
+                  textClass="tw-text-5xl"
+                  width=""
+                />
+              </div>
             )}
             {getDisplayNameComponent()}
             <p className="tw-mt-2 tw-mx-3">{userData.email}</p>

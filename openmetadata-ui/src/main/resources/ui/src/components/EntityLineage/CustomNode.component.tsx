@@ -42,14 +42,6 @@ const getHandle = (
     };
   };
 
-  const getTopBottomHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      width: '110%',
-    };
-  };
-
   if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
       <Fragment>
@@ -66,24 +58,6 @@ const getHandle = (
           position={Position.Left}
           style={{
             ...getLeftRightHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
           }}
           type="target"
         />
@@ -107,24 +81,6 @@ const getHandle = (
             ...getLeftRightHandleStyles(),
           }}
           type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
         />
       </Fragment>
     );
@@ -176,24 +132,6 @@ const getHandle = (
             ...getLeftRightHandleStyles(),
           }}
           type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
         />
       </Fragment>
     );

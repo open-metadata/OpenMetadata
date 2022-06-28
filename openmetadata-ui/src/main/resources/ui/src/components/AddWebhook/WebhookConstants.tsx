@@ -11,23 +11,17 @@
  *  limitations under the License.
  */
 
-import React from 'react';
-
-const TaskBadge = () => {
-  return (
-    <span
-      className="tw-rounded tw-px-2  tw-absolute tw-left-4 tw--top-3"
-      style={{
-        background: '#F1EDFD',
-        border: '1px solid #E3DAFA',
-        boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.06)',
-        borderRadius: '2px',
-        color: '#7147E8',
-        fontSize: '12px',
-      }}>
-      Task
-    </span>
-  );
+export const CREATE_EVENTS_DEFAULT_VALUE = {
+  eventType: 'entityCreated',
+  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
 };
 
-export default TaskBadge;
+export const UPDATE_EVENTS_DEFAULT_VALUE = {
+  eventType: 'entityUpdated',
+  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
+};
+
+export const DELETE_EVENTS_DEFAULT_VALUE = {
+  eventType: '"entityDeleted"',
+  entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
+};

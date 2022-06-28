@@ -122,7 +122,7 @@ plugins: Dict[str, Set[str]] = {
     "webhook-server": {},
     "salesforce": {"simple_salesforce~=1.11.4"},
     "okta": {"okta~=2.3.0"},
-    "mlflow": {"mlflow-skinny~=1.22.0"},
+    "mlflow": {"mlflow-skinny~=1.26.1"},
     "sklearn": {"scikit-learn==1.0.2"},
     "db2": {"ibm-db-sa==0.3.7"},
     "clickhouse": {"clickhouse-driver==0.2.3", "clickhouse-sqlalchemy==0.2.0"},
