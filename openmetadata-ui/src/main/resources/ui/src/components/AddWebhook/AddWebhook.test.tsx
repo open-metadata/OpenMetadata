@@ -199,9 +199,10 @@ describe('Test AddWebhook component', () => {
     expect(
       await findByText(container, 'Webhook endpoint is required.')
     ).toBeInTheDocument();
-    expect(
-      await findByText(container, 'Webhook event filters are required.')
-    ).toBeInTheDocument();
+    // default value is prefilled , use  below condition when value is empty
+    // expect(
+    //   await findByText(container, 'Webhook event filters are required.')
+    // ).toBeInTheDocument();
     expect(active).toHaveClass('open');
     expect(entityCreatedCheckbox).not.toBeChecked();
     expect(entityUpdatedCheckbox).not.toBeChecked();
