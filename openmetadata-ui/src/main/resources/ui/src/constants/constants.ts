@@ -216,6 +216,7 @@ export const ROUTES = {
 
 export const SOCKET_EVENTS = {
   ACTIVITY_FEED: 'activityFeed',
+  TASK_CHANNEL: 'taskChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -432,6 +433,9 @@ export const TITLE_FOR_NON_ADMIN_ACTION =
 
 export const TITLE_FOR_UPDATE_OWNER =
   'You do not have permissions to update the owner.';
+
+export const TITLE_FOR_UPDATE_DESCRIPTION =
+  'You do not have permissions to update the description.';
 
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },

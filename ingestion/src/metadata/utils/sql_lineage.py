@@ -233,21 +233,22 @@ def populate_column_lineage_map(raw_column_lineage):
     if not raw_column_lineage or len(raw_column_lineage[0]) != 2:
         return lineage_map
     for source, target in raw_column_lineage:
-        if lineage_map.get(str(target.parent)):
-            ele = lineage_map.get(str(target.parent))
-            if ele.get(str(source.parent)):
-                ele[str(source.parent)].append(
-                    (
-                        target.raw_name,
-                        source.raw_name,
+        for parent in source._parent:
+            if lineage_map.get(str(target.parent)):
+                ele = lineage_map.get(str(target.parent))
+                if ele.get(str(parent)):
+                    ele[str(parent)].append(
+                        (
+                            target.raw_name,
+                            source.raw_name,
+                        )
                     )
-                )
+                else:
+                    ele[str(parent)] = [(target.raw_name, source.raw_name)]
             else:
-                ele[str(source.parent)] = [(target.raw_name, source.raw_name)]
-        else:
-            lineage_map[str(target.parent)] = {
-                str(source.parent): [(target.raw_name, source.raw_name)]
-            }
+                lineage_map[str(target.parent)] = {
+                    str(parent): [(target.raw_name, source.raw_name)]
+                }
     return lineage_map
 
 

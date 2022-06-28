@@ -35,7 +35,7 @@ export const DiffView = ({
       return (
         <del
           key={uniqueId()}
-          style={{ color: '#b30000', background: '#fadad7' }}>
+          style={{ color: 'grey', textDecoration: 'line-through' }}>
           {diff.value}
         </del>
       );

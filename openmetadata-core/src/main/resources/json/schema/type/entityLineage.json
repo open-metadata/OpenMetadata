@@ -6,6 +6,48 @@
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.EntityLineage",
   "definitions": {
+    "columnLineage": {
+      "type" : "object",
+      "properties": {
+        "fromColumns" : {
+          "description": "One or more source columns identified by fully qualified column name used by transformation function to create destination column.",
+          "type" : "array",
+          "items" : {
+            "$ref" : "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          }
+        },
+        "toColumn" : {
+          "description": "Destination column identified by fully qualified column name created by the transformation of source columns.",
+          "$ref" : "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "function" : {
+          "description": "Transformation function applied to source columns to create destination column. That is `function(fromColumns) -> toColumn`.",
+          "$ref" : "../type/basic.json#/definitions/sqlFunction"
+        }
+      }
+    },
+    "lineageDetails" : {
+      "description" : "Lineage details including sqlQuery + pipeline + columnLineage.",
+      "type" : "object",
+      "properties": {
+        "sqlQuery" : {
+          "description": "SQL used for transformation.",
+          "$ref" : "../type/basic.json#/definitions/sqlQuery"
+        },
+        "columnsLineage" : {
+          "description" : "Lineage information of how upstream columns were combined to get downstream column.",
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/columnLineage"
+          }
+        },
+        "pipeline" : {
+          "description": "Pipeline where the sqlQuery is periodically run.",
+          "$ref" : "../type/entityReference.json"
+        }
+      },
+      "required": ["sqlQuery", "columnsLineage"]
+    },
     "edge": {
       "description": "Edge in the lineage graph from one entity to another by entity IDs.",
       "type": "object",
@@ -20,9 +62,14 @@
           "$ref": "basic.json#/definitions/uuid"
         },
         "description": {
-          "type": "string"
+          "$ref": "basic.json#/definitions/markdown"
+        },
+        "lineageDetails": {
+          "description": "Optional lineageDetails provided only for table to table lineage edge.",
+          "$ref": "#/definitions/lineageDetails"
         }
       },
+      "required": ["fromEntity", "toEntity"],
       "additionalProperties": false
     },
     "entitiesEdge": {
@@ -39,9 +86,14 @@
           "$ref": "entityReference.json"
         },
         "description": {
-          "type": "string"
+          "$ref": "basic.json#/definitions/markdown"
+        },
+        "lineageDetails": {
+          "description": "Optional lineageDetails provided only for table to table lineage edge.",
+          "$ref": "#/definitions/lineageDetails"
         }
       },
+      "required": ["fromEntity", "toEntity"],
       "additionalProperties": false
     }
   },

@@ -90,10 +90,13 @@ export const getHeaderLabel = (
 
 export const onLoad = (
   reactFlowInstance: ReactFlowInstance,
-  length?: number
+  length?: number,
+  forceZoomReset = false
 ) => {
   reactFlowInstance.fitView();
-  length && length <= 1 && reactFlowInstance.zoomTo(zoomValue);
+  if (forceZoomReset || (length && length <= 1)) {
+    reactFlowInstance.zoomTo(zoomValue);
+  }
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {

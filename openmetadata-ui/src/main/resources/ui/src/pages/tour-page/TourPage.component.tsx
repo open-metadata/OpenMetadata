@@ -267,6 +267,7 @@ const TourPage = () => {
         handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
+        hasNotification={false}
         isFeatureModalOpen={false}
         isSearchBoxOpen={false}
         pathname={location.pathname}

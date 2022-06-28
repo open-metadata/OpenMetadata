@@ -74,11 +74,14 @@ class QueryParserTest(TestCase):
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()
+        table_usage_map = {}
+
+        for key, value in workflow.stage.table_usage.items():
+            table_usage_map[key[0]] = value.count
+
         for table_name, expected_count in expected_result.items():
             try:
-                self.assertEqual(
-                    workflow.stage.table_usage[table_name].count, expected_count
-                )
+                self.assertEqual(table_usage_map[table_name], expected_count)
             except KeyError as err:
                 self.assertTrue(False)
         workflow.stop()

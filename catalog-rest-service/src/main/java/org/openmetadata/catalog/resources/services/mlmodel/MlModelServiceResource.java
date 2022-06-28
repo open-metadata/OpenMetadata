@@ -24,7 +24,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -51,9 +54,12 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MlModelServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -131,7 +137,9 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include);
-    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<MlModelService> mlModelServices =
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, mlModelServices));
   }
 
   @GET
@@ -165,7 +173,8 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    MlModelService mlModelService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, mlModelService);
   }
 
   @GET
@@ -199,7 +208,8 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    MlModelService mlModelService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, mlModelService);
   }
 
   @GET
@@ -220,7 +230,21 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
       @Context SecurityContext securityContext,
       @Parameter(description = "mlModel service Id", schema = @Schema(type = "string")) @PathParam("id") String id)
       throws IOException {
-    return dao.listVersions(id);
+    EntityHistory entityHistory = dao.listVersions(id);
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    MlModelService mlModelService = JsonUtils.readValue((String) json, MlModelService.class);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, mlModelService));
+                  } catch (IOException e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -250,7 +274,8 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    MlModelService mlModelService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, mlModelService);
   }
 
   @POST
@@ -328,5 +353,22 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
     return copy(new MlModelService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
+  }
+
+  private ResultList<MlModelService> decryptOrNullify(
+      SecurityContext securityContext, ResultList<MlModelService> mlModelServices) {
+    Optional.ofNullable(mlModelServices.getData())
+        .orElse(Collections.emptyList())
+        .forEach(mlModelService -> decryptOrNullify(securityContext, mlModelService));
+    return mlModelServices;
+  }
+
+  private MlModelService decryptOrNullify(SecurityContext securityContext, MlModelService mlModelService) {
+    try {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } catch (AuthorizationException e) {
+      return mlModelService.withConnection(null);
+    }
+    return mlModelService;
   }
 }

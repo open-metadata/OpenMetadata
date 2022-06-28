@@ -500,4 +500,14 @@
     box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 100ms linear;
   }
+
+  /* Bell Badge */
+  .tw-bell-badge {
+    @apply tw-p-1 tw-text-xs tw-absolute;
+    background-color: rgb(250, 62, 62);
+    border-radius: 50%;
+    color: white;
+    top: 0.4rem;
+    left: 1.3rem;
+  }
 }

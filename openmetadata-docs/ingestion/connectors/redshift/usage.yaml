@@ -1,0 +1,31 @@
+source:
+  type: redshift-usage
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Redshift
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+  sourceConfig:
+    config:
+      queryLogDuration: <query log duration integer>
+      stageFileLocation: <path to store the stage file>
+      resultLimit: <query log limit integer>
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/redshift_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/redshift_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

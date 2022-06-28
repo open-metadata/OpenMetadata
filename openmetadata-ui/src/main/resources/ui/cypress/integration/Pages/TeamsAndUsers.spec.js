@@ -126,6 +126,8 @@ describe('TeamsAndUsers page', () => {
         expect(text).equal(updatedName);
       });
 
+    cy.wait(500);
+
     cy.get('[data-testid="edit-description"] > [data-testid="image"]')
       .should('be.visible')
       .click();

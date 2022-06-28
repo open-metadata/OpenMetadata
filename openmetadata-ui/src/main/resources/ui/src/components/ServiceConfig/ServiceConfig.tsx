@@ -66,6 +66,10 @@ const ServiceConfig = ({
       });
   };
 
+  const onCancel = () => {
+    history.goBack();
+  };
+
   const getDynamicFields = () => {
     return (
       <ConnectionConfigForm
@@ -79,6 +83,7 @@ const ServiceConfig = ({
         serviceCategory={serviceCategory}
         serviceType={serviceType}
         status={status}
+        onCancel={onCancel}
         onSave={handleOnSaveClick}
       />
     );

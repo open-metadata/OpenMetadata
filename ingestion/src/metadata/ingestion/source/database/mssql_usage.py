@@ -29,9 +29,7 @@ from metadata.utils.sql_queries import MSSQL_SQL_USAGE_STATEMENT
 class MssqlUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(
-            start_date=self.start, end_date=self.end
-        )
+        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):

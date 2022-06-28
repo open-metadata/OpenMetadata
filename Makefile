@@ -177,3 +177,8 @@ install_antlr_cli:  ## Install antlr CLI locally
 	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
 	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
+
+
+.PHONY: docker-docs
+docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local
