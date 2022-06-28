@@ -62,33 +62,7 @@ class Sampler:
 
         if not self.profile_sample:
             if self._partition_details:
-                partition_field = self._partition_details["partition_field"]
-                if not self._partition_details.get("partition_values"):
-                    sample = (
-                        self.session.query(self.table)
-                        .filter(
-                            column(partition_field)
-                            >= self._partition_details["partition_start"].strftime(
-                                "%Y-%m-%d"
-                            ),
-                            column(partition_field)
-                            <= self._partition_details["partition_end"].strftime(
-                                "%Y-%m-%d"
-                            ),
-                        )
-                        .subquery()
-                    )
-                    return aliased(self.table, sample)
-                sample = (
-                    self.session.query(self.table)
-                    .filter(
-                        column(partition_field).in_(
-                            self._partition_details["partition_values"]
-                        )
-                    )
-                    .subquery()
-                )
-                return aliased(self.table, sample)
+                return self._random_sample_for_partitioned_tables()
 
             return self.table
 
@@ -149,3 +123,27 @@ class Sampler:
         return self.session.query(self.table).from_statement(
             text(f"{self._profile_sample_query}")
         )
+
+    def _random_sample_for_partitioned_tables(self) -> Query:
+        """Return the Query object for partitioned tables"""
+        partition_field = self._partition_details["partition_field"]
+        if not self._partition_details.get("partition_values"):
+            sample = (
+                self.session.query(self.table)
+                .filter(
+                    column(partition_field)
+                    >= self._partition_details["partition_start"].strftime("%Y-%m-%d"),
+                    column(partition_field)
+                    <= self._partition_details["partition_end"].strftime("%Y-%m-%d"),
+                )
+                .subquery()
+            )
+            return aliased(self.table, sample)
+        sample = (
+            self.session.query(self.table)
+            .filter(
+                column(partition_field).in_(self._partition_details["partition_values"])
+            )
+            .subquery()
+        )
+        return aliased(self.table, sample)
