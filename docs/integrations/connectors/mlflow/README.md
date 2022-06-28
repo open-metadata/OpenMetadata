@@ -6,214 +6,171 @@ description: >-
 
 # MLflow
 
-1. [Requirements](./#1.-requirements)
-2. [Install MLflow Connector](./#2.-install-mlflow-connector)
-3. [Configure MLflow Connector](./#3.-configure-mlflow-connector)
-4. [Run MLflow Connector](./#4.-run-mlflow-connector)
-5. [Troubleshooting](./#5.-troubleshooting)
+Configure and schedule MLflow **metadata** workflow from the OpenMetadata UI.
 
-## **1. Requirements**
+* [Requirements](./#requirements)
+* [Metadata Ingestion](./#metadata-ingestion)
 
-Please ensure that your host system meets the requirements listed below.
+If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-### **OpenMetadata (version 0.9.0 or later)**
+{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md" %}
+[run-mlflow-connector-with-the-airflow-sdk.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
+
+{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md" %}
+[run-mlflow-connector-using-the-cli.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md)
+{% endcontent-ref %}
+
+## **Requirements**
+
+#### **OpenMetadata (version 0.10 or later)**
 
 To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../../overview/run-openmetadata-with-prefect.md) guide.
 
-### **Python (version 3.8.0 or later)**
+To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
-Use the following command to check your Python version.
+## Metadata Ingestion
 
-```
-python3 --version
-```
+### 1. Visit the _Services_ Page
 
-## 2. Install MLflow Connector
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.
 
-### **2.1 Prepare a Python virtual environment**
+To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-In this step, we’ll create a Python virtual environment. Using a virtual environment enables us to avoid conflicts with other Python installations and packages on your host system.
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
-In a later step, you will install the Python module for this connector and its dependencies in this virtual environment.
+### 2. Create a New Service
 
-#### **1 Create a directory for openmetadata**
+Click on the _Add New Service_ button to start the Service creation.
 
-Throughout the docs, we use a consistent directory structure for OpenMetadata services and connector installation. If you have not already done so by following another guide, please create an openmetadata directory now and change into that directory in your command line environment.
+![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61) (1).png>)
 
-```
-mkdir openmetadata; cd openmetadata
-```
+### 3. Select the Service Type
 
-#### **2 Create a virtual environment**
+Select MLflow as the service type and click _Next_.
 
-Run the following command to create a Python virtual environment called, `env`. You can try multiple connectors in the same virtual environment.
+![](<../../../../.gitbook/assets/image (20).png>)
 
-```
-python3 -m venv env
-```
+### 4. Name and Describe your Service
 
-#### **3 Activate the virtual environment**
+Provide a name and description for your service as illustrated below.
 
-Run the following command to activate the virtual environment.
+#### Service Name
 
-```
-source env/bin/activate
-```
+OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MLflow services that you might be ingesting metadata from.
 
-Once activated, you should see your command prompt change to indicate that your commands will now be executed in the environment named `env`.
+![](<../../../../.gitbook/assets/image (29).png>)
 
-#### **4 Upgrade pip and setuptools to the latest versions**
+### 5. Configure the Service Connection
 
-Ensure that you have the latest version of pip by running the following command. If you have followed the steps above, this will upgrade pip in your virtual environment.
+In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MLflow service as desired.
 
-```javascript
-pip3 install --upgrade pip setuptools
-```
+![](<../../../../.gitbook/assets/image (40).png>)
 
-### **2.2 Install the Python module for this connector**
+<details>
 
-Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for the MLflow connector.
+<summary>Connection Options</summary>
 
-```javascript
-pip3 install 'openmetadata-ingestion[mlflow]'
-```
+**Tracking URI**
 
-## 3. Configure MLflow Connector
+The MLflow Tracking component is an API and UI for logging parameters, code versions, metrics, and output files when running your machine learning code and for later visualizing the results.
 
-Please follow the steps relevant to your use case.
+**Registry URI**
 
-1. [Create a configuration file using template JSON](./#3.-create-a-configuration-file-using-template-json)
-2. [Configure service settings](./#4.-configure-service-settings)
-3. [Confirm sink settings](./#3.3-confirm-sink-settings)
-4. [Confirm metadata\_server settings](./#3.4-confirm-metadata\_server-settings)
+The MLflow Model Registry component is a centralized model store, set of APIs, and UI, to collaboratively manage the full lifecycle of an MLflow Model.
 
-### **3.1 Create a configuration file using template JSON**
+</details>
 
-Create a new file called `mlflow.json` in the current directory. Note that the current directory should be the `openmetadata` directory.
+![](<../../../../.gitbook/assets/image (1).png>)
 
-Copy and paste the configuration template below into the `mlflow.json` file you created.
+### 6. Configure the Metadata Ingestion
 
-{% hint style="info" %}
-Note: The `source.config` field in the configuration JSON will include the majority of the settings for your connector. In the steps below we describe how to customize the key-value pairs in the `source.config` field to meet your needs.
-{% endhint %}
+Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-{% code title="mlflow.json" %}
-```json
-{
-  "source": {
-    "type": "mlflow",
-    "config": {
-      "tracking_uri": "http://localhost:5000",
-      "registry_uri": "mysql+pymysql://mlflow:password@localhost:3307/experiments"
-    }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
-  },
-  "metadata_server": {
-    "type": "metadata-server",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api",
-      "auth_provider_type": "no-auth"
-    }
-  }
-}
-```
-{% endcode %}
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1) (1) (1) (1) (1).png>)
 
-### **3.2 Configure service settings**
+<details>
 
-In this step we will configure the MLflow service settings required for this connector. Please follow the instructions below to ensure that you’ve configured the connector to read from your MLflow service as desired.
+<summary>Metadata Ingestion Options</summary>
 
-#### **tracking\_uri**
+No specific options are needed for ML Model as of now.
 
-MLflow server containing the tracking information of runs and experiments ([docs](https://mlflow.org/docs/latest/tracking.html)).
+</details>
 
-```json
-"tracking_uri": "http://localhost:5000"
-```
+### 7. Schedule the Ingestion and Deploy
 
-**registry\_uri**
+Scheduling can be set up at an hourly, daily, or weekly cadence. The timezone is in UTC. Select a Start Date to schedule for ingestion. It is optional to add an End Date.
 
-Backend store where the Tracking Server stores experiment and run metadata ([docs](https://mlflow.org/docs/latest/tracking.html#id14)).
+Review your configuration settings. If they match what you intended, click _Deploy_ to create the service and schedule metadata ingestion.
 
-```json
-"registry_uri": "mysql+pymysql://mlflow:password@localhost:3307/experiments"
-```
+If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-### **3.3 Confirm `sink` settings**
+<details>
 
-You need not make any changes to the fields defined for `sink` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
+<summary><strong>Scheduling Options</strong></summary>
 
-```javascript
-"sink": {
-    "type": "metadata-rest",
-    "config": {}
-},
-```
+**Every**
 
-### **3.4 Confirm `metadata_server` settings**
+Use the _Every_ drop down menu to select the interval at which you want to ingest metadata. Your options are as follows:
 
-You need not make any changes to the fields defined for `metadata_server` in the template code you copied into `bigquery.json` in Step 3. This part of your configuration file should be as follows.
+* _Hour_: Ingest metadata once per hour
+* _Day_: Ingest metadata once per day
+* _Week_: Ingest metadata once per week
 
-```javascript
-"workflowConfig": {
-    "openMetadataServerConfig": {
-      "hostPort": "http://localhost:8585/api",
-      "authProvider": "no-auth"
-    }
-  }
-```
+**Day**
 
-## **4. Run MLflow Connector**
+The _Day_ selector is only active when ingesting metadata once per week. Use the _Day_ selector to set the day of the week on which to ingest metadata.
 
-Your `mlflow.json` configuration file should now be fully configured and ready to use in an ingestion workflow.
+**Minute**
 
-To run an ingestion workflow, execute the following command from the `openmetadata` directory you created in Step 1.
+The _Minute_ dropdown is only active when ingesting metadata once per hour. Use the _Minute_ drop down menu to select the minute of the hour at which to begin ingesting metadata.
 
-```
-metadata ingest -c ./mlflow.json
-```
+**Time**
 
-### **Setup MLflow connector in production (optional)**
+The _Time_ drop down menus are active when ingesting metadata either once per day or once per week. Use the time drop downs to select the time of day at which to begin ingesting metadata.
 
-If you already have a production Airflow instance on which you would like to schedule OpenMetadata ingestion workflows, follow the procedure [Ingest Metadata in Production](../../ingest-metadata-in-production.md).
+**Start date (UTC)**
 
-## **Next Steps**
+Use the _Start date_ selector to choose the date at which to begin ingesting metadata according to the defined schedule.
 
-To view the metadata ingested from MLflow, visit [http://localhost:8585/explore/tables](http://localhost:8585/explore/tables). Select the MLflow service to filter for the data you’ve ingested using the workflow you configured and ran following this guide.
+**End date (UTC)**
 
-![](<../../../../.gitbook/assets/explore (1) (1) (1) (8).png>)
+Use the _End date_ selector to choose the date at which to stop ingesting metadata according to the defined schedule. If no end date is set, metadata ingestion will continue according to the defined schedule indefinitely.
 
-## **5. Troubleshooting**
+</details>
 
-### **ERROR: Failed building wheel for cryptography**
+After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-When attempting to install the `openmetadata-ingestion[mlfow]` Python package in Step 2, you might encounter the following error. The error might include a mention of a Rust compiler.
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
 
-```
-Failed to build cryptography
-ERROR: Could not build wheels for cryptography which use PEP 517 and cannot be installed directly
-```
+### 8. View the Ingestion Pipeline
 
-```
-pip3 install --upgrade pip setuptools
-```
+Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-Then re-run the install command in [Step 2](./#2.-install-the-python-module-for-this-connector).
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (12) (1).png>)
 
-### **requests.exceptions.ConnectionError**
+### 9. Workflow Deployment Error
 
-If you encounter the following error when attempting to run the ingestion workflow, this is probably because there is no OpenMetadata server running at http://localhost:8585.
+If there were any errors during the workflow deployment process, the Ingestion Pipeline Entity will still be created, but no workflow will be present in the Ingestion container.
 
-```
-requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=8585): 
-Max retries exceeded with url: /api/v1/services/databaseServices/name/mlflow 
-(Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1031fa310>: 
-Failed to establish a new connection: [Errno 61] Connection refused'))
-```
+You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) to deploy OpenMetadata.
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1).png>)
 
-Then re-run the metadata ingestion workflow in [Run MLflow Connector](./#4.-run-mlflow-connector).
+From the _Connection_ tab, you can also _Edit_ the Service if needed.
+
+## Run using Airflow SDK
+
+You can learn more about how to host and run the different workflows on your own Airflow instances below:
+
+{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md" %}
+[run-mlflow-connector-with-the-airflow-sdk.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md)
+{% endcontent-ref %}
+
+## One-time ingestion with the CLI
+
+You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
+
+{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md" %}
+[run-mlflow-connector-using-the-cli.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md)
+{% endcontent-ref %}

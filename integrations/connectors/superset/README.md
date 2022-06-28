@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Mode service as desired.
 
-![](<../../../.gitbook/assets/image (40).png>)
+![](<../../../.gitbook/assets/image (40) (1).png>)
 
 <details>
 
@@ -165,7 +165,7 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-![](<../../../.gitbook/assets/image (1).png>)
+![](<../../../.gitbook/assets/image (1) (1).png>)
 
 ## Run using Airflow SDK
 
