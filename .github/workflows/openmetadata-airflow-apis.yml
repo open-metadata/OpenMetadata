@@ -32,7 +32,7 @@ jobs:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME_TEST }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD_TEST }}
         run: |
-          make install_dev install
+          make install_dev install_apis
           cd openmetadata-airflow-apis; \
             python setup.py install sdist bdist_wheel; \
             twine check dist/*; \
@@ -55,8 +55,8 @@ jobs:
           TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
         run: |
-          make install_dev install
+          make install_dev install_apis
           cd openmetadata-airflow-apis; \
             python setup.py install sdist bdist_wheel; \
             twine check dist/*; \
-            twine upload -r dist/*
+            twine upload dist/*
