@@ -784,8 +784,9 @@ public class FeedRepository {
         || (!Collections.isEmpty(original.getReactions()) && Collections.isEmpty(updated.getReactions()))
         || original.getReactions().size() != updated.getReactions().size()
         || !original.getReactions().containsAll(updated.getReactions())
-        || original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
-        || !original.getTask().getAssignees().containsAll(updated.getTask().getAssignees());
+        || (original.getTask() != null
+            && (original.getTask().getAssignees().size() != updated.getTask().getAssignees().size()
+                || !original.getTask().getAssignees().containsAll(updated.getTask().getAssignees())));
   }
 
   /** Limit the number of posts within each thread. */
