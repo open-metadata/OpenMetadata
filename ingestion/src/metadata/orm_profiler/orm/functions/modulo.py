@@ -56,6 +56,7 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.BigQuery)
 @compiles(ModuloFn, Dialects.Redshift)
 @compiles(ModuloFn, Dialects.Snowflake)
+@compiles(ModuloFn, Dialects.Postgres)
 def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)

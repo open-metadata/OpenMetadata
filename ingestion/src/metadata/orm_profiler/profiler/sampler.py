@@ -14,7 +14,7 @@ for the profiler
 """
 from typing import Dict, Optional, Union
 
-from sqlalchemy import inspect, text
+from sqlalchemy import column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session, aliased
 from sqlalchemy.orm.util import AliasedClass
 
@@ -59,6 +59,12 @@ class Sampler:
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
+
+        if not self.profile_sample:
+            if self._partition_details:
+                return self._random_sample_for_partitioned_tables()
+
+            return self.table
 
         if self._profile_sample_query:
             return self._fetch_sample_data_with_query_object()
@@ -117,3 +123,27 @@ class Sampler:
         return self.session.query(self.table).from_statement(
             text(f"{self._profile_sample_query}")
         )
+
+    def _random_sample_for_partitioned_tables(self) -> Query:
+        """Return the Query object for partitioned tables"""
+        partition_field = self._partition_details["partition_field"]
+        if not self._partition_details.get("partition_values"):
+            sample = (
+                self.session.query(self.table)
+                .filter(
+                    column(partition_field)
+                    >= self._partition_details["partition_start"].strftime("%Y-%m-%d"),
+                    column(partition_field)
+                    <= self._partition_details["partition_end"].strftime("%Y-%m-%d"),
+                )
+                .subquery()
+            )
+            return aliased(self.table, sample)
+        sample = (
+            self.session.query(self.table)
+            .filter(
+                column(partition_field).in_(self._partition_details["partition_values"])
+            )
+            .subquery()
+        )
+        return aliased(self.table, sample)
