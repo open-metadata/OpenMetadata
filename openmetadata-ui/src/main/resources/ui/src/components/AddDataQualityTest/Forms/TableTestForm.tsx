@@ -27,6 +27,7 @@ import {
 } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 
 type Props = {
   data?: TableTest;
@@ -73,6 +74,11 @@ const TableTestForm = ({
   const [columnNameSet, setcolumnNameSet] = useState<string | undefined>(
     data?.testCase?.config?.columnNames
   );
+  const [columnNameSetOrdered, setcolumnNameSetOrdered] = useState<boolean>(
+    data?.testCase?.config?.ordered !== undefined
+      ? data?.testCase?.config?.ordered
+      : false
+  );
   const [isShowError, setIsShowError] = useState({
     minOrMax: false,
     values: false,
@@ -81,6 +87,7 @@ const TableTestForm = ({
     tableTest: false,
     columnName: false,
     columnNameSet: false,
+    columnNameSetOrdered: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -160,6 +167,7 @@ const TableTestForm = ({
       case TableTestType.TableColumnToMatchSet:
         return {
           columnNames: isEmpty(columnNameSet) ? undefined : columnNameSet,
+          ordered: columnNameSetOrdered,
         };
 
       case TableTestType.TableColumnCountToEqual:
@@ -239,6 +247,7 @@ const TableTestForm = ({
       case 'column-name-set':
         setcolumnNameSet(value as unknown as string);
         errorMsg.columnNameSet = false;
+        errorMsg.columnNameSetOrdered = false;
 
         break;
 
@@ -298,7 +307,7 @@ const TableTestForm = ({
           Column Names
         </label>
         <input
-          className="tw-form-inputs tw-form-inputs-padding"
+          className="tw-form-inputs tw-form-inputs-padding tw-mb-4"
           data-testid="column-name-set"
           id="column-name-set"
           name="column-name-set"
@@ -307,6 +316,14 @@ const TableTestForm = ({
           value={columnNameSet}
           onChange={handleValidation}
         />
+        <div className="tw-flex tw-gap-1">
+          <label>Match Column Input Order</label>
+          <ToggleSwitchV1
+            checked={columnNameSetOrdered}
+            handleCheck={() => setcolumnNameSetOrdered((pre) => !pre)}
+            testId="enable-ordered-column-names"
+          />
+        </div>
         {isShowError.columnNameSet && errorMsg('Value is required.')}
       </Field>
     );
