@@ -72,11 +72,9 @@ const Description: FC<DescriptionProps> = ({
 
   const checkPermission = () => {
     if (!isAuthDisabled && !isAdminUser) {
-      if (!isUndefined(hasEditAccess)) {
-        return Boolean(hasEditAccess);
-      } else {
-        return userPermissions[Operation.UpdateDescription];
-      }
+      return Boolean(
+        hasEditAccess || userPermissions[Operation.UpdateDescription]
+      );
     }
 
     return true;

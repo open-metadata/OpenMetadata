@@ -61,7 +61,12 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   );
 
   return (
-    <Popover content={popoverContent} trigger="hover" zIndex={9999}>
+    <Popover
+      destroyTooltipOnHide
+      content={popoverContent}
+      key="reaction-detail-popover"
+      trigger="hover"
+      zIndex={9999}>
       <Button
         className={classNames('ant-btn-reaction tw-mr-1', {
           'ant-btn-isReacted': isReacted,

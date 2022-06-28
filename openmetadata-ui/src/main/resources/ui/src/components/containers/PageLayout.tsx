@@ -26,7 +26,7 @@ interface PageLayoutProp {
 
 export const leftPanelAntCardStyle = {
   border: '1px rgb(221, 227, 234) solid',
-  borderRadius: '8px',
+  borderRadius: '4px',
   boxShadow: '1px 1px 8px rgb(0 0 0 / 6%)',
   marginRight: '4px',
   marginLeft: '4px',

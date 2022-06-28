@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import { uniqueId } from 'lodash';
+import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { Post, ThreadType } from '../../../generated/entity/feed/thread';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
@@ -62,6 +60,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                   id: thread.id,
                   reactions: thread.reactions,
                 } as Post;
+                const isTask = isEqual(thread.type, ThreadType.Task);
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
                 const repliedUsers = (thread.posts || [])
@@ -77,10 +76,12 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       style={{
                         ...leftPanelAntCardStyle,
                         marginTop: '20px',
-                        paddingTop:
-                          thread.type === ThreadType.Task ? '8px' : '',
+                        paddingTop: isTask ? '8px' : '',
+                        border: isTask
+                          ? '1px solid #E3DAFA'
+                          : leftPanelAntCardStyle.border,
                       }}>
-                      {thread.type === ThreadType.Task && <TaskBadge />}
+                      {isTask && <TaskBadge />}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
@@ -142,25 +143,10 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           <span className="tw-text-grey-muted">
                             Assignees:{' '}
                           </span>
-                          <span className="tw-ml-0.5 tw-align-middle tw-grid tw-grid-cols-3">
-                            {thread.task.assignees.map((assignee) => (
-                              <UserPopOverCard
-                                key={uniqueId()}
-                                type={assignee.type}
-                                userName={assignee.name || ''}>
-                                <span className="tw-flex tw-m-1.5 tw-mt-0">
-                                  <ProfilePicture
-                                    id=""
-                                    name={getEntityName(assignee)}
-                                    width="20"
-                                  />
-                                  <span className="tw-ml-1">
-                                    {getEntityName(assignee)}
-                                  </span>
-                                </span>
-                              </UserPopOverCard>
-                            ))}
-                          </span>
+                          <AssigneeList
+                            assignees={thread.task.assignees || []}
+                            className="tw-ml-0.5 tw-align-baseline tw-inline-flex tw-flex-wrap"
+                          />
                         </div>
                       )}
                     </Card>
