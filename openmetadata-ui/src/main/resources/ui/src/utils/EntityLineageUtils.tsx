@@ -94,7 +94,7 @@ export const onLoad = (
   forceZoomReset = false
 ) => {
   reactFlowInstance.fitView();
-  if (forceZoomReset || (length && length <= 1)) {
+  if (forceZoomReset || (length && length <= 2)) {
     reactFlowInstance.zoomTo(zoomValue);
   }
 };

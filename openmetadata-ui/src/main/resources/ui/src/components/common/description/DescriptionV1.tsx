@@ -75,15 +75,7 @@ const DescriptionV1 = ({
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
           onClick={onDescriptionEdit}>
-          <span className="tw-mr-2">
-            <SVGIcons
-              alt="edit"
-              icon={Icons.EDIT_OUTLINE_PRIMARY}
-              title="Edit"
-              width="16px"
-            />
-          </span>
-          <span>Edit</span>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </button>
       </NonAdminAction>
     ) : (
