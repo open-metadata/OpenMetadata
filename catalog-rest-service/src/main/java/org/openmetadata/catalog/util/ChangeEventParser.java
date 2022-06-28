@@ -216,7 +216,7 @@ public final class ChangeEventParser {
       case ADD:
         String fieldValue = getFieldValue(newFieldValue);
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
-          message = String.format("Started to follow **%s** `%s`", link.getEntityType(), link.getEntityFQN());
+          message = String.format("Followed **%s** `%s`", link.getEntityType(), link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
           message = String.format("Added **%s**: `%s`", updatedField, fieldValue);
         }
@@ -226,7 +226,7 @@ public final class ChangeEventParser {
         break;
       case DELETE:
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
-          message = String.format("Stopped following %s `%s`", link.getEntityType(), link.getEntityFQN());
+          message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
           message = String.format("Deleted **%s**", updatedField);
         }

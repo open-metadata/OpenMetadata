@@ -872,7 +872,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
     assertEquals(initialThreadCount + 3, threads.getData().size());
     assertEquals(
-        String.format("Started to follow **table** `%s`", TABLE2.getFullyQualifiedName()),
+        String.format("Followed **table** `%s`", TABLE2.getFullyQualifiedName()),
         threads.getData().get(0).getMessage());
     assertEquals("Message 2", threads.getData().get(1).getMessage());
 
