@@ -22,12 +22,12 @@
     },
     "username": {
       "title": "Username",
-      "description": "Username to connect to Looker. This user should have privileges to read all the metadata in Looker.",
+      "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
     "password": {
       "title": "Password",
-      "description": "Password to connect to Looker.",
+      "description": "User's Client Secret.",
       "type": "string",
       "format": "password"
     },
@@ -36,11 +36,6 @@
       "description": "URL to the Looker instance.",
       "type": "string",
       "format": "uri"
-    },
-    "env": {
-      "title": "Looker Environment",
-      "description": "Looker Environment",
-      "type": "string"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
