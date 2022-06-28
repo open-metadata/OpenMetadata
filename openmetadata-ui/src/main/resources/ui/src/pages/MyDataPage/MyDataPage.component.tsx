@@ -317,7 +317,12 @@ const MyDataPage = () => {
     type?: ThreadType
   ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(currentUser?.id, filterType, after, type)
+    getFeedsWithFilter(
+      currentUser?.id,
+      filterType ?? FeedFilter.ALL,
+      after,
+      type
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);

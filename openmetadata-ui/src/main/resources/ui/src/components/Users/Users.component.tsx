@@ -651,7 +651,7 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="tw-relative tw--mt-4">
+        <div className="tw-relative tw--mt-4 tw-px-1.5">
           <Button
             className="hover:tw-no-underline focus:tw-no-underline"
             data-testid="feeds"
