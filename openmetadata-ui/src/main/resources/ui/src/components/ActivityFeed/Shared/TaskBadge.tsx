@@ -18,10 +18,12 @@ const TaskBadge = () => {
     <span
       className="tw-rounded tw-px-2  tw-absolute tw-left-4 tw--top-3"
       style={{
-        color: '#485056',
-        background: '#EBF5FF',
+        background: '#F1EDFD',
+        border: '1px solid #E3DAFA',
         boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.06)',
-        borderRadius: '4px',
+        borderRadius: '2px',
+        color: '#7147E8',
+        fontSize: '12px',
       }}>
       Task
     </span>

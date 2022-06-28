@@ -17,7 +17,7 @@ import { Button, Card, Dropdown, Layout, Menu, Modal, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower, uniqueId } from 'lodash';
+import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import { EditorContentRef, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
@@ -36,6 +36,7 @@ import {
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -429,7 +430,7 @@ const TaskDetailPage = () => {
           className={classNames(
             'tw-rounded-3xl tw-px-2 tw-p-0',
             {
-              'tw-bg-green-100': openCheck,
+              'tw-bg-task-status-bg': openCheck,
             },
             { 'tw-bg-gray-100': closedCheck }
           )}>
@@ -437,7 +438,7 @@ const TaskDetailPage = () => {
             className={classNames(
               'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
               {
-                'tw-bg-green-500': openCheck,
+                'tw-bg-task-status-fg': openCheck,
               },
               {
                 'tw-bg-gray-500': closedCheck,
@@ -447,7 +448,7 @@ const TaskDetailPage = () => {
           <span
             className={classNames(
               'tw-ml-1',
-              { 'tw-text-green-500': openCheck },
+              { 'tw-text-task-status-fg': openCheck },
               { 'tw-text-gray-500': closedCheck }
             )}>
             {status}
@@ -627,9 +628,7 @@ const TaskDetailPage = () => {
 
               <ColumnDetail column={columnObject} />
               <div className="tw-flex" data-testid="task-assignees">
-                <span className="tw-text-grey-muted tw-self-center">
-                  Assignees:
-                </span>
+                <span className="tw-text-grey-muted ">Assignees:</span>
                 {editAssignee ? (
                   <Fragment>
                     <Assignees
@@ -661,39 +660,20 @@ const TaskDetailPage = () => {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <span
-                      className={classNames('tw-self-center tw-mr-1 tw-flex', {
-                        'tw-grid tw-grid-cols-4':
-                          (taskDetail.task?.assignees || []).length > 2,
-                      })}>
-                      {taskDetail.task?.assignees?.map((assignee) => (
-                        <UserPopOverCard
-                          key={uniqueId()}
-                          type={assignee.type}
-                          userName={assignee.name || ''}>
-                          <span className="tw-flex tw-mx-1.5">
-                            <ProfilePicture
-                              id=""
-                              name={getEntityName(assignee)}
-                              width="20"
-                            />
-                            <span className="tw-ml-1">
-                              {getEntityName(assignee)}
-                            </span>
-                          </span>
-                        </UserPopOverCard>
-                      ))}
-                    </span>
+                    <AssigneeList
+                      assignees={taskDetail?.task?.assignees || []}
+                      className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                    />
                     {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <button
-                        className="focus:tw-outline-none tw-self-baseline"
+                        className="focus:tw-outline-none tw-self-baseline tw-flex-none"
                         data-testid="edit-suggestion"
                         onClick={() => setEditAssignee(true)}>
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="12px"
+                          width="14px"
                         />
                       </button>
                     )}
