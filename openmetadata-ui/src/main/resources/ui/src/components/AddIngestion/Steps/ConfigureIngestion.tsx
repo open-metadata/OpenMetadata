@@ -74,7 +74,7 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
-  const getIngestSampleToggle = (label: string, description: string) => {
+  const getIngestSampleToggle = (label: string, desc: string) => {
     return (
       <>
         <Field>
@@ -86,7 +86,7 @@ const ConfigureIngestion = ({
               testId="ingest-sample-data"
             />
           </div>
-          <p className="tw-text-grey-muted tw-mt-3">{description}</p>
+          <p className="tw-text-grey-muted tw-mt-3">{desc}</p>
         </Field>
         {getSeparator('')}
       </>
