@@ -435,9 +435,9 @@ const MyDataPage = () => {
       FeedFilter.ASSIGNED_TO,
       undefined,
       ThreadType.Task
-    ).then(
-      (res: AxiosResponse) => res.data && setPendingTaskCount(res.data.length)
-    );
+    ).then((res: AxiosResponse) => {
+      res.data && setPendingTaskCount(res.data.data.length);
+    });
   }, [currentUser]);
 
   useEffect(() => {
@@ -468,6 +468,13 @@ const MyDataPage = () => {
             JSON.parse(newActivity),
             ...prevActivities,
           ]);
+        }
+      });
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setPendingTaskCount((prevCount) =>
+            prevCount ? prevCount + 1 : prevCount
+          );
         }
       });
     }

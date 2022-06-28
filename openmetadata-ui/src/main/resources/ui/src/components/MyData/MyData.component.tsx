@@ -237,25 +237,16 @@ const MyData: React.FC<MyDataProps> = ({
           feedFilter !== FeedFilter.ALL ||
           threadType ? (
             <Fragment>
-              {newFeedsLength ? (
-                <div className="tw-py-px tw-pt-3 tw-pb-3">
-                  <button
-                    className="tw-refreshButton "
-                    onClick={onRefreshFeeds}>
-                    View {newFeedsLength} new{' '}
-                    {newFeedsLength > 1 ? 'activities' : 'activity'}
-                  </button>
-                </div>
-              ) : null}
-
               <ActivityFeedList
                 withSidePanel
                 className=""
                 deletePostHandler={deletePostHandler}
                 feedList={feedData}
                 postFeedHandler={postFeedHandler}
+                refreshFeedCount={newFeedsLength}
                 updateThreadHandler={updateThreadHandler}
                 onFeedFiltersUpdate={handleFeedFilterChange}
+                onRefreshFeeds={onRefreshFeeds}
               />
             </Fragment>
           ) : (

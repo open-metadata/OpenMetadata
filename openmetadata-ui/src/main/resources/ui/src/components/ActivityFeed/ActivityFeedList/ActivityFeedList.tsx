@@ -42,6 +42,8 @@ import FeedListSeparator from './FeedListSeparator';
 const ActivityFeedList: FC<ActivityFeedListProp> = ({
   className,
   feedList,
+  refreshFeedCount,
+  onRefreshFeeds,
   withSidePanel = false,
   isEntityFeed = false,
   postFeedHandler,
@@ -224,6 +226,14 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
   return (
     <div className={classNames(className)} id="feedData">
       {getFilterDropDown()}
+      {refreshFeedCount ? (
+        <div className="tw-py-px tw-pt-3 tw-pb-3">
+          <button className="tw-refreshButton " onClick={onRefreshFeeds}>
+            View {refreshFeedCount} new{' '}
+            {refreshFeedCount > 1 ? 'activities' : 'activity'}
+          </button>
+        </div>
+      ) : null}
       {feedList.length > 0 ? (
         <Fragment>
           {relativeDays.map((d, i) => {
