@@ -121,13 +121,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   return (
     <div
-      className={classNames(
-        className,
-        'hover:tw-bg-gray-100 tw-p-2 tw-pb-1 tw-mb-1',
-        {
-          'tw-bg-gray-100': visible,
-        }
-      )}>
+      className={classNames(className, 'hover:tw-bg-gray-100', {
+        'tw-bg-gray-100': visible,
+      })}>
       <Popover
         destroyTooltipOnHide
         align={{ targetOffset: [0, -35] }}
