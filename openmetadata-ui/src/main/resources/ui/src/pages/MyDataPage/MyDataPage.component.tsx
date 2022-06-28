@@ -424,7 +424,7 @@ const MyDataPage = () => {
       });
   };
 
-  // Fetch tasks list to show cound for Pending tasks
+  // Fetch tasks list to show count for Pending tasks
   const fetchMyTaskData = useCallback(() => {
     if (!currentUser || !currentUser.id) {
       return;

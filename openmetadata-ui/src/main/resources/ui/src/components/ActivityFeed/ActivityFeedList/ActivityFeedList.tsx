@@ -142,10 +142,6 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
     [isEntityFeed]
   );
 
-  //   useEffect(() => {
-  //     onFeedFiltersUpdate && onFeedFiltersUpdate(feedFilter, threadType);
-  //   }, [threadType, feedFilter]);
-
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
       <div className="tw-flex tw-justify-between">
