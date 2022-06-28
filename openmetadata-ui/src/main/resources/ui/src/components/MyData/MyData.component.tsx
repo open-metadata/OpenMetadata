@@ -236,21 +236,19 @@ const MyData: React.FC<MyDataProps> = ({
           {feedData?.length > 0 ||
           feedFilter !== FeedFilter.ALL ||
           threadType ? (
-            <Fragment>
-              <ActivityFeedList
-                withSidePanel
-                className=""
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                postFeedHandler={postFeedHandler}
-                refreshFeedCount={newFeedsLength}
-                updateThreadHandler={updateThreadHandler}
-                onFeedFiltersUpdate={handleFeedFilterChange}
-                onRefreshFeeds={onRefreshFeeds}
-              />
-            </Fragment>
+            <ActivityFeedList
+              withSidePanel
+              className=""
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              postFeedHandler={postFeedHandler}
+              refreshFeedCount={newFeedsLength}
+              updateThreadHandler={updateThreadHandler}
+              onFeedFiltersUpdate={handleFeedFilterChange}
+              onRefreshFeeds={onRefreshFeeds}
+            />
           ) : (
-            <Onboarding />
+            !isFeedLoading && <Onboarding />
           )}
           <div
             data-testid="observer-element"

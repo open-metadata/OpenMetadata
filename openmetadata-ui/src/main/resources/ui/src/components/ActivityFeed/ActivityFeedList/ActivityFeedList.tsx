@@ -144,7 +144,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
 
   const getFilterDropDown = () => {
     return hideFeedFilter && hideThreadFilter ? null : (
-      <div className="tw-flex tw-justify-between">
+      <div className="tw-flex tw-justify-between tw-px-1.5">
         {/* Feed filter */}
         {!hideFeedFilter && (
           <div className="tw-relative tw-mt-5 tw-mr-5">
