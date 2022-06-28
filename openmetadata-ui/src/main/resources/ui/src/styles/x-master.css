@@ -1333,6 +1333,10 @@ div.ant-typography-ellipsis-custom {
   box-shadow: none;
 }
 
+.add-webhook-container #center {
+  padding-right: 0px;
+}
+
 .ant-dropdown-menu-item-selected {
   color: #7147e8;
   background-color: #7147e825;
