@@ -121,13 +121,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
 
   return (
     <div
-      className={classNames(
-        className,
-        'hover:tw-bg-gray-100 tw-p-2 tw-pb-1 tw-mb-1',
-        {
-          'tw-bg-gray-100': visible,
-        }
-      )}>
+      className={classNames(className, 'hover:tw-bg-gray-100', {
+        'tw-bg-gray-100': visible,
+      })}>
       <Popover
         destroyTooltipOnHide
         align={{ targetOffset: [0, -35] }}
@@ -151,7 +147,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
         visible={visible}
         zIndex={9999}
         onVisibleChange={handleVisibleChange}>
-        <div className="tw-flex">
+        <div className="tw-flex tw-p-2 tw-mb-1">
           <UserPopOverCard userName={feedDetail.from}>
             <span className="tw-cursor-pointer" data-testid="authorAvatar">
               <ProfilePicture id="" name={feedDetail.from} width="32" />
