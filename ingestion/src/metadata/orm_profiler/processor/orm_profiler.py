@@ -132,7 +132,7 @@ class OrmProfilerProcessor(Processor[Table]):
             if my_record_tests and my_record_tests.profile_sample:
                 return my_record_tests.profile_sample
 
-        return table.profileSample or 100.0
+        return table.profileSample or None
 
     def get_partition_details(
         self,
