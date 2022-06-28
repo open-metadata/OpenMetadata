@@ -18,6 +18,7 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../../generated/api/tests/createTableTest';
@@ -29,7 +30,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -109,7 +110,11 @@ export interface DatasetDetailsProps {
     testType: ColumnTestType
   ) => void;
   deletePostHandler: (threadId: string, postId: string) => void;
-  fetchFeedHandler: (after?: string) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => void;
   handleExtentionUpdate: (updatedTable: Table) => void;
   updateThreadHandler: ThreadUpdatedFunc;
 }

@@ -14,7 +14,13 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
@@ -558,6 +564,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -666,6 +679,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>

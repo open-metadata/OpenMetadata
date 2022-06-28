@@ -12,7 +12,13 @@
  */
 
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
@@ -351,6 +357,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedFilter, threadType) => {
+      fetchFeedHandler(paging.after, feedFilter, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -442,6 +455,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>

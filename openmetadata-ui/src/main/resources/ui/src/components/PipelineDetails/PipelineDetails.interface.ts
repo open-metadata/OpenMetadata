@@ -19,9 +19,10 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -56,7 +57,11 @@ export interface PipeLineDetailsProp {
   entityFieldThreadCount: EntityFieldThreadCount[];
   paging: Paging;
   pipelineStatus: Pipeline['pipelineStatus'];
-  fetchFeedHandler: (after?: string) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadType?: ThreadType
+  ) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followPipelineHandler: () => void;

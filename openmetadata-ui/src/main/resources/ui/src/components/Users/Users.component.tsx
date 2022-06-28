@@ -21,9 +21,10 @@ import React, {
   RefObject,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -32,7 +33,9 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import {
   getUserCurrentTab,
   profileInfo,
+  USER_PROFILE_TABS,
 } from '../../constants/usersprofile.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
@@ -43,39 +46,23 @@ import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
 import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import {
+  filterList,
+  filterListTasks,
+} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
-const tabs = [
-  {
-    name: 'Activity',
-    isProtected: false,
-    position: 1,
-  },
-  {
-    name: 'Tasks',
-    isProtected: false,
-    position: 2,
-  },
-  {
-    name: 'My Data',
-    isProtected: false,
-    position: 3,
-  },
-  {
-    name: 'Following',
-    isProtected: false,
-    position: 4,
-  },
-];
 
 const Users = ({
   userData,
@@ -105,6 +92,27 @@ const Users = ({
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
   const history = useHistory();
+  const [showFilterList, setShowFilterList] = useState(false);
+
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
+    (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
+  );
+  const threadType = useMemo(() => {
+    return activeTab === 2 ? ThreadType.Task : ThreadType.Conversation;
+  }, [activeTab]);
+
+  const handleFilterDropdownChange = useCallback(
+    (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
+      if (value) {
+        fetchFeedHandler(threadType, undefined, value as FeedFilter);
+        setFeedFilter(value as FeedFilter);
+      }
+      setShowFilterList(false);
+    },
+    [threadType]
+  );
 
   const fetchTeams = () => {
     getTeams(['users'])
@@ -129,6 +137,9 @@ const Users = ({
 
   const activeTabHandler = (tabNum: number) => {
     setActiveTab(tabNum);
+    setFeedFilter(FeedFilter.ALL);
+    // To reset search params appends from other page for proper navigation
+    location.search = '';
     if (profileInfo[tabNum - 1].path !== tab) {
       history.push({
         pathname: getUserPath(username, profileInfo[tabNum - 1].path),
@@ -641,8 +652,35 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
+        <div className="tw-relative tw--mt-4 tw-px-1.5">
+          <Button
+            className="hover:tw-no-underline focus:tw-no-underline"
+            data-testid="feeds"
+            size="custom"
+            tag="button"
+            variant="link"
+            onClick={() => setShowFilterList((visible) => !visible)}>
+            <span className="tw-font-medium tw-text-grey">
+              {
+                (activeTab === 1 ? filterList : filterListTasks).find(
+                  (f) => f.value === feedFilter
+                )?.name
+              }
+            </span>
+            <DropDownIcon />
+          </Button>
+          {showFilterList && (
+            <DropDownList
+              dropDownList={activeTab === 1 ? filterList : filterListTasks}
+              value={feedFilter}
+              onSelect={handleFilterDropdownChange}
+            />
+          )}
+        </div>
         <div className="tw-mt-3.5">
           <ActivityFeedList
+            hideFeedFilter
+            hideThreadFilter
             withSidePanel
             className=""
             deletePostHandler={deletePostHandler}
@@ -749,11 +787,10 @@ const Users = ({
           activeTab={activeTab}
           className="tw-flex-initial"
           setActiveTab={activeTabHandler}
-          tabs={tabs}
+          tabs={USER_PROFILE_TABS}
         />
       </div>
-      <div>{activeTab === 1 && getFeedTabData()}</div>
-      <div>{activeTab === 2 && getFeedTabData()}</div>
+      <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
       <div>{activeTab === 3 && getEntityData(userData.owns || [])}</div>
       <div>{activeTab === 4 && getEntityData(userData.follows || [])}</div>
     </PageLayout>

@@ -13,7 +13,7 @@
 
 import { FormatedTableData, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
@@ -30,17 +30,20 @@ export interface MyDataProps {
   countMlModal: number;
   countDashboards: number;
   followedDataCount: number;
+  pendingTaskCount: number;
   ownedDataCount: number;
   countPipelines: number;
   userDetails?: User;
   ownedData: Array<FormatedTableData>;
   followedData: Array<FormatedTableData>;
   feedData: Thread[];
-  feedFilter: FeedFilter;
   paging: Paging;
   isFeedLoading: boolean;
-  feedFilterHandler: (v: FeedFilter) => void;
-  fetchFeedHandler: (filterType: FeedFilter, after?: string) => void;
+  fetchFeedHandler: (
+    filterType: FeedFilter,
+    after?: string,
+    threadType?: ThreadType
+  ) => void;
   fetchData?: (value: SearchDataFunctionType) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
