@@ -68,6 +68,7 @@ export interface ConfigureIngestionProps {
   fqnFilterPattern: FilterPattern;
   includeLineage: boolean;
   includeView: boolean;
+  includeTags: boolean;
   markDeletedTables?: boolean;
   enableDebugLog: boolean;
   ingestSampleData: boolean;
@@ -87,6 +88,7 @@ export interface ConfigureIngestionProps {
   handleDescription?: (value: string) => void;
   handleIncludeLineage: () => void;
   handleIncludeView: () => void;
+  handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
   handleEnableDebugLog: () => void;
   handleIngestSampleData: () => void;

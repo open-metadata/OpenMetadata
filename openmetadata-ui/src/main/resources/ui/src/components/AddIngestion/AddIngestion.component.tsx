@@ -158,6 +158,9 @@ const AddIngestion = ({
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
   );
+  const [includeTag, setIncludeTags] = useState(
+    Boolean((data?.sourceConfig.config as ConfigClass)?.includeTags)
+  );
   const [includeLineage, setIncludeLineage] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeLineage ?? true)
   );
@@ -388,6 +391,7 @@ const AddIngestion = ({
 
         return {
           includeViews: includeView,
+          includeTags: includeTag,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
             showDatabaseFilter
@@ -611,6 +615,7 @@ const AddIngestion = ({
             handleDescription={(val) => setDescription(val)}
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
+            handleIncludeTags={() => setIncludeTags((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
@@ -620,6 +625,7 @@ const AddIngestion = ({
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeLineage={includeLineage}
+            includeTags={includeTag}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}

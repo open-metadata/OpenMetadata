@@ -38,6 +38,7 @@ const ConfigureIngestion = ({
   fqnFilterPattern,
   includeLineage,
   includeView,
+  includeTags,
   markDeletedTables,
   serviceCategory,
   pipelineType,
@@ -62,6 +63,7 @@ const ConfigureIngestion = ({
   handleShowFilter,
   handleIncludeLineage,
   handleIncludeView,
+  handleIncludeTags,
   handleMarkDeletedTables,
   handleIngestSampleData,
   handleQueryLogDuration,
@@ -125,6 +127,20 @@ const ConfigureIngestion = ({
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
               Enable extracting views from the data source
+            </p>
+            {getSeparator('')}
+          </Field>
+          <Field>
+            <div className="tw-flex tw-gap-1">
+              <label>Include tags</label>
+              <ToggleSwitchV1
+                checked={includeTags}
+                handleCheck={handleIncludeTags}
+                testId="include-tags"
+              />
+            </div>
+            <p className="tw-text-grey-muted tw-mt-3">
+              Enable extracting tags from the data source
             </p>
             {getSeparator('')}
           </Field>
