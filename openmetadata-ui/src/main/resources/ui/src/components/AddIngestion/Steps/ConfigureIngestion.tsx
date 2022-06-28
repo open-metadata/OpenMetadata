@@ -177,28 +177,26 @@ const ConfigureIngestion = ({
     );
   };
 
-  const getDashBoardServiceName = () => {
+  const getDashboardDBServiceName = () => {
     return (
-      <>
-        <Field>
-          <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
-            Database Service Name
-          </label>
-          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
-            Database Service Name for creation of lineage
-          </p>
-          <input
-            className="tw-form-inputs tw-form-inputs-padding"
-            data-testid="name"
-            id="name"
-            name="name"
-            type="text"
-            value={databaseServiceName}
-            onChange={(e) => handleDatasetServiceName(e.target.value)}
-          />
-          {getSeparator('')}
-        </Field>
-      </>
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+          Database Service Name
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          Database Service Name for creation of lineage
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="name"
+          id="name"
+          name="name"
+          type="text"
+          value={databaseServiceName}
+          onChange={(e) => handleDatasetServiceName(e.target.value)}
+        />
+        {getSeparator('')}
+      </Field>
     );
   };
 
@@ -272,7 +270,7 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.CHART}
             />
             {getSeparator('')}
-            {getDashBoardServiceName()}
+            {getDashboardDBServiceName()}
             {getDebugLogToggle()}
           </Fragment>
         );
