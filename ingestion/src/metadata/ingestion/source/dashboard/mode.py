@@ -209,19 +209,20 @@ class ModeSource(DashboardServiceSource):
             )
             charts = response_charts[mode_client.EMBEDDED][mode_client.CHARTS]
             for chart in charts:
+                chart_name = chart[mode_client.VIEW_VEGAS].get(mode_client.TITLE)
                 try:
                     if filter_by_chart(
                         self.source_config.chartFilterPattern,
-                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
+                        chart_name,
                     ):
                         self.status.filter(
-                            chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
+                            chart_name,
                             "Chart Pattern not Allowed",
                         )
                         continue
                     yield CreateChartRequest(
                         name=chart.get(mode_client.TOKEN),
-                        displayName=chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
+                        displayName=chart_name,
                         description="",
                         chartType=ChartType.Other,
                         chartUrl=chart[mode_client.LINKS]["report_viz_web"][
@@ -232,13 +233,11 @@ class ModeSource(DashboardServiceSource):
                             type="dashboardService",
                         ),
                     )
-                    self.status.scanned(
-                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE]
-                    )
+                    self.status.scanned(chart_name)
                 except Exception as err:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.error(err)
                     self.status.failure(
-                        chart[mode_client.VIEW_VEGAS][mode_client.TITLE],
+                        chart_name if chart_name else "",
                         repr(err),
                     )

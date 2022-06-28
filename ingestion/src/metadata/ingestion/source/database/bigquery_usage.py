@@ -126,10 +126,7 @@ class BigqueryUsageSource(UsageSource):
                 f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
             )
             entries = self.usage_logger.list_entries(filter_=filter_)
-            yield TableQueries(
-                queries=self.get_table_query(entries),
-                analysisDate=self.start + timedelta(days=i),
-            )
+            yield TableQueries(queries=self.get_table_query(entries))
 
     def close(self):
         super().close()
