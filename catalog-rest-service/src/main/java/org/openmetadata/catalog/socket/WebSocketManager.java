@@ -5,9 +5,8 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
 import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +18,7 @@ public class WebSocketManager {
   private final SocketIoServer mSocketIoServer;
   public static final String feedBroadcastChannel = "activityFeed";
   public static final String taskBroadcastChannel = "taskChannel";
-
-  private final Map<UUID, SocketIoSocket> activityFeedEndpoints = new ConcurrentHashMap<>();
+  private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     mEngineIoServer = new EngineIoServer(eiOptions);
@@ -50,14 +48,21 @@ public class WebSocketManager {
                 "disconnect",
                 args1 -> {
                   LOG.info(
-                      "Client :"
+                      "Client from:"
                           + userId
                           + "with Remote Address :"
                           + socket.getInitialHeaders().get("RemoteAddress")
                           + " disconnected.");
-                  activityFeedEndpoints.remove(UUID.fromString(userId));
+                  UUID id = UUID.fromString(userId);
+                  Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
+                  allUserConnection.remove(socket.getId());
+                  activityFeedEndpoints.put(id, allUserConnection);
                 });
-            activityFeedEndpoints.put(UUID.fromString(userId), socket);
+            UUID id = UUID.fromString(userId);
+            Map<String, SocketIoSocket> userSocketConnections;
+            userSocketConnections = activityFeedEndpoints.containsKey(id) ? activityFeedEndpoints.get(id) : new HashMap<>();
+            userSocketConnections.put(socket.getId(), socket);
+            activityFeedEndpoints.put(id, userSocketConnections);
           }
         });
   }
@@ -73,27 +78,26 @@ public class WebSocketManager {
   public EngineIoServer getEngineIoServer() {
     return mEngineIoServer;
   }
-
-  public Map<UUID, SocketIoSocket> getActivityFeedEndpoints() {
+  public Map<UUID, Map<String, SocketIoSocket>> getActivityFeedEndpoints() {
     return activityFeedEndpoints;
   }
 
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach((key, value) -> value.send(event, message));
+    activityFeedEndpoints.forEach((key, value) -> {
+      value.forEach((key1,value1) -> value1.send(event, message));
+    });
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
     if (activityFeedEndpoints.containsKey(receiver)) {
-      activityFeedEndpoints.get(receiver).send(event, message);
+      activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
     }
   }
 
   public void sendToManyWithUUID(List<UUID> receivers, String event, String message) {
     receivers.forEach(
         (e) -> {
-          if (activityFeedEndpoints.containsKey(e)) {
-            activityFeedEndpoints.get(e).send(event, message);
-          }
+            sendToOne(e,event,message);
         });
   }
 
@@ -101,9 +105,7 @@ public class WebSocketManager {
     receivers.forEach(
         (e) -> {
           UUID key = UUID.fromString(e);
-          if (activityFeedEndpoints.containsKey(key)) {
-            activityFeedEndpoints.get(key).send(event, message);
-          }
+          sendToOne(key,event,message);
         });
   }
 
