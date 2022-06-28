@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/glueConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlueConnection",
+  "description": "Glue Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.services.connections.pipeline.GlueConnection",
+  "definitions": {
+    "glueType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Glue"],
+      "default": "Glue"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/glueType",
+      "default": "Glue"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["awsConfig"]
+}

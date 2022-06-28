@@ -56,7 +56,7 @@ def build_usage_config_from_file(
 
     return OpenMetadataWorkflowConfig(
         source=source,
-        processor=Processor(type="query-parser", config={"filter": ""}),
+        processor=Processor(type="query-parser", config={}),
         stage=Stage(
             type="table-usage",
             config={"filename": filename},

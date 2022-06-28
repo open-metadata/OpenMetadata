@@ -1055,7 +1055,7 @@ code {
 .ant-btn-popover-reaction {
   height: auto;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   background-color: transparent;
 }
@@ -1160,17 +1160,31 @@ code {
 .ant-btn-link-custom:hover {
   color: #7147e8;
 }
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
   background: #7147e8;
   color: #ffffff;
   border-color: #7147e8;
 }
+
+.ant-dropdown-button.ant-btn-primary-dropdown
+  > .ant-btn-primary.ant-btn-icon-only {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  border-left-color: #ffffff;
+}
 .ant-btn-primary-custom:hover,
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
   background: #7147e8;
   color: #ffffff;
   border-color: #7147e8;
   text-decoration: none;
+}
+
+.ant-btn-group .ant-btn-primary:first-child:not(:last-child) {
+  border-right-color: #ffffff;
 }
 /* Antd custom button CSS */
 
@@ -1255,12 +1269,6 @@ code {
   background-color: #276ef1;
 }
 
-.data-box.Successful.selected,
-.data-box.Failed.selected,
-.data-box.Pending.selected {
-  background-color: #7147e8;
-}
-
 .exec-date-time {
   position: absolute;
   left: 15px;
@@ -1279,16 +1287,31 @@ code {
   -ms-transform: rotate(-70deg);
 }
 
-.leaf-node.Successful {
+.leaf-node.Successful .task-node {
   border-color: #07a35a;
+  background-color: #07a35a40;
 }
 
-.leaf-node.Failed {
+.leaf-node.Failed .task-node {
   border-color: #e54937;
+  background-color: #e5493740;
 }
 
-.leaf-node.Pending {
+.leaf-node.Pending .task-node {
   border-color: #276ef1;
+  background-color: #276ef140;
+}
+
+.leaf-node.Successful .react-flow__handle {
+  background-color: #07a35a !important;
+}
+
+.leaf-node.Failed .react-flow__handle {
+  background-color: #e54937 !important;
+}
+
+.leaf-node.Pending .react-flow__handle {
+  background-color: #276ef1 !important;
 }
 
 .ProseMirror .placeholder {
@@ -1298,9 +1321,23 @@ div.ant-typography-ellipsis-custom {
   margin-bottom: 0px;
 }
 
+.user-profile-antd-card .ant-card-body:first-child {
+  padding: 0px;
+  overflow: hidden;
+}
+
 .ant-input:hover,
 .ant-input:focus {
   border-color: #7147e8;
   border-right-width: 0px;
   box-shadow: none;
+}
+
+.add-webhook-container #center {
+  padding-right: 0px;
+}
+
+.ant-dropdown-menu-item-selected {
+  color: #7147e8;
+  background-color: #7147e825;
 }

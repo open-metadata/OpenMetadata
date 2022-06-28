@@ -12,12 +12,12 @@
       "$ref": "../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
-      "description": "Display Name that identifies this ingeestion pipeline.",
+      "description": "Display Name that identifies this ingestion pipeline.",
       "type": "string"
     },
     "description": {
       "description": "Description of the pipeline.",
-      "type": "string"
+      "$ref": "../../../type/basic.json#/definitions/markdown"
     },
     "pipelineType": {
       "$ref": "../../../entity/services/ingestionPipelines/ingestionPipeline.json#/definitions/pipelineType"

@@ -38,32 +38,16 @@
       "type": "string",
       "default": "bigquery.googleapis.com"
     },
-    "projectId": {
-      "title": "Project ID",
-      "description": "BigQuery project ID. Only required if using credentials path instead of values.",
-      "type": "string"
-    },
     "credentials": {
       "title": "GCS Credentials",
       "description": "GCS Credentials",
       "$ref": "../../../../security/credentials/gcsCredentials.json"
     },
-    "enablePolicyTagImport": {
-      "title": "Enable Policy Tag Import",
-      "description": "Enable importing policy tags of BigQuery into OpenMetadata",
-      "type": "boolean",
-      "default": true
-    },
     "tagCategoryName": {
       "title": "Tag Category Name",
-      "description": "OpenMetadata Tag category name if enablePolicyTagImport is set to true.",
+      "description": "Custom OpenMetadata Tag category name for BigQuery policy tags.",
       "type": "string",
       "default": "BigqueryPolicyTags"
-    },
-    "database": {
-      "title": "Database",
-      "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
-      "type": "string"
     },
     "partitionQueryDuration": {
       "title": "Partition Query Duration",
@@ -82,6 +66,12 @@
       "description": "Column name on which the BigQuery table will be partitioned.",
       "type": "string",
       "default": "_PARTITIONTIME"
+    },
+    "taxonomyLocation": {
+      "title": "Taxonomy Location",
+      "description": "Taxonomy location used to fetch policy tags",
+      "type": "string",
+      "default": "us"
     },
     "connectionOptions": {
       "title": "Connection Options",

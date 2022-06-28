@@ -29,6 +29,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
+import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
 import AppRouter from './router/AppRouter';
 
@@ -50,9 +51,11 @@ const App: FunctionComponent = () => {
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
-          <AuthProvider childComponentType={AppRouter}>
-            <AppRouter />
-          </AuthProvider>
+          <WebSocketProvider>
+            <AuthProvider childComponentType={AppRouter}>
+              <AppRouter />
+            </AuthProvider>
+          </WebSocketProvider>
         </Router>
         <ToastContainer {...toastOptions} newestOnTop />
       </div>

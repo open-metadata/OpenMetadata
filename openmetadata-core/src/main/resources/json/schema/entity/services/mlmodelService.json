@@ -1,0 +1,106 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/mlmodelService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MlModelService",
+  "description": "MlModel Service Entity, such as MlFlow.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.services.MlModelService",
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "definitions": {
+    "mlModelServiceType": {
+      "description": "Type of MlModel service",
+      "type": "string",
+      "enum": ["Mlflow", "Sklearn"],
+      "javaEnums": [
+        {
+          "name": "Mlflow"
+        },
+        {
+          "name": "Sklearn"
+        }
+      ]
+    },
+    "mlModelConnection": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MlModelConnection",
+      "description": "MlModel Connection.",
+      "properties": {
+        "config": {
+          "oneOf": [
+            {
+              "$ref": "./connections/mlmodel/mlflowConnection.json"
+            },
+            {
+              "$ref": "./connections/mlmodel/sklearnConnection.json"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this pipeline service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline service.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceType": {
+      "description": "Type of pipeline service such as Airflow or Prefect...",
+      "$ref": "#/definitions/mlModelServiceType"
+    },
+    "description": {
+      "description": "Description of a pipeline service instance.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this pipeline service to extract metadata",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "connection": {
+      "$ref": "#/definitions/mlModelConnection"
+    },
+    "owner": {
+      "description": "Owner of this pipeline service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this pipeline service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "serviceType", "connection"],
+  "additionalProperties": false
+}

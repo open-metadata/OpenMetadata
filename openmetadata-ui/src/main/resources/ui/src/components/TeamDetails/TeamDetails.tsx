@@ -606,9 +606,7 @@ const TeamDetails = ({
               blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
-              hasEditAccess={isActionAllowed(
-                userPermissions[Operation.UpdateDescription]
-              )}
+              hasEditAccess={isOwner()}
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}

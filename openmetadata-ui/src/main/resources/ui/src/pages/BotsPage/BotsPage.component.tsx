@@ -114,7 +114,13 @@ const BotsPage = () => {
   }, [botsName]);
 
   return (
-    <Fragment>{isLoading ? <Loader /> : getBotsDetailComponent()}</Fragment>
+    <Fragment>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <div className="tw-self-center">{getBotsDetailComponent()}</div>
+      )}
+    </Fragment>
   );
 };
 

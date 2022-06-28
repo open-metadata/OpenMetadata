@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
@@ -50,7 +51,7 @@ import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
 const tabs = [
@@ -213,9 +214,9 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full">
+        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-items-center tw-gap-1">
+            <div className="tw-flex tw-items-center tw-gap-1 ">
               <input
                 className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
                 data-testid="displayName"
@@ -279,7 +280,7 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5">
+        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
@@ -321,84 +322,102 @@ const Users = ({
 
     if (!isAdminUser && !isAuthDisabled) {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Teams</h6>
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{teamsElement}</div>
-        </Fragment>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Teams</h6>
+            </div>
+          }>
+          <div>{teamsElement}</div>
+        </Card>
       );
     } else {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Teams</h6>
-            {!isTeamsEdit && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
-                data-testid="edit-teams"
-                onClick={() => setIsTeamsEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
-            )}
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
-            {isTeamsEdit ? (
-              <Fragment>
-                <Select
-                  isClearable
-                  isMulti
-                  aria-label="Select teams"
-                  className="tw-ml-1"
-                  isSearchable={false}
-                  options={teams?.map((team) => ({
-                    label: getEntityName(team as unknown as EntityReference),
-                    value: team.id,
-                  }))}
-                  placeholder="Teams..."
-                  styles={reactSingleSelectCustomStyle}
-                  value={selectedTeams}
-                  onChange={handleOnTeamsChange}
-                />
-                <div
-                  className="tw-flex tw-justify-end tw-mt-2"
-                  data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsTeamsEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-teams"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleTeamsChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
-                  </Button>
-                </div>
-              </Fragment>
-            ) : (
-              teamsElement
-            )}
-          </div>
-        </Fragment>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              {!isTeamsEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  data-testid="edit-teams"
+                  onClick={() => setIsTeamsEdit(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+          }>
+          <Fragment>
+            <div>
+              {isTeamsEdit ? (
+                <Fragment>
+                  <Select
+                    isClearable
+                    isMulti
+                    aria-label="Select teams"
+                    className="tw-ml-1"
+                    isSearchable={false}
+                    options={teams?.map((team) => ({
+                      label: getEntityName(team as unknown as EntityReference),
+                      value: team.id,
+                    }))}
+                    placeholder="Teams..."
+                    styles={reactSingleSelectCustomStyle}
+                    value={selectedTeams}
+                    onChange={handleOnTeamsChange}
+                  />
+                  <div
+                    className="tw-flex tw-justify-end tw-mt-2"
+                    data-testid="buttons">
+                    <Button
+                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                      data-testid="cancel-teams"
+                      size="custom"
+                      theme="primary"
+                      variant="contained"
+                      onMouseDown={() => setIsTeamsEdit(false)}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="times"
+                      />
+                    </Button>
+                    <Button
+                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                      data-testid="save-teams"
+                      size="custom"
+                      theme="primary"
+                      variant="contained"
+                      onClick={handleTeamsChange}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="check"
+                      />
+                    </Button>
+                  </div>
+                </Fragment>
+              ) : (
+                teamsElement
+              )}
+            </div>
+          </Fragment>
+        </Card>
       );
     }
   };
@@ -434,82 +453,102 @@ const Users = ({
 
     if (!isAdminUser && !isAuthDisabled) {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Roles</h6>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Roles</h6>
+            </div>
+          }>
+          <div className="tw-flex tw-items-center tw-justify-between">
+            {rolesElement}
           </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{rolesElement}</div>
-        </Fragment>
+        </Card>
       );
     } else {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Roles</h6>
-            {!isRolesEdit && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
-                data-testid="edit-roles"
-                onClick={() => setIsRolesEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="16px"
-                />
-              </button>
-            )}
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
-            {isRolesEdit ? (
-              <Fragment>
-                <Select
-                  isClearable
-                  isMulti
-                  aria-label="Select roles"
-                  className="tw-ml-1"
-                  id="select-role"
-                  isSearchable={false}
-                  options={userRolesOption}
-                  placeholder="Roles..."
-                  styles={reactSingleSelectCustomStyle}
-                  value={selectedRoles}
-                  onChange={handleOnRolesChange}
-                />
-                <div
-                  className="tw-flex tw-justify-end tw-mt-2"
-                  data-testid="buttons">
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                    data-testid="cancel-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onMouseDown={() => setIsRolesEdit(false)}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="times"
-                    />
-                  </Button>
-                  <Button
-                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                    data-testid="save-roles"
-                    size="custom"
-                    theme="primary"
-                    variant="contained"
-                    onClick={handleRolesChange}>
-                    <FontAwesomeIcon
-                      className="tw-w-3.5 tw-h-3.5"
-                      icon="check"
-                    />
-                  </Button>
-                </div>
-              </Fragment>
-            ) : (
-              rolesElement
-            )}
-          </div>
-        </Fragment>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              {!isRolesEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  data-testid="edit-roles"
+                  onClick={() => setIsRolesEdit(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+          }>
+          <Fragment>
+            <div className="tw-flex tw-items-center tw-justify-between">
+              {isRolesEdit ? (
+                <Fragment>
+                  <Select
+                    isClearable
+                    isMulti
+                    aria-label="Select roles"
+                    className="tw-ml-1"
+                    id="select-role"
+                    isSearchable={false}
+                    options={userRolesOption}
+                    placeholder="Roles..."
+                    styles={reactSingleSelectCustomStyle}
+                    value={selectedRoles}
+                    onChange={handleOnRolesChange}
+                  />
+                  <div
+                    className="tw-flex tw-justify-end tw-mt-2"
+                    data-testid="buttons">
+                    <Button
+                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                      data-testid="cancel-roles"
+                      size="custom"
+                      theme="primary"
+                      variant="contained"
+                      onMouseDown={() => setIsRolesEdit(false)}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="times"
+                      />
+                    </Button>
+                    <Button
+                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                      data-testid="save-roles"
+                      size="custom"
+                      theme="primary"
+                      variant="contained"
+                      onClick={handleRolesChange}>
+                      <FontAwesomeIcon
+                        className="tw-w-3.5 tw-h-3.5"
+                        icon="check"
+                      />
+                    </Button>
+                  </div>
+                </Fragment>
+              ) : (
+                rolesElement
+              )}
+            </div>
+          </Fragment>
+        </Card>
       );
     }
   };
@@ -517,21 +556,33 @@ const Users = ({
   const getInheritedRolesComponent = () => {
     if (userData.inheritedRoles?.length) {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3" data-testid="inherited-roles">
-              Inherited Roles
-            </h6>
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
-            {userData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
-                <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                <span>{getEntityName(inheritedRole)}</span>
-              </div>
-            ))}
-          </div>
-        </Fragment>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex">
+              <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
+                Inherited Roles
+              </h6>
+            </div>
+          }>
+          <Fragment>
+            <div className="tw-flex tw-justify-between tw-flex-col">
+              {userData.inheritedRoles?.map((inheritedRole, i) => (
+                <div
+                  className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+                  key={i}>
+                  <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+                  <span>{getEntityName(inheritedRole)}</span>
+                </div>
+              ))}
+            </div>
+          </Fragment>
+        </Card>
       );
     } else {
       return null;
@@ -540,30 +591,41 @@ const Users = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-pt-4" data-testid="left-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          {userData.profile?.images?.image ? (
-            <div className="tw-h-28 tw-w-28">
-              <img
-                alt="profile"
-                className="tw-w-full"
-                referrerPolicy="no-referrer"
-                src={userData.profile?.images?.image}
+      <div className="user-profile-antd-card" data-testid="left-panel">
+        <Card
+          className="ant-card-feed tw-relative"
+          key="inherited-roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '12px',
+          }}>
+          <div className="tw-flex tw-flex-col">
+            {userData.profile?.images?.image ? (
+              <div>
+                <img
+                  alt="profile"
+                  className="tw-w-full"
+                  height="150px"
+                  referrerPolicy="no-referrer"
+                  src={userData.profile?.images?.image}
+                  width="300px"
+                />
+              </div>
+            ) : (
+              <ProfilePicture
+                displayName={userData?.displayName || userData.name}
+                height="150"
+                id={userData?.id || ''}
+                name={userData?.name || ''}
+                textClass="tw-text-5xl"
+                width="300"
               />
-            </div>
-          ) : (
-            <ProfilePicture
-              displayName={userData?.displayName || userData.name}
-              id={userData?.id || ''}
-              name={userData?.name || ''}
-              textClass="tw-text-5xl"
-              width="112"
-            />
-          )}
-          {getDisplayNameComponent()}
-          <p className="tw-mt-2">{userData.email}</p>
-          {getDescriptionComponent()}
-        </div>
+            )}
+            {getDisplayNameComponent()}
+            <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
+            {getDescriptionComponent()}
+          </div>
+        </Card>
         {getTeamsComponent()}
         {getRolesComponent()}
         {getInheritedRolesComponent()}

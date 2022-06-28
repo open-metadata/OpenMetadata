@@ -15,7 +15,7 @@ import { debounce } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
-import { ROUTES } from '../../constants/constants';
+import { getUserPath, ROUTES } from '../../constants/constants';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -40,6 +40,7 @@ const NavBar = ({
   pathname,
   username,
   isSearchBoxOpen,
+  hasNotification,
   handleSearchBoxOpen,
   handleFeatureModal,
   handleSearchChange,
@@ -64,6 +65,8 @@ const NavBar = ({
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
+
+  const currentUser = AppState.getCurrentUserDetails();
 
   return (
     <>
@@ -141,6 +144,20 @@ const NavBar = ({
               ))}
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
+            <button className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 tw-relative tw-inline-block tw-flex tw-items-center">
+              <Link
+                to={`${getUserPath(
+                  currentUser?.name as string
+                )}/tasks?feedFilter=ASSIGNED_TO`}>
+                <SVGIcons
+                  alt="Alert bell icon"
+                  className="tw-align-middle tw-mr-2"
+                  icon={Icons.ALERT_BELL}
+                  width="20"
+                />
+                {hasNotification ? <span className="tw-bell-badge" /> : null}
+              </Link>
+            </button>
             <button
               className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
               data-testid="whatsnew-modal"

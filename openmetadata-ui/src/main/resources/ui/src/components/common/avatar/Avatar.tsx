@@ -22,12 +22,14 @@ const Avatar = ({
   textClass = '',
   className = '',
   type = 'square',
+  height,
 }: {
   name: string;
   width?: string;
   textClass?: string;
   className?: string;
   type?: ImageShape;
+  height?: string;
 }) => {
   const { color, character } = getRandomColor(name);
 
@@ -39,7 +41,7 @@ const Avatar = ({
       )}
       data-testid="avatar"
       style={{
-        height: `${width}px`,
+        height: `${height || width}px`,
         width: `${width}px`,
         borderRadius: type === 'circle' ? '50%' : '4px',
         background: color,

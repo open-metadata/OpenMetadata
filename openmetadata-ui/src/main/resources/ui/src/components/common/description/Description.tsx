@@ -17,6 +17,7 @@ import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { TITLE_FOR_UPDATE_DESCRIPTION } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
@@ -28,6 +29,7 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import { DescriptionProps } from './Description.interface';
@@ -68,16 +70,22 @@ const Description: FC<DescriptionProps> = ({
     );
   };
 
+  const checkPermission = () => {
+    if (!isAuthDisabled && !isAdminUser) {
+      if (!isUndefined(hasEditAccess)) {
+        return Boolean(hasEditAccess);
+      } else {
+        return userPermissions[Operation.UpdateDescription];
+      }
+    }
+
+    return true;
+  };
+
   const handleUpdate = () => {
-    const check =
-      isAdminUser ||
-      hasEditAccess ||
-      isAuthDisabled ||
-      userPermissions[Operation.UpdateDescription] ||
-      !TASK_ENTITIES.includes(entityType as EntityType);
-    if (check) {
+    if (checkPermission()) {
       onDescriptionEdit && onDescriptionEdit();
-    } else {
+    } else if (TASK_ENTITIES.includes(entityType as EntityType)) {
       handleUpdateDescription();
     }
   };
@@ -151,12 +159,19 @@ const Description: FC<DescriptionProps> = ({
           'tw-w-5 tw-min-w-max tw-flex',
           description?.trim() ? 'tw-pl-1' : ''
         )}>
-        <button
-          className="focus:tw-outline-none tw-self-baseline"
-          data-testid="edit-description"
-          onClick={handleUpdate}>
-          <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
-        </button>
+        <NonAdminAction
+          isOwner={
+            checkPermission() ||
+            TASK_ENTITIES.includes(entityType as EntityType)
+          }
+          title={TITLE_FOR_UPDATE_DESCRIPTION}>
+          <button
+            className="focus:tw-outline-none tw-self-baseline"
+            data-testid="edit-description"
+            onClick={handleUpdate}>
+            <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
+          </button>
+        </NonAdminAction>
 
         <RequestDescriptionEl descriptionThread={thread} />
         <DescriptionThreadEl descriptionThread={thread} />

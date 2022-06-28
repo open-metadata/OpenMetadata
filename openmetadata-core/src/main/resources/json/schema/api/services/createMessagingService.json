@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of messaging service entity.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "serviceType": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingServiceType"

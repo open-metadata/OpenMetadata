@@ -1,0 +1,25 @@
+source:
+  type: redshift
+  serviceName: aws_redshift
+  serviceConnection:
+    config:
+      type: Redshift
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+  sourceConfig:
+    config:
+      markDeletedTables: true or false
+      includeTables: true or false
+      includeViews: true or false
+      schemaFilterPattern: <schema name regex list>
+      tableFilterPattern: <table name regex list>
+      dbtConfigSource: <configs for gcs, s3, local or file server to get the DBT files
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -40,9 +40,8 @@
       "type": "string"
     },
     "dashboardUrl": {
-      "description": "Dashboard URL.",
-      "type": "string",
-      "format": "uri"
+      "description": "Dashboard URL suffix from its service.",
+      "type": "string"
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",

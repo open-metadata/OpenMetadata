@@ -21,6 +21,7 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -299,6 +300,7 @@ export const Icons = {
   ADD_REPLY: 'add-reply',
   REACTION: 'reaction',
   FEED_DELETE: 'feed-delete',
+  ALERT_BELL: 'alert-bell',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -872,6 +874,12 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconFeedDelete;
 
       break;
+
+    case Icons.ALERT_BELL:
+      IconComponent = IconAlertBell;
+
+      break;
+
     default:
       IconComponent = null;
 

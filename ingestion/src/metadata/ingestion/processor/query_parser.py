@@ -25,8 +25,8 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.type.queryParserData import QueryParserData
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.utils.helpers import find_in_list, get_formatted_entity_name
@@ -131,7 +131,7 @@ def get_comparison_elements(
 
     if not table_or_alias or not column_name:
         logger.debug(f"Cannot obtain comparison elements from identifier {identifier}")
-        return None
+        return None, None
 
     alias_to_table = aliases.get(table_or_alias)
     if alias_to_table:
@@ -146,7 +146,7 @@ def get_comparison_elements(
 
     if not table_from_list:
         logger.debug(f"Cannot find {table_or_alias} in comparison elements")
-        return None
+        return None, None
 
     return table_from_list, column_name
 
@@ -219,7 +219,7 @@ def stateful_add_joins_from_statement(
         )
 
         if not table_left or not table_right:
-            logger.error(f"Cannot find ingredients from {comparison}")
+            logger.warn(f"Cannot find ingredients from {comparison}")
             continue
 
         left_table_column = TableColumn(table=table_left, column=column_left)
@@ -250,7 +250,7 @@ def get_table_joins(
     return join_data
 
 
-def parse_sql_statement(record: TableQuery) -> Optional[QueryParserData]:
+def parse_sql_statement(record: TableQuery) -> Optional[ParsedData]:
     """
     Use the lineage parser and work with the tokens
     to convert a RAW SQL statement into
@@ -275,7 +275,7 @@ def parse_sql_statement(record: TableQuery) -> Optional[QueryParserData]:
     clean_tables = get_clean_parser_table_list(tables)
     aliases = get_parser_table_aliases(tables)
 
-    return QueryParserData(
+    return ParsedData(
         tables=clean_tables,
         joins=get_table_joins(parser=parser, tables=clean_tables, aliases=aliases),
         databaseName=record.databaseName,
@@ -320,14 +320,19 @@ class QueryParserProcessor(Processor):
         config = ConfigModel.parse_obj(config_dict)
         return cls(config, metadata_config)
 
-    def process(self, record: TableQuery) -> Optional[QueryParserData]:
-        try:
-            return parse_sql_statement(record)
-        except Exception as err:  # pylint: disable=broad-except
-            if hasattr(record, "sql"):
-                logger.debug(record.sql)
-            logger.debug(traceback.format_exc())
-            logger.error(err)
+    def process(self, queries: TableQueries) -> Optional[QueryParserData]:
+        if queries and queries.queries:
+            data = []
+            for record in queries.queries:
+                try:
+                    parsed_sql = parse_sql_statement(record)
+                    if parsed_sql:
+                        data.append(parsed_sql)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.debug(record.query)
+                    logger.error(err)
+            return QueryParserData(parsedData=data)
 
     def close(self):
         pass

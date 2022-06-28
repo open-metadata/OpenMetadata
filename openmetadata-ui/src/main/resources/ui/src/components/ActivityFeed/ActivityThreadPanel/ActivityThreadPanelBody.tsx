@@ -241,31 +241,26 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         ) : (
           <Fragment>
             {showNewConversation || threads.length === 0 ? (
-              <div className="tw-pt-2">
-                <Fragment>
-                  {threadType === ThreadType.Conversation ? (
-                    <Fragment>
-                      <p className="tw-ml-9 tw-mr-2 tw-my-2">
-                        You are starting a new conversation
-                      </p>
-                      <ActivityFeedEditor
-                        buttonClass="tw-mr-4"
-                        className="tw-ml-5 tw-mr-2"
-                        placeHolder="Enter a message"
-                        onSave={onPostThread}
-                      />
-                    </Fragment>
-                  ) : (
-                    <ErrorPlaceHolder>No tasks yet</ErrorPlaceHolder>
-                  )}
-                </Fragment>
-              </div>
+              <Fragment>
+                {threadType === ThreadType.Conversation ? (
+                  <Fragment>
+                    <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
+                      You are starting a new conversation
+                    </p>
+                    <ActivityFeedEditor
+                      buttonClass="tw-mr-4"
+                      className="tw-ml-5 tw-mr-2"
+                      placeHolder="Enter a message"
+                      onSave={onPostThread}
+                    />
+                  </Fragment>
+                ) : (
+                  <ErrorPlaceHolder>No tasks yet</ErrorPlaceHolder>
+                )}
+              </Fragment>
             ) : null}
             <ActivityThreadList
-              className={classNames(
-                { 'tw-py-6 tw-px-5': !className },
-                className
-              )}
+              className={classNames({ 'tw-p-4': !className }, className)}
               postFeed={postFeed}
               selectedThreadId={selectedThreadId}
               threads={threads}

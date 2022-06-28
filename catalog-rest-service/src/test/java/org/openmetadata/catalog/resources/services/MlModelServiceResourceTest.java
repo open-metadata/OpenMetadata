@@ -182,7 +182,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
       MlModelConnection expectedMlModelConnection,
       MlModelConnection actualMlModelConnection,
       MlModelServiceType MlModelServiceType) {
-    if (expectedMlModelConnection != null) {
+    if (expectedMlModelConnection != null && actualMlModelConnection != null) {
       if (MlModelServiceType == CreateMlModelService.MlModelServiceType.Mlflow) {
         MlflowConnection expectedMlflowConnection = (MlflowConnection) expectedMlModelConnection.getConfig();
         MlflowConnection actualMlflowConnection;
