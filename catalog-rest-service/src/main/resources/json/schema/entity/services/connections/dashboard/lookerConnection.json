@@ -20,12 +20,12 @@
       "$ref": "#/definitions/lookerType",
       "default": "Looker"
     },
-    "username": {
+    "clientId": {
       "title": "Username",
       "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
-    "password": {
+    "clientSecret": {
       "title": "Password",
       "description": "User's Client Secret.",
       "type": "string",

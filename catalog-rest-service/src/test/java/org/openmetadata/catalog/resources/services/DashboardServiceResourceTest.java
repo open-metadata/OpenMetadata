@@ -261,8 +261,8 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
             .withConfig(
                 new LookerConnection()
                     .withHostPort(new URI("http://localhost:8080"))
-                    .withUsername("test")
-                    .withPassword("test"));
+                    .withClientId("test")
+                    .withClientSecret("test"));
     lookerDashboardService.withConnection(lookerConnection);
     dashboardService = new DashboardServiceResourceTest().createEntity(lookerDashboardService, ADMIN_AUTH_HEADERS);
     LOOKER_REFERENCE = dashboardService.getEntityReference();
