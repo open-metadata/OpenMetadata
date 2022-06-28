@@ -11,7 +11,6 @@
 """
 Airbyte source to extract metadata
 """
-import traceback
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
@@ -158,19 +157,26 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         """
         Method to get task & pipeline status
         """
-        task_status = [
-            TaskStatus(
-                name=job["job"]["id"],
+        for job in self.client.list_jobs(connection.get("connectionId")):
+            task_status = [
+                TaskStatus(
+                    name=str(job["job"]["id"]),
+                    executionStatus=STATUS_MAP.get(
+                        attempt["status"].lower(), StatusType.Pending
+                    ).value,
+                )
+                for attempt in job["attempts"]
+            ]
+            pipeline_status = PipelineStatus(
                 executionStatus=STATUS_MAP.get(
                     job["job"]["status"].lower(), StatusType.Pending
                 ).value,
+                taskStatus=task_status,
+                executionDate=job["job"]["createdAt"],
             )
-            for job in self.client.list_jobs(connection.get("connectionId"))
-        ]
-        pipeline_status = PipelineStatus(taskStatus=task_status)
-        yield OMetaPipelineStatus(
-            pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
-        )
+            yield OMetaPipelineStatus(
+                pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
+            )
 
     def fetch_lineage(
         self, connection: dict, pipeline_entity: Pipeline
