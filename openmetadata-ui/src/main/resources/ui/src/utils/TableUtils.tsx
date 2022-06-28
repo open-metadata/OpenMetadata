@@ -154,12 +154,12 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-2', className)}
+      className={classNames('tw-absolute tw-left-1', className)}
       position="bottom"
       size="small"
       title={title}
       trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="12px" />
+      <SVGIcons alt={title} icon={icon} width="16px" />
     </PopOver>
   );
 };
@@ -284,6 +284,7 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
+    case DataType.Decimal:
       return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:

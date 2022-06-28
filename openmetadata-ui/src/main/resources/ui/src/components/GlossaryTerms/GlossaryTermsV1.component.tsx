@@ -380,7 +380,7 @@ const GlossaryTermsV1 = ({
               alt="edit"
               icon={Icons.EDIT_OUTLINE_PRIMARY}
               title="Edit"
-              width="12px"
+              width="16px"
             />
           </span>
           <span>Edit</span>
@@ -481,9 +481,9 @@ const GlossaryTermsV1 = ({
 
   const summaryTab = () => {
     return (
-      <div className="tw-flex tw-gap-4">
+      <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
-          <div data-testid="description-container">
+          <div className="tw-mb-4" data-testid="description-container">
             <DescriptionV1
               removeBlur
               description={glossaryTerm.description || ''}
@@ -623,7 +623,7 @@ const GlossaryTermsV1 = ({
             </Fragment>
           </Card>
         </div>
-        <div className="tw-w-3/12">
+        <div className="tw-px-2 tw-w-3/12">
           <Card action={addReviewerButton()} heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>
@@ -689,7 +689,7 @@ const GlossaryTermsV1 = ({
                     alt="edit"
                     icon="icon-edit"
                     title="Edit"
-                    width="12px"
+                    width="16px"
                   />
                 </button>
               ) : (

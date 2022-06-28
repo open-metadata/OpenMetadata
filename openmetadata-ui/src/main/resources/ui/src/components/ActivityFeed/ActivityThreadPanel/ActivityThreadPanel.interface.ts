@@ -13,7 +13,7 @@
 
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
@@ -22,10 +22,26 @@ export interface ActivityThreadPanelProp
   threadLink: string;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
-  onCancel: () => void;
   createThread: (data: CreateThread) => void;
-  deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  onCancel?: () => void;
+  deletePostHandler?: (threadId: string, postId: string) => void;
+}
+
+export interface ActivityThreadPanelBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<
+      ActivityThreadPanelProp,
+      | 'threadLink'
+      | 'updateThreadHandler'
+      | 'postFeedHandler'
+      | 'onCancel'
+      | 'createThread'
+      | 'deletePostHandler'
+    > {
+  threadType: ThreadType;
+  showHeader?: boolean;
+  onTabChange?: (key: string) => void;
 }
 
 export interface ActivityThreadListProp

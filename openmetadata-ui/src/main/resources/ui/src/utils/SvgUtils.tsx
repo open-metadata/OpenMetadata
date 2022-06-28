@@ -21,6 +21,7 @@ import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
 import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -110,6 +111,7 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
@@ -238,6 +240,7 @@ export const Icons = {
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
+  MLMODAL: 'mlmodal',
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
@@ -297,6 +300,7 @@ export const Icons = {
   ADD_REPLY: 'add-reply',
   REACTION: 'reaction',
   FEED_DELETE: 'feed-delete',
+  ALERT_BELL: 'alert-bell',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -569,6 +573,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TOPIC:
       IconComponent = IconTopic;
+
+      break;
+    case Icons.MLMODAL:
+      IconComponent = IconMlModal;
 
       break;
     case Icons.DASHBOARD:
@@ -866,6 +874,12 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconFeedDelete;
 
       break;
+
+    case Icons.ALERT_BELL:
+      IconComponent = IconAlertBell;
+
+      break;
+
     default:
       IconComponent = null;
 

@@ -173,8 +173,7 @@ public class UsageResource {
           String id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
       throws IOException {
-    dao.create(entity, id, usage);
-    return Response.status(Response.Status.CREATED).build();
+    return dao.create(entity, id, usage).toResponse();
   }
 
   @POST
@@ -209,8 +208,7 @@ public class UsageResource {
           String fullyQualifiedName,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
       throws IOException {
-    dao.createByName(entity, fullyQualifiedName, usage);
-    return Response.status(Response.Status.CREATED).build();
+    return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
   @POST

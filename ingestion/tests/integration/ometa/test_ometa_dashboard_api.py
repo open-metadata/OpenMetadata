@@ -56,7 +56,7 @@ class OMetaDashboardTest(TestCase):
 
     service = CreateDashboardServiceRequest(
         name="test-service-dashboard",
-        serviceType=DashboardServiceType.Superset,
+        serviceType=DashboardServiceType.Looker,
         connection=DashboardConnection(
             config=LookerConnection(hostPort="http://hostPort", username="username")
         ),

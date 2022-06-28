@@ -66,6 +66,10 @@ const ServiceConfig = ({
       });
   };
 
+  const onCancel = () => {
+    history.goBack();
+  };
+
   const getDynamicFields = () => {
     return (
       <ConnectionConfigForm
@@ -79,6 +83,7 @@ const ServiceConfig = ({
         serviceCategory={serviceCategory}
         serviceType={serviceType}
         status={status}
+        onCancel={onCancel}
         onSave={handleOnSaveClick}
       />
     );
@@ -87,7 +92,7 @@ const ServiceConfig = ({
   return (
     <div className="tw-bg-white tw-h-full">
       <div
-        className="tw-max-w-xl tw-mx-auto tw-pb-6"
+        className="tw-max-w-xl tw-pb-6"
         data-testid="service-config"
         id="serviceConfig">
         <div className="tw-mx-auto">{getDynamicFields()}</div>

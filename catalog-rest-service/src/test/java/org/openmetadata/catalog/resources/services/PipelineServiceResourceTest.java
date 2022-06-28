@@ -16,10 +16,12 @@ package org.openmetadata.catalog.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.validateMysqlConnection;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.AIRFLOW_CONNECTION;
 import static org.openmetadata.catalog.util.TestUtils.MYSQL_DATABASE_CONNECTION;
+import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 
@@ -132,6 +134,8 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
     update.withConnection(updatedConnection);
     service = updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     validatePipelineConnection(updatedConnection, service.getConnection(), service.getServiceType());
+    service = getEntity(service.getId(), TEST_AUTH_HEADERS);
+    assertNull(service.getConnection());
   }
 
   @Test
@@ -221,7 +225,7 @@ public class PipelineServiceResourceTest extends EntityResourceTest<PipelineServ
       PipelineConnection expectedPipelineConnection,
       PipelineConnection actualPipelineConnection,
       PipelineServiceType pipelineServiceType) {
-    if (expectedPipelineConnection != null) {
+    if (expectedPipelineConnection != null && actualPipelineConnection != null) {
       if (pipelineServiceType == PipelineServiceType.Airflow) {
         AirflowConnection expectedAirflowConnection = (AirflowConnection) expectedPipelineConnection.getConfig();
         AirflowConnection actualAirflowConnection;

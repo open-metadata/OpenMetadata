@@ -243,7 +243,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
       MessagingConnection expectedConnection,
       MessagingConnection actualConnection,
       MessagingServiceType messagingServiceType) {
-    if (expectedConnection.getConfig() != null) {
+    if (expectedConnection != null
+        && actualConnection != null
+        && expectedConnection.getConfig() != null
+        && actualConnection.getConfig() != null) {
       if (messagingServiceType == MessagingServiceType.Kafka) {
         KafkaConnection expectedKafkaConnection = (KafkaConnection) expectedConnection.getConfig();
         KafkaConnection actualKafkaConnection;

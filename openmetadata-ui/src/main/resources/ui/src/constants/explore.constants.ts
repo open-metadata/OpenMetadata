@@ -16,9 +16,9 @@ import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { getFilterKey } from '../utils/FilterUtils';
 import { Icons } from '../utils/SvgUtils';
-import { entitySortingFields, tableSortingFields, tiers } from './constants';
+import { tiers } from './constants';
 
-export const INITIAL_SORT_FIELD = 'last_updated_timestamp';
+export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
 export const INITIAL_FROM = 1;
 export const ZERO_SIZE = 0;
@@ -46,6 +46,28 @@ export const INITIAL_FILTERS = {
   databaseschema: [],
   servicename: [],
 };
+
+export const tableSortingFields = [
+  {
+    name: 'Last Updated',
+    value: INITIAL_SORT_FIELD,
+  },
+  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
+  { name: 'Relevance', value: '' },
+];
+
+export const entitySortingFields = [
+  {
+    name: 'Last Updated',
+    value: INITIAL_SORT_FIELD,
+  },
+  { name: 'Relevance', value: '' },
+];
+
+export const sortingOrder = [
+  { name: 'Ascending', value: 'asc' },
+  { name: 'Descending', value: 'desc' },
+];
 
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];

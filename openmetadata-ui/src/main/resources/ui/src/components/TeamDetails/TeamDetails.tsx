@@ -24,7 +24,9 @@ import {
   getUserPath,
   PAGE_SIZE_MEDIUM,
   TITLE_FOR_NON_ADMIN_ACTION,
+  TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
+import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
@@ -315,8 +317,9 @@ const TeamDetails = ({
           {currentTeamUsers.length > 0 && isActionAllowed() && (
             <div>
               <NonAdminAction
+                isOwner={isActionAllowed()}
                 position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                title={TITLE_FOR_NON_OWNER_ACTION}>
                 <Button
                   className="tw-h-8 tw-px-2"
                   data-testid="add-user"
@@ -377,6 +380,7 @@ const TeamDetails = ({
                       <UserCard
                         isActionVisible
                         isIconVisible
+                        isOwner={isActionAllowed()}
                         item={User}
                         key={index}
                         onRemove={deleteUserHandler}
@@ -564,7 +568,7 @@ const TeamDetails = ({
                       alt="edit"
                       icon="icon-edit"
                       title="Edit"
-                      width="12px"
+                      width="16px"
                     />
                   </button>
                 </NonAdminAction>
@@ -602,9 +606,7 @@ const TeamDetails = ({
               blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
-              hasEditAccess={isActionAllowed(
-                userPermissions[Operation.UpdateDescription]
-              )}
+              hasEditAccess={isOwner()}
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}
@@ -615,7 +617,6 @@ const TeamDetails = ({
           <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={currentTab}
-              className="tw-px-6"
               setActiveTab={(tab) => setCurrentTab(tab)}
               tabs={tabs}
             />
@@ -642,7 +643,7 @@ const TeamDetails = ({
                     entityType="team"
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
-                    manageSectionType="Team"
+                    manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.TEAM}
                     onSave={handleManageSave}
                   />
                 </div>

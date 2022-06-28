@@ -427,7 +427,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                               alt="external-link"
                               className="tw-align-middle tw-ml-1"
                               icon={Icons.EXTERNAL_LINK}
-                              width="12px"
+                              width="16px"
                             />
                           </a>
                         </NonAdminAction>

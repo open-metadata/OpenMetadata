@@ -22,6 +22,7 @@ import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -31,6 +32,8 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
+import { SOCKET_EVENTS } from '../../constants/constants';
 import {
   onErrorText,
   onUpdatedConversastionError,
@@ -60,6 +63,7 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
+  const [countMlModal, setCountMlModal] = useState<number>();
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
@@ -73,7 +77,10 @@ const MyDataPage = () => {
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
+  const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
+
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const { socket } = useWebSocketConnector();
 
   const feedFilterHandler = (filter: FeedFilter) => {
     setFeedFilter(filter);
@@ -170,6 +177,23 @@ const MyDataPage = () => {
           jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountDashboards(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllMlModal('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountMlModal(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setCountMlModal(0);
       });
   };
 
@@ -291,7 +315,6 @@ const MyDataPage = () => {
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
-
         setEntityThread((prevData) => [...prevData, ...data]);
       })
       .catch((err: AxiosError) => {
@@ -407,6 +430,28 @@ const MyDataPage = () => {
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
+        if (newActivity) {
+          setActivityFeeds((prevActivities) => [
+            JSON.parse(newActivity),
+            ...prevActivities,
+          ]);
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+    };
+  }, [socket]);
+
+  const onRefreshFeeds = () => {
+    setEntityThread((prevData) => [...activityFeeds, ...prevData]);
+    setActivityFeeds([]);
+  };
+
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
@@ -415,10 +460,13 @@ const MyDataPage = () => {
       !isUndefined(countDashboards) &&
       !isUndefined(countPipelines) &&
       !isUndefined(countTeams) &&
+      !isUndefined(countMlModal) &&
       !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
+            activityFeeds={activityFeeds}
             countDashboards={countDashboards}
+            countMlModal={countMlModal}
             countPipelines={countPipelines}
             countServices={countServices}
             countTables={countTables}
@@ -439,6 +487,7 @@ const MyDataPage = () => {
             paging={paging}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
+            onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

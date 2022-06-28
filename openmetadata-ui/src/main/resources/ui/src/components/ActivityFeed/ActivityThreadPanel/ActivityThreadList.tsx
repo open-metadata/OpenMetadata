@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
+import { uniqueId } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import { getEntityName } from '../../../utils/CommonUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedListSeparator from '../ActivityFeedList/FeedListSeparator';
+import TaskBadge from '../Shared/TaskBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
 
 const ActivityThreadList: FC<ActivityThreadListProp> = ({
@@ -69,19 +75,20 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                       className="ant-card-feed"
                       key={`${index} - card`}
                       style={{
-                        border: '1px rgb(221, 227, 234) solid',
-                        borderRadius: '8px',
-                        marginBottom: '20px',
-                        boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-                        marginRight: '4px',
-                        marginLeft: '4px',
+                        ...leftPanelAntCardStyle,
+                        marginTop: '20px',
+                        paddingTop:
+                          thread.type === ThreadType.Task ? '8px' : '',
                       }}>
+                      {thread.type === ThreadType.Task && <TaskBadge />}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
                           isThread
                           entityLink={thread.about}
                           feed={mainFeed}
+                          feedType={thread.type || ThreadType.Conversation}
+                          taskDetails={thread.task}
                           updateThreadHandler={updateThreadHandler}
                           onReply={() => onThreadSelect(thread.id)}
                         />
@@ -112,6 +119,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                               isEntityFeed
                               className="tw-ml-9"
                               feed={lastPost as Post}
+                              feedType={thread.type || ThreadType.Conversation}
                               threadId={thread.id}
                               updateThreadHandler={updateThreadHandler}
                               onConfirmation={onConfirmation}
@@ -129,6 +137,32 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                           />
                         </div>
                       ) : null}
+                      {thread.task && (
+                        <div className="tw-border-t tw-border-main tw-py-1">
+                          <span className="tw-text-grey-muted">
+                            Assignees:{' '}
+                          </span>
+                          <span className="tw-ml-0.5 tw-align-middle tw-grid tw-grid-cols-3">
+                            {thread.task.assignees.map((assignee) => (
+                              <UserPopOverCard
+                                key={uniqueId()}
+                                type={assignee.type}
+                                userName={assignee.name || ''}>
+                                <span className="tw-flex tw-m-1.5 tw-mt-0">
+                                  <ProfilePicture
+                                    id=""
+                                    name={getEntityName(assignee)}
+                                    width="20"
+                                  />
+                                  <span className="tw-ml-1">
+                                    {getEntityName(assignee)}
+                                  </span>
+                                </span>
+                              </UserPopOverCard>
+                            ))}
+                          </span>
+                        </div>
+                      )}
                     </Card>
                   </Fragment>
                 );

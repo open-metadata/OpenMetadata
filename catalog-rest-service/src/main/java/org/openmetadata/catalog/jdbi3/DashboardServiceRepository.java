@@ -14,23 +14,27 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.DashboardConnection;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private static final String UPDATE_FIELDS = "owner";
+  private final Fernet fernet;
 
   public DashboardServiceRepository(CollectionDAO dao) {
     super(
@@ -42,6 +46,21 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
         "",
         UPDATE_FIELDS);
     this.allowEdits = true;
+    fernet = Fernet.getInstance();
+  }
+
+  public void rotate() throws IOException {
+    if (!fernet.isKeyDefined()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.FERNET_KEY_NULL);
+    }
+    ListFilter filter = new ListFilter(Include.ALL);
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
+    for (String json : jsons) {
+      DashboardService dashboardService = JsonUtils.readValue(json, DashboardService.class);
+      DashboardConnection dashboardConnection = dashboardService.getConnection();
+      fernet.encryptOrDecryptDashboardConnection(dashboardConnection, dashboardService.getServiceType(), true);
+      storeEntity(dashboardService, true);
+    }
   }
 
   @Override
@@ -106,10 +125,18 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
       updateConnection();
     }
 
-    private void updateConnection() throws JsonProcessingException {
+    private void updateConnection() throws IOException {
       DashboardConnection origConn = original.getConnection();
       DashboardConnection updatedConn = updated.getConnection();
-      recordChange("connection", origConn, updatedConn, true);
+      String origJson = JsonUtils.pojoToJson(origConn);
+      String updatedJson = JsonUtils.pojoToJson(updatedConn);
+      DashboardConnection decryptedOrigConn = JsonUtils.readValue(origJson, DashboardConnection.class);
+      DashboardConnection decryptedUpdatedConn = JsonUtils.readValue(updatedJson, DashboardConnection.class);
+      fernet.encryptOrDecryptDashboardConnection(decryptedOrigConn, original.getServiceType(), false);
+      fernet.encryptOrDecryptDashboardConnection(decryptedUpdatedConn, updated.getServiceType(), false);
+      if (!objectMatch.test(decryptedOrigConn, decryptedUpdatedConn)) {
+        recordChange("connection", origConn, updatedConn, true);
+      }
     }
   }
 }

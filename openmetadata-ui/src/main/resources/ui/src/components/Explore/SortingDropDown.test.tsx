@@ -13,7 +13,7 @@
 
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
-import { tableSortingFields } from '../../constants/constants';
+import { tableSortingFields } from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 
 const handleFieldDropDown = jest.fn();
@@ -68,6 +68,6 @@ describe('Test Sorting DropDown Component', () => {
 
     fireEvent.click(menuItems[0]);
 
-    expect(handleFieldDropDown).toHaveBeenCalledWith('last_updated_timestamp');
+    expect(handleFieldDropDown).toHaveBeenCalledWith('updatedAt');
   });
 });

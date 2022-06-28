@@ -139,7 +139,7 @@ const CustomEntityDetail: FC<Props> = ({ entityTypes, entityTypeFQN }) => {
             setActiveTab={onTabChange}
             tabs={tabs}
           />
-          <div className="tw-mt-6">
+          <div className="tw-mt-4">
             {schemaCheck && (
               <div data-testid="entity-schema">
                 <SchemaEditor

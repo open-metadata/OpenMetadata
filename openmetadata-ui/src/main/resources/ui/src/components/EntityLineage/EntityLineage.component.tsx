@@ -108,6 +108,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   loadNodeHandler,
   lineageLeafNodes,
   isNodeLoading,
+  isLoading,
   deleted,
   addLineageHandler,
   removeLineageHandler,
@@ -621,7 +622,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
             } else {
               const updatedColumnsLineage: ColumnLineage[] =
-                currentEdge.columnsLineage.map((l) => {
+                currentEdge.columnsLineage?.map((l) => {
                   if (l.toColumn === targetHandle) {
                     return {
                       ...l,
@@ -633,7 +634,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                   }
 
                   return l;
-                });
+                }) || [];
               if (
                 !updatedColumnsLineage.find((l) => l.toColumn === targetHandle)
               ) {
@@ -682,6 +683,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               source: `${params.source}`,
               target: `${params.target}`,
               type: isEditMode ? 'buttonedge' : 'custom',
+              style: { strokeWidth: '2px' },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
               },
@@ -1233,11 +1235,13 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
-    setNodes(node);
-    setEdges(edge);
+    if (!deleted) {
+      const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
+      setNodes(node);
+      setEdges(edge);
 
-    resetViewEditState();
+      resetViewEditState();
+    }
   }, [lineageData, isNodeLoading, isEditMode]);
 
   useEffect(() => {
@@ -1276,56 +1280,56 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
   }, [entityLineage]);
 
+  if (isLoading || (nodes.length === 0 && !deleted)) {
+    return <Loader />;
+  }
+
   return deleted ? (
     getDeletedLineagePlaceholder()
   ) : (
-    <Fragment>
-      <div
-        className={classNames(
-          'tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4'
-        )}
-        data-testid="lineage-container">
-        <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
-          <ReactFlowProvider>
-            <ReactFlow
-              data-testid="react-flow-component"
-              edgeTypes={{ buttonedge: CustomEdge }}
-              edges={edges}
-              maxZoom={2}
-              minZoom={0.5}
-              nodeTypes={nodeTypes}
-              nodes={nodes}
-              nodesConnectable={isEditMode}
-              selectNodesOnDrag={false}
-              zoomOnDoubleClick={false}
-              zoomOnScroll={false}
-              onConnect={onConnect}
-              onDragOver={onDragOver}
-              onDrop={onDrop}
-              onEdgesChange={onEdgesChange}
-              onInit={(reactFlowInstance: ReactFlowInstance) => {
-                onLoad(reactFlowInstance);
-                setReactFlowInstance(reactFlowInstance);
-              }}
-              onNodeClick={(_e, node) => onNodeClick(node)}
-              onNodeContextMenu={onNodeContextMenu}
-              onNodeDrag={dragHandle}
-              onNodeDragStart={dragHandle}
-              onNodeDragStop={dragHandle}
-              onNodeMouseEnter={onNodeMouseEnter}
-              onNodeMouseLeave={onNodeMouseLeave}
-              onNodeMouseMove={onNodeMouseMove}
-              onNodesChange={onNodesChange}>
-              {getCustomControlElements()}
-              {getGraphBackGround()}
-            </ReactFlow>
-          </ReactFlowProvider>
-        </div>
-        {getEntityDrawer()}
-        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
-        {getConfirmationModal()}
+    <div
+      className={classNames('tw-relative tw-h-full tw--ml-4 tw--mr-7 tw--mt-4')}
+      data-testid="lineage-container">
+      <div className="tw-w-full tw-h-full" ref={reactFlowWrapper}>
+        <ReactFlowProvider>
+          <ReactFlow
+            data-testid="react-flow-component"
+            edgeTypes={{ buttonedge: CustomEdge }}
+            edges={edges}
+            maxZoom={2}
+            minZoom={0.5}
+            nodeTypes={nodeTypes}
+            nodes={nodes}
+            nodesConnectable={isEditMode}
+            selectNodesOnDrag={false}
+            zoomOnDoubleClick={false}
+            zoomOnScroll={false}
+            onConnect={onConnect}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onEdgesChange={onEdgesChange}
+            onInit={(reactFlowInstance: ReactFlowInstance) => {
+              onLoad(reactFlowInstance, nodes.length);
+              setReactFlowInstance(reactFlowInstance);
+            }}
+            onNodeClick={(_e, node) => onNodeClick(node)}
+            onNodeContextMenu={onNodeContextMenu}
+            onNodeDrag={dragHandle}
+            onNodeDragStart={dragHandle}
+            onNodeDragStop={dragHandle}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onNodeMouseMove={onNodeMouseMove}
+            onNodesChange={onNodesChange}>
+            {getCustomControlElements()}
+            {getGraphBackGround()}
+          </ReactFlow>
+        </ReactFlowProvider>
       </div>
-    </Fragment>
+      {getEntityDrawer()}
+      <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
+      {getConfirmationModal()}
+    </div>
   );
 };
 

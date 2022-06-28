@@ -170,7 +170,9 @@ class TopologyRunnerMixin(Generic[C]):
                     yield entity_request
                     # Improve validation logic
                     entity = self.metadata.get_by_name(
-                        entity=stage.type_, fqn=entity_fqn
+                        entity=stage.type_,
+                        fqn=entity_fqn,
+                        fields=["*"],  # Get all the available data from the Entity
                     )
                     tries -= 1
             else:

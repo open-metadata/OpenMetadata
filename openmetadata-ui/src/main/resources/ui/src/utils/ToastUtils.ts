@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
+import React from 'react';
 import { toast } from 'react-toastify';
 import jsonData from '../jsons/en';
 import { getErrorText } from './StringsUtils';
@@ -40,7 +41,8 @@ export const hashCode = (str: string) => {
 export const showErrorToast = (
   error: AxiosError | string,
   fallbackText?: string,
-  autoCloseTimer?: number
+  autoCloseTimer?: number,
+  callback?: (value: React.SetStateAction<string>) => void
 ) => {
   let errorMessage;
   if (isString(error)) {
@@ -62,6 +64,7 @@ export const showErrorToast = (
       return;
     }
   }
+  callback && callback(errorMessage);
   toast.error(errorMessage, {
     toastId: hashCode(errorMessage),
     autoClose: autoCloseTimer,

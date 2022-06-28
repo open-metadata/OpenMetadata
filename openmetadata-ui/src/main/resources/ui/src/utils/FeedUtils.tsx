@@ -44,7 +44,7 @@ import {
   mentionRegEx,
 } from '../constants/feed.constants';
 import { SearchIndex } from '../enums/search.enum';
-import { Post, Thread } from '../generated/entity/feed/thread';
+import { Post, Thread, ThreadType } from '../generated/entity/feed/thread';
 import { getEntityPlaceHolder } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEncodedFqn } from './StringsUtils';
@@ -158,7 +158,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
-        const entityType = hit._source.entity_type;
+        const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
@@ -176,7 +176,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       atValues = hits.map((hit: any) => {
-        const entityType = hit._source.entity_type;
+        const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
@@ -199,7 +199,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.hits.hits;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
-        const entityType = hit._source.entity_type;
+        const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
@@ -212,7 +212,7 @@ export async function suggestions(searchTerm: string, mentionChar: string) {
       const hits = data.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hashValues = hits.map((hit: any) => {
-        const entityType = hit._source.entity_type;
+        const entityType = hit._source.entityType;
 
         return {
           id: hit._id,
@@ -401,4 +401,12 @@ export const updateThreadData = (
         showErrorToast(err);
       });
   }
+};
+
+export const getFeedAction = (type: ThreadType) => {
+  if (type === ThreadType.Task) {
+    return 'created a task';
+  }
+
+  return 'posted on';
 };

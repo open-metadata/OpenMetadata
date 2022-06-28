@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -37,7 +38,7 @@ import Description from '../common/description/Description';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import PageContainerV1 from '../containers/PageContainerV1';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { UserDetails } from '../Users/Users.interface';
 
@@ -160,7 +161,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getDisplayNameComponent = () => {
     return (
-      <div className="tw-mt-4 tw-w-full">
+      <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between">
         {isDisplayNameEdit ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -210,7 +211,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               className="tw-ml-2 focus:tw-outline-none"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
-              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
+              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
             </button>
           </Fragment>
         )}
@@ -236,35 +237,50 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div data-testid="left-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          <div className="tw-h-28 tw-w-28">
-            <SVGIcons
-              alt="bot-profile"
-              icon={Icons.BOT_PROFILE}
-              width="112px"
-            />
-          </div>
-          {getDisplayNameComponent()}
+      <Card
+        className="ant-card-feed"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '20px',
+        }}>
+        <div data-testid="left-panel">
+          <div className="tw-flex tw-flex-col">
+            <div>
+              <SVGIcons
+                alt="bot-profile"
+                icon={Icons.BOT_PROFILE}
+                width="280px"
+              />
+            </div>
+            {getDisplayNameComponent()}
 
-          {getDescriptionComponent()}
+            {getDescriptionComponent()}
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
   const fetchRightPanel = () => {
     return (
-      <div data-testid="right-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
-          <p className="tw-mb-2">
-            Anyone who has your JWT Token will be able to send REST API requests
-            to the OpenMetadata Server. Do not expose the JWT Token in your
-            application code. Do not share it on GitHub or anywhere else online.
-          </p>
+      <Card
+        className="ant-card-feed"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '20px',
+        }}>
+        <div data-testid="right-panel">
+          <div className="tw-flex tw-flex-col">
+            <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
+            <p className="tw-mb-2">
+              Anyone who has your JWT Token will be able to send REST API
+              requests to the OpenMetadata Server. Do not expose the JWT Token
+              in your application code. Do not share it on GitHub or anywhere
+              else online.
+            </p>
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
 

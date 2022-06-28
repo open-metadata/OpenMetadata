@@ -13,17 +13,20 @@
 
 import { isEmpty, isNil, isString } from 'lodash';
 import {
+  DbtConfigCloud,
   DbtConfigHttp,
   DbtConfigLocal,
   DbtGCSCreds,
   DbtS3CredsReq,
   DbtSourceTypes,
+  ErrorDbtCloud,
   ErrorDbtGCS,
   ErrorDbtHttp,
   ErrorDbtLocal,
   ErrorDbtS3,
 } from '../components/common/DBTConfigFormBuilder/DBTConfigForm.interface';
 import {
+  reqDBTCloudFields,
   reqDBTGCSCredsFields,
   reqDBTHttpFields,
   reqDBTLocalFields,
@@ -44,6 +47,26 @@ import {
 import { FormValidationRules } from '../interface/genericForm.interface';
 import jsonData from '../jsons/en';
 import { isValidEmail, isValidUrl } from './CommonUtils';
+
+export const validateDbtCloudConfig = (
+  data: DbtConfigSource,
+  requiredFields = reqDBTCloudFields
+) => {
+  let isValid = true;
+  const errors = {} as ErrorDbtCloud;
+  for (const field of Object.keys(requiredFields) as Array<
+    keyof DbtConfigCloud
+  >) {
+    if (isEmpty(data[field])) {
+      isValid = false;
+      errors[
+        field
+      ] = `${requiredFields[field]} ${jsonData['form-error-messages']['is-required']}`;
+    }
+  }
+
+  return { isValid, errors };
+};
 
 export const validateDbtLocalConfig = (
   data: DbtConfigSource,
@@ -252,6 +275,12 @@ export const getSourceTypeFromConfig = (
       ).length > 0
     ) {
       sourceType = DBT_SOURCES.local;
+    } else if (
+      Object.keys(reqDBTCloudFields).filter(
+        (field) => !isEmpty(data[field as keyof DbtConfigCloud])
+      ).length > 0
+    ) {
+      sourceType = DBT_SOURCES.cloud;
     }
   }
 

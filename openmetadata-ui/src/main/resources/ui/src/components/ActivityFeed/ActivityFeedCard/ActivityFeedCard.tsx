@@ -36,6 +36,7 @@ import PopoverContent from './PopoverContent';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
+  feedType,
   className,
   replies,
   repliedUsers,
@@ -49,6 +50,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
+  taskDetails,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -118,10 +120,13 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   }, [feed]);
 
   return (
-    <div className={classNames(className, 'hover:tw-bg-gray-100')}>
+    <div
+      className={classNames(className, 'hover:tw-bg-gray-100', {
+        'tw-bg-gray-100': visible,
+      })}>
       <Popover
         destroyTooltipOnHide
-        align={{ targetOffset: [0, -20] }}
+        align={{ targetOffset: [0, -35] }}
         content={
           <PopoverContent
             isAuthor={isAuthor}
@@ -135,6 +140,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
             onReply={onReply}
           />
         }
+        key="reaction-options-popover"
         overlayClassName="ant-popover-feed"
         placement="topRight"
         trigger="hover"
@@ -153,7 +159,9 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
               entityFQN={entityFQN as string}
               entityField={entityField as string}
               entityType={entityType as string}
+              feedType={feedType}
               isEntityFeed={isEntityFeed}
+              taskDetails={taskDetails}
               timeStamp={feedDetail.postTs}
             />
             <FeedCardBody

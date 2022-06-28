@@ -111,6 +111,16 @@ jest.mock('../../axiosAPIs/pipelineAPI', () => ({
   ),
 }));
 
+jest.mock('../../axiosAPIs/mlModelAPI', () => ({
+  getAllMlModal: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        data: [],
+      },
+    })
+  ),
+}));
+
 jest.mock('../../axiosAPIs/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() =>
     Promise.resolve({

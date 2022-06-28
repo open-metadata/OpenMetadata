@@ -13,11 +13,13 @@
 
 package org.openmetadata.catalog.events;
 
+import static org.openmetadata.catalog.Entity.TEAM;
 import static org.openmetadata.catalog.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.catalog.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,10 +40,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
-import org.openmetadata.catalog.type.ChangeDescription;
-import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.EventType;
+import org.openmetadata.catalog.type.*;
 import org.openmetadata.catalog.util.ChangeEventParser;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -63,6 +62,7 @@ public class ChangeEventHandler implements EventHandler {
     SecurityContext securityContext = requestContext.getSecurityContext();
     String loggedInUserName = securityContext.getUserPrincipal().getName();
     try {
+      handleWebSocket(responseContext);
       ChangeEvent changeEvent = getChangeEvent(method, responseContext);
       if (changeEvent == null) {
         return null;
@@ -104,8 +104,8 @@ public class ChangeEventHandler implements EventHandler {
             }
             EntityLink about = EntityLink.parse(thread.getAbout());
             feedDao.create(thread, entity.getId(), owner, about);
-            String json = mapper.writeValueAsString(thread);
-            WebSocketManager.getInstance().broadCastMessageToClients(json);
+            String jsonThread = mapper.writeValueAsString(thread);
+            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
           }
         }
       }
@@ -113,6 +113,43 @@ public class ChangeEventHandler implements EventHandler {
       LOG.error("Failed to capture change event for method {} due to ", method, e);
     }
     return null;
+  }
+
+  private void handleWebSocket(ContainerResponseContext responseContext) {
+    int responseCode = responseContext.getStatus();
+    if (responseCode == Status.CREATED.getStatusCode() && responseContext.getEntity().getClass().equals(Thread.class)) {
+      Thread thread = (Thread) responseContext.getEntity();
+      try {
+        String jsonThread = mapper.writeValueAsString(thread);
+        switch (thread.getType()) {
+          case Task:
+            List<EntityReference> assignees = thread.getTask().getAssignees();
+            assignees.forEach(
+                (e) -> {
+                  if (Entity.USER.equals(e.getType())) {
+                    WebSocketManager.getInstance()
+                        .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
+                  } else if (Entity.TEAM.equals(e.getType())) {
+                    // fetch all that are there in the team
+                    List<String> userIds =
+                        dao.relationshipDAO()
+                            .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                    WebSocketManager.getInstance()
+                        .sendToManyWithString(userIds, WebSocketManager.taskBroadcastChannel, jsonThread);
+                  }
+                });
+            return;
+          case Conversation:
+            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
+            return;
+          case Announcement:
+          default:
+            return;
+        }
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public static ChangeEvent getChangeEvent(String method, ContainerResponseContext responseContext) {
@@ -129,7 +166,9 @@ public class ChangeEventHandler implements EventHandler {
     String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
 
     // Entity was created by either POST .../entities or PUT .../entities
-    if (responseCode == Status.CREATED.getStatusCode() && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)) {
+    if (responseCode == Status.CREATED.getStatusCode()
+        && !RestUtil.ENTITY_FIELDS_CHANGED.equals(changeType)
+        && !responseContext.getEntity().getClass().equals(Thread.class)) {
       var entityInterface = (EntityInterface) responseContext.getEntity();
       EntityReference entityReference = entityInterface.getEntityReference();
       String entityType = entityReference.getType();

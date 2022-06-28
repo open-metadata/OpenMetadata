@@ -61,7 +61,6 @@ class ModeSource(DashboardServiceSource):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        self.charts = []
         self.workspace_name = config.serviceConnection.__root__.config.workspaceName
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
@@ -116,17 +115,16 @@ class ModeSource(DashboardServiceSource):
             description=dashboard_details.get(mode_client.DESCRIPTION)
             if dashboard_details.get(mode_client.DESCRIPTION)
             else "",
-            charts=get_chart_entities_from_id(
-                chart_ids=self.charts,
-                metadata=self.metadata,
-                service_name=self.config.serviceName,
-            ),
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
             service=EntityReference(
                 id=self.context.dashboard_service.id.__root__, type="dashboardService"
             ),
         )
 
-    def yield_dashboard_lineage(
+    def yield_dashboard_lineage_details(
         self, dashboard_details: dict
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
@@ -198,7 +196,6 @@ class ModeSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        self.charts = []
         response_queries = self.client.get_all_queries(
             workspace_name=self.workspace_name,
             report_token=dashboard_details.get(mode_client.TOKEN),
@@ -235,7 +232,6 @@ class ModeSource(DashboardServiceSource):
                             type="dashboardService",
                         ),
                     )
-                    self.charts.append(chart.get(mode_client.TOKEN))
                     self.status.scanned(
                         chart[mode_client.VIEW_VEGAS][mode_client.TITLE]
                     )

@@ -99,17 +99,19 @@ const AddGlossaryPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <AddGlossary
-        allowAccess={isAdminUser || isAuthDisabled}
-        fetchTags={fetchTags}
-        header="Add Glossary"
-        isTagLoading={isTagLoading}
-        saveState={status}
-        slashedBreadcrumb={slashedBreadcrumb}
-        tagList={tagList}
-        onCancel={handleCancel}
-        onSave={onSave}
-      />
+      <div className="tw-self-center">
+        <AddGlossary
+          allowAccess={isAdminUser || isAuthDisabled}
+          fetchTags={fetchTags}
+          header="Add Glossary"
+          isTagLoading={isTagLoading}
+          saveState={status}
+          slashedBreadcrumb={slashedBreadcrumb}
+          tagList={tagList}
+          onCancel={handleCancel}
+          onSave={onSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

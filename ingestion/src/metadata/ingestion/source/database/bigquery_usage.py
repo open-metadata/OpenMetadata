@@ -14,7 +14,7 @@ import collections
 # This import verifies that the dependencies are available.
 import logging as log
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Iterable, Optional
 
 from google import auth
@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
@@ -75,8 +75,8 @@ class BigqueryUsageSource(UsageSource):
         _, project_id = auth.default()
         return project_id
 
-    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
-        entries = self.usage_logger.list_entries()
+    def get_table_query(self, entries: Iterable):
+        query_list = []
         for entry in entries:
             timestamp = entry.timestamp.isoformat()
             timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
@@ -115,7 +115,21 @@ class BigqueryUsageSource(UsageSource):
                             serviceName=self.config.serviceName,
                             databaseSchema=None,
                         )
-                        yield tq
+                        query_list.append(tq)
+        return query_list
+
+    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
+        daydiff = self.end - self.start
+        for i in range(daydiff.days):
+            filter_ = f'timestamp>="{(self.start+timedelta(days=i)).date()}" and timestamp<="{(self.start+timedelta(days=i+1)).date()}"'
+            logger.info(
+                f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
+            )
+            entries = self.usage_logger.list_entries(filter_=filter_)
+            yield TableQueries(
+                queries=self.get_table_query(entries),
+                analysisDate=self.start + timedelta(days=i),
+            )
 
     def close(self):
         super().close()

@@ -34,6 +34,7 @@ const info = '#1890FF';
 const infoBG = '#1890FF40';
 const warning = '#FFC34E';
 const warningBG = '#FFC34E40';
+const feedBorder = '#D1E9FF';
 
 // status colors
 
@@ -76,9 +77,9 @@ module.exports = {
     screens: {
       sm: '576px',
       md: '768px',
-      lg: '992px',
-      xl: '1200px',
-      xxl: '2160px',
+      lg: '1280px',
+      xl: '1440px',
+      xxl: '2560px',
     },
     extend: {
       borderColor: {
@@ -88,6 +89,7 @@ module.exports = {
         hover: textBody,
         focus: primary,
         search: '#D5D6D9',
+        feed: feedBorder,
       },
       boxShadow: {
         modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
@@ -146,6 +148,8 @@ module.exports = {
         'border-lite': liteGrayBorder,
         'border-lite-60': liteGrayBorder60,
         'border-gray': grayBorder,
+        'feed-background': '#F8FBFF',
+        'feed-hover': '#EBF2F9',
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -168,11 +172,12 @@ module.exports = {
         120: '30rem',
         'screen-sm': '576px',
         'screen-md': '768px',
-        'screen-lg': '992px',
-        'screen-xl': '1200px',
-        'screen-xxl': '2160px',
+        'screen-lg': '1280px',
+        'screen-xl': '1440px',
+        'screen-xxl': '2560px',
         'full-hd': '1080px',
         600: '600px',
+        700: '700px',
       },
       minWidth: {
         badgeCount: '30px',

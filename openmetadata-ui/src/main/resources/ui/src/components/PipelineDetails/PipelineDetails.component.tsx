@@ -403,6 +403,7 @@ const PipelineDetails = ({
                       />
                     </div>
                   </div>
+                  <hr className="tw-my-3" />
                   <div
                     className="tw-flex-grow tw-w-full tw-h-full"
                     style={{ height: 'calc(100% - 250px)' }}>
@@ -467,6 +468,7 @@ const PipelineDetails = ({
                 <div>
                   <ManageTabComponent
                     allowDelete
+                    allowSoftDelete
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={pipelineDetails.id}

@@ -1,0 +1,34 @@
+source:
+  type: bigquery
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: BigQuery
+      enablePolicyTagImport: true
+      credentials:
+        gcsConfig:
+          type: "<type>"
+          projectId: "<project ID>"
+          privateKeyId: "<private key ID>"
+          privateKey: "<private key>"
+          clientEmail: "<client email>"
+          clientId: "<client ID>"
+          authUri: "<auth URI>"
+          tokenUri: "<token URI>"
+          authProviderX509CertUrl: "<auth provider x509 certificate URL>"
+          clientX509CertUrl: "<client certificate URL>"
+  sourceConfig:
+    config:
+      markDeletedTables: true
+      includeTables: true
+      includeViews: true
+      schemaFilterPattern: "<schema name regex list>"
+      tableFilterPattern: "<table name regex list>"
+      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT files"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

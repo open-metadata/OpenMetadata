@@ -47,7 +47,7 @@ const mockData = {
             // eslint-disable-next-line @typescript-eslint/camelcase
             display_name: 'Cloud_Infra',
             // eslint-disable-next-line @typescript-eslint/camelcase
-            entity_type: 'team',
+            entityType: 'team',
             users: [],
             owns: [],
             // eslint-disable-next-line @typescript-eslint/camelcase

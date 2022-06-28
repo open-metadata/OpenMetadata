@@ -269,9 +269,9 @@ declare module 'Models' {
     description: string;
     display_name: string;
     entity_type: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     glossary_id: string;
-    glossary_name: string;
+    glossary: { name: string };
     last_updated_timestamp: number;
     name: string;
   }
@@ -399,7 +399,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'mlmodelServices';
 
   export type SampleData = {
     columns: Array<string>;
@@ -604,6 +605,11 @@ declare module 'Models' {
     readonly value: string;
   }
 
+  export interface Diff {
+    removed: boolean;
+    added: boolean;
+    value: string;
+  }
   export interface ScrollHandle {
     left: boolean;
     right: boolean;

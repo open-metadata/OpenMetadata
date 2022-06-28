@@ -19,12 +19,15 @@ import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface MyDataProps {
+  activityFeeds?: Thread[] | undefined;
+  onRefreshFeeds?: () => void;
   error: string;
   countServices: number;
   countTables: number;
   countTopics: number;
   countTeams: number;
   countUsers: number;
+  countMlModal: number;
   countDashboards: number;
   followedDataCount: number;
   ownedDataCount: number;

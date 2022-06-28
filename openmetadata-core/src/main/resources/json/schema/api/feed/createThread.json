@@ -4,6 +4,32 @@
   "title": "CreateThreadRequest",
   "description": "Create thread request",
   "type": "object",
+  "definitions": {
+    "createTaskDetails": {
+      "javaType": "org.openmetadata.catalog.type.CreateTaskDetails",
+      "description": "Details about the task. This is only applicable if thread is of type task.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "../../entity/feed/thread.json#/definitions/taskType"
+        },
+        "assignees": {
+          "description": "List of users or teams the task is assigned to",
+          "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+        },
+        "oldValue": {
+          "description": "The value of old object for which the task is created.",
+          "type": "string"
+        },
+        "suggestion": {
+          "description": "The suggestion object for the task provided by the creator.",
+          "type": "string"
+        }
+      },
+      "required": ["assignees", "type"],
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "message": {
       "description": "Message",
@@ -20,6 +46,12 @@
     "about": {
       "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityType}::{field}::{fieldValue}",
       "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "type": {
+      "$ref": "../../entity/feed/thread.json#/definitions/threadType"
+    },
+    "taskDetails": {
+      "$ref": "#/definitions/createTaskDetails"
     }
   },
   "required": ["message", "from", "about"],

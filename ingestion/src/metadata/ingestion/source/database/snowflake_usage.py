@@ -11,7 +11,7 @@
 """
 Snowflake usage module
 """
-
+from datetime import datetime
 from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -42,10 +42,6 @@ SNOWFLAKE_ABORTED_CODE = "1969"
 
 
 class SnowflakeUsageSource(UsageSource):
-    # SELECT statement from mysql information_schema
-    # to extract table and column metadata
-    SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT
-
     # CONFIG KEYS
     WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
     CLUSTER_SOURCE = "cluster_source"
@@ -59,14 +55,10 @@ class SnowflakeUsageSource(UsageSource):
         super().__init__(config, metadata_config)
 
         # Snowflake does not allow retrieval of data older than 7 days
-        duration = min(self.source_config.queryLogDuration, 7)
+        duration = min(self.source_config.queryLogDuration, 6)
         self.start, self.end = get_start_and_end(duration)
 
-        self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=self.start,
-            end_date=self.end,
-            result_limit=self.config.sourceConfig.config.resultLimit,
-        )
+        self.sql_stmt = SNOWFLAKE_SQL_STATEMENT
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
 
@@ -79,6 +71,16 @@ class SnowflakeUsageSource(UsageSource):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            result_limit=self.config.sourceConfig.config.resultLimit,
+        )
 
     def _get_raw_extract_iter(self) -> Iterable[TableQuery]:
         if self.config.serviceConnection.__root__.config.database:
@@ -93,19 +95,7 @@ class SnowflakeUsageSource(UsageSource):
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.connection)
-                rows = self.engine.execute(self.sql_stmt)
-                for row in rows:
-                    yield TableQuery(
-                        query=row["query_text"],
-                        userName=row["user_name"],
-                        startTime=str(row["start_time"]),
-                        endTime=str(row["end_time"]),
-                        analysisDate=self.analysis_date,
-                        aborted=self.get_aborted_status(row),
-                        databaseName=self.get_database_name(row),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=row["schema_name"],
-                    )
+                yield from super()._get_raw_extract_iter()
 
     def get_database_name(self, data: dict) -> str:
         """

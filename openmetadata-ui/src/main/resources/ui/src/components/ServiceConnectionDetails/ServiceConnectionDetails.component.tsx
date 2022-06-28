@@ -23,11 +23,13 @@ import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import { ConfigData } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
 import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
+import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import PopOver from '../common/popover/PopOver';
 
@@ -92,8 +94,8 @@ const ServiceConnectionDetails = ({
 
         return (
           <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
-            <div className="tw-w-1/3 tw-flex">
-              <p className="tw-text-gray-400 tw-m-0">{title || key}:</p>
+            <div className="tw-flex">
+              <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
               <PopOver
                 delay={0}
                 position="bottom"
@@ -106,7 +108,7 @@ const ServiceConnectionDetails = ({
                 />
               </PopOver>
             </div>
-            <div className="tw-w-2/3">
+            <div className="tw-mx-3 tw-flex-1">
               <input
                 readOnly
                 className="tw-w-full tw-outline-none"
@@ -142,6 +144,10 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.PIPELINE_SERVICE:
         setSchema(getPipelineConfig(serviceFQN as PipelineServiceType).schema);
+
+        break;
+      case EntityType.MLMODEL_SERVICE:
+        setSchema(getMlmodelConfig(serviceFQN as MlModelServiceType).schema);
 
         break;
     }

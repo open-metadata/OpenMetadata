@@ -67,7 +67,7 @@ const PipelineStatusList: FC<Prop> = ({
   if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
     return (
       <div
-        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        className="tw-mt-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
         data-testid="no-data">
         <span>No Execution data available.</span>
       </div>

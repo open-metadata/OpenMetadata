@@ -1071,6 +1071,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void put_profileQuery_200(TestInfo test) throws IOException {
+    CreateTable request = createRequest(test);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(table.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("profileQuery").withNewValue("SELECT * FROM dual"));
+
+    updateAndCheckEntity(
+        request.withProfileQuery("SELECT * FROM dual"), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void put_tableProfile_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax(100.0).withMin(10.0).withUniqueCount(100.0);

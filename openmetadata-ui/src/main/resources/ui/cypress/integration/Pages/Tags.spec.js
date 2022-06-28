@@ -18,11 +18,12 @@ describe('Tags page should work', () => {
   beforeEach(() => {
     cy.goToHomePage();
     cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
-      .should('be.visible')
-      .click();
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
+        .should('be.visible')
+        .click();
     cy.get('[data-testid="menu-item-Tags"]').should('be.visible').click();
+    // cy.get('[data-testid="appbar-item-tags"]').should('be.visible').click();
   });
 
   it('Required Details should be available', () => {

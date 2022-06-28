@@ -37,6 +37,7 @@ export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
+export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
 export const imageTypes = {
@@ -76,6 +77,7 @@ export const PLACEHOLDER_USER_NAME = ':username';
 export const PLACEHOLDER_BOTS_NAME = ':botsName';
 export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
+export const PLACEHOLDER_TASK_ID = ':taskId';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -108,28 +110,6 @@ export const visibleFilters = [
   'database',
   'databaseschema',
   'servicename',
-];
-
-export const tableSortingFields = [
-  {
-    name: 'Last Updated',
-    value: 'last_updated_timestamp',
-  },
-  { name: 'Weekly Usage', value: 'weekly_stats' },
-  { name: 'Relevance', value: '' },
-];
-
-export const entitySortingFields = [
-  {
-    name: 'Last Updated',
-    value: 'last_updated_timestamp',
-  },
-  { name: 'Relevance', value: '' },
-];
-
-export const sortingOrder = [
-  { name: 'Ascending', value: 'asc' },
-  { name: 'Descending', value: 'desc' },
 ];
 
 export const facetFilterPlaceholder = [
@@ -207,6 +187,7 @@ export const ROUTES = {
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
+  USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
   ROLES: '/roles',
   WEBHOOKS: '/webhooks',
   ADD_WEBHOOK: '/add-webhook',
@@ -224,6 +205,18 @@ export const ROUTES = {
   CUSTOM_PROPERTIES: `/custom-properties`,
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
+
+  // Tasks Routes
+  REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
+
+  ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
+};
+
+export const SOCKET_EVENTS = {
+  ACTIVITY_FEED: 'activityFeed',
+  TASK_CHANNEL: 'taskChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -361,9 +354,12 @@ export const getEditWebhookPath = (webhookName: string) => {
   return path;
 };
 
-export const getUserPath = (username: string) => {
-  let path = ROUTES.USER_PROFILE;
+export const getUserPath = (username: string, tab?: string) => {
+  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
   path = path.replace(PLACEHOLDER_USER_NAME, username);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
@@ -425,9 +421,8 @@ export const navLinkSettings = [
     name: 'Teams & Users',
     to: ROUTES.TEAMS_AND_USERS,
     disabled: false,
-    isAdminOnly: true,
   },
-  { name: 'Webhooks', to: '/webhooks', disabled: false },
+  { name: 'Webhooks', to: '/webhooks', disabled: false, isAdminOnly: true },
 ];
 
 export const TITLE_FOR_NON_OWNER_ACTION =
@@ -438,6 +433,9 @@ export const TITLE_FOR_NON_ADMIN_ACTION =
 
 export const TITLE_FOR_UPDATE_OWNER =
   'You do not have permissions to update the owner.';
+
+export const TITLE_FOR_UPDATE_DESCRIPTION =
+  'You do not have permissions to update the description.';
 
 export const configOptions = {
   headers: { 'Content-type': 'application/json-patch+json' },

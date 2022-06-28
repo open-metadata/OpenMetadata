@@ -97,8 +97,8 @@ describe('Glossary page should work properly', () => {
     cy.goToHomePage();
     // redirecting to glossary page
     cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -117,7 +117,7 @@ describe('Glossary page should work properly', () => {
 
     // Redirecting to add glossary page
     cy.get('[data-testid="add-webhook-button"]').should('be.visible').click();
-    cy.get('#center > .tw-heading')
+    cy.get('.tw-form-container > .tw-heading')
       .contains('Add Glossary')
       .should('be.visible');
 
@@ -322,8 +322,8 @@ describe('Glossary page should work properly', () => {
     addNewTagToEntity(entity, term);
 
     cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -378,8 +378,8 @@ describe('Glossary page should work properly', () => {
       .click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get(
-      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+      )
       .scrollIntoView()
       .should('be.visible')
       .click();

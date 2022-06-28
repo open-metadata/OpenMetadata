@@ -241,43 +241,45 @@ const AddIngestionPage = () => {
       );
     } else {
       return (
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          rightPanel={getServiceIngestionStepGuide(
-            activeIngestionStep,
-            true,
-            `${serviceData?.name || ''}_${ingestionType}`,
-            '',
-            ingestionType as PipelineType,
-            isDeployed(),
-            false,
-            isAirflowRunning
-          )}>
-          <div className="tw-form-container">
-            <AddIngestion
-              activeIngestionStep={activeIngestionStep}
-              handleCancelClick={goToService}
-              handleViewServiceClick={goToService}
-              heading={`Add ${capitalize(ingestionType)} Ingestion`}
-              ingestionAction={ingestionAction}
-              ingestionProgress={ingestionProgress}
-              isAirflowSetup={isAirflowRunning}
-              isIngestionCreated={isIngestionCreated}
-              isIngestionDeployed={isIngestionDeployed}
-              pipelineType={ingestionType as PipelineType}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceData={serviceData as DataObj}
-              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-              showDeployButton={showIngestionButton}
-              status={FormSubmitType.ADD}
-              onAddIngestionSave={onAddIngestionSave}
-              onAirflowStatusCheck={onAirflowStatusCheck}
-              onIngestionDeploy={onIngestionDeploy}
-            />
-          </div>
-        </PageLayout>
+        <div className="tw-self-center">
+          <PageLayout
+            classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+            header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+            layout={PageLayoutType['2ColRTL']}
+            rightPanel={getServiceIngestionStepGuide(
+              activeIngestionStep,
+              true,
+              `${serviceData?.name || ''}_${ingestionType}`,
+              '',
+              ingestionType as PipelineType,
+              isDeployed(),
+              false,
+              isAirflowRunning
+            )}>
+            <div className="tw-form-container">
+              <AddIngestion
+                activeIngestionStep={activeIngestionStep}
+                handleCancelClick={goToService}
+                handleViewServiceClick={goToService}
+                heading={`Add ${capitalize(ingestionType)} Ingestion`}
+                ingestionAction={ingestionAction}
+                ingestionProgress={ingestionProgress}
+                isAirflowSetup={isAirflowRunning}
+                isIngestionCreated={isIngestionCreated}
+                isIngestionDeployed={isIngestionDeployed}
+                pipelineType={ingestionType as PipelineType}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceData={serviceData as DataObj}
+                setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+                showDeployButton={showIngestionButton}
+                status={FormSubmitType.ADD}
+                onAddIngestionSave={onAddIngestionSave}
+                onAirflowStatusCheck={onAirflowStatusCheck}
+                onIngestionDeploy={onIngestionDeploy}
+              />
+            </div>
+          </PageLayout>
+        </div>
       );
     }
   };

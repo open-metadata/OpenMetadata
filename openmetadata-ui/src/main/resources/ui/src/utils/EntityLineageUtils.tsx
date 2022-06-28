@@ -88,9 +88,15 @@ export const getHeaderLabel = (
   );
 };
 
-export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
+export const onLoad = (
+  reactFlowInstance: ReactFlowInstance,
+  length?: number,
+  forceZoomReset = false
+) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(zoomValue);
+  if (forceZoomReset || (length && length <= 1)) {
+    reactFlowInstance.zoomTo(zoomValue);
+  }
 };
 /* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
@@ -169,10 +175,7 @@ export const getLineageDataV1 = (
   currentData: { nodes: Node[]; edges: Edge[] }
 ) => {
   const [x, y] = [0, 0];
-  const nodes = [
-    ...(entityLineage['nodes'] as EntityReference[]),
-    entityLineage['entity'],
-  ];
+  const nodes = [...(entityLineage['nodes'] || []), entityLineage['entity']];
   const edgesV1 = [
     ...(entityLineage.downstreamEdges || []),
     ...(entityLineage.upstreamEdges || []),
@@ -186,7 +189,7 @@ export const getLineageDataV1 = (
     const targetType = nodes.find((n) => edge.toEntity === n.id);
 
     if (!isUndefined(edge.lineageDetails)) {
-      edge.lineageDetails.columnsLineage.forEach((e) => {
+      edge.lineageDetails.columnsLineage?.forEach((e) => {
         const toColumn = e.toColumn || '';
         if (e.fromColumns && e.fromColumns.length > 0) {
           e.fromColumns.forEach((fromColumn) => {
@@ -220,6 +223,7 @@ export const getLineageDataV1 = (
       source: `${edge.fromEntity}`,
       target: `${edge.toEntity}`,
       type: isEditMode ? edgeType : 'custom',
+      style: { strokeWidth: '2px' },
       markerEnd: {
         type: MarkerType.ArrowClosed,
       },

@@ -50,4 +50,6 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   hideModeSwitch?: boolean;
   useCommandShortcut?: boolean;
   readonly?: boolean;
+  height?: string;
+  onTextChange?: (value: string) => void;
 }

@@ -71,7 +71,7 @@
     },
     "description": {
       "description": "Description of the topic instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",

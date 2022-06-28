@@ -1,0 +1,23 @@
+source:
+  type: databricks
+  serviceName: local_databricks
+  serviceConnection:
+    config:
+      type: Databricks
+      token: "<databricks token>"
+      hostPort: "<databricks connection host & port>"
+      httpPath: "<http path of databricks cluster>"
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: "<table FQN filtering regex>"
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"
