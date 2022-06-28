@@ -21,6 +21,7 @@ from airflow import DAG
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -78,6 +79,10 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     elif service_type == "messagingService":
         service: MessagingService = metadata.get_by_name(
             entity=MessagingService, fqn=ingestion_pipeline.service.name
+        )
+    elif service_type == "mlmodelService":
+        service: MlModelService = metadata.get_by_name(
+            entity=MlModelService, fqn=ingestion_pipeline.service.name
         )
 
     if not service:
