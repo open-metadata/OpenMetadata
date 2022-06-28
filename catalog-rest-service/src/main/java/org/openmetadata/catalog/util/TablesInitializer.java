@@ -23,9 +23,7 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
-import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.validation.Validators;
-import io.dropwizard.setup.Environment;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -43,6 +41,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
@@ -272,8 +271,12 @@ public final class TablesInitializer {
   }
 
   private static void createIngestionBot(CatalogApplicationConfig config) {
-    Environment environment = new Environment("bootstrap");
-    final Jdbi jdbi = new JdbiFactory().build(environment, config.getDataSourceFactory(), "database");
+    final Jdbi jdbi =
+        Jdbi.create(
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     String domain =
