@@ -94,6 +94,8 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   handleEnableDebugLog: jest.fn(),
   ingestSampleData: false,
   handleIngestSampleData: jest.fn(),
+  databaseServiceName: '',
+  handleDatasetServiceName: jest.fn(),
 };
 
 describe('Test ConfigureIngestion component', () => {

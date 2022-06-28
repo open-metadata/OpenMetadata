@@ -28,6 +28,7 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
+  databaseServiceName,
   databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
@@ -64,6 +65,7 @@ const ConfigureIngestion = ({
   handleIncludeView,
   handleMarkDeletedTables,
   handleIngestSampleData,
+  handleDatasetServiceName,
   handleQueryLogDuration,
   handleStageFileLocation,
   handleResultLimit,
@@ -72,21 +74,19 @@ const ConfigureIngestion = ({
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
-  const getIngestSampleToggle = () => {
+  const getIngestSampleToggle = (label: string, description: string) => {
     return (
       <>
         <Field>
           <div className="tw-flex tw-gap-1">
-            <label>Ingest Sample Data</label>
+            <label>{label}</label>
             <ToggleSwitchV1
               checked={ingestSampleData}
               handleCheck={handleIngestSampleData}
               testId="ingest-sample-data"
             />
           </div>
-          <p className="tw-text-grey-muted tw-mt-3">
-            Extract sample data from each topic
-          </p>
+          <p className="tw-text-grey-muted tw-mt-3">{description}</p>
         </Field>
         {getSeparator('')}
       </>
@@ -177,6 +177,31 @@ const ConfigureIngestion = ({
     );
   };
 
+  const getDashBoardServiceName = () => {
+    return (
+      <>
+        <Field>
+          <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+            Database Service Name
+          </label>
+          <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+            Database Service Name for creation of lineage
+          </p>
+          <input
+            className="tw-form-inputs tw-form-inputs-padding"
+            data-testid="name"
+            id="name"
+            name="name"
+            type="text"
+            value={databaseServiceName}
+            onChange={(e) => handleDatasetServiceName(e.target.value)}
+          />
+          {getSeparator('')}
+        </Field>
+      </>
+    );
+  };
+
   const getMetadataFilterPatternField = () => {
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES:
@@ -247,6 +272,7 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.CHART}
             />
             {getSeparator('')}
+            {getDashBoardServiceName()}
             {getDebugLogToggle()}
           </Fragment>
         );
@@ -267,7 +293,10 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.TOPIC}
             />
             {getSeparator('')}
-            {getIngestSampleToggle()}
+            {getIngestSampleToggle(
+              'Ingest Sample Data',
+              'Extract sample data from each topic'
+            )}
             {getDebugLogToggle()}
           </Fragment>
         );
@@ -312,6 +341,7 @@ const ConfigureIngestion = ({
       </Fragment>
     );
   };
+
   const getMetadataFields = () => {
     return (
       <>
@@ -415,6 +445,10 @@ const ConfigureIngestion = ({
         </div>
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
+        {getIngestSampleToggle(
+          'Ingest Sample Data',
+          'Extract sample data from each profile'
+        )}
         {getDebugLogToggle()}
         <div>
           <Field>
