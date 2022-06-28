@@ -5,7 +5,6 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
 import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
@@ -60,7 +59,8 @@ public class WebSocketManager {
                 });
             UUID id = UUID.fromString(userId);
             Map<String, SocketIoSocket> userSocketConnections;
-            userSocketConnections = activityFeedEndpoints.containsKey(id) ? activityFeedEndpoints.get(id) : new HashMap<>();
+            userSocketConnections =
+                activityFeedEndpoints.containsKey(id) ? activityFeedEndpoints.get(id) : new HashMap<>();
             userSocketConnections.put(socket.getId(), socket);
             activityFeedEndpoints.put(id, userSocketConnections);
           }
@@ -78,14 +78,16 @@ public class WebSocketManager {
   public EngineIoServer getEngineIoServer() {
     return mEngineIoServer;
   }
+
   public Map<UUID, Map<String, SocketIoSocket>> getActivityFeedEndpoints() {
     return activityFeedEndpoints;
   }
 
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach((key, value) -> {
-      value.forEach((key1,value1) -> value1.send(event, message));
-    });
+    activityFeedEndpoints.forEach(
+        (key, value) -> {
+          value.forEach((key1, value1) -> value1.send(event, message));
+        });
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
@@ -97,7 +99,7 @@ public class WebSocketManager {
   public void sendToManyWithUUID(List<UUID> receivers, String event, String message) {
     receivers.forEach(
         (e) -> {
-            sendToOne(e,event,message);
+          sendToOne(e, event, message);
         });
   }
 
@@ -105,7 +107,7 @@ public class WebSocketManager {
     receivers.forEach(
         (e) -> {
           UUID key = UUID.fromString(e);
-          sendToOne(key,event,message);
+          sendToOne(key, event, message);
         });
   }
 
