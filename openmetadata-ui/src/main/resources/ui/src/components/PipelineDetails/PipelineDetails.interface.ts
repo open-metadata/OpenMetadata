@@ -55,6 +55,7 @@ export interface PipeLineDetailsProp {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   pipelineStatus: Pipeline['pipelineStatus'];
   fetchFeedHandler: (
