@@ -1342,3 +1342,7 @@ div.ant-typography-ellipsis-custom {
   color: #7147e8;
   background-color: #7147e825;
 }
+
+.table-query-editor pre.CodeMirror-line {
+  padding-right: 60px !important;
+}
