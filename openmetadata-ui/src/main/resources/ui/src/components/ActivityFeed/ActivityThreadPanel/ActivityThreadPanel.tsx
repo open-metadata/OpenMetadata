@@ -13,6 +13,7 @@
 
 import { Tabs } from 'antd';
 import classNames from 'classnames';
+import { isEqual } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -29,6 +30,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   createThread,
   deletePostHandler,
   updateThreadHandler,
+  threadType,
 }) => {
   const { TabPane } = Tabs;
   const [activeTab, setActiveTab] = useState<string>('1');
@@ -36,6 +38,12 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   const onTabChange = (key: string) => {
     setActiveTab(key);
   };
+
+  useEffect(() => {
+    if (isEqual(threadType, ThreadType.Conversation)) {
+      setActiveTab('2');
+    }
+  }, [threadType]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';

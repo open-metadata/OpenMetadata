@@ -27,7 +27,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -90,6 +89,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -172,6 +172,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -490,23 +493,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [activeTab]);
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-count-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.TABLE,
+      tableFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
@@ -1030,6 +1023,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}

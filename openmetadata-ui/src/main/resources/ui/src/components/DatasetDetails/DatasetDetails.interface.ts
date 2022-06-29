@@ -75,6 +75,7 @@ export interface DatasetDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   testMode: DatasetTestModeType;
   tableTestCase: TableTest[];
   showTestForm: boolean;
