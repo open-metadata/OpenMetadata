@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -29,6 +29,7 @@ import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
+import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
@@ -46,6 +47,7 @@ const UserPage = () => {
   const { username, tab } = useParams<{ [key: string]: string }>();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
+  const searchParams = new URLSearchParams(location.search);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
@@ -53,6 +55,14 @@ const UserPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
+    (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
+  );
+  const threadType = useMemo(() => {
+    return getUserCurrentTab(tab) === 2
+      ? ThreadType.Task
+      : ThreadType.Conversation;
+  }, [tab]);
 
   const fetchUserData = () => {
     setUserData({} as User);
@@ -218,6 +228,7 @@ const UserPage = () => {
         <Users
           deletePostHandler={deletePostHandler}
           feedData={entityThread || []}
+          feedFilter={feedFilter}
           fetchFeedHandler={handleFeedFetchFromFeedList}
           isAdminUser={Boolean(isAdminUser)}
           isAuthDisabled={Boolean(isAuthDisabled)}
@@ -225,7 +236,9 @@ const UserPage = () => {
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
+          setFeedFilter={setFeedFilter}
           tab={tab}
+          threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
           userData={userData}
@@ -246,9 +259,11 @@ const UserPage = () => {
     if (userData.id) {
       const threadType =
         tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
-      getFeedData(threadType);
+      setFeedFilter(feedFilter);
+      setEntityThread([]);
+      getFeedData(threadType, undefined, feedFilter);
     }
-  }, [userData, tab]);
+  }, [userData, tab, feedFilter]);
 
   useEffect(() => {
     setEntityThread([]);

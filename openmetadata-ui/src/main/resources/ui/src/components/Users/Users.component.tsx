@@ -21,7 +21,6 @@ import React, {
   RefObject,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
@@ -79,6 +78,9 @@ const Users = ({
   updateThreadHandler,
   username,
   tab,
+  feedFilter,
+  setFeedFilter,
+  threadType,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -95,13 +97,6 @@ const Users = ({
   const [showFilterList, setShowFilterList] = useState(false);
 
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
-    (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
-  );
-  const threadType = useMemo(() => {
-    return activeTab === 2 ? ThreadType.Task : ThreadType.Conversation;
-  }, [activeTab]);
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
@@ -335,7 +330,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="teams-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -352,7 +347,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="teams-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -466,7 +461,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="roles-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -485,7 +480,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="roles-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -605,7 +600,7 @@ const Users = ({
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="left-panel-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '12px',
