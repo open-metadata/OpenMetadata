@@ -44,7 +44,7 @@ def validate_and_compile(element, compiler, **kw):
 def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)
-    return f"{value} % {base}"
+    return f"{value} %% {base}"
 
 
 @compiles(ModuloFn, Dialects.MSSQL)
@@ -58,6 +58,7 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.Snowflake)
 @compiles(ModuloFn, Dialects.Postgres)
 @compiles(ModuloFn, Dialects.Athena)
+@compiles(ModuloFn, Dialects.MySQL)
 def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)
