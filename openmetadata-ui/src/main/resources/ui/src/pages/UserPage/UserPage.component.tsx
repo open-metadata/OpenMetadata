@@ -27,7 +27,7 @@ import Users from '../../components/Users/Users.component';
 import { UserDetails } from '../../components/Users/Users.interface';
 import {
   onErrorText,
-  onUpdatedConversastionError
+  onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -39,7 +39,7 @@ import jsonData from '../../jsons/en';
 import {
   deletePost,
   getUpdatedThread,
-  updateThreadData
+  updateThreadData,
 } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
