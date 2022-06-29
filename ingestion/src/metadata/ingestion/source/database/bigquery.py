@@ -157,6 +157,8 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
+        if not self.source_config.includeTags:
+            return
         if column.get("policy_tags"):
             return [
                 TagLabel(
