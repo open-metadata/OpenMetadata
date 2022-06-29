@@ -64,6 +64,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   },
   includeLineage: false,
   includeView: false,
+  includeTags: false,
   pipelineType: PipelineType.Metadata,
   queryLogDuration: 1,
   resultLimit: 100,
@@ -79,6 +80,7 @@ const mockConfigureIngestion: ConfigureIngestionProps = {
   showFqnFilter: false,
   handleIncludeLineage: jest.fn(),
   handleIncludeView: jest.fn(),
+  handleIncludeTags: jest.fn(),
   handleIngestionName: jest.fn(),
   handleMarkDeletedTables: jest.fn(),
   handleQueryLogDuration: jest.fn(),
@@ -124,6 +126,6 @@ describe('Test ConfigureIngestion component', () => {
     expect(backButton).toBeInTheDocument();
     expect(nextButton).toBeInTheDocument();
     expect(filterPatternComponents.length).toBe(3);
-    expect(toggleSwitchs.length).toBe(3);
+    expect(toggleSwitchs.length).toBe(4);
   });
 });
