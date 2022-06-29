@@ -32,7 +32,15 @@ public class WebSocketManager {
         "connection",
         args -> {
           SocketIoSocket socket = (SocketIoSocket) args[0];
-          String userId = socket.getInitialHeaders().get("UserId").get(0);
+          final String userId;
+          String tempId;
+          try {
+            tempId = socket.getInitialHeaders().get("UserId").get(0);
+          } catch (Exception ex) {
+            tempId = socket.getInitialQuery().get("userId");
+          }
+          userId = tempId;
+
           if (userId != null && !userId.equals("")) {
             LOG.info(
                 "Client :"
@@ -57,6 +65,27 @@ public class WebSocketManager {
                   allUserConnection.remove(socket.getId());
                   activityFeedEndpoints.put(id, allUserConnection);
                 });
+            socket.on(
+                "connect_error",
+                args1 -> {
+                  LOG.error(
+                      "Connection ERROR for user:"
+                          + userId
+                          + "with Remote Address :"
+                          + socket.getInitialHeaders().get("RemoteAddress")
+                          + " disconnected.");
+                });
+            socket.on(
+                "connect_failed",
+                args1 -> {
+                  LOG.error(
+                      "Connection failed ERROR for user:"
+                          + userId
+                          + "with Remote Address :"
+                          + socket.getInitialHeaders().get("RemoteAddress")
+                          + " disconnected.");
+                });
+
             UUID id = UUID.fromString(userId);
             Map<String, SocketIoSocket> userSocketConnections;
             userSocketConnections =
@@ -64,6 +93,11 @@ public class WebSocketManager {
             userSocketConnections.put(socket.getId(), socket);
             activityFeedEndpoints.put(id, userSocketConnections);
           }
+        });
+    ns.on(
+        "error",
+        args -> {
+          LOG.error("Connection error on the server");
         });
   }
 
