@@ -110,9 +110,3 @@ def is_concatenable(_type) -> bool:
     e.g., strings or text
     """
     return issubclass(_type.__class__, Concatenable)
-
-def is_timeable(_type) -> bool:
-    """
-    Check if sqlalchemy _type is either Date, Time or DateTime
-    """
-    return is_date_time(_type)

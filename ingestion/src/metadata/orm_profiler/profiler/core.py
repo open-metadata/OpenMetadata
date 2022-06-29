@@ -411,7 +411,6 @@ class Profiler(Generic[TMetric]):
 
         We need to transform it to TableProfile
         """
-
         try:
 
             # There are columns that we might have skipped from
