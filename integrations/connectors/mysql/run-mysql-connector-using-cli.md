@@ -46,17 +46,14 @@ This is a sample config for MySQL:
         "username": "<username>",
         "password": "<password>",
         "hostPort": "<hostPort>",
-        "database": "<database>"
+        "databaseSchema": "<databaseSchema>"
       }
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": true or false,
         "markDeletedTables": true or false,
         "includeTables": true or false,
         "includeViews": true or false,
-        "generateSampleData": true or false,
-        "sampleDataQuery": "<query to fetch table data>",
         "schemaFilterPattern": "<schema name regex list>",
         "tableFilterPattern": "<table name regex list>",
         "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
@@ -83,7 +80,7 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **username**: Enter the username of your MySQL user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your MySQL user in the _Password_ field.
 * **hostPort**: Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
-* **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+* **databaseSchema**: If you want to limit metadata ingestion to a single database, enter the name of this database schema in the Database Schema field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs
 
@@ -91,12 +88,9 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
@@ -171,7 +165,7 @@ This is a sample config for a MySQL profiler:
         "username": "<username>",
         "password": "<password>",
         "hostPort": "<hostPort>",
-        "database": "<database>"
+        "databaseSchema": "<databaseSchema>"
       }
     },
     "sourceConfig": {

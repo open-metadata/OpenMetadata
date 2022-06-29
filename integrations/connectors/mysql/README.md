@@ -67,7 +67,9 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your MySQL service as desired.
 
-![Configure the Service connection](<../../../docs/.gitbook/assets/image (18) (1).png>)
+
+
+![Configure the Service connection](<../../../.gitbook/assets/image (3).png>)
 
 <details>
 
@@ -85,9 +87,9 @@ Enter the password for your MySQL user in the _Password_ field.
 
 Enter the fully qualified hostname and port number for your MySQL deployment in the _Host and Port_ field.
 
-**Database (optional)**
+**Database Schema (optional)**
 
-If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database, enter the name of this database schema in the **Database Schema** field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
 
 **Connection Options (Optional)**
 
