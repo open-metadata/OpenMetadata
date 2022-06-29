@@ -49,7 +49,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
       credentials:
         gcsConfig:
           type: <type>
@@ -64,12 +63,10 @@ source:
           clientX509CertUrl: <client certificate URL>
   sourceConfig:
     config:
-      enableDataProfiler: true or false
       markDeletedTables: true or false
       includeTables: true or false
       includeViews: true or false
-      generateSampleData: true or false
-      sampleDataQuery: <query to fetch table data>
+      includeTags: true or false
       schemaFilterPattern: <schema name regex list>
       tableFilterPattern: <table name regex list>
       dbtConfigSource: <configs for gcs, s3, local or file server to get the DBT files
@@ -86,8 +83,6 @@ workflowConfig:
 
 You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json).
 
-* **hostPort**: This is the BigQuery APIs URL.
-* **projectId** (Optional): The BigQuery Project ID is required only if the credentials path is being used instead of values.
 * **credentials**: We support two ways of authenticating to BigQuery:
   * Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
     * **type**: Credentials type, e.g. `service_account`.
@@ -111,9 +106,6 @@ credentials:
     gcsCredentialsPath: <path to file>
 ```
 
-* **enablePolicyTagImport** (Optional): Mark as 'True' to enable importing policy tags from BigQuery to OpenMetadata.
-* **tagCategoryName** (Optional): If the Tag import is enabled, the name of the Tag Category will be created at OpenMetadata.
-* **database** (Optional): The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to BigQuery during the connection. These details must be added as Key Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to BigQuery during the connection. These details must be added as Key Value pairs.
 
@@ -129,12 +121,10 @@ In case you authenticate with SSO using an external browser popup, then add the 
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
+* **includeTags**: `true` or `false`, to ingest tags.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
@@ -201,7 +191,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
       credentials:
         gcsConfig:
           type: <type>
@@ -291,7 +280,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
       credentials:
         gcsConfig:
           type: <type>

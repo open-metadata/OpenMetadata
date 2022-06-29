@@ -87,7 +87,7 @@ Enter the workspace name of your Mode environment.
 
 </details>
 
-![](<../../../.gitbook/assets/image (3) (1).png>)
+![](<../../../.gitbook/assets/image (3).png>)
 
 ### 6. Configure the Metadata Ingestion
 
