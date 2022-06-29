@@ -26,6 +26,7 @@ import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -110,6 +111,7 @@ const DashboardDetails = ({
   paging,
   fetchFeedHandler,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -128,6 +130,9 @@ const DashboardDetails = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -405,8 +410,11 @@ const DashboardDetails = ({
       });
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -460,7 +468,7 @@ const DashboardDetails = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
@@ -497,6 +505,10 @@ const DashboardDetails = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.DESCRIPTION,
                           entityFieldThreadCount
@@ -734,6 +746,7 @@ const DashboardDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />

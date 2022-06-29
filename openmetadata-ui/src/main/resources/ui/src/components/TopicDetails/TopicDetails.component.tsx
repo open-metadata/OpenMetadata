@@ -27,6 +27,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Topic } from '../../generated/entity/data/topic';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -93,6 +94,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   isSampleDataLoading,
   sampleData,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -100,6 +102,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -328,10 +333,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
-
   const onThreadPanelClose = () => {
     setThreadLink('');
   };
@@ -372,7 +379,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={topicFQN}
@@ -407,6 +414,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
                           EntityField.DESCRIPTION,
                           entityFieldThreadCount
@@ -505,6 +516,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />

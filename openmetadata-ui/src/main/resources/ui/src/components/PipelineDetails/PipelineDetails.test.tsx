@@ -95,6 +95,7 @@ const PipelineDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   pipelineFQN: '',
   deletePostHandler: jest.fn(),

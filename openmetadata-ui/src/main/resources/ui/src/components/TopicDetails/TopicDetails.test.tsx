@@ -88,6 +88,7 @@ const TopicDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   topicFQN: '',
   deletePostHandler: jest.fn(),

@@ -46,6 +46,7 @@ export interface TopicDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   isSampleDataLoading?: boolean;
   sampleData?: TopicSampleData;

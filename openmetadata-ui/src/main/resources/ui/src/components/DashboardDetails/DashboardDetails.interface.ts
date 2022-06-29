@@ -60,6 +60,7 @@ export interface DashboardDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   fetchFeedHandler: (
     after?: string,
