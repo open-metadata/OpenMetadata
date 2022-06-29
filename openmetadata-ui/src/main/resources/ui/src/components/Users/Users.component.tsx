@@ -46,6 +46,10 @@ import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
 import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -261,7 +265,7 @@ const Users = ({
             </div>
           ) : (
             <Fragment>
-              <span className="tw-text-base tw-font-medium tw-mr-2">
+              <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
                 {userData.displayName || 'Add display name'}
               </span>
               <button
@@ -561,7 +565,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="inherited-roles-card-component"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -592,6 +596,15 @@ const Users = ({
     }
   };
 
+  const image = useMemo(
+    () =>
+      getImageWithResolutionAndFallback(
+        ImageQuality['6x'],
+        userData.profile?.images
+      ),
+    [userData.profile?.images]
+  );
+
   const fetchLeftPanel = () => {
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
@@ -603,14 +616,14 @@ const Users = ({
             marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
-            {userData.profile?.images?.image ? (
+            {image ? (
               <div>
                 <img
                   alt="profile"
                   className="tw-w-full"
                   height="150px"
                   referrerPolicy="no-referrer"
-                  src={userData.profile?.images?.image}
+                  src={image}
                 />
               </div>
             ) : (
