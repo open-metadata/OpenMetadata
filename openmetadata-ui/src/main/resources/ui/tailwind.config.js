@@ -211,6 +211,9 @@ module.exports = {
         9998: 9998,
         9997: 9997,
       },
+      borderRadius: {
+        '4px': '4px',
+      },
     },
   },
   variants: {

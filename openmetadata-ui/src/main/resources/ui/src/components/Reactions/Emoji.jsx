@@ -81,7 +81,9 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
           fallback-src={image}>
           {reactionObject.emoji}
         </g-emoji>
-        <span data-testid="emoji-count">{reactionList.length}</span>
+        <span className="tw-text-sm tw-ml-1" data-testid="emoji-count">
+          {reactionList.length}
+        </span>
       </Button>
     </Popover>
   );
