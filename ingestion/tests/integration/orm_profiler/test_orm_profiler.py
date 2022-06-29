@@ -185,7 +185,7 @@ class ProfilerWorkflowTest(TestCase):
         profiler_workflow.stop()
 
         assert (
-                status == 1
+            status == 1
         )  # We have a test error, so we get a failure with exit status 1
 
         # The profileSample should have been updated
