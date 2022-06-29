@@ -55,7 +55,7 @@ export const getRoundedValue = (
  */
 export const getImageWithResolutionAndFallback = (
   quality: ImageQuality,
-  imageList?: ImageList,
+  imageList?: ImageList
 ): string | undefined => {
   const { image, image24, image32, image48, image72, image192, image512 } =
     imageList || {};
