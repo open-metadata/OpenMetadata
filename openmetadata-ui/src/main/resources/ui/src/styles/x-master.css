@@ -1132,6 +1132,7 @@ code {
 }
 .ant-popover-feed > .ant-popover-content > .ant-popover-inner,
 .ant-popover-card > .ant-popover-content > .ant-popover-inner,
+.ant-popover-request-description > .ant-popover-content > .ant-popover-inner,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
   border-radius: 6px;
   border: 1px solid #dde3ea;
@@ -1340,4 +1341,8 @@ div.ant-typography-ellipsis-custom {
 .ant-dropdown-menu-item-selected {
   color: #7147e8;
   background-color: #7147e825;
+}
+
+.table-query-editor pre.CodeMirror-line {
+  padding-right: 60px !important;
 }

@@ -24,6 +24,7 @@ import React, {
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -34,6 +35,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -138,6 +140,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   fetchFeedHandler,
   handleExtentionUpdate,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: DatasetDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -152,6 +155,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -527,8 +533,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -615,8 +624,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <div className="tw-col-span-3 tw--ml-5">
                     <Description
                       description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
+                        EntityField.DESCRIPTION,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -647,8 +660,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={columns}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'columns',
+                        EntityField.COLUMNS,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -818,6 +835,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />

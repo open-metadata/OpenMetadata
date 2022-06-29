@@ -83,3 +83,9 @@ def _(*_, **__):
 def _(*_, **__):
     """Postgres random logic"""
     return "ABS((RANDOM() * 100)::INTEGER)"
+
+
+@compiles(RandomNumFn, Dialects.Oracle)
+def _(*_, **__):
+    """Oracle random logic"""
+    return "ABS(DBMS_RANDOM.VALUE) * 100"
