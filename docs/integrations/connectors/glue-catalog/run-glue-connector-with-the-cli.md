@@ -47,18 +47,14 @@ This is a sample config for Glue:
             "awsRegion": "us-east-2",
             "endPointURL": "https://glue.us-east-2.amazonaws.com/"
           },
-          "storageServiceName":"storage_name",
-	  "pipelineServiceName":"local_glue_pipeline"
+          "storageServiceName":"storage_name"
         }
       },
       "sourceConfig": {
         "config": {
-           "enableDataProfiler": true or false,
            "markDeletedTables": true or false,
            "includeTables": true or false,
            "includeViews": true or false,
-           "generateSampleData": true or false,
-           "sampleDataQuery": "<query to fetch table data>",
            "schemaFilterPattern": "<schema name regex list>",
            "tableFilterPattern": "<table name regex list>",
            "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
@@ -82,12 +78,9 @@ This is a sample config for Glue:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: Glue does not provide query capabilities, so the profiler is not supported.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: Glue does not provide query capabilities, so sample data is not supported.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```

@@ -37,18 +37,14 @@ This is a sample config for Glue:
             "awsRegion": "us-east-2",
             "endPointURL": "https://glue.us-east-2.amazonaws.com/"
           },
-          "storageServiceName":"storage_name",
-	  "pipelineServiceName":"local_glue_pipeline"
+          "storageServiceName":"storage_name"
         }
       },
       "sourceConfig": {
         "config": {
-           "enableDataProfiler": true or false,
            "markDeletedTables": true or false,
            "includeTables": true or false,
            "includeViews": true or false,
-           "generateSampleData": true or false,
-           "sampleDataQuery": "<query to fetch table data>",
            "schemaFilterPattern": "<schema name regex list>",
            "tableFilterPattern": "<table name regex list>",
            "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
@@ -77,19 +73,14 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **awsRegion**: Specify the region in which your Glue catalog is located. This setting is required even if you have configured a local AWS profile.
 * **awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
 * **endPointURL**: Optional parameter.The Glue connector will automatically determine the AWS Glue endpoint URL based on the AWS Region. You may specify a value to override this behavior.
-* **storageServiceName**: OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
-* **pipelineServiceName**: OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue. When this metadata has been ingested you will find it in the OpenMetadata UI pipelines view under the name you have specified.
-
-#### Source Configuration - Source Config
+* **storageServiceName**: OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue
+* #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: Glue does not provide query capabilities, so profiler is not supported.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: Glue does not provide query capabilities, so sample data is not supported.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```

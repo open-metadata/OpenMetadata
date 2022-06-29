@@ -89,12 +89,6 @@ The Glue connector will automatically determine the AWS Glue endpoint URL based 
 
 OpenMetadata associates objects for each object store entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for the object stores you are using through AWS Glue.
 
-**Pipeline Service Name (optional)**
-
-OpenMetadata associates each pipeline entity with a unique namespace. To ensure your data is well-organized and findable, choose a unique name by which you would like to identify the metadata for pipelines you are using through AWS Glue.
-
-When this metadata has been ingested you will find it in the OpenMetadata UI pipelines view under the name you have specified.
-
 **Database (Optional)**
 
 The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
