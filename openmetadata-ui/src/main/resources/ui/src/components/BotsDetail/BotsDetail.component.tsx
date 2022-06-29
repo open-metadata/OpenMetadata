@@ -37,7 +37,6 @@ import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipbo
 import Description from '../common/description/Description';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageContainerV1 from '../containers/PageContainerV1';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { UserDetails } from '../Users/Users.interface';
@@ -161,11 +160,11 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getDisplayNameComponent = () => {
     return (
-      <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between">
+      <div className="tw-mt-4 tw-w-full">
         {isDisplayNameEdit ? (
-          <div className="tw-flex tw-items-center tw-gap-1">
+          <div className="tw-flex tw-items-center tw-gap-2">
             <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
               data-testid="displayName"
               id="displayName"
               name="displayName"
@@ -241,7 +240,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
         className="ant-card-feed"
         style={{
           ...leftPanelAntCardStyle,
-          marginTop: '20px',
+          marginTop: '16px',
         }}>
         <div data-testid="left-panel">
           <div className="tw-flex tw-flex-col">
@@ -267,7 +266,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
         className="ant-card-feed"
         style={{
           ...leftPanelAntCardStyle,
-          marginTop: '20px',
+          marginTop: '16px',
         }}>
         <div data-testid="right-panel">
           <div className="tw-flex tw-flex-col">
@@ -377,7 +376,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const getCenterLayout = () => {
     return (
       <div
-        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4"
+        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4 tw-mt-4"
         data-testid="center-panel">
         <div className="tw-flex tw-justify-between tw-items-center">
           <h6 className="tw-mb-2 tw-self-center">
@@ -423,23 +422,23 @@ const BotsDetail: FC<BotsDetailProp> = ({
   }, [botsData]);
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <TitleBreadcrumb
-        className="tw-px-6"
-        titleLinks={[
-          {
-            name: 'Bots',
-            url: ROUTES.BOTS,
-          },
-          { name: botsData.name || '', url: '', activeTitle: true },
-        ]}
-      />
-      <PageLayout
-        classes="tw-h-full tw-px-4"
-        leftPanel={fetchLeftPanel()}
-        rightPanel={fetchRightPanel()}>
-        {getCenterLayout()}
-      </PageLayout>
+    <PageLayout
+      classes="tw-h-full tw-px-4"
+      header={
+        <TitleBreadcrumb
+          className="tw-px-6"
+          titleLinks={[
+            {
+              name: 'Bots',
+              url: ROUTES.BOTS,
+            },
+            { name: botsData.name || '', url: '', activeTitle: true },
+          ]}
+        />
+      }
+      leftPanel={fetchLeftPanel()}
+      rightPanel={fetchRightPanel()}>
+      {getCenterLayout()}
       {isRevokingToken ? (
         <ConfirmationModal
           bodyText="Are you sure you want to revoke access for JWT token?"
@@ -466,7 +465,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
           }}
         />
       ) : null}
-    </PageContainerV1>
+    </PageLayout>
   );
 };
 
