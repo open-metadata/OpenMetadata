@@ -46,6 +46,10 @@ import jsonData from '../../jsons/en';
 import UserCard from '../../pages/teams/UserCard';
 import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -225,11 +229,11 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between tw-px-3">
+        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between tw-px-3 tw-overflow-auto">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-items-center tw-gap-1 ">
+            <div className="tw-flex tw-items-center tw-gap-1">
               <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64 tw-w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -261,7 +265,7 @@ const Users = ({
             </div>
           ) : (
             <Fragment>
-              <span className="tw-text-base tw-font-medium tw-mr-2">
+              <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
                 {userData.displayName || 'Add display name'}
               </span>
               <button
@@ -335,7 +339,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="inherited-teams-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -352,7 +356,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="inherited-teams-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -569,7 +573,7 @@ const Users = ({
       return (
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="inherited-roles-card-component"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '20px',
@@ -605,20 +609,23 @@ const Users = ({
       <div className="user-profile-antd-card" data-testid="left-panel">
         <Card
           className="ant-card-feed tw-relative"
-          key="inherited-roles-card"
+          key="panel-inherited-roles-card"
           style={{
             ...leftPanelAntCardStyle,
             marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
-            {userData.profile?.images?.image ? (
+            {userData.profile?.images ? (
               <div>
                 <img
                   alt="profile"
                   className="tw-w-full"
                   height="150px"
                   referrerPolicy="no-referrer"
-                  src={userData.profile?.images?.image}
+                  src={getImageWithResolutionAndFallback(
+                    userData.profile.images,
+                    ImageQuality['6x']
+                  )}
                 />
               </div>
             ) : (
