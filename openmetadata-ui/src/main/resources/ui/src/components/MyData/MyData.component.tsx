@@ -187,7 +187,7 @@ const MyData: React.FC<MyDataProps> = ({
         <div className="tw-mt-5" />
       </div>
     );
-  }, [ownedData, followedData]);
+  }, [ownedData, followedData, pendingTaskCount]);
 
   const getLoader = () => {
     return isFeedLoading ? <Loader /> : null;
