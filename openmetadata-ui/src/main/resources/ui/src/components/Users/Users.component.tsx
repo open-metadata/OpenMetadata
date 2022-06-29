@@ -21,6 +21,7 @@ import React, {
   RefObject,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
