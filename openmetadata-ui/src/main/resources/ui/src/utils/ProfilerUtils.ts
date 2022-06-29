@@ -14,14 +14,15 @@
 import { ColumnProfile } from '../generated/entity/data/table';
 import { ImageList } from '../generated/entity/teams/user';
 
-export enum ImageQuality  {
-  '1x' ,
-  '1.5x', 
-  '2x', 
-  '3x', 
-  '4x', 
-  '5x', 
-  '6x'}
+export enum ImageQuality {
+  '1x',
+  '1.5x',
+  '2x',
+  '3x',
+  '4x',
+  '5x',
+  '6x',
+}
 
 export const getRoundedValue = (
   value: ColumnProfile['histogram'] | Date | undefined
@@ -37,40 +38,51 @@ export const getRoundedValue = (
   }
 };
 
-/** 
+/**
  * Returns correct imageSrc from given images or undefined if not any
- * 
+ *
  * @param imageList list of images from we get the required one
- * @param quality ImageQuality that you need in return 
- * 
+ * @param quality ImageQuality that you need in return
+ *
  * @returns `string` | `undefined`
- * 
+ *
  * Refer ImageQuality enum for applicable qualities
  * It's having fallback mechanism, so if you ask for 2x
  * It will try to find `2x` first if not found
  * Then it will try for `1.5x` if not found
  * Then it will try for `1x` or return `undefined` if not found
- * 
-*/
-export const getImageWithResolutionAndFallback = (imageList: ImageList, quality: ImageQuality): string | undefined => {
-  const {image, image24, image32, image48, image72, image192, image512} = imageList
+ *
+ */
+export const getImageWithResolutionAndFallback = (
+  quality: ImageQuality
+  imageList?: ImageList,
+): string | undefined => {
+  const { image, image24, image32, image48, image72, image192, image512 } =
+    imageList || {};
 
-  switch(quality) {
+  switch (quality) {
     case ImageQuality['1.5x']:
-      return image24 ?? image
+      return image24 || image;
     case ImageQuality['2x']:
-      return image32 ?? image24 ?? image
+      return image32 || image24 || image;
     case ImageQuality['3x']:
-      return image48 ?? image32 ?? image24 ?? image
+      return image48 || image32 || image24 || image;
     case ImageQuality['4x']:
-      return image72 ?? image48 ?? image32 ?? image24 ?? image
+      return image72 || image48 || image32 || image24 || image;
     case ImageQuality['5x']:
-      return image192 ?? image72 ?? image48 ?? image32 ?? image24 ?? image
+      return image192 || image72 || image48 || image32 || image24 || image;
     case ImageQuality['6x']:
-      return image512 ?? image192 ?? image72 ?? image48 ?? image32 ?? image24 ?? image
+      return (
+        image512 ||
+        image192 ||
+        image72 ||
+        image48 ||
+        image32 ||
+        image24 ||
+        image
+      );
     case ImageQuality['1x']:
     default:
       return image;
   }
-}
-
+};

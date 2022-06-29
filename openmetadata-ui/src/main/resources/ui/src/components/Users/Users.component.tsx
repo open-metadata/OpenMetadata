@@ -22,7 +22,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useState,
+  useState
 } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
@@ -33,7 +33,7 @@ import { observerOptions } from '../../constants/Mydata.constants';
 import {
   getUserCurrentTab,
   profileInfo,
-  USER_PROFILE_TABS,
+  USER_PROFILE_TABS
 } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -48,7 +48,7 @@ import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
 import {
   getImageWithResolutionAndFallback,
-  ImageQuality,
+  ImageQuality
 } from '../../utils/ProfilerUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -56,7 +56,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import {
   filterList,
-  filterListTasks,
+  filterListTasks
 } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
@@ -233,7 +233,7 @@ const Users = ({
           {isDisplayNameEdit ? (
             <div className="tw-flex tw-items-center tw-gap-1">
               <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64 tw-w-full"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -604,6 +604,15 @@ const Users = ({
     }
   };
 
+  const image = useMemo(
+    () =>
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      userData.profile?.images,
+      ),
+    [userData.profile?.images]
+  );
+
   const fetchLeftPanel = () => {
     return (
       <div className="user-profile-antd-card" data-testid="left-panel">
@@ -615,17 +624,14 @@ const Users = ({
             marginTop: '12px',
           }}>
           <div className="tw-flex tw-flex-col">
-            {userData.profile?.images ? (
+            {image ? (
               <div>
                 <img
                   alt="profile"
                   className="tw-w-full"
                   height="150px"
                   referrerPolicy="no-referrer"
-                  src={getImageWithResolutionAndFallback(
-                    userData.profile.images,
-                    ImageQuality['6x']
-                  )}
+                  src={image}
                 />
               </div>
             ) : (
