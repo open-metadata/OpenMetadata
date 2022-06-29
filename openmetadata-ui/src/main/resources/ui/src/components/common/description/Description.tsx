@@ -18,6 +18,7 @@ import { EntityFieldThreads } from 'Models';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { EntityField } from '../../../constants/feed.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
@@ -138,7 +139,11 @@ const Description: FC<DescriptionProps> = ({
             data-testid="start-description-thread"
             onClick={() =>
               onThreadLinkSelect?.(
-                getEntityFeedLink(entityType, entityFqn, 'description')
+                getEntityFeedLink(
+                  entityType,
+                  entityFqn,
+                  EntityField.DESCRIPTION
+                )
               )
             }>
             <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />

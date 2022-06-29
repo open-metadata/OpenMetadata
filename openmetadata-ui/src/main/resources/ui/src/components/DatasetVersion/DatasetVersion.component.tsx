@@ -16,6 +16,7 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
 import { FqnPart } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import {
@@ -138,7 +139,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -159,7 +160,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
   const updatedColumns = (): Table['columns'] => {
     const colList = cloneDeep(currentVersionData.columns);
-    const columnsDiff = getDiffByFieldName('columns', changeDescription);
+    const columnsDiff = getDiffByFieldName(
+      EntityField.COLUMNS,
+      changeDescription
+    );
     const changedColName = getChangeColName(
       columnsDiff?.added?.name ??
         columnsDiff?.deleted?.name ??
@@ -171,7 +175,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
           columnsDiff?.updated?.name,
-        'description'
+        EntityField.DESCRIPTION
       )
     ) {
       const oldDescription =
@@ -249,7 +253,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       return colList ?? [];
     } else {
       const columnsDiff = getDiffByFieldName(
-        'columns',
+        EntityField.COLUMNS,
         changeDescription,
         true
       );

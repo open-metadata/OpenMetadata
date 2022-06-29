@@ -24,6 +24,7 @@ import React, {
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -624,11 +625,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     <Description
                       description={description}
                       entityFieldTasks={getEntityFieldThreadCounts(
-                        'description',
+                        EntityField.DESCRIPTION,
                         entityFieldTaskCount
                       )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
+                        EntityField.DESCRIPTION,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -660,11 +661,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                       )}
                       columns={columns}
                       entityFieldTasks={getEntityFieldThreadCounts(
-                        'columns',
+                        EntityField.COLUMNS,
                         entityFieldTaskCount
                       )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'columns',
+                        EntityField.COLUMNS,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}

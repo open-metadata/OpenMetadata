@@ -652,8 +652,12 @@ export const getFeedCounts = (
     ThreadType.Conversation
   )
     .then((res: AxiosResponse) => {
-      entityCallback(res.data.totalCount);
-      conversationCallback(res.data.counts);
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        conversationCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
     })
     .catch((err: AxiosError) => {
       showErrorToast(
@@ -664,8 +668,12 @@ export const getFeedCounts = (
 
   getFeedCount(getEntityFeedLink(entityType, entityFQN), ThreadType.Task)
     .then((res: AxiosResponse) => {
-      entityCallback(res.data.totalCount);
-      taskCallback(res.data.counts);
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        taskCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
     })
     .catch((err: AxiosError) => {
       showErrorToast(

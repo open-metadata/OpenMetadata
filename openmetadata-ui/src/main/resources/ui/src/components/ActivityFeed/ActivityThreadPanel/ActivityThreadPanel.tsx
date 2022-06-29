@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEqual } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { PanelTab } from '../../../constants/feed.constants';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelOverlay from '../ActivityFeedPanel/FeedPanelOverlay';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
@@ -33,15 +34,15 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   threadType,
 }) => {
   const { TabPane } = Tabs;
-  const [activeTab, setActiveTab] = useState<string>('1');
+  const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
 
   const onTabChange = (key: string) => {
-    setActiveTab(key);
+    setActiveTab(key as PanelTab);
   };
 
   useEffect(() => {
     if (isEqual(threadType, ThreadType.Conversation)) {
-      setActiveTab('2');
+      setActiveTab(PanelTab.CONVERSATIONS);
     }
   }, [threadType]);
 
@@ -68,7 +69,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           activeKey={activeTab}
           className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
           onChange={onTabChange}>
-          <TabPane key="1" tab="Tasks">
+          <TabPane key={PanelTab.TASKS} tab="Tasks">
             <ActivityThreadPanelBody
               createThread={createThread}
               deletePostHandler={deletePostHandler}
@@ -80,7 +81,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               onTabChange={onTabChange}
             />
           </TabPane>
-          <TabPane key="2" tab="Conversations">
+          <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
             <ActivityThreadPanelBody
               createThread={createThread}
               deletePostHandler={deletePostHandler}

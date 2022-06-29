@@ -29,6 +29,7 @@ import { postThread } from '../../../axiosAPIs/feedsAPI';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { EntityField } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
@@ -104,7 +105,7 @@ const UpdateDescription = () => {
   }, [field, entityData]);
 
   const getColumnDetails = useCallback(() => {
-    if (!isNil(field) && !isNil(value) && field === 'columns') {
+    if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       return (
         <div data-testid="column-details">
           <p className="tw-font-semibold">Column Details</p>
@@ -136,7 +137,7 @@ const UpdateDescription = () => {
     if (field && value) {
       return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
     } else {
-      return 'description';
+      return EntityField.DESCRIPTION;
     }
   };
 

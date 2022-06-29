@@ -23,6 +23,7 @@ import { useExpanded, useTable } from 'react-table';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
@@ -378,7 +379,7 @@ const EntityTable = ({
 
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const onRequestDescriptionHandler = (cell: any) => {
-    const field = 'columns';
+    const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
       getRequestDescriptionPath(
@@ -392,7 +393,7 @@ const EntityTable = ({
 
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const onUpdateDescriptionHandler = (cell: any) => {
-    const field = 'columns';
+    const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
       getUpdateDescriptionPath(
@@ -731,7 +732,7 @@ const EntityTable = ({
                                     {getRequestDescriptionElement(cell)}
                                     {getFieldThreadElement(
                                       getColumnName(cell),
-                                      'description',
+                                      EntityField.DESCRIPTION,
                                       entityFieldThreads as EntityFieldThreads[],
                                       onThreadLinkSelect,
                                       EntityType.TABLE,
@@ -743,7 +744,7 @@ const EntityTable = ({
                                     )}
                                     {getFieldThreadElement(
                                       getColumnName(cell),
-                                      'description',
+                                      EntityField.DESCRIPTION,
                                       entityFieldTasks as EntityFieldThreads[],
                                       onThreadLinkSelect,
                                       EntityType.TABLE,

@@ -62,3 +62,15 @@ export enum TaskOperation {
   RESOLVE = 'resolve',
   REJECT = 'close',
 }
+
+export enum PanelTab {
+  TASKS = 'tasks',
+  CONVERSATIONS = 'conversations',
+}
+
+export enum EntityField {
+  DESCRIPTION = 'description',
+  COLUMNS = 'columns',
+  TAGS = 'tags',
+  TASKS = 'tasks',
+}
