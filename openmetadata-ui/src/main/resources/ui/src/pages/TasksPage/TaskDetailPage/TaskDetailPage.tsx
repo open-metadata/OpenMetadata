@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EditorContentRef, EntityReference, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -49,6 +49,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column } from '../../../generated/entity/data/table';
 import {
+  TaskDetails,
   TaskType,
   Thread,
   ThreadTaskStatus,
@@ -256,7 +257,10 @@ const TaskDetailPage = () => {
       );
 
       if (existingAssignee) {
-        return existingAssignee;
+        return {
+          id: existingAssignee.id,
+          type: existingAssignee.type,
+        };
       } else {
         return {
           id: assignee.value,
@@ -270,7 +274,28 @@ const TaskDetailPage = () => {
       task: { ...(taskDetail.task || {}), assignees: newAssignees },
     };
 
-    const patch = compare(taskDetail, updatedTask);
+    // existing task assignees should only have id and type for the patch to work
+    const existingAssignees = taskDetail.task?.assignees;
+    let oldTask: Thread = taskDetail;
+    if (existingAssignees) {
+      const formattedAssignees: EntityReference[] = existingAssignees.map(
+        (assignee: EntityReference) => {
+          return {
+            id: assignee.id,
+            type: assignee.type,
+          };
+        }
+      );
+      oldTask = {
+        ...taskDetail,
+        task: {
+          ...(taskDetail.task as TaskDetails),
+          assignees: formattedAssignees,
+        },
+      };
+    }
+
+    const patch = compare(oldTask, updatedTask);
     updateThread(taskDetail.id, patch)
       .then(() => {
         fetchTaskDetail();
