@@ -139,6 +139,7 @@ class GlueSource(Source[Entity]):
                 parsed_string["dataType"] = "UNION"
             parsed_string["name"] = column["Name"][:64]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+            parsed_string["description"] = column.get("Comment")
             yield Column(**parsed_string)
 
     def ingest_tables(
@@ -201,9 +202,7 @@ class GlueSource(Source[Entity]):
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
-                    description=table["Description"]
-                    if hasattr(table, "Description")
-                    else "",
+                    description=table.get("Description", ""),
                     columns=table_columns,
                     tableType=table_type,
                 )
