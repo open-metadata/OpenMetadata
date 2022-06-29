@@ -10,12 +10,12 @@
 #  limitations under the License.
 
 """
-Max Metric definition
+EarliestTime Metric definition
 """
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_timeable
+from metadata.orm_profiler.orm.registry import is_date_time
 
 
 class EarliestTime(StaticMetric):
@@ -31,6 +31,6 @@ class EarliestTime(StaticMetric):
 
     @_label
     def fn(self):
-        if not is_timeable(self.col.type):
+        if not is_date_time(self.col.type):
             return None
         return func.min(column(self.col.name))

@@ -15,12 +15,11 @@ Test Metrics behavior
 import datetime
 from unittest import TestCase
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine, DateTime
+from sqlalchemy import TEXT, Column, Integer, String, create_engine, Date, Time, DateTime
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.metrics.core import add_props
 from metadata.orm_profiler.metrics.registry import Metrics
-from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.utils.connections import create_and_bind_session
 
@@ -35,7 +34,10 @@ class User(Base):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
-    dob = Column(DateTime)
+    dob = Column(DateTime) # date of birth
+    tob = Column(Time) # time of birth
+    doe = Column(Date) # date of employment
+
 
 class MetricsTest(TestCase):
     """
@@ -59,7 +61,9 @@ class MetricsTest(TestCase):
                 nickname="johnny b goode",
                 comments="no comments",
                 age=30,
-                dob=datetime.datetime(1992, 5, 17)
+                dob=datetime.datetime(1992, 5, 17),
+                tob=datetime.time(11, 2, 32),
+                doe=datetime.date(2020, 1, 12)
             ),
             User(
                 name="Jane",
@@ -67,7 +71,9 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments="maybe some comments",
                 age=31,
-                dob=datetime.datetime(1991, 4, 4)
+                dob=datetime.datetime(1991, 4, 4),
+                tob=datetime.time(10, 1, 31),
+                doe=datetime.date(2009, 11, 11)
             ),
             User(
                 name="John",
@@ -75,7 +81,9 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments=None,
                 age=None,
-                dob=datetime.datetime(1982, 2, 2)
+                dob=datetime.datetime(1982, 2, 2),
+                tob=datetime.time(9, 3, 25),
+                doe=datetime.date(2012, 12, 1)
             ),
         ]
         cls.session.add_all(data)
@@ -126,10 +134,12 @@ class MetricsTest(TestCase):
         """
         earliest_time = Metrics.EARLIEST_TIME.value
         profiler = Profiler(
-            earliest_time, session=self.session, table=User, use_cols=[User.dob]
+            earliest_time, session=self.session, table=User, use_cols=[User.dob, User.tob, User.doe]
         )
         res = profiler.execute()._column_results
         assert res.get(User.dob.name).get(Metrics.EARLIEST_TIME.name) == '1982-02-02 00:00:00.000000'
+        assert res.get(User.tob.name).get(Metrics.EARLIEST_TIME.name) == '09:03:25.000000'
+        assert res.get(User.doe.name).get(Metrics.EARLIEST_TIME.name) == '2009-11-11'
 
     def test_latest_time(self):
         """
@@ -137,10 +147,12 @@ class MetricsTest(TestCase):
         """
         latest_time = Metrics.LATEST_TIME.value
         profiler = Profiler(
-            latest_time, session=self.session, table=User, use_cols=[User.dob]
+            latest_time, session=self.session, table=User, use_cols=[User.dob, User.tob, User.doe]
         )
         res = profiler.execute()._column_results
         assert res.get(User.dob.name).get(Metrics.LATEST_TIME.name) == '1992-05-17 00:00:00.000000'
+        assert res.get(User.tob.name).get(Metrics.LATEST_TIME.name) == '11:02:32.000000'
+        assert res.get(User.doe.name).get(Metrics.LATEST_TIME.name) == '2020-01-12'
 
     def test_null_count(self):
         """
@@ -194,7 +206,7 @@ class MetricsTest(TestCase):
         col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
         profiler = Profiler(col_count, session=self.session, table=User)
         res = profiler.execute()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 7
+        assert res.get(Metrics.COLUMN_COUNT.name) == 9
 
     def test_avg(self):
         """
