@@ -55,7 +55,11 @@ def get_involved_tables_from_parser(parser: LineageRunner) -> List[models.Table]
     """
     try:
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return list(set(parser.source_tables).union(set(parser.intermediate_tables)))
+        return list(
+            set(parser.source_tables)
+            .union(set(parser.intermediate_tables))
+            .union(set(parser.target_tables))
+        )
     except SQLLineageException:
         logger.debug(
             f"Cannot extract source table information from query: {parser._sql}"  # pylint: disable=protected-access
@@ -329,8 +333,8 @@ class QueryParserProcessor(Processor):
                     if parsed_sql:
                         data.append(parsed_sql)
                 except Exception as err:
-                    logger.debug(traceback.format_exc())
-                    logger.debug(record.query)
+                    logger.error(traceback.format_exc())
+                    logger.error(record.query)
                     logger.error(err)
             return QueryParserData(parsedData=data)
 
