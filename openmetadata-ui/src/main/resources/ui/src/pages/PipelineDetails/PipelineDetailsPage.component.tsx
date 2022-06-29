@@ -54,10 +54,12 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -202,9 +204,18 @@ const PipelineDetailsPage = () => {
       });
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
+      after,
+      threadType,
+      feedFilter
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -223,6 +234,15 @@ const PipelineDetailsPage = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, filterType, type);
   };
 
   const fetchServiceDetails = (type: string, fqn: string) => {
@@ -711,7 +731,7 @@ const PipelineDetailsPage = () => {
           entityName={displayName}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}

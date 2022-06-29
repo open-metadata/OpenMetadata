@@ -23,13 +23,15 @@ import APIClient from './index';
 export const getAllFeeds: Function = (
   entityLink?: string,
   after?: string,
-  type?: ThreadType
+  type?: ThreadType,
+  filterType?: FeedFilter
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
       entityLink: entityLink,
       after,
       type,
+      filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
     },
   });
 };

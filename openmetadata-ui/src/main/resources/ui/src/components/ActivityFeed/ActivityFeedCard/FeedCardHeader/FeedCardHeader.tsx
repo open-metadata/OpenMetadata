@@ -172,7 +172,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
                 <Link data-testid="entitylink" to={prepareFeedLink()}>
                   <button disabled={AppState.isTourOpen}>
                     <Ellipses
-                      className="tw-w-auto tw-text-left"
+                      className="tw-w-28 tw-text-left"
                       rows={1}
                       style={{
                         color: 'rgb(24, 144, 255)',

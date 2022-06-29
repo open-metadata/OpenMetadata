@@ -12,9 +12,8 @@
 import collections
 
 # This import verifies that the dependencies are available.
-import logging as log
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, Iterable, Optional
 
 from google import auth
@@ -36,8 +35,9 @@ from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ingestion_logger
 
-logger = log.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class BigqueryUsageSource(UsageSource):
@@ -119,17 +119,10 @@ class BigqueryUsageSource(UsageSource):
         return query_list
 
     def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
-        daydiff = self.end - self.start
-        for i in range(daydiff.days):
-            filter_ = f'timestamp>="{(self.start+timedelta(days=i)).date()}" and timestamp<="{(self.start+timedelta(days=i+1)).date()}"'
-            logger.info(
-                f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
-            )
-            entries = self.usage_logger.list_entries(filter_=filter_)
-            yield TableQueries(
-                queries=self.get_table_query(entries),
-                analysisDate=self.start + timedelta(days=i),
-            )
+        entries = self.usage_logger.list_entries()
+        yield TableQueries(
+            queries=self.get_table_query(entries),
+        )
 
     def close(self):
         super().close()

@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
@@ -89,9 +89,18 @@ const UserPage = () => {
     );
   };
 
-  const getFeedData = (threadType: ThreadType, after?: string) => {
+  const getFeedData = (
+    threadType: ThreadType,
+    after?: string,
+    feedFilter?: FeedFilter
+  ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(userData.id, FeedFilter.ALL, after, threadType)
+    getFeedsWithFilter(
+      userData.id,
+      feedFilter || FeedFilter.ALL,
+      after,
+      threadType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -108,6 +117,14 @@ const UserPage = () => {
         setIsFeedLoading(false);
       });
   };
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (threadType: ThreadType, after?: string, feedFilter?: FeedFilter) => {
+      !after && setEntityThread([]);
+      getFeedData(threadType, after, feedFilter);
+    },
+    [getFeedData, setEntityThread]
+  );
 
   const postFeedHandler = (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
@@ -201,7 +218,7 @@ const UserPage = () => {
         <Users
           deletePostHandler={deletePostHandler}
           feedData={entityThread || []}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           isAdminUser={Boolean(isAdminUser)}
           isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}

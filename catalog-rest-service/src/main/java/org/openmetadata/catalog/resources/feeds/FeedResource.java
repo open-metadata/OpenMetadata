@@ -52,6 +52,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.api.feed.CloseTask;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.ResolveTask;
@@ -303,10 +304,10 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") String id,
-      @Valid ResolveTask resolveTask)
+      @Valid CloseTask closeTask)
       throws IOException {
     Thread task = dao.getTask(Integer.parseInt(id));
-    return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName()).toResponse();
+    return dao.closeTask(uriInfo, task, securityContext.getUserPrincipal().getName(), closeTask).toResponse();
   }
 
   @PATCH

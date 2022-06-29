@@ -118,7 +118,7 @@ describe('MyData page should work', () => {
         cy.get('[data-testid="message-container"]')
           .eq(1)
           .scrollIntoView()
-          .contains(`Started to follow ${termObj.entity.slice(0, -1)}`)
+          .contains(`Followed ${termObj.entity.slice(0, -1)}`)
           .should('be.visible');
       });
 
