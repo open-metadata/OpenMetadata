@@ -90,7 +90,7 @@ const ProfilePicture = ({
 
   return profilePic ? (
     <div
-      className={classNames('profile-image', type)}
+      className={classNames('profile-image', type, className)}
       style={{ height: `${height || width}px`, width: `${width}px` }}>
       <img
         alt="user"
