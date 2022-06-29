@@ -15,6 +15,7 @@ import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import Users from './Users.component';
 
 const mockUserData = {
@@ -194,6 +195,8 @@ const mockProp = {
   isAuthDisabled: true,
   updateUserDetails,
   updateThreadHandler: jest.fn(),
+  setFeedFilter: jest.fn(),
+  threadType: 'Task' as ThreadType.Task,
 };
 
 describe('Test User Component', () => {

@@ -441,7 +441,7 @@ const MyDataPage = () => {
       undefined,
       ThreadType.Task
     ).then((res: AxiosResponse) => {
-      res.data && setPendingTaskCount(res.data.data.length);
+      res.data && setPendingTaskCount(res.data.paging.total);
     });
   }, [currentUser]);
 
@@ -486,6 +486,7 @@ const MyDataPage = () => {
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
     };
   }, [socket]);
 

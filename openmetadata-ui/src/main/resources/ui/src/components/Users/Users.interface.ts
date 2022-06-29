@@ -51,4 +51,7 @@ export interface Props {
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  feedFilter: FeedFilter;
+  setFeedFilter: (value: FeedFilter) => void;
+  threadType: ThreadType.Task | ThreadType.Conversation;
 }
