@@ -14,9 +14,8 @@ Custom types' registry for easy access
 without having an import mess
 """
 import sqlalchemy
-from sqlalchemy import Integer, Numeric
+from sqlalchemy import Integer, Numeric, Date, Time, DateTime
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
-from sqlalchemy.types import Date, Time, DateTime
 
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
