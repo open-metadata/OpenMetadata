@@ -111,6 +111,7 @@ const DashboardDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   dashboardFQN: '',
   deletePostHandler: jest.fn(),

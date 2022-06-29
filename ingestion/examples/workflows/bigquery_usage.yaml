@@ -4,7 +4,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      projectId: project_id
       credentials:
         gcsConfig:
           type: service_account

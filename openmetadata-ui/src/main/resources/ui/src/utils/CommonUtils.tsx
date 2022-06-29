@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
 import {
+  EntityFieldThreadCount,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
@@ -22,6 +24,7 @@ import {
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
+import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -36,12 +39,15 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { getTitleCase } from './EntityUtils';
+import jsonData from '../jsons/en';
+import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -630,4 +636,49 @@ export const getExploreLinkByFilter = (
 
 export const replaceSpaceWith_ = (text: string) => {
   return text.replace(/\s/g, '_');
+};
+
+export const getFeedCounts = (
+  entityType: string,
+  entityFQN: string,
+  conversationCallback: (
+    value: React.SetStateAction<EntityFieldThreadCount[]>
+  ) => void,
+  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
+  entityCallback: (value: React.SetStateAction<number>) => void
+) => {
+  getFeedCount(
+    getEntityFeedLink(entityType, entityFQN),
+    ThreadType.Conversation
+  )
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        conversationCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+
+  getFeedCount(getEntityFeedLink(entityType, entityFQN), ThreadType.Task)
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        taskCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
 };

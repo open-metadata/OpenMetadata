@@ -27,7 +27,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -54,7 +53,6 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-
 import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -70,6 +68,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import {
@@ -138,6 +137,9 @@ const PipelineDetailsPage = () => {
   const [pipeLineStatus, setPipelineStatus] = useState<
     Pipeline['pipelineStatus']
   >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -155,21 +157,13 @@ const PipelineDetailsPage = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.PIPELINE,
+      pipelineFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
   const saveUpdatedPipelineData = (
@@ -725,6 +719,7 @@ const PipelineDetailsPage = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}

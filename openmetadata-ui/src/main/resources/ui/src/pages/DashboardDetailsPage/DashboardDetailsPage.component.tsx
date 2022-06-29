@@ -33,7 +33,6 @@ import {
 } from '../../axiosAPIs/dashboardAPI';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -70,6 +69,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -83,7 +83,6 @@ import {
   updateThreadData,
 } from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -135,6 +134,9 @@ const DashboardDetailsPage = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const activeTabHandler = (tabValue: number) => {
@@ -153,23 +155,13 @@ const DashboardDetailsPage = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-
-        showErrorToast(errMsg);
-      });
+    getFeedCounts(
+      EntityType.DASHBOARD,
+      dashboardFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
   const getFeedData = (
@@ -795,6 +787,7 @@ const DashboardDetailsPage = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}

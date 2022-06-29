@@ -1,6 +1,6 @@
 source:
   type: airbyte
-  serviceName: airbyte_source1
+  serviceName: airbyte_source
   serviceConnection:
     config:
       type: Airbyte

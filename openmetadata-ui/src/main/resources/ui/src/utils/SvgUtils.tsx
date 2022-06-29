@@ -144,6 +144,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
+import IconTaskColor from '../assets/svg/Task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -313,6 +314,7 @@ export const Icons = {
   STAR: 'ic-star',
   MENTIONS: 'ic-mentions',
   COMMENT_GREY: 'ic-comment-grey',
+  TASK_ICON: 'task-icon',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -889,6 +891,10 @@ const SVGIcons: FunctionComponent<Props> = ({
 
     case Icons.ALERT_BELL:
       IconComponent = IconAlertBell;
+
+      break;
+    case Icons.TASK_ICON:
+      IconComponent = IconTaskColor;
 
       break;
 

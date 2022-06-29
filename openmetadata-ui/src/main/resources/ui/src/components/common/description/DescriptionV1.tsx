@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
+import { EntityField } from '../../../constants/feed.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
@@ -130,7 +131,7 @@ const DescriptionV1 = ({
             <button
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
-              onClick={() => onEntityFieldSelect?.('description')}>
+              onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
               <PopOver
                 position="top"
                 title="Request description"
@@ -168,7 +169,11 @@ const DescriptionV1 = ({
                   data-testid="start-description-thread"
                   onClick={() =>
                     onThreadLinkSelect?.(
-                      getEntityFeedLink(entityType, entityFqn, 'description')
+                      getEntityFeedLink(
+                        entityType,
+                        entityFqn,
+                        EntityField.DESCRIPTION
+                      )
                     )
                   }>
                   <SVGIcons

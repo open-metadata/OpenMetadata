@@ -17,6 +17,7 @@ import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -25,6 +26,7 @@ import {
   PipelineStatus,
   Task,
 } from '../../generated/entity/data/pipeline';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -96,6 +98,7 @@ const PipelineDetails = ({
   fetchFeedHandler,
   pipelineStatus,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -118,6 +121,9 @@ const PipelineDetails = ({
         return {} as PipelineStatus;
       }
     }
+  );
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
   );
 
   const onEntityFieldSelect = (value: string) => {
@@ -311,8 +317,11 @@ const PipelineDetails = ({
     }
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -355,7 +364,7 @@ const PipelineDetails = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={pipelineFQN}
@@ -391,8 +400,12 @@ const PipelineDetails = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={pipelineFQN}
@@ -514,6 +527,7 @@ const PipelineDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />
