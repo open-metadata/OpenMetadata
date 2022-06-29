@@ -145,6 +145,7 @@ const DatasetDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   showTestForm: false,
   testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),

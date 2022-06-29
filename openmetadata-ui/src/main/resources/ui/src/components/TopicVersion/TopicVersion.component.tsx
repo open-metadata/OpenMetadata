@@ -16,6 +16,7 @@ import { isUndefined } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -99,7 +100,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =

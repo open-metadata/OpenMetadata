@@ -66,11 +66,13 @@ export const getFeedsWithFilter: Function = (
 };
 
 export const getFeedCount: Function = (
-  entityLink?: string
+  entityLink?: string,
+  type?: ThreadType
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed/count`, {
     params: {
       entityLink: entityLink,
+      type,
     },
   });
 };

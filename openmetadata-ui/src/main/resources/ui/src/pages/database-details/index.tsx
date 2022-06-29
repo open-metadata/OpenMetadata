@@ -61,6 +61,7 @@ import {
   PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -674,7 +675,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 blurWithBodyBG
                 description={description}
                 entityFieldThreads={getEntityFieldThreadCounts(
-                  'description',
+                  EntityField.DESCRIPTION,
                   entityFieldThreadCount
                 )}
                 entityFqn={databaseFQN}

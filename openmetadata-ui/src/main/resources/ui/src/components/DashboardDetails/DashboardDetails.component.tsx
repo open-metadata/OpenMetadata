@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -497,7 +498,7 @@ const DashboardDetails = ({
                       <Description
                         description={description}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={dashboardFQN}
