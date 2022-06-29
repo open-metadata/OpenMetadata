@@ -16,17 +16,20 @@ import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import PropTypes from 'prop-types';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AppState from '../../AppState';
 import { REACTION_LIST } from '../../constants/reactions.constant';
 import { ReactionOperation } from '../../enums/reactions.enum';
 import useImage from '../../hooks/useImage';
 
 const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
-  // get reaction object based on cureent reaction
+  const [reactionType, setReactionType] = useState(reaction);
+  const [isClicked, setIsClicked] = useState(false);
+
+  // get reaction object based on cureent reactionType
   const reactionObject = useMemo(
-    () => REACTION_LIST.find((value) => value.reaction === reaction),
-    [reaction]
+    () => REACTION_LIST.find((value) => value.reaction === reactionType),
+    [reactionType]
   );
 
   const { image } = useImage(`emojis/${reactionObject.reaction}.png`);
@@ -45,10 +48,13 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   const userList = reactionList.map((reactionItem) => reactionItem.user.name);
 
   const handleOnClick = () => {
-    const operation = isReacted
-      ? ReactionOperation.REMOVE
-      : ReactionOperation.ADD;
-    onReactionSelect(reactionObject.reaction, operation);
+    if (!isClicked) {
+      const operation = isReacted
+        ? ReactionOperation.REMOVE
+        : ReactionOperation.ADD;
+      onReactionSelect(reactionObject.reaction, operation);
+      setIsClicked(true);
+    }
   };
 
   const popoverContent = (
@@ -56,9 +62,14 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
       className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
       data-testid="popover-content">
       {`${userList.join(', ')}`}{' '}
-      <span className="tw-font-semibold">{`reacted with ${reaction} emoji`}</span>
+      <span className="tw-font-semibold">{`reacted with ${reactionType} emoji`}</span>
     </p>
   );
+
+  useEffect(() => {
+    setReactionType(reaction);
+    setIsClicked(false);
+  }, [reaction]);
 
   return (
     <Popover
