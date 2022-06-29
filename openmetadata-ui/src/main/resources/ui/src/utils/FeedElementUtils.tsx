@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
 import { entityUrlMap } from '../constants/feed.constants';
+import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
 import { getThreadField } from './FeedUtils';
@@ -24,11 +25,12 @@ export const getFieldThreadElement = (
   columnName: string,
   columnField: string,
   entityFieldThreads: EntityFieldThreads[],
-  onThreadLinkSelect?: (value: string) => void,
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void,
   entityType?: string,
   entityFqn?: string,
   entityField?: string,
-  flag = true
+  flag = true,
+  threadType?: ThreadType
 ) => {
   let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
 
@@ -39,27 +41,36 @@ export const getFieldThreadElement = (
     }
   });
 
+  const isTaskType = isEqual(threadType, ThreadType.Task);
+
   return !isEmpty(threadValue) ? (
-    <p
-      className="link-text tw-w-8 tw-h-8 tw-flex-none"
+    <button
+      className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1"
       data-testid="field-thread"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onThreadLinkSelect?.(threadValue.entityLink);
+        onThreadLinkSelect?.(
+          threadValue.entityLink,
+          isTaskType ? ThreadType.Task : ThreadType.Conversation
+        );
       }}>
       <span className="tw-flex">
-        <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+        <SVGIcons
+          alt="comments"
+          icon={isTaskType ? Icons.TASK_ICON : Icons.COMMENT}
+          width={isTaskType ? '16px' : '20px'}
+        />
         <span className="tw-ml-1" data-testid="field-thread-count">
           {threadValue.count}
         </span>
       </span>
-    </p>
+    </button>
   ) : (
     <Fragment>
-      {entityType && entityFqn && entityField && flag ? (
-        <p
-          className="link-text tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 tw-flex-none"
+      {entityType && entityFqn && entityField && flag && !isTaskType ? (
+        <button
+          className="link-text tw-self-start tw-w-8 tw-h-8 tw-flex-none tw-mx-1 tw-opacity-0 group-hover:tw-opacity-100"
           data-testid="start-field-thread"
           onClick={(e) => {
             e.preventDefault();
@@ -69,7 +80,7 @@ export const getFieldThreadElement = (
             );
           }}>
           <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
-        </p>
+        </button>
       ) : null}
     </Fragment>
   );

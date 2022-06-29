@@ -462,32 +462,35 @@ export const getLayoutedElementsV1 = (
 };
 
 export const getModalBodyText = (selectedEdge: SelectedEdge) => {
+  const { data, source, target } = selectedEdge;
+  const { isColumnLineage } = data as CustomEdgeData;
   let sourceEntity = '';
   let targetEntity = '';
-  const sourceFQN = selectedEdge.source.fullyQualifiedName || '';
-  const targetFQN = selectedEdge.target.fullyQualifiedName || '';
+  const sourceFQN = isColumnLineage
+    ? data?.sourceHandle
+    : source.fullyQualifiedName;
 
-  if (selectedEdge.source.type === EntityType.TABLE) {
-    sourceEntity = getPartialNameFromTableFQN(sourceFQN, [FqnPart.Table]);
+  const targetFQN = isColumnLineage
+    ? data?.targetHandle
+    : target.fullyQualifiedName;
+
+  const fqnPart = isColumnLineage ? FqnPart.Column : FqnPart.Table;
+
+  if (source.type === EntityType.TABLE) {
+    sourceEntity = getPartialNameFromTableFQN(sourceFQN || '', [fqnPart]);
   } else {
-    sourceEntity = getPartialNameFromFQN(sourceFQN, ['database']);
+    sourceEntity = getPartialNameFromFQN(sourceFQN || '', ['database']);
   }
 
-  if (selectedEdge.target.type === EntityType.TABLE) {
-    targetEntity = getPartialNameFromTableFQN(targetFQN, [FqnPart.Table]);
+  if (target.type === EntityType.TABLE) {
+    targetEntity = getPartialNameFromTableFQN(targetFQN || '', [fqnPart]);
   } else {
-    targetEntity = getPartialNameFromFQN(targetFQN, ['database']);
+    targetEntity = getPartialNameFromFQN(targetFQN || '', ['database']);
   }
 
   return `Are you sure you want to remove the edge between "${
-    selectedEdge.source.displayName
-      ? selectedEdge.source.displayName
-      : sourceEntity
-  } and ${
-    selectedEdge.target.displayName
-      ? selectedEdge.target.displayName
-      : targetEntity
-  }"?`;
+    source.displayName ? source.displayName : sourceEntity
+  } and ${target.displayName ? target.displayName : targetEntity}"?`;
 };
 
 export const getUniqueFlowElements = (elements: CustomeFlow[]) => {

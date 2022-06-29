@@ -8,17 +8,12 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import collections
-
-# This import verifies that the dependencies are available.
-import logging as log
-import os
-from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable, Optional
+"""
+Handle big query usage extraction
+"""
+from datetime import datetime
 
 from google import auth
-from google.cloud import logging
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -32,12 +27,13 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import BIGQUERY_USAGE_STATEMENT
 
-logger = log.getLogger(__name__)
+logger = ingestion_logger()
 
 
 class BigqueryUsageSource(UsageSource):
@@ -46,14 +42,11 @@ class BigqueryUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.temp_credentials = None
 
         self.project_id = self.set_project_id()
+        self.database = self.project_id
 
-        self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
-        self.logging_client = logging.Client()
-        self.usage_logger = self.logging_client.logger(self.logger_name)
-        logger.debug("Listing entries for logger {}:".format(self.usage_logger.name))
+        self.sql_stmt = BIGQUERY_USAGE_STATEMENT
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -70,68 +63,17 @@ class BigqueryUsageSource(UsageSource):
 
         return cls(config, metadata_config)
 
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            region=self.connection.usageLocation,
+        )
+
     @staticmethod
     def set_project_id():
         _, project_id = auth.default()
         return project_id
-
-    def get_table_query(self, entries: Iterable):
-        query_list = []
-        for entry in entries:
-            timestamp = entry.timestamp.isoformat()
-            timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
-            if timestamp >= self.start and timestamp <= self.end:
-                if ("query" in str(entry.payload)) and type(
-                    entry.payload
-                ) == collections.OrderedDict:
-                    payload = list(entry.payload.items())[-1][1]
-                    if "jobChange" in payload:
-                        logger.debug(f"\nEntries: {payload}")
-                        if "queryConfig" in payload["jobChange"]["job"]["jobConfig"]:
-                            queryConfig = payload["jobChange"]["job"]["jobConfig"][
-                                "queryConfig"
-                            ]
-                        else:
-                            continue
-                        jobStats = payload["jobChange"]["job"]["jobStats"]
-                        statementType = ""
-                        if hasattr(queryConfig, "statementType"):
-                            statementType = queryConfig["statementType"]
-                        database = self.project_id
-                        analysis_date = str(
-                            datetime.strptime(
-                                jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
-                            ).strftime("%Y-%m-%d %H:%M:%S")
-                        )
-                        logger.debug(f"Query :{statementType}:{queryConfig['query']}")
-                        tq = TableQuery(
-                            query=queryConfig["query"],
-                            userName=entry.resource.labels["project_id"],
-                            startTime=str(jobStats["startTime"]),
-                            endTime=str(jobStats["endTime"]),
-                            analysisDate=analysis_date,
-                            aborted=0,
-                            databaseName=str(database),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=None,
-                        )
-                        query_list.append(tq)
-        return query_list
-
-    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, Any]]]:
-        daydiff = self.end - self.start
-        for i in range(daydiff.days):
-            filter_ = f'timestamp>="{(self.start+timedelta(days=i)).date()}" and timestamp<="{(self.start+timedelta(days=i+1)).date()}"'
-            logger.info(
-                f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
-            )
-            entries = self.usage_logger.list_entries(filter_=filter_)
-            yield TableQueries(
-                queries=self.get_table_query(entries),
-                analysisDate=self.start + timedelta(days=i),
-            )
-
-    def close(self):
-        super().close()
-        if self.temp_credentials:
-            os.unlink(self.temp_credentials)

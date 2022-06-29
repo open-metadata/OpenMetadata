@@ -39,7 +39,7 @@ class avg(GenericFunction):
 def _(element, compiler, **kw):
     """Handle case for empty table. If empty, clickhouse returns NaN"""
     proc = compiler.process(element.clauses, **kw)
-    return "if(isNaN(avg(%s)), null, avg(%s)" % ((proc,) * 2)
+    return "if(isNaN(avg(%s)), null, avg(%s))" % ((proc,) * 2)
 
 
 class Mean(StaticMetric):

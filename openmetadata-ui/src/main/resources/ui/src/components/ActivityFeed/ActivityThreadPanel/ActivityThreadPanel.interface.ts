@@ -20,6 +20,7 @@ import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 export interface ActivityThreadPanelProp
   extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
+  threadType?: ThreadType;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
   createThread: (data: CreateThread) => void;

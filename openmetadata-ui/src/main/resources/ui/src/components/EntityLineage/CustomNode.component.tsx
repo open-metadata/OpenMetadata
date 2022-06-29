@@ -20,7 +20,7 @@ import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { ModifiedColumn } from './EntityLineage.interface';
 
-const handleStyles = {
+const handleStyles: CSSProperties = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
@@ -34,14 +34,6 @@ const getHandle = (
   isNewNode = false,
   id?: string
 ) => {
-  const getLeftRightHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      height: '162%',
-    };
-  };
-
   if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
       <Fragment>
@@ -49,16 +41,7 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={{ ...handleStyles } as CSSProperties}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{
-            ...getLeftRightHandleStyles(),
-          }}
+          style={handleStyles}
           type="target"
         />
       </Fragment>
@@ -70,16 +53,7 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={{ ...handleStyles } as CSSProperties}
-          type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{
-            ...getLeftRightHandleStyles(),
-          }}
+          style={handleStyles}
           type="source"
         />
       </Fragment>
@@ -93,34 +67,10 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={
-            {
-              ...handleStyles,
-
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={
-            {
-              ...handleStyles,
-
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
-          type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
           style={{
-            ...getLeftRightHandleStyles(),
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
           }}
           type="target"
         />
@@ -129,7 +79,9 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
-            ...getLeftRightHandleStyles(),
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
           }}
           type="source"
         />

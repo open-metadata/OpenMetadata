@@ -101,7 +101,7 @@ class UsageSource(Source[TableQuery], ABC):
                             databaseSchema=query_dict.get("schema_name"),
                         )
                     )
-            yield TableQueries(queries=query_list, analysis_date=datetime.utcnow())
+            yield TableQueries(queries=query_list)
 
         else:
             daydiff = self.end - self.start

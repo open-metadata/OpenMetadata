@@ -220,11 +220,11 @@ const Users = ({
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full tw-flex tw-items-center tw-justify-between tw-px-3">
+        <div className="tw-mt-4 tw-w-full tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-items-center tw-gap-1 ">
+            <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
               <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -276,7 +276,7 @@ const Users = ({
       );
     } else {
       return (
-        <p className="tw-mt-2">
+        <p className="tw-mt-2 tw-px-3">
           {getEntityName(userData as unknown as EntityReference)}
         </p>
       );
@@ -300,7 +300,7 @@ const Users = ({
       );
     } else {
       return (
-        <div className="tw--ml-2">
+        <div className="tw--ml-2 tw-px-3">
           <p className="tw-mt-2">
             {userData.description || (
               <span className="tw-no-description tw-p-2">No description </span>
@@ -340,7 +340,7 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">Teams</h6>
             </div>
           }>
-          <div>{teamsElement}</div>
+          <div className="tw-mb-4">{teamsElement}</div>
         </Card>
       );
     } else {
@@ -370,59 +370,55 @@ const Users = ({
               )}
             </div>
           }>
-          <Fragment>
-            <div>
-              {isTeamsEdit ? (
-                <Fragment>
-                  <Select
-                    isClearable
-                    isMulti
-                    aria-label="Select teams"
-                    className="tw-ml-1"
-                    isSearchable={false}
-                    options={teams?.map((team) => ({
-                      label: getEntityName(team as unknown as EntityReference),
-                      value: team.id,
-                    }))}
-                    placeholder="Teams..."
-                    styles={reactSingleSelectCustomStyle}
-                    value={selectedTeams}
-                    onChange={handleOnTeamsChange}
-                  />
-                  <div
-                    className="tw-flex tw-justify-end tw-mt-2"
-                    data-testid="buttons">
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                      data-testid="cancel-teams"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onMouseDown={() => setIsTeamsEdit(false)}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="times"
-                      />
-                    </Button>
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                      data-testid="save-teams"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onClick={handleTeamsChange}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="check"
-                      />
-                    </Button>
-                  </div>
-                </Fragment>
-              ) : (
-                teamsElement
-              )}
-            </div>
-          </Fragment>
+          <div className="tw-mb-4">
+            {isTeamsEdit ? (
+              <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
+                <Select
+                  isClearable
+                  isMulti
+                  aria-label="Select teams"
+                  className="tw-w-full"
+                  isSearchable={false}
+                  options={teams?.map((team) => ({
+                    label: getEntityName(team as unknown as EntityReference),
+                    value: team.id,
+                  }))}
+                  placeholder="Teams..."
+                  styles={reactSingleSelectCustomStyle}
+                  value={selectedTeams}
+                  onChange={handleOnTeamsChange}
+                />
+                <div className="tw-flex tw-justify-end" data-testid="buttons">
+                  <Button
+                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                    data-testid="cancel-teams"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onMouseDown={() => setIsTeamsEdit(false)}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="times"
+                    />
+                  </Button>
+                  <Button
+                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                    data-testid="save-teams"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onClick={handleTeamsChange}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="check"
+                    />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              teamsElement
+            )}
+          </div>
         </Card>
       );
     }
@@ -471,7 +467,7 @@ const Users = ({
               <h6 className="tw-heading tw-mb-0">Roles</h6>
             </div>
           }>
-          <div className="tw-flex tw-items-center tw-justify-between">
+          <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
             {rolesElement}
           </div>
         </Card>
@@ -503,57 +499,53 @@ const Users = ({
               )}
             </div>
           }>
-          <Fragment>
-            <div className="tw-flex tw-items-center tw-justify-between">
-              {isRolesEdit ? (
-                <Fragment>
-                  <Select
-                    isClearable
-                    isMulti
-                    aria-label="Select roles"
-                    className="tw-ml-1"
-                    id="select-role"
-                    isSearchable={false}
-                    options={userRolesOption}
-                    placeholder="Roles..."
-                    styles={reactSingleSelectCustomStyle}
-                    value={selectedRoles}
-                    onChange={handleOnRolesChange}
-                  />
-                  <div
-                    className="tw-flex tw-justify-end tw-mt-2"
-                    data-testid="buttons">
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-                      data-testid="cancel-roles"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onMouseDown={() => setIsRolesEdit(false)}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="times"
-                      />
-                    </Button>
-                    <Button
-                      className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-                      data-testid="save-roles"
-                      size="custom"
-                      theme="primary"
-                      variant="contained"
-                      onClick={handleRolesChange}>
-                      <FontAwesomeIcon
-                        className="tw-w-3.5 tw-h-3.5"
-                        icon="check"
-                      />
-                    </Button>
-                  </div>
-                </Fragment>
-              ) : (
-                rolesElement
-              )}
-            </div>
-          </Fragment>
+          <div className="tw-mb-4">
+            {isRolesEdit ? (
+              <div className="tw-flex tw-items-center tw-justify-between tw-gap-2">
+                <Select
+                  isClearable
+                  isMulti
+                  aria-label="Select roles"
+                  className="tw-w-full"
+                  id="select-role"
+                  isSearchable={false}
+                  options={userRolesOption}
+                  placeholder="Roles..."
+                  styles={reactSingleSelectCustomStyle}
+                  value={selectedRoles}
+                  onChange={handleOnRolesChange}
+                />
+                <div className="tw-flex tw-justify-end" data-testid="buttons">
+                  <Button
+                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+                    data-testid="cancel-roles"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onMouseDown={() => setIsRolesEdit(false)}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="times"
+                    />
+                  </Button>
+                  <Button
+                    className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+                    data-testid="save-roles"
+                    size="custom"
+                    theme="primary"
+                    variant="contained"
+                    onClick={handleRolesChange}>
+                    <FontAwesomeIcon
+                      className="tw-w-3.5 tw-h-3.5"
+                      icon="check"
+                    />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              rolesElement
+            )}
+          </div>
         </Card>
       );
     }

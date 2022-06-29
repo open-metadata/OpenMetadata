@@ -555,7 +555,7 @@ const TaskDetailPage = () => {
       newDescription || ''
     );
 
-    return !diffs.length ? (
+    return !newDescription && !oldDescription ? (
       <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
     ) : (
       <DiffView className="tw-p-2" diffArr={diffs} />
@@ -651,6 +651,7 @@ const TaskDetailPage = () => {
                     </Button>
                     <Button
                       className="tw-mx-1 tw-self-center ant-btn-primary-custom"
+                      disabled={!assignees.length}
                       size="small"
                       type="primary"
                       onClick={onTaskUpdate}>
@@ -697,7 +698,7 @@ const TaskDetailPage = () => {
                       <div data-testid="description-task">
                         {isRequestDescription && (
                           <div data-testid="request-description">
-                            {isTaskActionEdit ? (
+                            {isTaskActionEdit && hasEditAccess() ? (
                               <RichTextEditor
                                 height="208px"
                                 initialValue={suggestion}
@@ -715,7 +716,7 @@ const TaskDetailPage = () => {
 
                         {isUpdateDescription && (
                           <div data-testid="update-description">
-                            {isTaskActionEdit ? (
+                            {isTaskActionEdit && hasEditAccess() ? (
                               <DescriptionTabs
                                 description={currentDescription()}
                                 markdownRef={markdownRef}
@@ -746,27 +747,37 @@ const TaskDetailPage = () => {
                     Close with comment
                   </Button>
 
-                  <Dropdown.Button
-                    className="ant-btn-primary-dropdown"
-                    icon={
-                      <FontAwesomeIcon
-                        className="tw-text-sm"
-                        icon={faChevronDown}
-                      />
-                    }
-                    overlay={
-                      <Menu
-                        selectable
-                        items={TASK_ACTION_LIST}
-                        selectedKeys={[taskAction.key]}
-                        onClick={(info) => onTaskActionChange(info.key)}
-                      />
-                    }
-                    trigger={['click']}
-                    type="primary"
-                    onClick={onTaskResolve}>
-                    {taskAction.label}
-                  </Dropdown.Button>
+                  {taskDetail.task?.suggestion ? (
+                    <Dropdown.Button
+                      className="ant-btn-primary-dropdown"
+                      icon={
+                        <FontAwesomeIcon
+                          className="tw-text-sm"
+                          icon={faChevronDown}
+                        />
+                      }
+                      overlay={
+                        <Menu
+                          selectable
+                          items={TASK_ACTION_LIST}
+                          selectedKeys={[taskAction.key]}
+                          onClick={(info) => onTaskActionChange(info.key)}
+                        />
+                      }
+                      trigger={['click']}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      {taskAction.label}
+                    </Dropdown.Button>
+                  ) : (
+                    <Button
+                      className="ant-btn-primary-custom"
+                      disabled={!suggestion}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      Add Description
+                    </Button>
+                  )}
                 </div>
               )}
 
