@@ -16,7 +16,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -27,7 +27,7 @@ import Users from '../../components/Users/Users.component';
 import { UserDetails } from '../../components/Users/Users.interface';
 import {
   onErrorText,
-  onUpdatedConversastionError,
+  onUpdatedConversastionError
 } from '../../constants/feed.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
@@ -39,12 +39,13 @@ import jsonData from '../../jsons/en';
 import {
   deletePost,
   getUpdatedThread,
-  updateThreadData,
+  updateThreadData
 } from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const { username, tab } = useParams<{ [key: string]: string }>();
+  const { search } = useLocation();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const searchParams = new URLSearchParams(location.search);
@@ -259,11 +260,13 @@ const UserPage = () => {
     if (userData.id) {
       const threadType =
         tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
-      setFeedFilter(feedFilter);
+      const newFeedFilter =
+        (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL;
+      setFeedFilter(newFeedFilter);
       setEntityThread([]);
-      getFeedData(threadType, undefined, feedFilter);
+      getFeedData(threadType, undefined, newFeedFilter);
     }
-  }, [userData, tab, feedFilter]);
+  }, [userData, tab, search]);
 
   useEffect(() => {
     setEntityThread([]);
