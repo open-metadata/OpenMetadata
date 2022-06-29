@@ -16,7 +16,7 @@ without having an import mess
 import sqlalchemy
 from sqlalchemy import Integer, Numeric
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
-from sqlalchemy.types import Date, Time, DateTime, TIMESTAMP
+from sqlalchemy.types import Date, Time, DateTime
 
 from metadata.ingestion.source import sqa_types
 from metadata.orm_profiler.orm.types.hex_byte_string import HexByteString
@@ -95,7 +95,9 @@ def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
-    return issubclass(_type.__class__, Date) or issubclass(_type.__class__, Time) or issubclass(_type.__class__, DateTime) or issubclass(_type.__class__, DateTime) or issubclass(_type.__class__, TIMESTAMP)
+    return (issubclass(_type.__class__, Date)
+        or issubclass(_type.__class__, Time)
+        or issubclass(_type.__class__, DateTime))
 
 def is_quantifiable(_type) -> bool:
     """
