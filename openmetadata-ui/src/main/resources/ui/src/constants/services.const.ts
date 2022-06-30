@@ -145,7 +145,6 @@ export const DEF_UI_SCHEMA = {
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
-  scheme: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 export const COMMON_UI_SCHEMA = {

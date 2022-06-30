@@ -538,6 +538,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
+    setFields(updated, putFields); // we need service, database, databaseSchema to delete properly from ES.
     if (supportsSoftDelete && !hardDelete) {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());

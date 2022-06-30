@@ -16,6 +16,7 @@ on:
     branches: [main]
     paths:
       - openmetadata-docs/**
+  workflow_dispatch:
 
 jobs:
   sync-docs:
