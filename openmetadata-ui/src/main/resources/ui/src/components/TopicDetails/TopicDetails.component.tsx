@@ -217,7 +217,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 5,
     },
@@ -485,17 +484,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   <SchemaEditor value={JSON.stringify(getConfigObject())} />
                 </div>
               )}
-              {activeTab === 5 && !deleted && (
+              {activeTab === 5 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={topicDetails.id}
                     entityName={topicDetails.name}
                     entityType={EntityType.TOPIC}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.TOPIC}
                     onSave={onSettingsUpdate}
                   />

@@ -313,7 +313,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 10,
     },
@@ -804,17 +803,19 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   tableDetails={tableDetails}
                 />
               )}
-              {activeTab === 10 && !deleted && (
+              {activeTab === 10 && (
                 <div>
                   <ManageTab
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={tableDetails.id}
                     entityName={tableDetails.name}
                     entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.TABLE}
                     onSave={onSettingsUpdate}
                   />
