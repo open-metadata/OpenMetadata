@@ -98,7 +98,7 @@ const EditWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      <div className="tw-self=center">
+      <div className="tw-self-center">
         {!isLoading ? (
           <AddWebhook
             allowAccess={isAdminUser || isAuthDisabled}
