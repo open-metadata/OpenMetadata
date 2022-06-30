@@ -764,32 +764,48 @@ const Users = ({
     prepareSelectedTeams();
   }, [userData]);
 
-  const getEntityData = useCallback((entityData: EntityReference[]) => {
-    const updatedEntityData = filterEntityAssets(entityData || []);
+  const getEntityData = useCallback(
+    (entityData: EntityReference[], tabNumber: number) => {
+      const updatedEntityData = filterEntityAssets(entityData || []);
 
-    return (
-      <>
-        <div
-          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-          data-testid="dataset-card">
-          {' '}
-          {updatedEntityData.map((dataset, index) => {
-            const Dataset = {
-              displayName: dataset.displayName || dataset.name || '',
-              type: dataset.type,
-              fqn: dataset.fullyQualifiedName || '',
-              id: dataset.id,
-              name: dataset.name,
-            };
+      return (
+        <>
+          {isEmpty(updatedEntityData) ? (
+            tabNumber === 3 ? (
+              <div className="tw-mx-2">You have not owned anything yet.</div>
+            ) : (
+              <div className="tw-mx-2">You have not followed anything yet.</div>
+            )
+          ) : (
+            <div
+              className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+              data-testid="dataset-card">
+              {' '}
+              {updatedEntityData.map((dataset, index) => {
+                const Dataset = {
+                  displayName: dataset.displayName || dataset.name || '',
+                  type: dataset.type,
+                  fqn: dataset.fullyQualifiedName || '',
+                  id: dataset.id,
+                  name: dataset.name,
+                };
 
-            return (
-              <UserCard isDataset isIconVisible item={Dataset} key={index} />
-            );
-          })}
-        </div>
-      </>
-    );
-  }, []);
+                return (
+                  <UserCard
+                    isDataset
+                    isIconVisible
+                    item={Dataset}
+                    key={index}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </>
+      );
+    },
+    []
+  );
 
   return (
     <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
@@ -802,8 +818,8 @@ const Users = ({
         />
       </div>
       <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
-      <div>{activeTab === 3 && getEntityData(userData.owns || [])}</div>
-      <div>{activeTab === 4 && getEntityData(userData.follows || [])}</div>
+      <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
+      <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
     </PageLayout>
   );
 };
