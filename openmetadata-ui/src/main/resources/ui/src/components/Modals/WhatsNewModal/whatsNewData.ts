@@ -336,25 +336,25 @@ export const WHATS_NEW = [
     description: 'Released on 30 Jun 2022.',
     features: [
       {
-        title: 'Deploy Ingestion from UI',
+        title: 'Collaborations & tasks',
         description:
-          'OpenMetadata has refactored the service connections to simplify the ingestion jobs from both the ingestion framework as well as the UI. We now use the pydantic models automatically generated from the JSON schemas for the connection definition. The ‘Add Service’ form is automatically generated in the UI based on the JSON schema specifications for the various connectors that are supported in OpenMetadata.',
+          'Data Collaboration has been the prime focus of the 0.11 Release, the groundwork for which has been laid in the past several releases. In the 0.9 release, we introduced Activity Feeds, Conversation Threads, and the ability to request descriptions. In this release, we’ve added Tasks, as an extension to the ability to create conversations and post replies.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/veK7PrmhXWE',
+        path: 'https://www.youtube.com/embed/XZAZAJsFCVk',
       },
       {
-        title: 'Support for Database Schema',
+        title: 'Column-level lineage',
         description:
-          'OpenMetadata supports databases, service name databases, and tables. Based on community demand, we’ve also added Database Schema as part of the FQN. For each external data source, we ingest the database, as well as the tables that are contained underneath the schemas.',
+          'We’ve added column level lineage API support. The UI now supports exploring this rich column level lineage for understanding the relationship between tables and to perform impact analysis. While exploring the lineage, users can manually edit both the table and column level lineage to capture any information that is not automatically surfaced.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/zkEmbNNMdso',
+        path: 'https://www.youtube.com/embed/HTkbTvi2H9c',
       },
       {
-        title: 'Support for Hard Delete',
+        title: 'Advanced search',
         description:
-          'OpenMetadata supported soft deletions. Now, we also support the hard deletion of entities through the UI, APIs, and ingestion. Hard deleting an entity removes the entity and all of its relationships. This will also generate a change event.',
+          'An advanced search option has been added, where users can search by column, schema, database, owner, tag, and service. Users can search by multiple parameters to narrow down the search results. Separate advanced search options are available for Tables, Topics, Dashboards, Pipelines, and ML Models.',
         isImage: false,
-        path: 'https://www.youtube.com/embed/6VILlkwQudo',
+        path: 'https://www.youtube.com/embed/DUq-c7OLQpQ',
       },
     ],
     changeLogs: {
