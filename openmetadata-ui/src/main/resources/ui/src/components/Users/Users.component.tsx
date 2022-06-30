@@ -769,39 +769,30 @@ const Users = ({
       const updatedEntityData = filterEntityAssets(entityData || []);
 
       return (
-        <>
+        <div
+          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          data-testid="dataset-card">
           {isEmpty(updatedEntityData) ? (
             tabNumber === 3 ? (
               <div className="tw-mx-2">You have not owned anything yet.</div>
             ) : (
               <div className="tw-mx-2">You have not followed anything yet.</div>
             )
-          ) : (
-            <div
-              className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
-              data-testid="dataset-card">
-              {' '}
-              {updatedEntityData.map((dataset, index) => {
-                const Dataset = {
-                  displayName: dataset.displayName || dataset.name || '',
-                  type: dataset.type,
-                  fqn: dataset.fullyQualifiedName || '',
-                  id: dataset.id,
-                  name: dataset.name,
-                };
+          ) : null}
+          {updatedEntityData.map((dataset, index) => {
+            const Dataset = {
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName || '',
+              id: dataset.id,
+              name: dataset.name,
+            };
 
-                return (
-                  <UserCard
-                    isDataset
-                    isIconVisible
-                    item={Dataset}
-                    key={index}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </>
+            return (
+              <UserCard isDataset isIconVisible item={Dataset} key={index} />
+            );
+          })}
+        </div>
       );
     },
     []
