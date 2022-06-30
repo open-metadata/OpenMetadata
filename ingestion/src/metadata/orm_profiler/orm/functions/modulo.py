@@ -60,6 +60,7 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.Athena)
 @compiles(ModuloFn, Dialects.MySQL)
 @compiles(ModuloFn, Dialects.Oracle)
+@compiles(ModuloFn, Dialects.Presto)
 def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)

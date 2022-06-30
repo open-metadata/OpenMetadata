@@ -198,7 +198,10 @@ class ProfilerWorkflow:
             if hasattr(
                 self.config.source.serviceConnection.__root__.config, "supportsDatabase"
             ):
-                copy_service_connection_config.database = database.name.__root__
+                try:
+                    copy_service_connection_config.database = database.name.__root__
+                except ValueError:
+                    copy_service_connection_config.catalog = database.name.__root__
 
             self.create_processor(copy_service_connection_config)
 
