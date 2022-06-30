@@ -156,7 +156,7 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         Method to get task & pipeline status
         """
         for job in self.client.list_jobs(connection.get("connectionId")):
-            if not job or job.get("attempts"):
+            if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
                 task_status = [
