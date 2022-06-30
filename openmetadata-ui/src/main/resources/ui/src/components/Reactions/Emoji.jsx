@@ -46,10 +46,11 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     (reactionItem) => reactionItem.user.id === currentUser.id
   );
 
-  const userList =
-    reactionList.map((reactionItem) => reactionItem.user.name) || [];
+  const reactedUserList = reactionList.map(
+    (reactionItem) => reactionItem.user.name
+  );
 
-  const handleOnClick = () => {
+  const handleEmojiOnClick = () => {
     if (!isClicked) {
       const operation = isReacted
         ? ReactionOperation.REMOVE
@@ -60,9 +61,9 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   };
 
   const popoverContent = () => {
-    const hasMore = userList.length > 8;
-    const visibleList = userList.slice(0, 8);
-    const moreList = userList.slice(8);
+    const hasMore = reactedUserList.length > 8;
+    const visibleList = reactedUserList.slice(0, 8);
+    const moreList = reactedUserList.slice(8);
 
     return (
       <p
@@ -73,10 +74,6 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
         <span className="tw-font-semibold">{`reacted with ${reactionType} emoji`}</span>
       </p>
     );
-  };
-
-  const onVisibleChange = (value) => {
-    setVisible(value);
   };
 
   useEffect(() => {
@@ -91,15 +88,15 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
       trigger="hover"
       visible={visible}
       zIndex={9999}
-      onVisibleChange={onVisibleChange}>
+      onVisibleChange={setVisible}>
       <Button
         className={classNames('ant-btn-reaction tw-mr-1', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
         shape="round"
-        onClick={handleOnClick}
-        onMouseOver={() => onVisibleChange(true)}>
+        onClick={handleEmojiOnClick}
+        onMouseOver={() => setVisible(true)}>
         <g-emoji
           alias={reactionObject.alias}
           className="d-flex"
