@@ -394,6 +394,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
               if (newCol.fromColumns?.length) {
                 return [...col, newCol];
+              } else {
+                return col;
               }
             }
 
@@ -421,13 +423,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           }),
         });
       }
-      setEdges((pre) =>
-        pre.filter(
+      setEdges((pre) => {
+        return pre.filter(
           (e) =>
-            e.sourceHandle !== data.data?.sourceHandle &&
-            e.targetHandle !== data.data?.targetHandle
-        )
-      );
+            !(
+              e.sourceHandle === data.data?.sourceHandle &&
+              e.targetHandle === data.data?.targetHandle
+            )
+        );
+      });
       addLineageHandler(selectedEdge);
       setNewAddedNode({} as Node);
       setSelectedEntity({} as EntityReference);
