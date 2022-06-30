@@ -720,6 +720,7 @@ public class FeedRepository {
     restorePatchAttributes(original, updated);
 
     if (!updated.getReactions().isEmpty()) {
+      populateUserReactions(updated.getReactions());
       updated
           .getReactions()
           .forEach(
