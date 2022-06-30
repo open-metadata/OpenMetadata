@@ -26,7 +26,6 @@ import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
 import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
-import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   imageTypes,
@@ -203,9 +202,9 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <PopOver position="top" title={count.toString()} trigger="mouseenter">
-        <span data-testid="filter-count">{count > 999 ? `999+` : count}</span>
-      </PopOver>
+      <span data-testid="filter-count" title={count.toString()}>
+        {count > 999 ? `999+` : count}
+      </span>
     </span>
   );
 };
