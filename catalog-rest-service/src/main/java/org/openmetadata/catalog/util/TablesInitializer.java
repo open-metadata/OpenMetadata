@@ -334,7 +334,7 @@ public final class TablesInitializer {
     try {
       addOrUpdateUser(user, jdbi);
       if (jwtAuthMechanism != null) {
-        printToConsoleMandatory(jwtAuthMechanism.getJWTToken());
+        printToConsoleMandatory(JsonUtils.pojoToJson(user));
       }
     } catch (Exception exception) {
       printToConsoleMandatory("User entry:" + user.getName() + "already exists.");
