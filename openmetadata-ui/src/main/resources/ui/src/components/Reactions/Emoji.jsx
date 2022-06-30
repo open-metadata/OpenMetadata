@@ -25,6 +25,7 @@ import useImage from '../../hooks/useImage';
 const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
+  const [visible, setVisible] = useState(false);
 
   // get reaction object based on cureent reactionType
   const reactionObject = useMemo(
@@ -45,7 +46,8 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     (reactionItem) => reactionItem.user.id === currentUser.id
   );
 
-  const userList = reactionList.map((reactionItem) => reactionItem.user.name);
+  const userList =
+    reactionList.map((reactionItem) => reactionItem.user.name) || [];
 
   const handleOnClick = () => {
     if (!isClicked) {
@@ -57,14 +59,25 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
     }
   };
 
-  const popoverContent = (
-    <p
-      className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
-      data-testid="popover-content">
-      {`${userList.join(', ')}`}{' '}
-      <span className="tw-font-semibold">{`reacted with ${reactionType} emoji`}</span>
-    </p>
-  );
+  const popoverContent = () => {
+    const hasMore = userList.length > 8;
+    const visibleList = userList.slice(0, 8);
+    const moreList = userList.slice(8);
+
+    return (
+      <p
+        className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
+        data-testid="popover-content">
+        {`${visibleList.join(', ')}`}
+        {hasMore ? `, +${moreList.length} more` : ''}{' '}
+        <span className="tw-font-semibold">{`reacted with ${reactionType} emoji`}</span>
+      </p>
+    );
+  };
+
+  const onVisibleChange = (value) => {
+    setVisible(value);
+  };
 
   useEffect(() => {
     setReactionType(reaction);
@@ -73,18 +86,20 @@ const Emoji = ({ reaction, reactionList, onReactionSelect }) => {
 
   return (
     <Popover
-      destroyTooltipOnHide
       content={popoverContent}
       key="reaction-detail-popover"
       trigger="hover"
-      zIndex={9999}>
+      visible={visible}
+      zIndex={9999}
+      onVisibleChange={onVisibleChange}>
       <Button
         className={classNames('ant-btn-reaction tw-mr-1', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
         shape="round"
-        onClick={handleOnClick}>
+        onClick={handleOnClick}
+        onMouseOver={() => onVisibleChange(true)}>
         <g-emoji
           alias={reactionObject.alias}
           className="d-flex"
