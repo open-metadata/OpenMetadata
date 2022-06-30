@@ -86,7 +86,7 @@ public class ChangeEventHandler implements EventHandler {
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
         // ignore usageSummary updates in the feed
         boolean shouldIgnore = false;
-        if (Entity.TABLE.equals(changeEvent.getEntityType())) {
+        if (Entity.TABLE.equals(changeEvent.getEntityType()) && changeEvent.getChangeDescription() != null) {
           List<FieldChange> fields = changeEvent.getChangeDescription().getFieldsUpdated();
           shouldIgnore = fields.stream().anyMatch(field -> field.getName().equals("usageSummary"));
         }
