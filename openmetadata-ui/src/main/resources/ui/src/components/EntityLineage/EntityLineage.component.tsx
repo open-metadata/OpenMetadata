@@ -189,6 +189,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     []
   );
 
+  const customEdges = useMemo(() => ({ buttonedge: CustomEdge }), []);
+
   /**
    * take node as input and check if node is main entity or not
    * @param node
@@ -394,6 +396,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
               if (newCol.fromColumns?.length) {
                 return [...col, newCol];
+              } else {
+                return col;
               }
             }
 
@@ -421,13 +425,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           }),
         });
       }
-      setEdges((pre) =>
-        pre.filter(
+      setEdges((pre) => {
+        return pre.filter(
           (e) =>
-            e.sourceHandle !== data.data?.sourceHandle &&
-            e.targetHandle !== data.data?.targetHandle
-        )
-      );
+            !(
+              e.sourceHandle === data.data?.sourceHandle &&
+              e.targetHandle === data.data?.targetHandle
+            )
+        );
+      });
       addLineageHandler(selectedEdge);
       setNewAddedNode({} as Node);
       setSelectedEntity({} as EntityReference);
@@ -1314,7 +1320,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         <ReactFlowProvider>
           <ReactFlow
             data-testid="react-flow-component"
-            edgeTypes={{ buttonedge: CustomEdge }}
+            edgeTypes={customEdges}
             edges={edges}
             maxZoom={2}
             minZoom={0.5}
