@@ -42,7 +42,7 @@ const DeleteWidget = ({
     useState<typeof ENTITY_DELETE_STATE>(ENTITY_DELETE_STATE);
 
   const prepareDeleteMessage = (softDelete = false) => {
-    const softDeleteText = `Soft deleting will deactivate the ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
+    const softDeleteText = `Delete will deactivate the ${entityType} ${entityName}. This will disable any discovery, read or write operations on ${entityName}`;
     const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
@@ -147,10 +147,10 @@ const DeleteWidget = ({
           {allowSoftDelete && (
             <div className="tw-border-b" data-testid="soft-delete">
               <DeleteWidgetBody
-                buttonText="Soft delete"
+                buttonText="Delete"
                 description={prepareDeleteMessage(true)}
                 hasPermission={hasPermission}
-                header={`Soft delete ${getTitleCase(entityType)} ${entityName}`}
+                header={`Delete ${getTitleCase(entityType)} ${entityName}`}
                 isOwner={isAdminUser}
                 onClick={() => handleOnEntityDelete(true)}
               />
@@ -158,10 +158,12 @@ const DeleteWidget = ({
           )}
           <div data-testid="hard-delete">
             <DeleteWidgetBody
-              buttonText="Delete"
+              buttonText="Permanent Delete"
               description={prepareDeleteMessage()}
               hasPermission={hasPermission}
-              header={`Delete ${getTitleCase(entityType)} ${entityName}`}
+              header={`Permanently Delete ${getTitleCase(
+                entityType
+              )} ${entityName}`}
               isOwner={isAdminUser}
               onClick={() => handleOnEntityDelete(false)}
             />

@@ -77,8 +77,17 @@ class BaseTableTestBuilder(ABC):
             testCaseStatus=TestCaseStatus.Success
             if self.result["success"]
             else TestCaseStatus.Failed,
-            result=self.result["result"]["observed_value"],
+            result=self._get_expectation_result(),
         )
+
+    def _get_expectation_result(self):
+        """Get the expectation result"""
+        if self.result["result"]:
+            if isinstance(self.result["result"]["observed_value"], list):
+                return ", ".join(self.result["result"].get("observed_value"))
+            return self.result["result"]["observed_value"]
+
+        return None
 
     def build_test_request(self, *, config, test_type) -> CreateTableTestRequest:
         """Build a test case request to add the test to the tabe

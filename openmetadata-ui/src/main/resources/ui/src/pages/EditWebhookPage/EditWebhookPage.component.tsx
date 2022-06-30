@@ -98,21 +98,23 @@ const EditWebhookPage: FunctionComponent = () => {
 
   return (
     <PageContainerV1>
-      {!isLoading ? (
-        <AddWebhook
-          allowAccess={isAdminUser || isAuthDisabled}
-          data={webhookData}
-          deleteState={deleteStatus}
-          header="Edit Webhook"
-          mode={FormSubmitType.EDIT}
-          saveState={status}
-          onCancel={handleCancel}
-          onDelete={handleDelete}
-          onSave={handleSave}
-        />
-      ) : (
-        <Loader />
-      )}
+      <div className="tw-self-center">
+        {!isLoading ? (
+          <AddWebhook
+            allowAccess={isAdminUser || isAuthDisabled}
+            data={webhookData}
+            deleteState={deleteStatus}
+            header="Edit Webhook"
+            mode={FormSubmitType.EDIT}
+            saveState={status}
+            onCancel={handleCancel}
+            onDelete={handleDelete}
+            onSave={handleSave}
+          />
+        ) : (
+          <Loader />
+        )}
+      </div>
     </PageContainerV1>
   );
 };

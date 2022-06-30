@@ -333,8 +333,8 @@ class QueryParserProcessor(Processor):
                     if parsed_sql:
                         data.append(parsed_sql)
                 except Exception as err:
-                    logger.error(traceback.format_exc())
-                    logger.error(record.query)
+                    logger.debug(traceback.format_exc())
+                    logger.debug(record.query)
                     logger.error(err)
             return QueryParserData(parsedData=data)
 
