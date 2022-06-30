@@ -187,9 +187,6 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.Airflow:
       return AIRFLOW;
 
-    case PipelineServiceType.Prefect:
-      return PREFECT;
-
     case MlModelServiceType.Mlflow:
       return MLFLOW;
 
