@@ -40,7 +40,7 @@ export const LOGIN_SLIDE = [
   {
     image: lineage,
     description:
-      'Supports column level lineage from pipelines, DBT, query analysis, and so on.',
+      'Deeply understand table relations; thanks to column-level lineage.',
   },
 ];
 
