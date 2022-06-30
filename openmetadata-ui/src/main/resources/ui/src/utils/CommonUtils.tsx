@@ -612,11 +612,11 @@ export const getEntityName = (entity?: EntityReference) => {
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return `Permanently delete this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
     )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
   } else {
-    return `Permanently delete this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
     )} will permanently remove its metadata from OpenMetadata.`;
   }
