@@ -53,3 +53,34 @@ SET json = JSON_INSERT(
         '$.connection.config.databaseSchema',
         JSON_EXTRACT(json, '$.connection.config.database')
     ) where serviceType = 'Mysql';
+
+DELETE from ingestion_pipeline_entity where 1=1;
+
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+        JSON_REMOVE(json, '$.connection.config.database'),
+        '$.connection.config.databaseSchema',
+        JSON_EXTRACT(json, '$.connection.config.database')
+    ) where serviceType in ('Mysql','Hive','Presto','Trino','Clickhouse','SingleStore','MariaDB','Db2','Oracle'); 
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.database'
+                    ,'$.connection.config.username'
+                    ,'$.connection.config.projectId'
+                    ,'$.connection.config.database'
+                    ,'$.connection.config.enablePolicyTagImport')
+WHERE serviceType = 'BigQuery';
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.database')
+WHERE serviceType in ('Athena','Databricks');
+
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.supportsProfiler', '$.connection.config.pipelineServiceName')
+WHERE serviceType = 'Glue';
+
+UPDATE dashboard_service_entity
+SET json = JSON_REMOVE(json, '$.connection.config.dbServiceName')
+WHERE serviceType in ('Metabase','Superset','Tableau');
+
+DELETE FROM pipeline_service_entity WHERE 1=1;
