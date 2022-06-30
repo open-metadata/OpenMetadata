@@ -69,6 +69,11 @@
             <artifactId>msal4j</artifactId>
             <version>1.12.0</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-okhttp</artifactId>
+            <version>9.7.0</version>
+        </dependency>
         <!-- TEST -->
         <dependency>
             <groupId>junit</groupId>
