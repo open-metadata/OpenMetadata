@@ -21,7 +21,8 @@
       "default": "Airflow"
     },
     "hostPort": {
-      "description": "Pipeline Service Management/UI URL.",
+      "title": "Host And Port",
+      "description": "Pipeline Service Management/UI URI.",
       "type": "string",
       "format": "uri"
     },
