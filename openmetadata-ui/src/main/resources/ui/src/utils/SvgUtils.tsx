@@ -32,6 +32,7 @@ import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
 import IconComments from '../assets/svg/comment.svg';
+import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
@@ -110,6 +111,7 @@ import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
+import IconTaskOpen from '../assets/svg/in-progress.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
 import IconLineageColor from '../assets/svg/lineage-color.svg';
@@ -315,6 +317,8 @@ export const Icons = {
   MENTIONS: 'ic-mentions',
   COMMENT_GREY: 'ic-comment-grey',
   TASK_ICON: 'task-icon',
+  TASK_CLOSED: 'task-closed',
+  TASK_OPEN: 'task-open',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -920,6 +924,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.COMMENT_GREY:
       IconComponent = IconCommentGrey;
+
+      break;
+    case Icons.TASK_CLOSED:
+      IconComponent = IconTaskClose;
+
+      break;
+    case Icons.TASK_OPEN:
+      IconComponent = IconTaskOpen;
 
       break;
 
