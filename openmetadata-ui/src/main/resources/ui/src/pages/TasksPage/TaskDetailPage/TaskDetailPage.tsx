@@ -657,7 +657,7 @@ const TaskDetailPage = () => {
               <div className="tw-flex" data-testid="task-assignees">
                 <span
                   className={classNames('tw-text-grey-muted', {
-                    'tw-self-center': editAssignee,
+                    'tw-self-center tw-mr-2': editAssignee,
                   })}>
                   Assignees:
                 </span>
