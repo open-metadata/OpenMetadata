@@ -7,7 +7,7 @@ source:
       username: default
       password: ''
       hostPort: localhost:8123
-      database: default
+      databaseSchema: default
   sourceConfig:
     config:
       queryLogDuration: '1'
