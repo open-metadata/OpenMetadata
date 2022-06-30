@@ -59,7 +59,6 @@ import {
   PIPELINE_DEFAULT,
   POSTGRES,
   POWERBI,
-  PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
@@ -186,9 +185,6 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
-
-    case PipelineServiceType.Prefect:
-      return PREFECT;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;
