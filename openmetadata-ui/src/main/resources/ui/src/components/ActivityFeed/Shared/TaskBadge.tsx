@@ -42,7 +42,7 @@ const TaskBadge = ({ status }: { status: ThreadTaskStatus }) => {
         <SVGIcons
           alt="task-status"
           icon={isTaskOpen ? Icons.TASK_OPEN : Icons.TASK_CLOSED}
-          width="14px"
+          width="12px"
         />
         <span className="tw-pl-1">Task</span>
       </span>
