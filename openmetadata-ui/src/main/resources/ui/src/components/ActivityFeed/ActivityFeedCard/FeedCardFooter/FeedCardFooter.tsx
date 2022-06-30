@@ -40,6 +40,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
               id=""
               key={i}
               name={u}
+              profileImgClasses="tw-align-baseline"
               width="18"
             />
           ))}

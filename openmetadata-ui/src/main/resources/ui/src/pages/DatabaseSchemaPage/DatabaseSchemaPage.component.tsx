@@ -147,7 +147,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       position: 1,
     },
     {
-      name: 'Activity Feed & Task',
+      name: 'Activity Feed',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
