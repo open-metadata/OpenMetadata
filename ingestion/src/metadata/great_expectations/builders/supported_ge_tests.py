@@ -30,8 +30,17 @@ from metadata.great_expectations.builders.column.values_to_be_unique import (
 from metadata.great_expectations.builders.column.values_to_match_regex import (
     ColumnValuesToMatchRegexBuilder,
 )
+from metadata.great_expectations.builders.table.column_count_to_be_between import (
+    TableColumnCountToBeBetweenBuilder,
+)
 from metadata.great_expectations.builders.table.column_count_to_equal import (
     TableColumCountToEqualBuilder,
+)
+from metadata.great_expectations.builders.table.column_name_to_exist import (
+    TableColumnNameToExistBuilder,
+)
+from metadata.great_expectations.builders.table.column_name_to_match_set import (
+    TableColumnNameToMatchSetBuilder,
 )
 from metadata.great_expectations.builders.table.row_count_to_be_between import (
     TableRowCountToBeBetweenBuilder,
@@ -54,3 +63,6 @@ class SupportedGETests(Enum):
     expect_column_values_to_not_be_null = ColumnValuesToBeNotNullBuilder()
     expect_column_values_to_be_unique = ColumnValuesToBeUniqueBuilder()
     expect_column_values_to_match_regex = ColumnValuesToMatchRegexBuilder()
+    expect_table_column_count_to_be_between = TableColumnCountToBeBetweenBuilder()
+    expect_column_to_exist = TableColumnNameToExistBuilder()
+    expect_table_columns_to_match_set = TableColumnNameToMatchSetBuilder()
