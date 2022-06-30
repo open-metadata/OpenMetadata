@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS mlmodel_service_entity (
 UPDATE thread_entity
 SET json = jsonb_set(json, '{type}', '"Conversation"', true);
 
+update thread_entity
+SET json = jsonb_set(json, '{reactions}', '[]'::jsonb, true);
+
 ALTER TABLE thread_entity
     ADD type VARCHAR(64) GENERATED ALWAYS AS (json ->> 'type') STORED NOT NULL,
     ADD taskId INT GENERATED ALWAYS AS ((json#>'{task,id}')::integer) STORED,
