@@ -11,6 +11,7 @@
 
 import json
 import os
+import shutil
 import traceback
 
 from metadata.config.common import ConfigModel
@@ -47,6 +48,9 @@ class TableUsageStage(Stage[QueryParserData]):
         isdir = os.path.isdir(self.config.filename)
         if not isdir:
             os.mkdir(self.config.filename)
+        else:
+            shutil.rmtree(self.config.filename)
+            os.mkdir(self.config.filename)
         self.wrote_something = False
 
     @classmethod
@@ -55,7 +59,7 @@ class TableUsageStage(Stage[QueryParserData]):
         return cls(config, metadata_config)
 
     def _add_sql_query(self, record, table):
-        if self.table_queries.get(table):
+        if self.table_queries.get((table, record.date)):
             self.table_queries[(table, record.date)].append(SqlQuery(query=record.sql))
         else:
             self.table_queries[(table, record.date)] = [SqlQuery(query=record.sql)]
@@ -64,6 +68,7 @@ class TableUsageStage(Stage[QueryParserData]):
         if not data or not data.parsedData:
             return
         self.table_usage = {}
+        self.table_queries = {}
         for record in data.parsedData:
             if record is None:
                 continue
