@@ -655,7 +655,12 @@ const TaskDetailPage = () => {
 
               <ColumnDetail column={columnObject} />
               <div className="tw-flex" data-testid="task-assignees">
-                <span className="tw-text-grey-muted ">Assignees:</span>
+                <span
+                  className={classNames('tw-text-grey-muted', {
+                    'tw-self-center': editAssignee,
+                  })}>
+                  Assignees:
+                </span>
                 {editAssignee ? (
                   <Fragment>
                     <Assignees
