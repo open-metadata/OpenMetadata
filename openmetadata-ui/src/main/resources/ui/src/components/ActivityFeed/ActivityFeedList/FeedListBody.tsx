@@ -100,9 +100,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const isTask = isEqual(feed.type, ThreadType.Task);
           const postLength = feed?.posts?.length || 0;
           const replies = feed.postsCount ? feed.postsCount - 1 : 0;
-          const repliedUsers = (feed?.posts || [])
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
+          const repliedUsers = [
+            ...new Set((feed?.posts || []).map((f) => f.from)),
+          ];
+          const repliedUniqueUsersList = repliedUsers.slice(
+            0,
+            postLength >= 3 ? 2 : 1
+          );
           const lastPost = feed?.posts?.[postLength - 1];
 
           return (
@@ -134,7 +138,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      repliedUsers,
+                      repliedUniqueUsersList,
                       replies,
                       feed.id,
                       lastPost

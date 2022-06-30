@@ -28,12 +28,14 @@ const NoFeedPlaceholder: FC<NoFeedPlaceholderProp> = ({
     <div
       className={classNames('tw-mt-10 tw-text-base tw-font-medium', className)}
       data-testid="placeholder-container">
-      <span data-testid="placeholder-message">{`There is no activity on the "${entityName}" yet. Start a conversation by clicking
+      <div className="tw-text-center">
+        <span data-testid="placeholder-message">{`There is no activity on the "${entityName}" yet. Start a conversation by clicking
       on the `}</span>
-      <span data-testid="placeholder-icon">
-        <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
-      </span>
-      <span>{` to collaborate with other users.`}</span>
+        <span data-testid="placeholder-icon">
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+        </span>
+        <span>{` to collaborate with other users.`}</span>
+      </div>
 
       <div data-testid="placeholder-image">
         <img

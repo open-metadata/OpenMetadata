@@ -58,7 +58,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         />
         <div
           className={classNames(
-            'filters-title tw-w-40 tw-truncate custom-checkbox-label',
+            'filters-title tw-w-36 tw-truncate custom-checkbox-label',
             { 'tw-text-grey-muted': isDisabled }
           )}
           data-testid="checkbox-label">

@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isNil, toLower } from 'lodash';
+import { isEmpty, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -328,6 +328,9 @@ const Users = ({
             <span>{getEntityName(team)}</span>
           </div>
         ))}
+        {isEmpty(userData.teams) && (
+          <span className="tw-no-description ">No teams found</span>
+        )}
       </Fragment>
     );
 
@@ -455,6 +458,9 @@ const Users = ({
             <span>{getEntityName(role)}</span>
           </div>
         ))}
+        {!userData.isAdmin && isEmpty(userData.roles) && (
+          <span className="tw-no-description ">No roles assigned</span>
+        )}
       </Fragment>
     );
 
@@ -557,23 +563,29 @@ const Users = ({
   };
 
   const getInheritedRolesComponent = () => {
-    if (userData.inheritedRoles?.length) {
-      return (
-        <Card
-          className="ant-card-feed tw-relative"
-          key="inherited-roles-card-component"
-          style={{
-            ...leftPanelAntCardStyle,
-            marginTop: '20px',
-          }}
-          title={
-            <div className="tw-flex">
-              <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
-                Inherited Roles
-              </h6>
+    return (
+      <Card
+        className="ant-card-feed tw-relative"
+        key="inherited-roles-card-component"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '20px',
+        }}
+        title={
+          <div className="tw-flex">
+            <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
+              Inherited Roles
+            </h6>
+          </div>
+        }>
+        <Fragment>
+          {isEmpty(userData.inheritedRoles) ? (
+            <div className="tw-mb-4">
+              <span className="tw-no-description">
+                No inherited roles found
+              </span>
             </div>
-          }>
-          <Fragment>
+          ) : (
             <div className="tw-flex tw-justify-between tw-flex-col">
               {userData.inheritedRoles?.map((inheritedRole, i) => (
                 <div
@@ -584,12 +596,10 @@ const Users = ({
                 </div>
               ))}
             </div>
-          </Fragment>
-        </Card>
-      );
-    } else {
-      return null;
-    }
+          )}
+        </Fragment>
+      </Card>
+    );
   };
 
   const image = useMemo(

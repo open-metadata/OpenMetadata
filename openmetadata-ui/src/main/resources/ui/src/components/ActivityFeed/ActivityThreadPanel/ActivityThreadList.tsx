@@ -63,9 +63,13 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 const isTask = isEqual(thread.type, ThreadType.Task);
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
-                const repliedUsers = (thread.posts || [])
-                  .map((f) => f.from)
-                  .slice(0, postLength >= 3 ? 2 : 1);
+                const repliedUsers = [
+                  ...new Set((thread?.posts || []).map((f) => f.from)),
+                ];
+                const repliedUniqueUsersList = repliedUsers.slice(
+                  0,
+                  postLength >= 3 ? 2 : 1
+                );
                 const lastPost = thread?.posts?.[postLength - 1];
 
                 return (
@@ -105,7 +109,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                                 <FeedCardFooter
                                   isFooterVisible
                                   lastReplyTimeStamp={lastPost?.postTs}
-                                  repliedUsers={repliedUsers}
+                                  repliedUsers={repliedUniqueUsersList}
                                   replies={replies}
                                   threadId={thread.id}
                                   onThreadSelect={() =>

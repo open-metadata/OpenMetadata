@@ -19,7 +19,7 @@ export const topicDetailsTabs = [
     path: 'schema',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feed & Task',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },
