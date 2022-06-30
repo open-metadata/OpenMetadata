@@ -52,15 +52,6 @@ SET json = JSON_INSERT(
         JSON_REMOVE(json, '$.connection.config.database'),
         '$.connection.config.databaseSchema',
         JSON_EXTRACT(json, '$.connection.config.database')
-    ) where serviceType = 'Mysql';
-
-DELETE from ingestion_pipeline_entity where 1=1;
-
-UPDATE dbservice_entity
-SET json = JSON_INSERT(
-        JSON_REMOVE(json, '$.connection.config.database'),
-        '$.connection.config.databaseSchema',
-        JSON_EXTRACT(json, '$.connection.config.database')
     ) where serviceType in ('Mysql','Hive','Presto','Trino','Clickhouse','SingleStore','MariaDB','Db2','Oracle'); 
 
 UPDATE dbservice_entity
