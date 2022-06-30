@@ -202,7 +202,9 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <span data-testid="filter-count">{count}</span>
+      <span data-testid="filter-count" title={count.toString()}>
+        {count > 999 ? `999+` : count}
+      </span>
     </span>
   );
 };
