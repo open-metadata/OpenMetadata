@@ -189,6 +189,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     []
   );
 
+  const customEdges = useMemo(() => ({ buttonedge: CustomEdge }), []);
+
   /**
    * take node as input and check if node is main entity or not
    * @param node
@@ -1318,7 +1320,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         <ReactFlowProvider>
           <ReactFlow
             data-testid="react-flow-component"
-            edgeTypes={{ buttonedge: CustomEdge }}
+            edgeTypes={customEdges}
             edges={edges}
             maxZoom={2}
             minZoom={0.5}
