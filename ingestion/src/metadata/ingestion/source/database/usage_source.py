@@ -120,10 +120,10 @@ class UsageSource(Source[TableQuery], ABC):
                     queries = []
                     for row in rows:
                         try:
-                            if not filter_by_database(
+                            if filter_by_database(
                                 self.source_config.databaseFilterPattern,
                                 self.get_database_name(dict(row)),
-                            ) and not filter_by_schema(
+                            ) or filter_by_schema(
                                 self.source_config.schemaFilterPattern,
                                 schema_name=row["schema_name"],
                             ):
