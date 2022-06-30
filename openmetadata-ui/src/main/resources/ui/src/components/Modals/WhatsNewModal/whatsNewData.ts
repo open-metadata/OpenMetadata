@@ -330,4 +330,44 @@ export const WHATS_NEW = [
       'Other Changes': `- OpenMetadata can now reach the services running in **Docker's host machine** by using “host.docker.internal” or “gateway.docker.internal” as the hostname.\n- A flag has been added to control if the **sample data** should be ingested or not when starting up Docker from CLI.\n- Now there's a way to differentiate if a **data source** is a table or a view. Also, one can know how many views are chained in **Lineage**.\n- Support has been added to **reset** the database and to **restart** the OpenMetadata server.\n- The Activity feed API supports **pagination**.`,
     },
   },
+  {
+    id: 7,
+    version: 'v0.11.0',
+    description: 'Released on 30 Jun 2022.',
+    features: [
+      {
+        title: 'Deploy Ingestion from UI',
+        description:
+          'OpenMetadata has refactored the service connections to simplify the ingestion jobs from both the ingestion framework as well as the UI. We now use the pydantic models automatically generated from the JSON schemas for the connection definition. The ‘Add Service’ form is automatically generated in the UI based on the JSON schema specifications for the various connectors that are supported in OpenMetadata.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/veK7PrmhXWE',
+      },
+      {
+        title: 'Support for Database Schema',
+        description:
+          'OpenMetadata supports databases, service name databases, and tables. Based on community demand, we’ve also added Database Schema as part of the FQN. For each external data source, we ingest the database, as well as the tables that are contained underneath the schemas.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/zkEmbNNMdso',
+      },
+      {
+        title: 'Support for Hard Delete',
+        description:
+          'OpenMetadata supported soft deletions. Now, we also support the hard deletion of entities through the UI, APIs, and ingestion. Hard deleting an entity removes the entity and all of its relationships. This will also generate a change event.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/6VILlkwQudo',
+      },
+    ],
+    changeLogs: {
+      'Data Collaboration - Tasks, Announcements, & Emojis': `- **Tasks** have been introduced as an extension to the ability to create conversations and post replies.\n- Tasks can be created around **descriptions** for tables, pipelines, dashboards, and topics. \n- Users can **Request a description**, or even **Suggest a new description** and make **edits** to an existing description. \n- Submitting the request automatically creates a task for the owner of a data asset. \n- Tasks can be further **reassigned** to the relevant user. \n- Other users can participate in this activity by posting a **reply**, **comment**, or **react** to conversations with **emojis**.\n- All the tasks assigned to a user can be tracked in the **User Profile** page.\n- Tasks associated with a particular data asset are kept track of in the **dataset details** page.\n- Task owners can provide description or accept/reject suggestions and those tasks are **automatically closed**.`,
+      'Column Level Lineage': `- Column level lineage **API** support has been added in the **backend**.\n- Supports table level and column level lineage from **Snowflake**, **Redshift**, and **BigQuery**.`,
+      'Custom Properties': `- Now supports adding **new types** and **extending entities** when organizations need to capture custom metadata.\n- New types and **custom fields** can be added to entities either using **API** or in **OpenMetadata UI**.`,
+      'Advanced Search': `- Users can **search by** column, schema, database, owner, tag, and service. \n- Users can search by **multiple parameters** to narrow down the search results.\n- Separate advanced search options are available for **Tables**, **Topics**, **Dashboards**, **Pipelines**, and **ML Models**. \n- All entities are searchable by **common search options** such as Owner, Tag, and Service. \n- **Entity specific search options** are also available - table specific options include Column, Schema, and Database, pipeline specific options include Task, and dashboards specific option includes Chart.`,
+      'Glossary UI Updates': `- The Glossary UI has been **upgraded**. \n- The **arrangement** to display the Summary, Related Terms, Synonyms, and References has been changed. \n- **Reviewers** are shown on the right panel with an option to add or remove existing reviewers.`,
+      'Profiler and Data Quality Improvements': `- **Seven** additional data quality tests have been added as follows.\n- **tableColumnCountToBeBetween**: Ensure the number of columns in your table stays within the expected range\n- **tableColumnNameToExist**: Check that a specific column is in your table\n- **tableColumnToMatchSet**: Check that your table has the expected columns. You can enforce a check for column order.\n- **columnValueMaxToBeBetween**: Verify the max value in a column is between expected bounds\n- **columnValueMinToBeBetween**: Verify the min value in a column is between expected bounds\n- **columnValuesToBeInSet**: Check if specific value(s) are in a column\n- **columnValuesSumToBeBetween**: Verify the sum of the values in a column is between expected bounds\n- The Profiler now determines if a **BigQuery** table is partitioned, and filters it accordingly.\n- Now, you can pass a **custom query** to your profiler workflow file.\n- Developed a direct integration between **Great Expectations** and OpenMetadata. Now, you can add custom actions to your Great Expectations checkpoints file that will automatically ingest your data quality tests results into OpenMetadata at the end of your checkpoint file run.`,
+      'ML Models': `- **ML Model entities** have been added to the UI.\n- Supports ingestion through the UI from [MLflow](https://mlflow.org/).`,
+      Connectors: `- Five new connectors have been added - [Airbyte](https://airbyte.com), [Mode](https://mode.com), [AWS Data Lake](https://aws.amazon.com/big-data/datalakes-and-analytics/what-is-a-data-lake/), [Google Cloud Data Lake](https://cloud.google.com/learn/what-is-a-data-lake#section-6), and [Apache Pinot](https://pinot.apache.org/).\n- **DBT Cloud** support was added and we now extract manifest and catalog files from API.\n- The **ingestion scheduler** now supports a minute level selection.\n- The **Snowflake** metadata extraction has been optimized.\n- The **Looker** connector now fetches the ‘Usage’ and ‘Access’ metadata for Dashboards and Charts.`,
+      'UI Improvements': `- The OpenMetadata UI has a **new layout**.\n- In the **Activity Feeds**, the options to reply to a conversation, as well as to delete can now be found on hovering over the conversation.\n- Users can react with **Emojis** on the activity feeds, conversations and replies.\n- Hovering on the links provides a **quick preview** of the entity details.\n- The UI supports adding Tasks. **Pending tasks** will be displayed on the right panel.\n- Users can add **Announcements** to alert team members of upcoming changes.\n- A tooltip has been added to display the **FQN** on hover in the Activity Feed header.\n- A **Settings** page has been designed, from where users can access Roles, Services, Schemas, Custom Attributes, and Teams.`,
+      'Other Changes': `- Admin users define **Roles** and associate these roles to Teams. When a user picks a Team, the Role gets automatically assigned.\n- An option has been added to recreate a fresh index from the data available in **Elasticsearch**.\n- A simple **webhook server** has been added to the metadata command to register and listen to the metadata change events.\n- The ingestion configurations are supported as **YAML**.\n- In the previous release, we added support for **Azure SSO** on Airflow. In the current release, we’ve added support for Azure SSO in Java SDK Client.\n- OpenMetadata now supports **AWS Cognito SSO**.\n- When **deleting** a database service, the number of databases, schemas and tables is displayed in the confirmation dialog.`,
+    },
+  },
 ];
