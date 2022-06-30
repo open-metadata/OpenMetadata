@@ -13,9 +13,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 6;
+export const LATEST_VERSION_ID = 7;
 
-export const COOKIE_VERSION = 'VERSION_0_10_0'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_0_11_0'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
