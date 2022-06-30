@@ -12,11 +12,23 @@
 
 from enum import Enum
 
+from metadata.great_expectations.builders.column.value_max_to_be_between import (
+    ColumnValueMaxToBeBetweenBuilder,
+)
+from metadata.great_expectations.builders.column.value_min_to_be_between import (
+    ColumnValueMinToBeBetweenBuilder,
+)
 from metadata.great_expectations.builders.column.values_lengths_to_be_between import (
     ColumnValuesLengthsToBeBetweenBuilder,
 )
+from metadata.great_expectations.builders.column.values_sum_to_be_between import (
+    ColumnValueSumToBeBetweenBuilder,
+)
 from metadata.great_expectations.builders.column.values_to_be_between import (
     ColumnValuesToBeBetweenBuilder,
+)
+from metadata.great_expectations.builders.column.values_to_be_in_set import (
+    ColumnValuesToBeInSetBuilder,
 )
 from metadata.great_expectations.builders.column.values_to_be_not_in_set import (
     ColumnValuesToBeNotInSetBuilder,
@@ -66,3 +78,7 @@ class SupportedGETests(Enum):
     expect_table_column_count_to_be_between = TableColumnCountToBeBetweenBuilder()
     expect_column_to_exist = TableColumnNameToExistBuilder()
     expect_table_columns_to_match_set = TableColumnNameToMatchSetBuilder()
+    expect_column_values_to_be_in_set = ColumnValuesToBeInSetBuilder()
+    expect_column_max_to_be_between = ColumnValueMaxToBeBetweenBuilder()
+    expect_column_min_to_be_between = ColumnValueMinToBeBetweenBuilder()
+    expect_column_sum_to_be_between = ColumnValueSumToBeBetweenBuilder()
