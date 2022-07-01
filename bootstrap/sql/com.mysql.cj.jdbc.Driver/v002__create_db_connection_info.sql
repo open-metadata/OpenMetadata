@@ -58,7 +58,6 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.database'
                     ,'$.connection.config.username'
                     ,'$.connection.config.projectId'
-                    ,'$.connection.config.database'
                     ,'$.connection.config.enablePolicyTagImport')
 WHERE serviceType = 'BigQuery';
 
