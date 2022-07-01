@@ -12,6 +12,7 @@
 Usage Souce Module
 """
 import csv
+import traceback
 from abc import ABC
 from datetime import datetime, timedelta
 from typing import Iterable, Optional
@@ -109,36 +110,44 @@ class UsageSource(Source[TableQuery], ABC):
                 logger.info(
                     f"Scanning query logs for {(self.start+timedelta(days=i)).date()} - {(self.start+timedelta(days=i+1)).date()}"
                 )
-                rows = self.engine.execute(
-                    self.get_sql_statement(
-                        start_time=self.start + timedelta(days=i),
-                        end_time=self.start + timedelta(days=i + 1),
+                try:
+                    rows = self.engine.execute(
+                        self.get_sql_statement(
+                            start_time=self.start + timedelta(days=i),
+                            end_time=self.start + timedelta(days=i + 1),
+                        )
                     )
-                )
-                yield TableQueries(
-                    queries=[
-                        TableQuery(
-                            query=row["query_text"],
-                            userName=row["user_name"],
-                            startTime=str(row["start_time"]),
-                            endTime=str(row["end_time"]),
-                            analysisDate=row["start_time"],
-                            aborted=self.get_aborted_status(dict(row)),
-                            databaseName=self.get_database_name(dict(row)),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=row["schema_name"],
-                        )
-                        for row in rows
-                        if not filter_by_database(
-                            self.source_config.databaseFilterPattern,
-                            self.get_database_name(dict(row)),
-                        )
-                        and not filter_by_schema(
-                            self.source_config.schemaFilterPattern,
-                            schema_name=row["schema_name"],
-                        )
-                    ]
-                )
+                    queries = []
+                    for row in rows:
+                        try:
+                            if filter_by_database(
+                                self.source_config.databaseFilterPattern,
+                                self.get_database_name(dict(row)),
+                            ) or filter_by_schema(
+                                self.source_config.schemaFilterPattern,
+                                schema_name=row["schema_name"],
+                            ):
+                                continue
+                            queries.append(
+                                TableQuery(
+                                    query=row["query_text"],
+                                    userName=row["user_name"],
+                                    startTime=str(row["start_time"]),
+                                    endTime=str(row["end_time"]),
+                                    analysisDate=row["start_time"],
+                                    aborted=self.get_aborted_status(dict(row)),
+                                    databaseName=self.get_database_name(dict(row)),
+                                    serviceName=self.config.serviceName,
+                                    databaseSchema=row["schema_name"],
+                                )
+                            )
+                        except Exception as err:
+                            logger.debug(traceback.format_exc())
+                            logger.error(str(err))
+                    yield TableQueries(queries=queries)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(str(err))
 
     def next_record(self) -> Iterable[TableQuery]:
         """

@@ -68,7 +68,7 @@ public class BotRepository extends EntityRepository<Bot> {
 
   public EntityReference getBotUser(Bot bot) throws IOException {
     List<String> refs = findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
-    ensureSingleRelationship(Entity.BOT, bot.getId(), refs, "botUser", true);
+    ensureSingleRelationship(Entity.BOT, bot.getId(), refs, "botUser", false);
     return refs.isEmpty()
         ? null
         : daoCollection.userDAO().findEntityReferenceById(UUID.fromString(refs.get(0)), Include.ALL);

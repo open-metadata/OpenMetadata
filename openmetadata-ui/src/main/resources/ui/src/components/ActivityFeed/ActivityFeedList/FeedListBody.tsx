@@ -14,7 +14,11 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
@@ -100,9 +104,13 @@ const FeedListBody: FC<FeedListBodyProp> = ({
           const isTask = isEqual(feed.type, ThreadType.Task);
           const postLength = feed?.posts?.length || 0;
           const replies = feed.postsCount ? feed.postsCount - 1 : 0;
-          const repliedUsers = (feed?.posts || [])
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
+          const repliedUsers = [
+            ...new Set((feed?.posts || []).map((f) => f.from)),
+          ];
+          const repliedUniqueUsersList = repliedUsers.slice(
+            0,
+            postLength >= 3 ? 2 : 1
+          );
           const lastPost = feed?.posts?.[postLength - 1];
 
           return (
@@ -114,10 +122,12 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                 marginTop: '20px',
                 paddingTop: isTask ? '8px' : '',
                 border: isTask
-                  ? '1px solid #E3DAFA'
+                  ? '1px solid #C6B5F6'
                   : leftPanelAntCardStyle.border,
               }}>
-              {isTask && <TaskBadge />}
+              {isTask && (
+                <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
+              )}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   isThread
@@ -134,7 +144,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      repliedUsers,
+                      repliedUniqueUsersList,
                       replies,
                       feed.id,
                       lastPost

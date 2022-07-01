@@ -69,9 +69,13 @@ def render_template(environment: Environment, template_file: str = "config.yml")
         tmplt = environment.get_template(template_file)
         return tmplt.render()
     except TemplateNotFound as err:
-        raise TemplateNotFound(
-            f"Config file at {environment.loader.searchpath} not found"
-        ) from err
+        try:
+            tmplt = environment.get_template("config.yaml")
+            return tmplt.render()
+        except TemplateNotFound as err:
+            raise TemplateNotFound(
+                f"Config file at {environment.loader.searchpath} not found"
+            ) from err
 
 
 def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:

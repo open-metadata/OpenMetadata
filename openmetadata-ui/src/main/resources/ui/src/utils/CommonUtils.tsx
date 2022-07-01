@@ -202,7 +202,9 @@ export const getCountBadge = (
         clsBG,
         className
       )}>
-      <span data-testid="filter-count">{count}</span>
+      <span data-testid="filter-count" title={count.toString()}>
+        {count > 999 ? `999+` : count}
+      </span>
     </span>
   );
 };
@@ -612,13 +614,13 @@ export const getEntityName = (entity?: EntityReference) => {
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return `Deleting this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
-    )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
+    )} will remove its metadata, as well as the metadata of ${dependents} from OpenMetadata permanently.`;
   } else {
-    return `Deleting this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
-    )} will permanently remove its metadata from OpenMetadata.`;
+    )} will remove its metadata from OpenMetadata permanently.`;
   }
 };
 

@@ -163,7 +163,7 @@ const PipelineDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -194,7 +194,6 @@ const PipelineDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 4,
     },
@@ -485,17 +484,19 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && !deleted && (
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={pipelineDetails.id}
                     entityName={pipelineDetails.name}
                     entityType={EntityType.PIPELINE}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.PIPELINE}
                     onSave={onSettingsUpdate}
                   />

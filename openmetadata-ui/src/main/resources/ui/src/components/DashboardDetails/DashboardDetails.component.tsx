@@ -170,7 +170,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -201,7 +201,6 @@ const DashboardDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 4,
     },
@@ -703,11 +702,11 @@ const DashboardDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && !deleted && (
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     deletEntityMessage={getDeleteEntityMessage()}
@@ -715,6 +714,8 @@ const DashboardDetails = ({
                     entityName={dashboardDetails.name}
                     entityType={EntityType.DASHBOARD}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.DASHBOARD}
                     onSave={onSettingsUpdate}
                   />

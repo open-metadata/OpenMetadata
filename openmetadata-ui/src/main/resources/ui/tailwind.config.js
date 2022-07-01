@@ -184,7 +184,7 @@ module.exports = {
         700: '700px',
       },
       minWidth: {
-        badgeCount: '30px',
+        badgeCount: '46px',
         64: '16rem',
       },
       maxWidth: {

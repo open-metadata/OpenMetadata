@@ -193,7 +193,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      isHidden: mlModelDetail.deleted,
       protectedState: !mlModelDetail.owner || hasEditAccess(),
       position: 3,
     },
@@ -452,17 +451,19 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   {getMlModelStore()}
                 </div>
               )}
-              {activeTab === 3 && !mlModelDetail.deleted && (
+              {activeTab === 3 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!mlModelDetail.deleted}
                     currentTier={mlModelTier?.tagFQN}
                     currentUser={mlModelDetail.owner}
                     entityId={mlModelDetail.id}
                     entityName={mlModelDetail.name}
                     entityType={EntityType.MLMODEL}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={mlModelDetail.deleted}
+                    hideTier={mlModelDetail.deleted}
                     onSave={onSettingsUpdate}
                   />
                 </div>

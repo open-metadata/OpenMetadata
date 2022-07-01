@@ -59,4 +59,4 @@ jobs:
           cd ingestion; \
             python setup.py install sdist bdist_wheel; \
             twine check dist/*; \
-            twine upload -r dist/*
+            twine upload dist/*

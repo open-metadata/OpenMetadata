@@ -491,7 +491,7 @@ const MyDataPage = () => {
   }, [socket]);
 
   const onRefreshFeeds = () => {
-    setEntityThread((prevData) => [...activityFeeds, ...prevData]);
+    getFeedData();
     setActivityFeeds([]);
   };
 

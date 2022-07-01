@@ -13,7 +13,11 @@
 import { Card } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
@@ -63,9 +67,13 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                 const isTask = isEqual(thread.type, ThreadType.Task);
                 const postLength = thread?.posts?.length || 0;
                 const replies = thread.postsCount ? thread.postsCount - 1 : 0;
-                const repliedUsers = (thread.posts || [])
-                  .map((f) => f.from)
-                  .slice(0, postLength >= 3 ? 2 : 1);
+                const repliedUsers = [
+                  ...new Set((thread?.posts || []).map((f) => f.from)),
+                ];
+                const repliedUniqueUsersList = repliedUsers.slice(
+                  0,
+                  postLength >= 3 ? 2 : 1
+                );
                 const lastPost = thread?.posts?.[postLength - 1];
 
                 return (
@@ -78,10 +86,14 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         marginTop: '20px',
                         paddingTop: isTask ? '8px' : '',
                         border: isTask
-                          ? '1px solid #E3DAFA'
+                          ? '1px solid #C6B5F6'
                           : leftPanelAntCardStyle.border,
                       }}>
-                      {isTask && <TaskBadge />}
+                      {isTask && (
+                        <TaskBadge
+                          status={thread.task?.status as ThreadTaskStatus}
+                        />
+                      )}
                       <div data-testid="main-message">
                         <ActivityFeedCard
                           isEntityFeed
@@ -105,7 +117,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                                 <FeedCardFooter
                                   isFooterVisible
                                   lastReplyTimeStamp={lastPost?.postTs}
-                                  repliedUsers={repliedUsers}
+                                  repliedUsers={repliedUniqueUsersList}
                                   replies={replies}
                                   threadId={thread.id}
                                   onThreadSelect={() =>
