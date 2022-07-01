@@ -15,16 +15,18 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -109,6 +111,7 @@ const DashboardDetails = ({
   paging,
   fetchFeedHandler,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -127,6 +130,9 @@ const DashboardDetails = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -164,7 +170,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -195,7 +201,6 @@ const DashboardDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 4,
     },
@@ -404,8 +409,11 @@ const DashboardDetails = ({
       });
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -445,6 +453,13 @@ const DashboardDetails = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -452,7 +467,7 @@ const DashboardDetails = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
@@ -489,8 +504,12 @@ const DashboardDetails = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={dashboardFQN}
@@ -662,6 +681,7 @@ const DashboardDetails = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -682,11 +702,11 @@ const DashboardDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && !deleted && (
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     deletEntityMessage={getDeleteEntityMessage()}
@@ -694,6 +714,8 @@ const DashboardDetails = ({
                     entityName={dashboardDetails.name}
                     entityType={EntityType.DASHBOARD}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.DASHBOARD}
                     onSave={onSettingsUpdate}
                   />
@@ -725,6 +747,7 @@ const DashboardDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />

@@ -13,10 +13,11 @@
 
 import { compare } from 'fast-json-patch';
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
@@ -25,6 +26,7 @@ import {
   PipelineStatus,
   Task,
 } from '../../generated/entity/data/pipeline';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -96,6 +98,7 @@ const PipelineDetails = ({
   fetchFeedHandler,
   pipelineStatus,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: PipeLineDetailsProp) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -118,6 +121,9 @@ const PipelineDetails = ({
         return {} as PipelineStatus;
       }
     }
+  );
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
   );
 
   const onEntityFieldSelect = (value: string) => {
@@ -157,7 +163,7 @@ const PipelineDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -188,7 +194,6 @@ const PipelineDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 4,
     },
@@ -311,8 +316,11 @@ const PipelineDetails = ({
     }
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -341,6 +349,13 @@ const PipelineDetails = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedFilter, threadType) => {
+      fetchFeedHandler(paging.after, feedFilter, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -348,7 +363,7 @@ const PipelineDetails = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={pipelineFQN}
@@ -384,8 +399,12 @@ const PipelineDetails = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={pipelineFQN}
@@ -444,6 +463,7 @@ const PipelineDetails = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -464,17 +484,19 @@ const PipelineDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && !deleted && (
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={pipelineDetails.id}
                     entityName={pipelineDetails.name}
                     entityType={EntityType.PIPELINE}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.PIPELINE}
                     onSave={onSettingsUpdate}
                   />
@@ -506,6 +528,7 @@ const PipelineDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          threadType={threadType}
           updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />

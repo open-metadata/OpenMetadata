@@ -20,7 +20,7 @@ import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { ModifiedColumn } from './EntityLineage.interface';
 
-const handleStyles = {
+const handleStyles: CSSProperties = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
@@ -34,22 +34,6 @@ const getHandle = (
   isNewNode = false,
   id?: string
 ) => {
-  const getLeftRightHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      height: '162%',
-    };
-  };
-
-  const getTopBottomHandleStyles = () => {
-    return {
-      opacity: 0,
-      borderRadius: '0px',
-      width: '110%',
-    };
-  };
-
   if (nodeType === EntityLineageNodeType.OUTPUT) {
     return (
       <Fragment>
@@ -57,34 +41,7 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={{ ...handleStyles } as CSSProperties}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
-          style={{
-            ...getLeftRightHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
+          style={handleStyles}
           type="target"
         />
       </Fragment>
@@ -96,35 +53,8 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Right}
-          style={{ ...handleStyles } as CSSProperties}
+          style={handleStyles}
           type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={{
-            ...getLeftRightHandleStyles(),
-          }}
-          type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
         />
       </Fragment>
     );
@@ -137,34 +67,10 @@ const getHandle = (
           id={id}
           isConnectable={isConnectable}
           position={Position.Left}
-          style={
-            {
-              ...handleStyles,
-
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Right}
-          style={
-            {
-              ...handleStyles,
-
-              top: isNewNode ? 13 : handleStyles.top,
-            } as CSSProperties
-          }
-          type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Left}
           style={{
-            ...getLeftRightHandleStyles(),
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
           }}
           type="target"
         />
@@ -173,27 +79,11 @@ const getHandle = (
           isConnectable={isConnectable}
           position={Position.Right}
           style={{
-            ...getLeftRightHandleStyles(),
+            ...handleStyles,
+
+            top: isNewNode ? 13 : handleStyles.top,
           }}
           type="source"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Bottom}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
-        />
-        <Handle
-          id={id}
-          isConnectable={isConnectable}
-          position={Position.Top}
-          style={{
-            ...getTopBottomHandleStyles(),
-          }}
-          type="target"
         />
       </Fragment>
     );

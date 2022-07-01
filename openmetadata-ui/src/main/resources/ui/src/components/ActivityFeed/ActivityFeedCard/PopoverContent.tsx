@@ -75,7 +75,7 @@ const PopoverContent: FC<Props> = ({
      * if on reply method is undefined then get the panel element
      * and scroll to the bottom
      */
-    if (isUndefined(onReply)) {
+    if (isUndefined(onReply) && isThread) {
       const feedPanel = document.getElementById('feed-panel') as HTMLElement;
       const threadPanel = document.getElementById(
         'thread-panel'
@@ -152,14 +152,16 @@ const PopoverContent: FC<Props> = ({
         </button>
       </Popover>
 
-      <button onClick={handleReply}>
-        <SVGIcons
-          alt="add-reply"
-          icon={Icons.ADD_REPLY}
-          title="Reply"
-          width="20px"
-        />
-      </button>
+      {(onReply || isThread) && (
+        <button onClick={handleReply}>
+          <SVGIcons
+            alt="add-reply"
+            icon={Icons.ADD_REPLY}
+            title="Reply"
+            width="20px"
+          />
+        </button>
+      )}
 
       {deleteButtonCheck ? (
         <button onClick={handleDelete}>

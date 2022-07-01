@@ -57,6 +57,7 @@ export interface AddIngestionProps {
 export interface ConfigureIngestionProps {
   ingestionName: string;
   description?: string;
+  databaseServiceName: string;
   serviceCategory: ServiceCategory;
   databaseFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
@@ -68,6 +69,7 @@ export interface ConfigureIngestionProps {
   fqnFilterPattern: FilterPattern;
   includeLineage: boolean;
   includeView: boolean;
+  includeTags: boolean;
   markDeletedTables?: boolean;
   enableDebugLog: boolean;
   ingestSampleData: boolean;
@@ -84,9 +86,11 @@ export interface ConfigureIngestionProps {
   stageFileLocation: string;
   resultLimit: number;
   handleIngestionName: (value: string) => void;
+  handleDatasetServiceName: (value: string) => void;
   handleDescription?: (value: string) => void;
   handleIncludeLineage: () => void;
   handleIncludeView: () => void;
+  handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
   handleEnableDebugLog: () => void;
   handleIngestSampleData: () => void;

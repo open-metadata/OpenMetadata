@@ -11,13 +11,13 @@ pip install openmetadata-ingestion[great-expectations]
     action:
       module_name: metadata.great_expectations.action
       class_name: OpenMetadataValidationAction
-      config_file_path: path/to/ometa/config/file/confg.yml
+      config_file_path: path/to/ometa/config/file/
       ometa_service_name: my_service_name
 ```
 `ometa_service_name` is optional. If you don't specify it, when looking for the table entity it will look for the service name where the table entity name exist. If the same table entity name exists in more than 1 service name it will raise an error.
 
 
-The `config.yml` file holds connection details to your Open Metadata instance, e.g.
+The `config.yaml` file holds connection details to your Open Metadata instance, e.g.
 
 ```yml
 hostPort: http://localhost:8585/api

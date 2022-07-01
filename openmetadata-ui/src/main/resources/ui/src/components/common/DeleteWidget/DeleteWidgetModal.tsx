@@ -51,12 +51,12 @@ const DeleteWidgetV1 = ({
 
   const DELETE_OPTION = [
     {
-      title: `Soft delete ${entityType} “${entityName}”`,
+      title: `Delete ${entityType} “${entityName}”`,
       description: prepareDeleteMessage(true),
       type: DeleteType.SOFT_DELETE,
     },
     {
-      title: `Delete ${entityType} “${entityName}”`,
+      title: `Permanently Delete ${entityType} “${entityName}”`,
       description: prepareDeleteMessage(),
       type: DeleteType.HARD_DELETE,
     },
@@ -208,7 +208,7 @@ const DeleteWidgetV1 = ({
             key={option.type}
             value={option.type}>
             <p className="tw-text-sm tw-mb-1 tw-font-medium">{option.title}</p>
-            <p className="tw-text-grey-muted tw-text-xs">
+            <p className="tw-text-grey-muted tw-text-xs tw-mb-2">
               {option.description}
             </p>
           </Radio>

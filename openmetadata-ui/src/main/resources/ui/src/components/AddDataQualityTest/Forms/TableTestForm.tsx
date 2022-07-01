@@ -27,6 +27,7 @@ import {
 } from '../../../utils/CommonUtils';
 import { Button } from '../../buttons/Button/Button';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import ToggleSwitchV1 from '../../common/toggle-switch/ToggleSwitchV1';
 
 type Props = {
   data?: TableTest;
@@ -67,12 +68,26 @@ const TableTestForm = ({
   const [value, setValue] = useState<number | undefined>(
     data?.testCase.config?.value || data?.testCase.config?.columnCount
   );
+  const [columnName, setcolumnName] = useState<string | undefined>(
+    data?.testCase?.config?.columnName
+  );
+  const [columnNameSet, setcolumnNameSet] = useState<string | undefined>(
+    data?.testCase?.config?.columnNames
+  );
+  const [columnNameSetOrdered, setcolumnNameSetOrdered] = useState<boolean>(
+    data?.testCase?.config?.ordered !== undefined
+      ? data?.testCase?.config?.ordered
+      : false
+  );
   const [isShowError, setIsShowError] = useState({
     minOrMax: false,
     values: false,
     minMaxValue: false,
     allTestAdded: false,
     tableTest: false,
+    columnName: false,
+    columnNameSet: false,
+    columnNameSetOrdered: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -100,19 +115,29 @@ const TableTestForm = ({
 
   const validateForm = () => {
     const errMsg = cloneDeep(isShowError);
-
-    const isTableRowCountToBeBetweenTest =
-      tableTest === TableTestType.TableRowCountToBeBetween;
-
     errMsg.tableTest = isEmpty(tableTest);
 
-    if (isTableRowCountToBeBetweenTest) {
-      errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
-      if (!isUndefined(minValue) && !isUndefined(maxValue)) {
-        errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
-      }
-    } else {
-      errMsg.values = isEmpty(value);
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
+        if (!isUndefined(minValue) && !isUndefined(maxValue)) {
+          errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
+        }
+
+        break;
+      case TableTestType.TableColumnNameToExist:
+        errMsg.columnName = isEmpty(columnName);
+
+        break;
+
+      case TableTestType.TableColumnToMatchSet:
+        errMsg.columnNameSet = isEmpty(columnNameSet);
+
+        break;
+
+      default:
+        errMsg.values = isEmpty(value);
     }
 
     setIsShowError(errMsg);
@@ -126,6 +151,23 @@ const TableTestForm = ({
         return {
           maxValue: isEmpty(maxValue) ? undefined : maxValue,
           minValue: isEmpty(minValue) ? undefined : minValue,
+        };
+
+      case TableTestType.TableColumnCountToBeBetween:
+        return {
+          minColValue: isEmpty(minValue) ? undefined : minValue,
+          maxColValue: isEmpty(maxValue) ? undefined : maxValue,
+        };
+
+      case TableTestType.TableColumnNameToExist:
+        return {
+          columnName: isEmpty(columnName) ? undefined : columnName,
+        };
+
+      case TableTestType.TableColumnToMatchSet:
+        return {
+          columnNames: isEmpty(columnNameSet) ? undefined : columnNameSet,
+          ordered: columnNameSetOrdered,
         };
 
       case TableTestType.TableColumnCountToEqual:
@@ -196,6 +238,19 @@ const TableTestForm = ({
 
         break;
 
+      case 'column-name':
+        setcolumnName(value as unknown as string);
+        errorMsg.columnName = false;
+
+        break;
+
+      case 'column-name-set':
+        setcolumnNameSet(value as unknown as string);
+        errorMsg.columnNameSet = false;
+        errorMsg.columnNameSetOrdered = false;
+
+        break;
+
       default:
         break;
     }
@@ -220,6 +275,56 @@ const TableTestForm = ({
           onChange={handleValidation}
         />
         {isShowError.values && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
+  const getValueColTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name">
+          Column Name
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="column-name"
+          id="columnn-ame"
+          name="column-name"
+          placeholder="col1"
+          type="text"
+          value={columnName}
+          onChange={handleValidation}
+        />
+        {isShowError.columnName && errorMsg('Value is required.')}
+      </Field>
+    );
+  };
+
+  const getValueColSetTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="column-name-set">
+          Column Names
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding tw-mb-4"
+          data-testid="column-name-set"
+          id="column-name-set"
+          name="column-name-set"
+          placeholder="col1, col2, col3"
+          type="text"
+          value={columnNameSet}
+          onChange={handleValidation}
+        />
+        <div className="tw-flex tw-gap-1">
+          <label>Match Column Input Order</label>
+          <ToggleSwitchV1
+            checked={columnNameSetOrdered}
+            handleCheck={() => setcolumnNameSetOrdered((pre) => !pre)}
+            testId="enable-ordered-column-names"
+          />
+        </div>
+        {isShowError.columnNameSet && errorMsg('Value is required.')}
       </Field>
     );
   };
@@ -264,6 +369,20 @@ const TableTestForm = ({
           errorMsg('Min value should be lower than Max value.')}
       </Fragment>
     );
+  };
+
+  const getTableTestConfig = () => {
+    switch (tableTest) {
+      case TableTestType.TableRowCountToBeBetween:
+      case TableTestType.TableColumnCountToBeBetween:
+        return getMinMaxField();
+      case TableTestType.TableColumnNameToExist:
+        return getValueColTextField();
+      case TableTestType.TableColumnToMatchSet:
+        return getValueColSetTextField();
+      default:
+        return getValueField();
+    }
   };
 
   return (
@@ -314,11 +433,7 @@ const TableTestForm = ({
             />
           </Field>
 
-          <Field>
-            {tableTest === TableTestType.TableRowCountToBeBetween
-              ? getMinMaxField()
-              : getValueField()}
-          </Field>
+          <Field>{getTableTestConfig()}</Field>
         </div>
         <Field className="tw-flex tw-justify-end">
           <Button

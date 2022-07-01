@@ -109,3 +109,9 @@ class AirByteClient:
 class ModeClient:
     def __init__(self, client) -> None:
         self.client = client
+
+
+@dataclass
+class MlflowClientWrapper:
+    def __init__(self, client) -> None:
+        self.client = client

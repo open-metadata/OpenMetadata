@@ -13,6 +13,7 @@
 
 import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
@@ -22,6 +23,7 @@ import { useExpanded, useTable } from 'react-table';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
@@ -31,6 +33,7 @@ import {
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TestCaseStatus } from '../../generated/tests/tableTest';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
@@ -43,7 +46,6 @@ import {
 } from '../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import { getThreadValue } from '../../utils/FeedUtils';
 import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
@@ -77,8 +79,9 @@ interface Props {
   isReadOnly?: boolean;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
+  entityFieldTasks?: EntityFieldThreads[];
   onUpdate?: (columns: ModifiedTableColumn[]) => void;
-  onThreadLinkSelect?: (value: string) => void;
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onEntityFieldSelect?: (value: string) => void;
 }
 
@@ -94,6 +97,7 @@ const EntityTable = ({
   onThreadLinkSelect,
   entityFqn,
   tableConstraints,
+  entityFieldTasks,
 }: Props) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -356,7 +360,13 @@ const EntityTable = ({
     return searchedValue;
   };
 
-  /* eslint-disable-next-line */
+  const checkPermission = () =>
+    isAdminUser ||
+    hasEditAccess ||
+    isAuthDisabled ||
+    userPermissions[Operation.UpdateDescription];
+
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const getColumnName = (cell: any) => {
     const fqn = cell?.row?.original?.fullyQualifiedName || '';
     const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
@@ -367,12 +377,26 @@ const EntityTable = ({
       : columnName;
   };
 
-  /* eslint-disable-next-line */
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const onRequestDescriptionHandler = (cell: any) => {
-    const field = 'columns';
+    const field = EntityField.COLUMNS;
     const value = getColumnName(cell);
     history.push(
       getRequestDescriptionPath(
+        EntityType.TABLE,
+        entityFqn as string,
+        field,
+        value
+      )
+    );
+  };
+
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const onUpdateDescriptionHandler = (cell: any) => {
+    const field = EntityField.COLUMNS;
+    const value = getColumnName(cell);
+    history.push(
+      getUpdateDescriptionPath(
         EntityType.TABLE,
         entityFqn as string,
         field,
@@ -399,28 +423,41 @@ const EntityTable = ({
     }
   };
 
-  /* eslint-disable-next-line */
-  const handleUpdate = (column: Column, index: number, cell: any) => {
-    const check =
-      isAdminUser ||
-      hasEditAccess ||
-      isAuthDisabled ||
-      userPermissions[Operation.UpdateDescription];
-    if (check) {
-      handleEditColumn(column, index);
-    } else {
-      const field = 'columns';
-      const value = getColumnName(cell);
+  const handleUpdate = (column: Column, index: number) => {
+    handleEditColumn(column, index);
+  };
 
-      history.push(
-        getUpdateDescriptionPath(
-          EntityType.TABLE,
-          entityFqn as string,
-          field,
-          value
-        )
-      );
-    }
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const getRequestDescriptionElement = (cell: any) => {
+    const hasDescription = Boolean(cell.value);
+
+    return (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
+        data-testid="request-description"
+        onClick={() =>
+          hasDescription
+            ? onUpdateDescriptionHandler(cell)
+            : onRequestDescriptionHandler(cell)
+        }>
+        <Popover
+          destroyTooltipOnHide
+          content={
+            hasDescription
+              ? 'Request update description'
+              : 'Request description'
+          }
+          overlayClassName="ant-popover-request-description"
+          trigger="hover"
+          zIndex={9999}>
+          <SVGIcons
+            alt="request-description"
+            icon={Icons.REQUEST}
+            width="16px"
+          />
+        </Popover>
+      </button>
+    );
   };
 
   useEffect(() => {
@@ -675,60 +712,52 @@ const EntityTable = ({
                                   </span>
                                 )}
                               </div>
-                              {!isReadOnly ? (
-                                <Fragment>
-                                  <button
-                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                    onClick={() =>
-                                      handleUpdate(row.original, row.id, cell)
-                                    }>
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="12px"
-                                    />
-                                  </button>
-
-                                  {isNil(
-                                    getThreadValue(
-                                      getColumnName(cell),
-                                      'description',
-                                      entityFieldThreads as EntityFieldThreads[]
-                                    )
-                                  ) && !cell.value ? (
-                                    <button
-                                      className="focus:tw-outline-none tw-ml-1 tw-opacity-0 group-hover:tw-opacity-100 tw--mt-2"
-                                      data-testid="request-description"
-                                      onClick={() =>
-                                        onRequestDescriptionHandler(cell)
-                                      }>
-                                      <PopOver
-                                        position="top"
-                                        title="Request description"
-                                        trigger="mouseenter">
+                              <div className="tw-flex tw--mt-1.5">
+                                {!isReadOnly ? (
+                                  <Fragment>
+                                    {checkPermission() && (
+                                      <button
+                                        className="tw-self-start tw-w-8 tw-h-8 tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none tw-flex-none"
+                                        onClick={() =>
+                                          handleUpdate(row.original, row.id)
+                                        }>
                                         <SVGIcons
-                                          alt="request-description"
-                                          className="tw-mt-2.5"
-                                          icon={Icons.REQUEST}
+                                          alt="edit"
+                                          icon="icon-edit"
+                                          title="Edit"
+                                          width="14px"
                                         />
-                                      </PopOver>
-                                    </button>
-                                  ) : null}
-                                  {getFieldThreadElement(
-                                    getColumnName(cell),
-                                    'description',
-                                    entityFieldThreads as EntityFieldThreads[],
-                                    onThreadLinkSelect,
-                                    EntityType.TABLE,
-                                    entityFqn,
-                                    `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
-                                      cell
-                                    )}${ENTITY_LINK_SEPARATOR}description`,
-                                    Boolean(cell.value)
-                                  )}
-                                </Fragment>
-                              ) : null}
+                                      </button>
+                                    )}
+                                    {getRequestDescriptionElement(cell)}
+                                    {getFieldThreadElement(
+                                      getColumnName(cell),
+                                      EntityField.DESCRIPTION,
+                                      entityFieldThreads as EntityFieldThreads[],
+                                      onThreadLinkSelect,
+                                      EntityType.TABLE,
+                                      entityFqn,
+                                      `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                        cell
+                                      )}${ENTITY_LINK_SEPARATOR}description`,
+                                      Boolean(cell.value)
+                                    )}
+                                    {getFieldThreadElement(
+                                      getColumnName(cell),
+                                      EntityField.DESCRIPTION,
+                                      entityFieldTasks as EntityFieldThreads[],
+                                      onThreadLinkSelect,
+                                      EntityType.TABLE,
+                                      entityFqn,
+                                      `columns${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                        cell
+                                      )}${ENTITY_LINK_SEPARATOR}description`,
+                                      Boolean(cell.value),
+                                      ThreadType.Task
+                                    )}
+                                  </Fragment>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                           {checkIfJoinsAvailable(row.original.name) && (

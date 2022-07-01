@@ -18,7 +18,10 @@ import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
-import { confirmStateInitialValue } from '../../../constants/feed.constants';
+import {
+  confirmStateInitialValue,
+  PanelTab,
+} from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
@@ -200,7 +203,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   useAfterMount(() => {
     if (threadType === ThreadType.Task && !isThreadLoading) {
-      isEqual(threads.length, 0) && onTabChange && onTabChange('2');
+      isEqual(threads.length, 0) &&
+        onTabChange &&
+        onTabChange(PanelTab.CONVERSATIONS);
     }
   }, [threads, isThreadLoading]);
 

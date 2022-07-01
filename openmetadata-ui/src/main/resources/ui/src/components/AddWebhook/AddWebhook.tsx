@@ -43,6 +43,11 @@ import DropDown from '../dropdown/DropDown';
 import Loader from '../Loader/Loader';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { AddWebhookProps } from './AddWebhook.interface';
+import {
+  CREATE_EVENTS_DEFAULT_VALUE,
+  DELETE_EVENTS_DEFAULT_VALUE,
+  UPDATE_EVENTS_DEFAULT_VALUE,
+} from './WebhookConstants';
 
 const Field = ({ children }: { children: React.ReactNode }) => {
   return <div className="tw-mt-4">{children}</div>;
@@ -135,17 +140,17 @@ const AddWebhook: FunctionComponent<AddWebhookProps> = ({
   const [createEvents, setCreateEvents] = useState<EventFilter>(
     data
       ? getEventFilterByType(data.eventFilters, EventType.EntityCreated)
-      : ({} as EventFilter)
+      : (CREATE_EVENTS_DEFAULT_VALUE as EventFilter)
   );
   const [updateEvents, setUpdateEvents] = useState<EventFilter>(
     data
       ? getEventFilterByType(data.eventFilters, EventType.EntityUpdated)
-      : ({} as EventFilter)
+      : (UPDATE_EVENTS_DEFAULT_VALUE as EventFilter)
   );
   const [deleteEvents, setDeleteEvents] = useState<EventFilter>(
     data
       ? getEventFilterByType(data.eventFilters, EventType.EntityDeleted)
-      : ({} as EventFilter)
+      : (DELETE_EVENTS_DEFAULT_VALUE as EventFilter)
   );
   const [secretKey, setSecretKey] = useState<string>(data?.secretKey || '');
   const [batchSize, setBatchSize] = useState<number | undefined>(

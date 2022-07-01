@@ -95,6 +95,7 @@ const PipelineDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   pipelineFQN: '',
   deletePostHandler: jest.fn(),
@@ -185,7 +186,7 @@ describe('Test PipelineDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Task');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const manageTab = await findByTestId(tabs, 'Manage');
 

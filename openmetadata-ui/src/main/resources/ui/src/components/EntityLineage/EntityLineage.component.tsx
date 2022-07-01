@@ -35,6 +35,8 @@ import React, {
 } from 'react';
 import ReactFlow, {
   addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
   Background,
   BackgroundVariant,
   Connection,
@@ -45,8 +47,6 @@ import ReactFlow, {
   Node,
   ReactFlowInstance,
   ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
 } from 'react-flow-renderer';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getTableDetails } from '../../axiosAPIs/tableAPI';
@@ -149,8 +149,26 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     status: ElementLoadingState;
   }>(ELEMENT_DELETE_STATE);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const { node: initialNode, edge: initialEdge } = useMemo(
+    () =>
+      getLayoutedElementsV1(
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        setElementsHandleV1()
+      ),
+    [entityLineage]
+  );
+
+  const [nodes, setNodes] = useState(() => initialNode);
+  const [edges, setEdges] = useState(() => initialEdge);
+
+  const onNodesChange = useCallback(
+    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    [setNodes]
+  );
+  const onEdgesChange = useCallback(
+    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [setEdges]
+  );
 
   /**
    * this state will maintain the updated state and
@@ -170,6 +188,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }),
     []
   );
+
+  const customEdges = useMemo(() => ({ buttonedge: CustomEdge }), []);
 
   /**
    * take node as input and check if node is main entity or not
@@ -257,7 +277,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       removeLineageHandler(edgeData);
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       setEdges((es) => {
-        return es.filter((e) => e.id !== data.id);
+        return es.filter(
+          (e) => e.source !== data.source.id && e.target !== data.target.id
+        );
       });
 
       /**
@@ -374,6 +396,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
               if (newCol.fromColumns?.length) {
                 return [...col, newCol];
+              } else {
+                return col;
               }
             }
 
@@ -401,13 +425,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           }),
         });
       }
-      setEdges((pre) =>
-        pre.filter(
+      setEdges((pre) => {
+        return pre.filter(
           (e) =>
-            e.sourceHandle !== data.data?.sourceHandle &&
-            e.targetHandle !== data.data?.targetHandle
-        )
-      );
+            !(
+              e.sourceHandle === data.data?.sourceHandle &&
+              e.targetHandle === data.data?.targetHandle
+            )
+        );
+      });
       addLineageHandler(selectedEdge);
       setNewAddedNode({} as Node);
       setSelectedEntity({} as EntityReference);
@@ -450,14 +476,14 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     });
   };
 
-  const setElementsHandleV1 = () => {
+  function setElementsHandleV1() {
     let uniqueElements: CustomeElement = {
       node: [],
       edge: [],
     };
     const currentData = {
-      nodes: [...nodes],
-      edges: [...edges],
+      nodes: [...(nodes || [])],
+      edges: [...(edges || [])],
     };
     if (!isEmpty(updatedLineageData)) {
       const graphElements = getLineageDataV1(
@@ -483,7 +509,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }
 
     return uniqueElements;
-  };
+  }
 
   /**
    * take boolean value as input and reset selected node
@@ -1294,7 +1320,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         <ReactFlowProvider>
           <ReactFlow
             data-testid="react-flow-component"
-            edgeTypes={{ buttonedge: CustomEdge }}
+            edgeTypes={customEdges}
             edges={edges}
             maxZoom={2}
             minZoom={0.5}

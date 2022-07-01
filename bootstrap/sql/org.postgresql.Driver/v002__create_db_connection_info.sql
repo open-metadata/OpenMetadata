@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS mlmodel_service_entity (
 UPDATE thread_entity
 SET json = jsonb_set(json, '{type}', '"Conversation"', true);
 
+update thread_entity
+SET json = jsonb_set(json, '{reactions}', '[]'::jsonb, true);
+
 ALTER TABLE thread_entity
     ADD type VARCHAR(64) GENERATED ALWAYS AS (json ->> 'type') STORED NOT NULL,
     ADD taskId INT GENERATED ALWAYS AS ((json#>'{task,id}')::integer) STORED,
@@ -45,3 +48,31 @@ CREATE INDEX IF NOT EXISTS thread_entity_updated_at_index ON thread_entity(updat
 
 CREATE TABLE task_sequence (id SERIAL PRIMARY KEY, dummy varchar(1));
 INSERT INTO task_sequence (dummy) VALUES (0) RETURNING id;
+
+DELETE from ingestion_pipeline_entity where 1=1;
+DELETE FROM pipeline_service_entity WHERE 1=1;
+
+UPDATE dbservice_entity
+SET json = jsonb_set(json, '{connection,config,databaseSchema}', json#>'{connection,config,database}')
+where serviceType in ('Mysql','Hive','Presto','Trino','Clickhouse','SingleStore','MariaDB','Db2','Oracle')
+  and json#>'{connection,config,database}' is not null;
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,database}'
+where serviceType in ('Mysql','Hive','Presto','Trino','Clickhouse','SingleStore','MariaDB','Db2','Oracle');
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,database}' #- '{connection,config,username}' #- '{connection,config,projectId}' #- '{connection,config,enablePolicyTagImport}'
+WHERE serviceType = 'BigQuery';
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,database}'
+WHERE serviceType in ('Athena','Databricks');
+
+UPDATE dbservice_entity
+SET json = json::jsonb #- '{connection,config,supportsProfiler}' #- '{connection,config,pipelineServiceName}'
+WHERE serviceType = 'Glue';
+
+UPDATE dashboard_service_entity
+SET json = json::jsonb #- '{connection,config,dbServiceName}'
+WHERE serviceType in ('Metabase','Superset','Tableau');

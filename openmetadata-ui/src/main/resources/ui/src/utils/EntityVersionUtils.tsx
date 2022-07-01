@@ -26,6 +26,7 @@ import {
   DESCRIPTIONLENGTH,
   getTeamAndUserDetailsPath,
 } from '../constants/constants';
+import { EntityField } from '../constants/feed.constants';
 import { ChangeType } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/table';
 import {
@@ -301,7 +302,7 @@ export const feedSummaryFromatter = (
         );
 
         break;
-      } else if (fieldChange?.name?.endsWith('description')) {
+      } else if (fieldChange?.name?.endsWith(EntityField.DESCRIPTION)) {
         summary = (
           <p key={uniqueId()}>
             {`${
@@ -321,7 +322,7 @@ export const feedSummaryFromatter = (
         );
 
         break;
-      } else if (fieldChange?.name === 'columns') {
+      } else if (fieldChange?.name === EntityField.COLUMNS) {
         const length = value?.length ?? 0;
         summary = (
           <p key={uniqueId()}>
@@ -419,7 +420,7 @@ export const feedSummaryFromatter = (
       break;
     }
 
-    case fieldChange?.name === 'description': {
+    case fieldChange?.name === EntityField.DESCRIPTION: {
       summary = (
         <p key={uniqueId()}>
           {`${
@@ -523,7 +524,7 @@ export const summaryFormatter = (fieldChange: FieldChange) => {
       ? fieldChange?.oldValue
       : '{}'
   );
-  if (fieldChange.name === 'columns') {
+  if (fieldChange.name === EntityField.COLUMNS) {
     return `columns ${value?.map((val: any) => val?.name).join(', ')}`;
   } else if (
     fieldChange.name === 'tags' ||

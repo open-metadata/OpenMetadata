@@ -123,14 +123,11 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         """
         return [
             Task(
-                name=job["job"]["id"],
-                displayName=job["job"]["id"],
+                name=connection["connectionId"],
+                displayName=connection["name"],
                 description="",
                 taskUrl=f"{connection_url}/status",
-                taskType=job["job"]["configType"],
             )
-            for job in self.client.list_jobs(connection.get("connectionId"))
-            if job
         ]
 
     def fetch_pipeline(
@@ -158,19 +155,28 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         """
         Method to get task & pipeline status
         """
-        task_status = [
-            TaskStatus(
-                name=job["job"]["id"],
-                executionStatus=STATUS_MAP.get(
-                    job["job"]["status"].lower(), StatusType.Pending
-                ).value,
-            )
-            for job in self.client.list_jobs(connection.get("connectionId"))
-        ]
-        pipeline_status = PipelineStatus(taskStatus=task_status)
-        yield OMetaPipelineStatus(
-            pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
-        )
+        for job in self.client.list_jobs(connection.get("connectionId")):
+            if not job or not job.get("attempts"):
+                continue
+            for attempt in job["attempts"]:
+                task_status = [
+                    TaskStatus(
+                        name=str(connection.get("connectionId")),
+                        executionStatus=STATUS_MAP.get(
+                            attempt["status"].lower(), StatusType.Pending
+                        ).value,
+                    )
+                ]
+                pipeline_status = PipelineStatus(
+                    executionStatus=STATUS_MAP.get(
+                        attempt["status"].lower(), StatusType.Pending
+                    ).value,
+                    taskStatus=task_status,
+                    executionDate=attempt["createdAt"],
+                )
+                yield OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
+                )
 
     def fetch_lineage(
         self, connection: dict, pipeline_entity: Pipeline
