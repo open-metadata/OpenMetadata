@@ -22,7 +22,7 @@ class LatestTime(StaticMetric):
     """
     Latest Metric
 
-    Given a date or time column, find the latest time
+    Given a date or time column, find the latest or min time
     """
 
     @classmethod
