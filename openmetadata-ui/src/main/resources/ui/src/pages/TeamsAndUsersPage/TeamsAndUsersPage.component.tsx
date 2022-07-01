@@ -471,6 +471,7 @@ const TeamsAndUsersPage = () => {
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['join-team-error']);
+        setIsRightPannelLoading(false);
       });
   };
 
@@ -497,6 +498,7 @@ const TeamsAndUsersPage = () => {
             err,
             jsonData['api-error-messages']['leave-team-error']
           );
+          setIsRightPannelLoading(false);
         });
     });
   };
