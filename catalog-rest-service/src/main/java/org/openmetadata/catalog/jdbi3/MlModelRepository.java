@@ -13,12 +13,12 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import static org.openmetadata.catalog.Entity.DASHBOARD;
 import static org.openmetadata.catalog.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
 import static org.openmetadata.catalog.Entity.MLMODEL;
 import static org.openmetadata.catalog.Entity.MLMODEL_SERVICE;
-import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.catalog.util.EntityUtil.mlHyperParameterMatch;
@@ -34,6 +34,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.services.MlModelService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.mlmodels.MlModelResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -70,7 +71,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public MlModel setFields(MlModel mlModel, Fields fields) throws IOException {
     mlModel.setOwner(fields.contains(FIELD_OWNER) ? getOwner(mlModel) : null);
-    mlModel.setService(getService(mlModel));
+    mlModel.setService(getContainer(mlModel.getId()));
     mlModel.setDashboard(fields.contains("dashboard") ? getDashboard(mlModel) : null);
     mlModel.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(mlModel) : null);
     mlModel.setTags(fields.contains(FIELD_TAGS) ? getTags(mlModel.getFullyQualifiedName()) : null);
@@ -189,10 +190,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     return new MlModelUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(MlModel mlModel) throws IOException {
-    return getContainer(mlModel.getId(), MLMODEL);
-  }
-
   private void populateService(MlModel mlModel) throws IOException {
     MlModelService service = getService(mlModel.getService().getId(), mlModel.getService().getType());
     mlModel.setService(service.getEntityReference());
@@ -208,14 +205,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   private EntityReference getDashboard(MlModel mlModel) throws IOException {
-    if (mlModel != null) {
-      List<String> ids = findTo(mlModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
-      ensureSingleRelationship(MLMODEL, mlModel.getId(), ids, "dashboards", false);
-      return ids.isEmpty()
-          ? null
-          : daoCollection.dashboardDAO().findEntityReferenceById(UUID.fromString(ids.get(0)), ALL);
-    }
-    return null;
+    return mlModel == null ? null : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
   public void setDashboard(MlModel mlModel, EntityReference dashboard) {

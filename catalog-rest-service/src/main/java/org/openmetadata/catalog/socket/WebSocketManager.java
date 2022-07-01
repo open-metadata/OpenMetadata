@@ -7,6 +7,7 @@ import io.socket.socketio.server.SocketIoServer;
 import io.socket.socketio.server.SocketIoSocket;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,10 +23,10 @@ public class WebSocketManager {
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     mEngineIoServer = new EngineIoServer(eiOptions);
     mSocketIoServer = new SocketIoServer(mEngineIoServer);
-    intilizateHandlers();
+    initializeHandlers();
   }
 
-  private void intilizateHandlers() {
+  private void initializeHandlers() {
     SocketIoNamespace ns = mSocketIoServer.namespace("/");
     // On Connection
     ns.on(
@@ -67,24 +68,22 @@ public class WebSocketManager {
                 });
             socket.on(
                 "connect_error",
-                args1 -> {
-                  LOG.error(
-                      "Connection ERROR for user:"
-                          + userId
-                          + "with Remote Address :"
-                          + socket.getInitialHeaders().get("RemoteAddress")
-                          + " disconnected.");
-                });
+                args1 ->
+                    LOG.error(
+                        "Connection ERROR for user:"
+                            + userId
+                            + "with Remote Address :"
+                            + socket.getInitialHeaders().get("RemoteAddress")
+                            + " disconnected."));
             socket.on(
                 "connect_failed",
-                args1 -> {
-                  LOG.error(
-                      "Connection failed ERROR for user:"
-                          + userId
-                          + "with Remote Address :"
-                          + socket.getInitialHeaders().get("RemoteAddress")
-                          + " disconnected.");
-                });
+                args1 ->
+                    LOG.error(
+                        "Connection failed ERROR for user:"
+                            + userId
+                            + "with Remote Address :"
+                            + socket.getInitialHeaders().get("RemoteAddress")
+                            + " disconnected."));
 
             UUID id = UUID.fromString(userId);
             Map<String, SocketIoSocket> userSocketConnections;
@@ -94,11 +93,7 @@ public class WebSocketManager {
             activityFeedEndpoints.put(id, userSocketConnections);
           }
         });
-    ns.on(
-        "error",
-        args -> {
-          LOG.error("Connection error on the server");
-        });
+    ns.on("error", args -> LOG.error("Connection error on the server"));
   }
 
   public static WebSocketManager getInstance() {
@@ -118,10 +113,7 @@ public class WebSocketManager {
   }
 
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach(
-        (key, value) -> {
-          value.forEach((key1, value1) -> value1.send(event, message));
-        });
+    activityFeedEndpoints.forEach((key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
@@ -131,18 +123,11 @@ public class WebSocketManager {
   }
 
   public void sendToManyWithUUID(List<UUID> receivers, String event, String message) {
-    receivers.forEach(
-        (e) -> {
-          sendToOne(e, event, message);
-        });
+    receivers.forEach(e -> sendToOne(e, event, message));
   }
 
-  public void sendToManyWithString(List<String> receivers, String event, String message) {
-    receivers.forEach(
-        (e) -> {
-          UUID key = UUID.fromString(e);
-          sendToOne(key, event, message);
-        });
+  public void sendToManyWithString(List<EntityRelationshipRecord> receivers, String event, String message) {
+    receivers.forEach(e -> sendToOne(e.getId(), event, message));
   }
 
   public static class WebSocketManagerBuilder {

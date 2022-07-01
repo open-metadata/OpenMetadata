@@ -14,6 +14,8 @@
 package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
+import static org.openmetadata.catalog.Entity.LOCATION;
+import static org.openmetadata.catalog.Entity.POLICY;
 import static org.openmetadata.catalog.util.EntityUtil.entityReferenceMatch;
 
 import java.io.IOException;
@@ -22,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -49,7 +50,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public PolicyRepository(CollectionDAO dao) {
     super(
         PolicyResource.COLLECTION_PATH,
-        Entity.POLICY,
+        POLICY,
         Policy.class,
         dao.policyDAO(),
         dao,
@@ -60,11 +61,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   /** Find the location to which this policy applies to. * */
   @Transaction
   private EntityReference getLocationForPolicy(Policy policy) throws IOException {
-    List<String> result = findTo(policy.getId(), Entity.POLICY, Relationship.APPLIED_TO, Entity.LOCATION);
-    // There is at most one location for a policy.
-    return result.size() == 1
-        ? daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(result.get(0)))
-        : null;
+    return getToEntityRef(policy.getId(), Relationship.APPLIED_TO, LOCATION, false);
   }
 
   @Override
@@ -180,8 +177,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (location == null || location.getId() == null) {
       return;
     }
-    addRelationship(
-        policy.getId(), policy.getLocation().getId(), Entity.POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
+    addRelationship(policy.getId(), policy.getLocation().getId(), POLICY, Entity.LOCATION, Relationship.APPLIED_TO);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -194,7 +190,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
     public void entitySpecificUpdate() throws IOException {
       // Disallow changing policyType.
       if (original.getPolicyType() != updated.getPolicyType()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.POLICY, "policyType"));
+        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
       }
       recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
@@ -209,7 +205,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
             .relationshipDAO()
             .delete(
                 origPolicy.getId().toString(),
-                Entity.POLICY,
+                POLICY,
                 origPolicy.getLocation().getId().toString(),
                 Entity.LOCATION,
                 Relationship.APPLIED_TO.ordinal());
@@ -219,7 +215,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
         addRelationship(
             updatedPolicy.getId(),
             updatedPolicy.getLocation().getId(),
-            Entity.POLICY,
+            POLICY,
             Entity.LOCATION,
             Relationship.APPLIED_TO);
       }

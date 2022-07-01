@@ -17,9 +17,7 @@ import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.DatabaseConnection;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -28,7 +26,6 @@ import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -68,19 +65,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
-  }
-
-  private List<EntityReference> getIngestionPipelines(DatabaseService service) throws IOException {
-    List<String> ingestionPipelineIds =
-        findTo(service.getId(), Entity.DATABASE_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (String ingestionPipelineId : ingestionPipelineIds) {
-      ingestionPipelines.add(
-          daoCollection
-              .ingestionPipelineDAO()
-              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
-    }
-    return ingestionPipelines;
   }
 
   @Override

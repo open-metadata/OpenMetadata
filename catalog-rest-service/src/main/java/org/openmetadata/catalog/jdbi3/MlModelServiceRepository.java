@@ -16,18 +16,13 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.entity.services.MlModelService;
 import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MlModelConnection;
-import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
@@ -51,19 +46,6 @@ public class MlModelServiceRepository extends EntityRepository<MlModelService> {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
     entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
     return entity;
-  }
-
-  private List<EntityReference> getIngestionPipelines(MlModelService service) throws IOException {
-    List<String> ingestionMlModelIds =
-        findTo(service.getId(), Entity.PIPELINE_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionMlModels = new ArrayList<>();
-    for (String ingestionMlModelId : ingestionMlModelIds) {
-      ingestionMlModels.add(
-          daoCollection
-              .ingestionPipelineDAO()
-              .findEntityReferenceById(UUID.fromString(ingestionMlModelId), Include.ALL));
-    }
-    return ingestionMlModels;
   }
 
   @Override

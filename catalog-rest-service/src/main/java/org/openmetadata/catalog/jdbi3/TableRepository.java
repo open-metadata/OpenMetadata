@@ -135,7 +135,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) throws IOException {
-    EntityReference schemaRef = getContainer(table.getId(), TABLE);
+    EntityReference schemaRef = getContainer(table.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -574,9 +574,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private EntityReference getLocation(Table table) throws IOException {
-    List<String> refs = findTo(table.getId(), TABLE, Relationship.HAS, LOCATION);
-    ensureSingleRelationship(TABLE, table.getId(), refs, "location", false);
-    return refs.isEmpty() ? null : Entity.getEntityReferenceById(LOCATION, UUID.fromString(refs.get(0)), Include.ALL);
+    return getToEntityRef(table.getId(), Relationship.HAS, LOCATION, false);
   }
 
   @Override
