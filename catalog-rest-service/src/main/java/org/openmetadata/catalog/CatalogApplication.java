@@ -275,6 +275,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   private void intializeWebsockets(CatalogApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
+    String pathSpec = "/api/v1/push/feed/*";
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
@@ -289,14 +290,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.getApplicationContext().setContextPath("/");
     environment
         .getApplicationContext()
-        .addFilter(new FilterHolder(socketAddressFilter), "/api/v1/push/feed/*", EnumSet.of(DispatcherType.REQUEST));
-    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/api/v1/push/feed/*");
+        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter webSocketUpgradeFilter =
           WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
       webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec("/api/v1/push/feed/*"),
+          new ServletPathSpec(pathSpec),
           (servletUpgradeRequest, servletUpgradeResponse) ->
               new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
     } catch (ServletException ex) {
