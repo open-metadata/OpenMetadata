@@ -62,5 +62,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: "openmetadata/ingestion:$input,openmetadata/ingestion:latest"
+          tags: "openmetadata/ingestion:${{ env.input }},openmetadata/ingestion:latest"
           file: ./ingestion/Dockerfile
