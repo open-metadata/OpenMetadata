@@ -790,7 +790,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return null;
     }
     List<EntityReference> followers = new ArrayList<>();
-    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS);
+    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.FOLLOWS, Entity.USER);
     for (EntityRelationshipRecord record : records) {
       followers.add(daoCollection.userDAO().findEntityReferenceById(record.getId(), ALL));
     }
@@ -856,29 +856,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
-  public List<String> findBoth(UUID entity1, String entityType1, Relationship relationship, String entity2) {
+  public List<EntityRelationshipRecord> findBoth(
+      UUID entity1, String entityType1, Relationship relationship, String entity2) {
     // Find bidirectional relationship
-    List<String> ids = new ArrayList<>();
+    List<EntityRelationshipRecord> ids = new ArrayList<>();
     ids.addAll(findFrom(entity1, entityType1, relationship, entity2));
     ids.addAll(findTo(entity1, entityType1, relationship, entity2));
     return ids;
   }
 
-  public List<String> findFrom(UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
-    return daoCollection
-        .relationshipDAO()
-        .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
+  public List<EntityRelationshipRecord> findFrom(
+      UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
+    return fromEntityType == null
+        ? daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal())
+        : daoCollection
+            .relationshipDAO()
+            .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
 
-  public List<EntityRelationshipRecord> findFrom(UUID toId, String toEntityType, Relationship relationship) {
-    return daoCollection.relationshipDAO().findFrom(toId.toString(), toEntityType, relationship.ordinal());
+  public EntityReference getContainer(UUID toId) throws IOException {
+    return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
   }
 
-  public EntityReference getContainer(UUID toId, String toEntityType) throws IOException {
-    List<EntityRelationshipRecord> records = findFrom(toId, toEntityType, Relationship.CONTAINS);
-    // An entity can have only one container
-    ensureSingleRelationship(toEntityType, toId, records, "container", true);
-    return Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL);
+  public EntityReference getFromEntityRef(
+      UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) throws IOException {
+    List<EntityRelationshipRecord> records = findFrom(toId, entityType, relationship, fromEntityType);
+    ensureSingleRelationship(entityType, toId, records, relationship.value(), mustHaveRelationship);
+    return records.size() >= 1
+        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+        : null;
+  }
+
+  public EntityReference getToEntityRef(
+      UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) throws IOException {
+    List<EntityRelationshipRecord> records = findTo(fromId, entityType, relationship, toEntityType);
+    ensureSingleRelationship(entityType, fromId, records, relationship.value(), mustHaveRelationship);
+    return records.size() >= 1
+        ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
+        : null;
   }
 
   public void ensureSingleRelationship(
@@ -895,7 +910,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<String> findTo(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
+  public final List<EntityRelationshipRecord> findTo(
+      UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     return daoCollection
         .relationshipDAO()
         .findTo(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
@@ -908,6 +924,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFrom(UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     // Remove relationships from original
     daoCollection.relationshipDAO().deleteFrom(fromId.toString(), fromEntityType, relationship.ordinal(), toEntityType);
+  }
+
+  public void validateTeams(List<EntityReference> entityReferences) throws IOException {
+    if (entityReferences != null) {
+      for (EntityReference entityReference : entityReferences) {
+        EntityReference ref = daoCollection.teamDAO().findEntityReferenceById(entityReference.getId());
+        EntityUtil.copy(ref, entityReference);
+      }
+      entityReferences.sort(EntityUtil.compareEntityReference);
+    }
   }
 
   public void validateUsers(List<EntityReference> entityReferences) throws IOException {
@@ -934,11 +960,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!supportsOwner) {
       return null;
     }
-    List<EntityRelationshipRecord> records = findFrom(entity.getId(), entityType, Relationship.OWNS);
-    ensureSingleRelationship(entityType, entity.getId(), records, "owners", false);
-    return records.isEmpty()
-        ? null
-        : getOwner(new EntityReference().withId(records.get(0).getId()).withType(records.get(0).getType()));
+    return getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
   public EntityReference getOwner(EntityReference ref) throws IOException {
@@ -1011,6 +1033,38 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected String getCustomPropertyFQN(String entityType, String propertyName) {
     return FullyQualifiedName.build(entityType, "customProperties", propertyName);
+  }
+
+  public static List<UUID> toIds(List<String> ids) {
+    if (ids == null) {
+      return null;
+    }
+    List<UUID> uuids = new ArrayList<>();
+    for (String id : ids) {
+      uuids.add(UUID.fromString(id));
+    }
+    return uuids;
+  }
+
+  public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
+    if (ids == null) {
+      return null;
+    }
+    List<EntityReference> entityReferences = new ArrayList<>();
+    for (UUID id : ids) {
+      entityReferences.add(new EntityReference().withId(id).withType(entityType));
+    }
+    return entityReferences;
+  }
+
+  protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
+    List<EntityRelationshipRecord> records =
+        findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
+    List<EntityReference> ingestionPipelines = new ArrayList<>();
+    for (EntityRelationshipRecord record : records) {
+      ingestionPipelines.add(daoCollection.ingestionPipelineDAO().findEntityReferenceById(record.getId(), Include.ALL));
+    }
+    return ingestionPipelines;
   }
 
   enum Operation {

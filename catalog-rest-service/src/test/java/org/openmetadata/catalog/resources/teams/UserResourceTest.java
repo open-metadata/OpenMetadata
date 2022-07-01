@@ -78,7 +78,6 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
@@ -475,21 +474,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertNotNull(users.getPaging().getAfter());
     assertNull(users.getPaging().getBefore());
     assertEquals(user1, users.getData().get(0));
-  }
-
-  @Test
-  void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    User user = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Empty query field .../users?fields=
-    assertResponseContains(
-        () -> getEntity(user.getId(), "test", ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name");
-
-    // .../users?fields=invalidField
-    assertResponse(
-        () -> getEntity(user.getId(), "invalidField", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**

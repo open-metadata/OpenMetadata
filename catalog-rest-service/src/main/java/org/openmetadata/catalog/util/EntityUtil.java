@@ -184,6 +184,7 @@ public final class EntityUtil {
     return list;
   }
 
+  // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
     if (list == null) {
       return Collections.emptyList();
@@ -196,11 +197,11 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
-      throws IOException {
-    List<EntityReference> refs = new ArrayList<>(ids.size());
-    for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
+  public static List<EntityReference> populateEntityReferences(
+      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
+    List<EntityReference> refs = new ArrayList<>(records.size());
+    for (EntityRelationshipRecord id : records) {
+      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
     }
     refs.sort(compareEntityReference);
     return refs;

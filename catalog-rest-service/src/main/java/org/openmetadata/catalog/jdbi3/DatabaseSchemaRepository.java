@@ -21,6 +21,7 @@ import java.util.List;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.DatabaseSchema;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
@@ -89,7 +90,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema == null) {
       return null;
     }
-    List<String> tableIds = findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
+    List<EntityRelationshipRecord> tableIds =
+        findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.TABLE);
     return EntityUtil.populateEntityReferences(tableIds, Entity.TABLE);
   }
 
@@ -103,7 +105,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   private void setDefaultFields(DatabaseSchema schema) throws IOException {
-    EntityReference databaseRef = getContainer(schema.getId(), Entity.DATABASE_SCHEMA);
+    EntityReference databaseRef = getContainer(schema.getId());
     Database database = Entity.getEntity(databaseRef, Fields.EMPTY_FIELDS, Include.ALL);
     schema.withDatabase(databaseRef).withService(database.getService());
   }
