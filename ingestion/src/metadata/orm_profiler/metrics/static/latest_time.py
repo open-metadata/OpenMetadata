@@ -18,7 +18,6 @@ from metadata.orm_profiler.metrics.core import StaticMetric, _label
 from metadata.orm_profiler.orm.registry import is_date_time
 
 
-
 class LatestTime(StaticMetric):
     """
     Latest Metric

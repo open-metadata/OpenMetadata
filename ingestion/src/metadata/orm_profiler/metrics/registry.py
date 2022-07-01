@@ -29,8 +29,10 @@ from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.count_in_set import CountInSet
 from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
+from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
 from metadata.orm_profiler.metrics.static.histogram import Histogram
 from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
+from metadata.orm_profiler.metrics.static.latest_time import LatestTime
 from metadata.orm_profiler.metrics.static.like_count import LikeCount
 from metadata.orm_profiler.metrics.static.max import Max
 from metadata.orm_profiler.metrics.static.max_length import MaxLength
@@ -42,8 +44,6 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
-from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
-from metadata.orm_profiler.metrics.static.latest_time import LatestTime
 from metadata.orm_profiler.registry import MetricRegistry
 
 

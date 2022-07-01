@@ -14,7 +14,7 @@ Custom types' registry for easy access
 without having an import mess
 """
 import sqlalchemy
-from sqlalchemy import Integer, Numeric, Date, Time, DateTime
+from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
 
 from metadata.ingestion.source import sqa_types
@@ -90,13 +90,17 @@ def is_numeric(_type) -> bool:
     """
     return issubclass(_type.__class__, Numeric)
 
+
 def is_date_time(_type) -> bool:
     """
     Check if sqlalchemy _type is derived from Date, Time or DateTime Type
     """
-    return (issubclass(_type.__class__, Date)
+    return (
+        issubclass(_type.__class__, Date)
         or issubclass(_type.__class__, Time)
-        or issubclass(_type.__class__, DateTime))
+        or issubclass(_type.__class__, DateTime)
+    )
+
 
 def is_quantifiable(_type) -> bool:
     """
