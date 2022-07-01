@@ -52,11 +52,11 @@ jobs:
           sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
       - name: Install and Publish PyPi packages
         env:
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+          TWINE_USERNAME: ${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}
         run: |
           make install_dev install
           cd ingestion; \
             python setup.py install sdist bdist_wheel; \
             twine check dist/*; \
-            twine upload -r dist/*
+            twine upload  dist/*
