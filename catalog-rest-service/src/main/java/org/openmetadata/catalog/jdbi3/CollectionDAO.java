@@ -399,10 +399,11 @@ public interface CollectionDAO {
 
     // TODO delete this
     @SqlQuery(
-        "SELECT toId FROM entity_relationship "
+        "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "ORDER BY toId")
-    List<String> findTo(
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findTo(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -423,10 +424,11 @@ public interface CollectionDAO {
     // Find from operations
     //
     @SqlQuery(
-        "SELECT fromId FROM entity_relationship "
+        "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
             + "ORDER BY fromId")
-    List<String> findFrom(
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,

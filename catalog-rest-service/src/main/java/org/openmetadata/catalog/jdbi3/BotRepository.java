@@ -14,8 +14,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bot;
 import org.openmetadata.catalog.entity.teams.User;
@@ -67,11 +65,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   public EntityReference getBotUser(Bot bot) throws IOException {
-    List<String> refs = findTo(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
-    ensureSingleRelationship(Entity.BOT, bot.getId(), refs, "botUser", false);
-    return refs.isEmpty()
-        ? null
-        : daoCollection.userDAO().findEntityReferenceById(UUID.fromString(refs.get(0)), Include.ALL);
+    return getToEntityRef(bot.getId(), Relationship.CONTAINS, Entity.USER, false);
   }
 
   public class BotUpdater extends EntityUpdater {

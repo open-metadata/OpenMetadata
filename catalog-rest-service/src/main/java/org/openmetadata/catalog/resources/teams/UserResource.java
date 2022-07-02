@@ -541,7 +541,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
   }
 
-  private User getUser(SecurityContext securityContext, CreateUser create) throws IOException {
+  private User getUser(SecurityContext securityContext, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
         .withName(create.getName())
@@ -555,7 +555,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(dao.validateTeams(create.getTeams()))
-        .withRoles(dao.validateRolesByIds(create.getRoles()));
+        .withTeams(dao.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(dao.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 }

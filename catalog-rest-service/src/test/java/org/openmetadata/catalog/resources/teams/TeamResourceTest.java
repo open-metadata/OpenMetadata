@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -126,24 +125,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(team.getId(), user1.getTeams().get(0).getId());
     user2 = userResourceTest.getEntity(user2.getId(), "teams", TEST_AUTH_HEADERS);
     assertEquals(team.getId(), user2.getTeams().get(0).getId());
-  }
-
-  @Test
-  void get_teamWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    CreateTeam create = createRequest(test);
-    Team team = createEntity(create, ADMIN_AUTH_HEADERS);
-
-    // Empty query field .../teams?fields=
-    assertResponse(
-        () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("test"));
-
-    // .../teams?fields=invalidField
-    assertResponse(
-        () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   /**
