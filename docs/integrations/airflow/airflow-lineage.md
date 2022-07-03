@@ -132,6 +132,8 @@ and pass them as an argument for `on_failure_callback` and `on_success_callback`
 
 This can be set both at DAG and Task level, giving us flexibility on how (and if) we want to handle lineage on failure.
 
+If you want to track all DAGs, Tasks or specifics operators from airflow, considere to use the [Airflow Cluster Policies](https://airflow.apache.org/docs/apache-airflow/stable/concepts/cluster-policies.html) to wrap the OpenMetadata lineage callbacks by default.
+
 ### On Failure Callback
 
 This function handles the end-to-end logic:
