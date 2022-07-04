@@ -31,7 +31,6 @@ import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -142,10 +141,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     LOG.debug("Validating rules for {} policy: {}", PolicyType.AccessControl, policy.getName());
 
     Set<MetadataOperation> operations = new HashSet<>();
-    for (Object ruleObject : policy.getRules()) {
-      // Cast to access control policy Rule.
-      Rule rule = JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class);
-
+    List<Rule> rules = EntityUtil.resolveRules(policy.getRules());
+    for (Rule rule : rules) {
       if (rule.getOperation() == null) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.invalidPolicyOperationNull(rule.getName(), policy.getName()));
@@ -192,7 +189,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       if (original.getPolicyType() != updated.getPolicyType()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(POLICY, "policyType"));
       }
-      recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
       recordChange(ENABLED, original.getEnabled(), updated.getEnabled());
       recordChange("rules", original.getRules(), updated.getRules());
       updateLocation(original, updated);

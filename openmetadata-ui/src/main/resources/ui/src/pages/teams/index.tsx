@@ -445,7 +445,7 @@ const TeamsPage = () => {
           {isAdminUser ||
           isAuthDisabled ||
           isOwner() ||
-          userPermissions[Operation.UpdateTeam] ? (
+          userPermissions[Operation.TeamEditUsers] ? (
             <>
               <p>Would like to start adding some?</p>
               <Button
@@ -780,7 +780,7 @@ const TeamsPage = () => {
                               </Fragment>
                             }
                             isOwner={isOwner()}
-                            permission={Operation.UpdateTeam}
+                            permission={Operation.TeamEditUsers}
                             position="bottom">
                             <Button
                               className={classNames(
@@ -789,7 +789,7 @@ const TeamsPage = () => {
                                   'tw-opacity-40':
                                     !isAdminUser &&
                                     !isAuthDisabled &&
-                                    !userPermissions[Operation.UpdateTeam] &&
+                                    !userPermissions[Operation.TeamEditUsers] &&
                                     !isOwner(),
                                 }
                               )}
