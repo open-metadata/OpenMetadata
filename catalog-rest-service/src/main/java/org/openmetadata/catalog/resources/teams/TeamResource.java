@@ -350,6 +350,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
         .withUsers(dao.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(dao.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE));
+        .withDefaultRoles(dao.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withTeamType(ct.getTeamType());
   }
 }

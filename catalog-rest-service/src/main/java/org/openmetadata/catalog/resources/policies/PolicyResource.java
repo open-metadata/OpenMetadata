@@ -65,7 +65,6 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
@@ -106,17 +105,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
-      super(data, beforeCursor, afterCursor, total);
-    }
-  }
-
-  public static class OperationList extends ResultList<MetadataOperation> {
-    @SuppressWarnings("unused")
-    OperationList() {
-      // Empty constructor needed for deserialization
-    }
-
-    public OperationList(List<MetadataOperation> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }

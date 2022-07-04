@@ -8,6 +8,10 @@
   "javaInterfaces": ["org.openmetadata.catalog.CreateEntity"],
 
   "properties": {
+    "teamType": {
+      "description": "Team type",
+      "$ref": "../../entity/teams/team.json#/definitions/teamType"
+    },
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
