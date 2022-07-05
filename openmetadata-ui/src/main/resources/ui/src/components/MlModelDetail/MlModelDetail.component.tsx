@@ -477,7 +477,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </div>
               )}
               {activeTab === 3 && (
-                <div className="tw-px-2 tw-h-full" id="lineageDetails">
+                <div
+                  className="tw-px-2 tw-h-full"
+                  data-testid="lineage-details">
                   <EntityLineageComponent
                     addLineageHandler={lineageTabData.addLineageHandler}
                     deleted={mlModelDetail.deleted}

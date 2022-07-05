@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -22,7 +21,7 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -500,13 +499,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               )}
               {activeTab === 5 && (
                 <div
-                  className={classNames(
-                    'tw-px-2',
-                    location.pathname.includes(ROUTES.TOUR)
-                      ? 'tw-h-70vh'
-                      : 'tw-h-full'
-                  )}
-                  id="lineageDetails">
+                  className="tw-px-2 tw-h-full"
+                  data-testid="lineage-details">
                   <EntityLineageComponent
                     addLineageHandler={lineageTabData.addLineageHandler}
                     deleted={deleted}

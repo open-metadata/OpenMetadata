@@ -95,6 +95,16 @@ const TopicDetailsProps = {
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
   updateThreadHandler: jest.fn(),
+  lineageTabData: {
+    loadNodeHandler: jest.fn(),
+    addLineageHandler: jest.fn(),
+    removeLineageHandler: jest.fn(),
+    entityLineageHandler: jest.fn(),
+    isLineageLoading: false,
+    entityLineage: { entity: { id: 'test', type: 'topic' } },
+    lineageLeafNodes: {} as LeafNodes,
+    isNodeLoading: { id: undefined, state: false },
+  },
 };
 
 const mockObserve = jest.fn();
@@ -107,6 +117,10 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p data-testid="manage">ManageTab</p>);
+});
+
+jest.mock('../EntityLineage/EntityLineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
 jest.mock('../common/description/Description', () => {
@@ -220,7 +234,7 @@ describe('Test TopicDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <TopicDetails {...TopicDetailsProps} activeTab={5} />,
+      <TopicDetails {...TopicDetailsProps} activeTab={6} />,
       {
         wrapper: MemoryRouter,
       }
@@ -228,6 +242,19 @@ describe('Test TopicDetails component', () => {
     const manage = await findByTestId(container, 'manage');
 
     expect(manage).toBeInTheDocument();
+  });
+
+  it('Should render lineage tab', async () => {
+    const { container } = render(
+      <TopicDetails {...TopicDetailsProps} activeTab={5} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const detailContainer = await findByTestId(container, 'lineage-details');
+
+    expect(detailContainer).toBeInTheDocument();
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
