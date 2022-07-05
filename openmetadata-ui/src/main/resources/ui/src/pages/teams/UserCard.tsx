@@ -227,7 +227,7 @@ const UserCard = ({
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
               isOwner={isOwner}
-              permission={Operation.UpdateTeam}
+              permission={Operation.TeamEditUsers}
               position="bottom">
               <span
                 className={classNames('tw-h-8 tw-rounded tw-mb-3', {
@@ -235,7 +235,7 @@ const UserCard = ({
                     !isAdminUser &&
                     !isAuthDisabled &&
                     !isOwner &&
-                    !userPermissions[Operation.UpdateTeam],
+                    !userPermissions[Operation.TeamEditUsers],
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>

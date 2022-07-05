@@ -10,7 +10,9 @@ import java.util.Map;
 
 public class ListUtils {
 
-  public static ArrayList<Object> listResults(Object client, String methodName, Class<?> className) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException, InstantiationException {
+  public static ArrayList<Object> listResults(Object client, String methodName, Class<?> className)
+      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, ClassNotFoundException,
+          InstantiationException {
     Map<String, Object> data = new HashMap<>();
     Object classInstance = className.getDeclaredConstructor().newInstance();
     ArrayList<Object> arrayList = new ArrayList<>();

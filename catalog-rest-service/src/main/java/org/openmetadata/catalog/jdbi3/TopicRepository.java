@@ -92,7 +92,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
-    topic.setService(getService(topic));
+    topic.setService(getContainer(topic.getId()));
     topic.setOwner(fields.contains(FIELD_OWNER) ? getOwner(topic) : null);
     topic.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(topic) : null);
     topic.setTags(fields.contains(FIELD_TAGS) ? getTags(topic.getFullyQualifiedName()) : null);
@@ -103,10 +103,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public TopicUpdater getUpdater(Topic original, Topic updated, Operation operation) {
     return new TopicUpdater(original, updated, operation);
-  }
-
-  private EntityReference getService(Topic topic) throws IOException {
-    return getContainer(topic.getId(), Entity.TOPIC);
   }
 
   public void setService(Topic topic, EntityReference service) {

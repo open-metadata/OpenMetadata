@@ -58,6 +58,7 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.feeds.FeedResource;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
@@ -119,7 +120,7 @@ public class FeedRepository {
     // Add entity id to thread
     thread.withEntityId(entityId);
 
-    // if thread is of type "task", assign a taskid
+    // if thread is of type "task", assign a taskId
     if (thread.getType().equals(ThreadType.Task)) {
       thread.withTask(thread.getTask().withId(getNextTaskId()));
     }
@@ -688,12 +689,7 @@ public class FeedRepository {
     thread.withPosts(posts).withUpdatedAt(System.currentTimeMillis()).withUpdatedBy(user);
 
     if (!updated.getReactions().isEmpty()) {
-      updated
-          .getReactions()
-          .forEach(
-              reaction -> {
-                storeReactions(thread, reaction.getUser().getName());
-              });
+      updated.getReactions().forEach(reaction -> storeReactions(thread, reaction.getUser().getName()));
     }
 
     sortPosts(thread);
@@ -721,12 +717,7 @@ public class FeedRepository {
 
     if (!updated.getReactions().isEmpty()) {
       populateUserReactions(updated.getReactions());
-      updated
-          .getReactions()
-          .forEach(
-              reaction -> {
-                storeReactions(updated, reaction.getUser().getName());
-              });
+      updated.getReactions().forEach(reaction -> storeReactions(updated, reaction.getUser().getName()));
     }
 
     if (updated.getTask() != null) {
@@ -756,9 +747,7 @@ public class FeedRepository {
       reactions.forEach(
           reaction -> {
             try {
-              List<EntityReference> users =
-                  populateEntityReferences(List.of(reaction.getUser().getId().toString()), Entity.USER);
-              reaction.setUser(users.get(0));
+              reaction.setUser(Entity.getEntityReferenceById(Entity.USER, reaction.getUser().getId(), Include.ALL));
             } catch (IOException e) {
               throw new RuntimeException(e);
             }
@@ -838,10 +827,7 @@ public class FeedRepository {
     List<String> result = new ArrayList<>();
     JSONObject json = getUserTeamJson(userId, "user");
     result.add(json.toString());
-    teamIds.forEach(
-        id -> {
-          result.add(getUserTeamJson(id, "team").toString());
-        });
+    teamIds.forEach(id -> result.add(getUserTeamJson(id, "team").toString()));
     return result.toString();
   }
 
@@ -851,10 +837,7 @@ public class FeedRepository {
     List<String> result = new ArrayList<>();
     JSONObject json = getUserTeamJson(userId, "user");
     result.add(List.of(json.toString()).toString());
-    teamIds.forEach(
-        id -> {
-          result.add(List.of(getUserTeamJson(id, "team").toString()).toString());
-        });
+    teamIds.forEach(id -> result.add(List.of(getUserTeamJson(id, "team").toString()).toString()));
     return result;
   }
 
@@ -942,12 +925,15 @@ public class FeedRepository {
 
   /** Get a list of team ids that the given user is a part of. */
   private List<String> getTeamIds(String userId) {
-    List<String> teamIds = dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
-    if (teamIds.isEmpty()) {
-      teamIds = List.of(StringUtils.EMPTY);
+    List<EntityRelationshipRecord> records =
+        dao.relationshipDAO().findFrom(userId, Entity.USER, Relationship.HAS.ordinal(), Entity.TEAM);
+    List<String> teamIds = new ArrayList<>();
+    for (EntityRelationshipRecord record : records) {
+      teamIds.add(record.getId().toString());
     }
-    return teamIds;
+    return teamIds.isEmpty() ? List.of(StringUtils.EMPTY) : teamIds;
   }
+
   /** Returns the threads where the user or the team they belong to were mentioned by other users with @mention. */
   private FilteredThreads getThreadsByMentions(
       String userId, int limit, long time, ThreadType type, boolean isResolved, PaginationType paginationType)

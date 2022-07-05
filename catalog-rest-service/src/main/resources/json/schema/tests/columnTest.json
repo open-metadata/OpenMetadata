@@ -29,7 +29,7 @@
               "$ref": "./column/columnValuesToBeInSet.json"
             },
             {
-              "$ref": "column/columnValuesToBeBetween.json"
+              "$ref": "./column/columnValuesToBeBetween.json"
             },
             {
               "$ref": "./column/columnValuesMissingCountToBeEqual.json"

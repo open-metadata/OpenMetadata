@@ -15,7 +15,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-import static org.openmetadata.catalog.type.Include.ALL;
+import static org.openmetadata.catalog.Entity.LOCATION;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,6 +26,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -91,12 +92,13 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (database == null) {
       return null;
     }
-    List<String> schemaIds = findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+    List<EntityRelationshipRecord> schemaIds =
+        findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
     return EntityUtil.populateEntityReferences(schemaIds, Entity.DATABASE_SCHEMA);
   }
 
   public Database setFields(Database database, Fields fields) throws IOException {
-    database.setService(getService(database));
+    database.setService(getContainer(database.getId()));
     database.setOwner(fields.contains(FIELD_OWNER) ? getOwner(database) : null);
     database.setDatabaseSchemas(fields.contains("databaseSchemas") ? getSchemas(database) : null);
     database.setUsageSummary(
@@ -116,20 +118,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getLocation(Database database) throws IOException {
-    if (database == null) {
-      return null;
-    }
-    List<String> result = findTo(database.getId(), Entity.DATABASE, Relationship.HAS, Entity.LOCATION);
-    if (result.size() == 1) {
-      String locationId = result.get(0);
-      return daoCollection.locationDAO().findEntityReferenceById(UUID.fromString(locationId), ALL);
-    } else {
-      return null;
-    }
-  }
-
-  private EntityReference getService(Database database) throws IOException {
-    return getContainer(database.getId(), Entity.DATABASE);
+    return database == null ? null : getToEntityRef(database.getId(), Relationship.HAS, LOCATION, false);
   }
 
   private void populateService(Database database) throws IOException {

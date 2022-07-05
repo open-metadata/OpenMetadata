@@ -68,7 +68,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
-    pipeline.setService(getService(pipeline));
+    pipeline.setService(getContainer(pipeline.getId()));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
@@ -183,10 +183,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public EntityUpdater getUpdater(Pipeline original, Pipeline updated, Operation operation) {
     return new PipelineUpdater(original, updated, operation);
-  }
-
-  private EntityReference getService(Pipeline pipeline) throws IOException {
-    return getContainer(pipeline.getId(), Entity.PIPELINE);
   }
 
   private void populateService(Pipeline pipeline) throws IOException {

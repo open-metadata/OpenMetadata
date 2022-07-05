@@ -57,7 +57,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    ingestionPipeline.setService(getService(ingestionPipeline));
+    ingestionPipeline.setService(getContainer(ingestionPipeline.getId()));
     ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
     return ingestionPipeline;
   }
@@ -101,10 +101,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public EntityUpdater getUpdater(IngestionPipeline original, IngestionPipeline updated, Operation operation) {
     return new IngestionPipelineUpdater(original, updated, operation);
-  }
-
-  private EntityReference getService(IngestionPipeline ingestionPipeline) throws IOException {
-    return getContainer(ingestionPipeline.getId(), Entity.INGESTION_PIPELINE);
   }
 
   @Override

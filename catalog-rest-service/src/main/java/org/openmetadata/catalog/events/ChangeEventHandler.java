@@ -37,6 +37,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -139,11 +140,11 @@ public class ChangeEventHandler implements EventHandler {
                         .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
                   } else if (Entity.TEAM.equals(e.getType())) {
                     // fetch all that are there in the team
-                    List<String> userIds =
+                    List<EntityRelationshipRecord> records =
                         dao.relationshipDAO()
                             .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
                     WebSocketManager.getInstance()
-                        .sendToManyWithString(userIds, WebSocketManager.taskBroadcastChannel, jsonThread);
+                        .sendToManyWithString(records, WebSocketManager.taskBroadcastChannel, jsonThread);
                   }
                 });
             return;

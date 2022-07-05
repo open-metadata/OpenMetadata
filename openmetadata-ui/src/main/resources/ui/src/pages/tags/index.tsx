@@ -591,7 +591,7 @@ const TagsPage = () => {
                                       )}
                                     </div>
                                     <NonAdminAction
-                                      permission={Operation.UpdateDescription}
+                                      permission={Operation.EditDescription}
                                       position="left"
                                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                                       <button

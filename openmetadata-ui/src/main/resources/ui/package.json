@@ -72,6 +72,7 @@
     "react-copy-to-clipboard": "^5.0.4",
     "react-dom": "^16.14.0",
     "react-draft-wysiwyg": "^1.14.7",
+    "react-error-boundary": "^3.1.4",
     "react-flow-renderer": "^10.3.6",
     "react-google-login": "^5.2.2",
     "react-markdown": "^8.0.2",

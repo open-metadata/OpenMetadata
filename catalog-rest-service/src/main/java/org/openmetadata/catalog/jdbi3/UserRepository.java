@@ -62,8 +62,10 @@ public class UserRepository extends EntityRepository<User> {
 
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
-  public void prepare(User user) {
+  public void prepare(User user) throws IOException {
     setFullyQualifiedName(user);
+    validateTeams(user.getTeams());
+    validateRoles(user.getRoles());
   }
 
   @Override
@@ -175,25 +177,16 @@ public class UserRepository extends EntityRepository<User> {
     return validatedRoles;
   }
 
-  public List<EntityReference> validateTeams(List<UUID> teamIds) throws IOException {
-    if (teamIds == null) {
-      return Collections.emptyList(); // Return an empty teams list
-    }
-    List<EntityReference> validatedTeams = new ArrayList<>();
-    for (UUID teamId : teamIds) {
-      validatedTeams.add(daoCollection.teamDAO().findEntityReferenceById(teamId));
-    }
-    return validatedTeams;
-  }
-
   private List<EntityReference> getDefaultRole() throws IOException {
-    List<String> defaultRoleIds = daoCollection.roleDAO().getDefaultRolesIds();
-    return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
+    // TODO multiple default roleIds?
+    List<UUID> defaultRoleIds = toIds(daoCollection.roleDAO().getDefaultRolesIds());
+    List<EntityReference> refs = toEntityReferences(defaultRoleIds, Entity.ROLE);
+    return EntityUtil.populateEntityReferences(refs);
   }
 
   /* Add all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) throws IOException {
-    List<String> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
+    List<EntityRelationshipRecord> roleIds = findTo(user.getId(), Entity.USER, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(roleIds, Entity.ROLE);
   }
 
@@ -206,8 +199,8 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Add all the teams that user belongs to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
-    List<EntityReference> teams = EntityUtil.populateEntityReferences(teamIds, Entity.TEAM);
+    List<EntityRelationshipRecord> records = findFrom(user.getId(), Entity.USER, Relationship.HAS, Entity.TEAM);
+    List<EntityReference> teams = EntityUtil.populateEntityReferences(records, Entity.TEAM);
     // return only the non-deleted teams
     return teams.stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
   }

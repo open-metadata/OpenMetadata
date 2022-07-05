@@ -1151,7 +1151,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 <p>You do not have permission to edit the lineage</p>
               </Fragment>
             }
-            permission={Operation.UpdateLineage}>
+            permission={Operation.EditLineage}>
             <ControlButton
               className={classNames(
                 'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
@@ -1161,7 +1161,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 },
                 {
                   'tw-opacity-40':
-                    !userPermissions[Operation.UpdateLineage] &&
+                    !userPermissions[Operation.EditLineage] &&
                     !isAuthDisabled &&
                     !isAdminUser,
                 }

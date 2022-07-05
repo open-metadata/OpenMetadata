@@ -135,7 +135,7 @@ const TeamDetails = ({
       isHidden: !(
         hasAccess ||
         isOwner() ||
-        userPermissions[Operation.UpdateOwner]
+        userPermissions[Operation.EditOwner]
       ),
       position: 4,
     },
@@ -347,7 +347,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button

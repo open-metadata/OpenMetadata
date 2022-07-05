@@ -40,6 +40,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -184,6 +185,7 @@ public final class EntityUtil {
     return list;
   }
 
+  // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
     if (list == null) {
       return Collections.emptyList();
@@ -196,11 +198,11 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
-      throws IOException {
-    List<EntityReference> refs = new ArrayList<>(ids.size());
-    for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
+  public static List<EntityReference> populateEntityReferences(
+      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
+    List<EntityReference> refs = new ArrayList<>(records.size());
+    for (EntityRelationshipRecord id : records) {
+      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
     }
     refs.sort(compareEntityReference);
     return refs;
@@ -350,5 +352,14 @@ public final class EntityUtil {
         .withDisplayName(from.getDisplayName())
         .withFullyQualifiedName(from.getFullyQualifiedName())
         .withDeleted(from.getDeleted());
+  }
+
+  public static List<Rule> resolveRules(List<Object> rules) throws IOException {
+    List<Rule> resolvedRules = new ArrayList<>();
+    for (Object ruleObject : rules) {
+      // Cast to access control policy Rule.
+      resolvedRules.add(JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
+    }
+    return resolvedRules;
   }
 }
