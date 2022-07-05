@@ -689,7 +689,7 @@ export const getFeedCounts = (
 /**
  *
  * @param entityType type of the entity
- * @returns true if entity type is exists in TASK_ENTITIES otherwise false
+ * @returns true if entity type exists in TASK_ENTITIES otherwise false
  */
 export const isTaskSupported = (entityType: EntityType) =>
   TASK_ENTITIES.includes(entityType);
