@@ -31,7 +31,7 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         add_props(table=table)(Metrics.COLUMN_COUNT.value),
         add_props(table=table)(Metrics.COLUMN_NAMES.value),
         # Column Metrics
-        # Metrics.MEDIAN.value,  # TODO: enable it back after #XXXX
+        # Metrics.MEDIAN.value,  # TODO: enable it back after #5866
         Metrics.MEAN.value,
         Metrics.COUNT.value,
         Metrics.DISTINCT_COUNT.value,
