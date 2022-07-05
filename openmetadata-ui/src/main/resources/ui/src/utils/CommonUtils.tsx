@@ -47,6 +47,7 @@ import Fqn from './Fqn';
 import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = (
@@ -684,3 +685,11 @@ export const getFeedCounts = (
       );
     });
 };
+
+/**
+ *
+ * @param entityType type of the entity
+ * @returns true if entity type exists in TASK_ENTITIES otherwise false
+ */
+export const isTaskSupported = (entityType: EntityType) =>
+  TASK_ENTITIES.includes(entityType);
