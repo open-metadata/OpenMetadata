@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import ReactTutorial from '@deuex-solutions/react-tour';
+import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { observer } from 'mobx-react';
-import { TourSteps } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useTour } from '../../hooks/useTour';
