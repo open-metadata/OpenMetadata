@@ -54,10 +54,7 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import {
-  filterList,
-  filterListTasks,
-} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
+import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -67,6 +64,7 @@ import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
+import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
@@ -673,7 +671,7 @@ const Users = ({
             onClick={() => setShowFilterList((visible) => !visible)}>
             <span className="tw-font-medium tw-text-grey">
               {
-                (activeTab === 1 ? filterList : filterListTasks).find(
+                (activeTab === 1 ? userPageFilterList : filterListTasks).find(
                   (f) => f.value === feedFilter
                 )?.name
               }
@@ -682,7 +680,9 @@ const Users = ({
           </Button>
           {showFilterList && (
             <DropDownList
-              dropDownList={activeTab === 1 ? filterList : filterListTasks}
+              dropDownList={
+                activeTab === 1 ? userPageFilterList : filterListTasks
+              }
               value={feedFilter}
               onSelect={handleFilterDropdownChange}
             />

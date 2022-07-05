@@ -261,7 +261,10 @@ const UserPage = () => {
       const threadType =
         tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
       const newFeedFilter =
-        (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL;
+        (searchParams.get('feedFilter') as FeedFilter) ??
+        threadType === ThreadType.Conversation
+          ? FeedFilter.OWNER
+          : FeedFilter.ALL;
       setFeedFilter(newFeedFilter);
       setEntityThread([]);
       getFeedData(threadType, undefined, newFeedFilter);
