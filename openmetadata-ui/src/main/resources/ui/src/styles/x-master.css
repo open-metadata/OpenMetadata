@@ -28,6 +28,18 @@ a:focus {
   text-decoration: none;
 }
 
+.list-reset {
+  margin: 0;
+}
+
+p {
+  margin-bottom: 0px;
+}
+
+pre {
+  font-family: 'Inter', sans-serif;
+}
+
 /* Bootstrap Extended */
 .form-control:focus,
 .btn.focus,
@@ -747,13 +759,28 @@ body .profiler-graph .recharts-active-dot circle {
   pointer-events: all;
   cursor: pointer;
 }
-
-.react-flow__edge .react-flow__edge-path {
-  stroke-width: 2px;
+.react-flow__node-default .react-flow__handle,
+.react-flow__node-group .react-flow__handle,
+.react-flow__node-input .react-flow__handle,
+.react-flow__node-output .react-flow__handle {
+  background-color: #7147e8 !important;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
+}
+
+.react-flow__node-default,
+.react-flow__node-group,
+.react-flow__node-input,
+.react-flow__node-output {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0px !important;
+}
+
+.react-flow__attribution > a {
+  color: #fff !important;
 }
 
 /* EntityVersion  */
@@ -920,6 +947,10 @@ body .profiler-graph .recharts-active-dot circle {
   grid-template-columns: 200px auto 200px;
 }
 
+.feed-meesage > div > p:last-child {
+  margin-bottom: 0px;
+}
+
 code {
   padding: 2px 3px;
   border-radius: 4px;
@@ -967,8 +998,26 @@ code {
   -webkit-box-orient: vertical;
 }
 
+.ant-btn-text:hover span {
+  text-decoration: underline;
+  color: #7147e8;
+  background-color: transparent;
+}
+
+@media only screen and (min-width: 2000px) {
+  .centered-layout {
+    margin-left: auto;
+    margin-right: auto;
+    width: auto;
+  }
+}
+
 .ant-card-body {
   padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
 }
 
 .ant-card-head-title {
@@ -1006,7 +1055,7 @@ code {
 .ant-btn-popover-reaction {
   height: auto;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   background-color: transparent;
 }
@@ -1077,13 +1126,225 @@ code {
 }
 
 .ant-popover-feed > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-card > .ant-popover-content > .ant-popover-arrow,
+.ant-popover-task-status > .ant-popover-content > .ant-popover-arrow,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-arrow {
   display: none;
 }
 .ant-popover-feed > .ant-popover-content > .ant-popover-inner,
+.ant-popover-card > .ant-popover-content > .ant-popover-inner,
+.ant-popover-task-status > .ant-popover-content > .ant-popover-inner,
+.ant-popover-request-description > .ant-popover-content > .ant-popover-inner,
 .ant-popover-feed-reactions > .ant-popover-content > .ant-popover-inner {
   border-radius: 6px;
   border: 1px solid #dde3ea;
 }
 
+.ant-popover-card
+  > .ant-popover-content
+  > .ant-popover-inner
+  > .ant-popover-title {
+  padding: 4px 8px;
+}
+
+.ant-modal-content {
+  border-radius: 6px;
+}
+
+.ant-modal-header {
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
 /* Feed popover CSS end */
+
+/* Antd custom button CSS */
+.ant-btn-link-custom,
+.ant-btn-link-custom:hover {
+  color: #7147e8;
+}
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+}
+
+.ant-dropdown-button.ant-btn-primary-dropdown
+  > .ant-btn-primary.ant-btn-icon-only {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  border-left-color: #ffffff;
+}
+.ant-btn-primary-custom:hover,
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom span:hover {
+  background: #7147e8;
+  color: #ffffff;
+  border-color: #7147e8;
+  text-decoration: none;
+}
+
+.ant-btn-group .ant-btn-primary:first-child:not(:last-child) {
+  border-right-color: #ffffff;
+}
+/* Antd custom button CSS */
+
+.ant-select-assignee {
+  width: 100%;
+  margin: 8px 0px;
+  outline: none;
+}
+.ant-select-assignee:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #7147e8;
+}
+.ant-select-focused {
+  border-color: #7147e8;
+  outline: none;
+}
+
+/* Description tabs CSS */
+.ant-tabs-description {
+  margin-top: 8px;
+}
+
+.ant-tabs-description > .ant-tabs-nav {
+  margin-bottom: 0px;
+}
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-description
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab.ant-tabs-tab-active
+  .ant-tabs-tab-btn,
+.ant-tabs-custom-line
+  > .ant-tabs-nav
+  > .ant-tabs-nav-wrap
+  > .ant-tabs-nav-list
+  > .ant-tabs-tab:hover {
+  color: #7147e8;
+}
+.ant-tabs-custom-threadpanel > .ant-tabs-nav > .ant-tabs-nav-wrap {
+  padding: 0px 16px;
+}
+.ant-tabs-ink-bar {
+  background: #7147e8;
+}
+/* Description tabs CSS */
+
+/* Task Detail Side CSS */
+
+.ant-layout-sider-task-detail {
+  background: #ffffff;
+  border: 1px solid #dde3ea;
+  box-shadow: -1px 3px 6px rgba(0, 0, 0, 0.06);
+  padding: 16px;
+  padding-top: 0px;
+  overflow-y: auto;
+}
+
+/* Task Detail Side CSS */
+.data-box {
+  padding: 8px 12px;
+}
+
+.data-box.Successful {
+  background-color: #07a35a;
+}
+
+.data-box.Failed {
+  background-color: #e54937;
+}
+
+.data-box.Pending {
+  background-color: #276ef1;
+}
+
+.exec-date-time {
+  position: absolute;
+  left: 15px;
+  top: -20px;
+  font-size: 12px;
+  text-align: center;
+  white-space: pre;
+  transform-origin: 0% 50%;
+
+  transform: rotate(-70deg);
+  /* Safari */
+  -webkit-transform: rotate(-70deg);
+  /* Firefox */
+  -moz-transform: rotate(-70deg);
+  /* IE */
+  -ms-transform: rotate(-70deg);
+}
+
+.leaf-node.Successful .task-node {
+  border-color: #07a35a;
+  background-color: #07a35a40;
+}
+
+.leaf-node.Failed .task-node {
+  border-color: #e54937;
+  background-color: #e5493740;
+}
+
+.leaf-node.Pending .task-node {
+  border-color: #276ef1;
+  background-color: #276ef140;
+}
+
+.leaf-node.Successful .react-flow__handle {
+  background-color: #07a35a !important;
+}
+
+.leaf-node.Failed .react-flow__handle {
+  background-color: #e54937 !important;
+}
+
+.leaf-node.Pending .react-flow__handle {
+  background-color: #276ef1 !important;
+}
+
+.ProseMirror .placeholder {
+  color: #6b7280 !important;
+}
+div.ant-typography-ellipsis-custom {
+  margin-bottom: 0px;
+}
+
+.user-profile-antd-card .ant-card-body:first-child {
+  padding: 0px;
+  overflow: hidden;
+}
+
+.ant-input:hover,
+.ant-input:focus {
+  border-color: #7147e8;
+  border-right-width: 0px;
+  box-shadow: none;
+}
+
+.add-webhook-container #center {
+  padding-right: 0px;
+}
+
+.ant-dropdown-menu-item-selected {
+  color: #7147e8;
+  background-color: #7147e825;
+}
+
+.table-query-editor pre.CodeMirror-line {
+  padding-right: 60px !important;
+}

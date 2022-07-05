@@ -29,7 +29,6 @@ import {
   mockFeedData,
   mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -127,6 +126,7 @@ const TourPage = () => {
         return (
           <MyData
             countDashboards={10}
+            countMlModal={2}
             countPipelines={8}
             countServices={4}
             countTables={21}
@@ -135,10 +135,6 @@ const TourPage = () => {
             countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
-            feedFilter={FeedFilter.ALL}
-            feedFilterHandler={() => {
-              setMyDataSearchResult(mockFeedData);
-            }}
             fetchData={() => {
               setMyDataSearchResult(mockFeedData);
             }}
@@ -149,6 +145,7 @@ const TourPage = () => {
             ownedData={[]}
             ownedDataCount={1}
             paging={{} as Paging}
+            pendingTaskCount={0}
             postFeedHandler={handleOnClick}
             updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
@@ -196,6 +193,7 @@ const TourPage = () => {
             deletePostHandler={handleCountChange}
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
+            entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
@@ -266,6 +264,7 @@ const TourPage = () => {
         handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
+        hasNotification={false}
         isFeatureModalOpen={false}
         isSearchBoxOpen={false}
         pathname={location.pathname}

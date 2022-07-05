@@ -186,7 +186,7 @@ const UserCard = ({
             <Fragment>
               <span
                 className={classNames(
-                  'tw-font-normal tw-my-1',
+                  'tw-font-normal',
                   isActionVisible ? 'tw-truncate tw-w-32' : null,
                   {
                     'tw-cursor-pointer hover:tw-underline':
@@ -202,7 +202,7 @@ const UserCard = ({
               {item.name && item.name !== item.displayName && (
                 <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32 tw-my-1' : null
+                    isActionVisible ? 'tw-truncate tw-w-32' : null
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
                   {isIconVisible ? item.name : capitalize(item.name)}
@@ -212,22 +212,22 @@ const UserCard = ({
           )}
         </div>
       </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              className="tw-p-1 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={() => {
-                onSelect?.(item.id as string);
-              }}
-            />
-          ) : (
+      {isActionVisible &&
+        (isCheckBoxes ? (
+          <input
+            className="tw-p-1 custom-checkbox tw-self-center"
+            data-testid="checkboxAddUser"
+            type="checkbox"
+            onChange={() => {
+              onSelect?.(item.id as string);
+            }}
+          />
+        ) : (
+          <div className="tw-flex-none">
             <NonAdminAction
               html={<>You do not have permission to update the team.</>}
               isOwner={isOwner}
-              permission={Operation.UpdateTeam}
+              permission={Operation.TeamEditUsers}
               position="bottom">
               <span
                 className={classNames('tw-h-8 tw-rounded tw-mb-3', {
@@ -235,7 +235,7 @@ const UserCard = ({
                     !isAdminUser &&
                     !isAuthDisabled &&
                     !isOwner &&
-                    !userPermissions[Operation.UpdateTeam],
+                    !userPermissions[Operation.TeamEditUsers],
                 })}
                 data-testid="remove"
                 onClick={() => onRemove?.(item.id as string)}>
@@ -245,9 +245,8 @@ const UserCard = ({
                 />
               </span>
             </NonAdminAction>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
     </div>
   );
 };

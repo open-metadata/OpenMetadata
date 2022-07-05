@@ -91,7 +91,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public Chart setFields(Chart chart, Fields fields) throws IOException {
-    chart.setService(getService(chart));
+    chart.setService(getContainer(chart.getId()));
     chart.setOwner(fields.contains(FIELD_OWNER) ? getOwner(chart) : null);
     chart.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(chart) : null);
     chart.setTags(fields.contains(FIELD_TAGS) ? getTags(chart.getFullyQualifiedName()) : null);
@@ -106,9 +106,5 @@ public class ChartRepository extends EntityRepository<Chart> {
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
-  }
-
-  private EntityReference getService(Chart chart) throws IOException {
-    return getContainer(chart.getId(), Entity.CHART);
   }
 }

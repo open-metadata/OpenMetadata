@@ -22,7 +22,7 @@ export const dashboardDetailsTabs = [
     path: 'details',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feed & Task',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },

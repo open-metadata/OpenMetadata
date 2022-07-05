@@ -1,0 +1,29 @@
+source:
+  type: glue
+  serviceName: local_glue
+  serviceConnection:
+    config:
+      type: Glue
+      awsConfig:
+        awsAccessKeyId: KEY
+        awsSecretAccessKey: SECRET
+        awsRegion: us-east-2
+        endPointURL: https://glue.us-east-2.amazonaws.com/
+      storageServiceName: storage_name
+      pipelineServiceName: local_glue_pipeline
+  sourceConfig:
+    config:
+      markDeletedTables: true or false
+      includeTables: true or false
+      includeViews: true or false
+      schemaFilterPattern: "<schema name regex list>"
+      tableFilterPattern: "<table name regex list>"
+      dbtConfigSource: "<configs for gcs, s3, local or file server to get the DBT
+        files"
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

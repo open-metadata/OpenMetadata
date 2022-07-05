@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -68,7 +69,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 
   const getDashboardDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -275,7 +276,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>

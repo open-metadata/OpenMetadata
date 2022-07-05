@@ -84,6 +84,12 @@ const AddIngestionPage = withSuspenseFallback(
 const AddServicePage = withSuspenseFallback(
   React.lazy(() => import('../pages/AddServicePage/AddServicePage.component'))
 );
+const EditConnectionFormPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/EditConnectionFormPage/EditConnectionFormPage.component')
+  )
+);
 const AddWebhookPage = withSuspenseFallback(
   React.lazy(() => import('../pages/AddWebhookPage/AddWebhookPage.component'))
 );
@@ -142,6 +148,24 @@ const CustomPropertiesPage = withSuspenseFallback(
   React.lazy(() => import('../pages/CustomPropertiesPage/CustomPropertiesPage'))
 );
 
+const RequestDescriptionPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage')
+  )
+);
+
+const UpdateDescriptionPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage')
+  )
+);
+
+const TaskDetailPage = withSuspenseFallback(
+  React.lazy(() => import('../pages/TasksPage/TaskDetailPage/TaskDetailPage'))
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
@@ -150,15 +174,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={TeamsAndUsersPage}
         path={ROUTES.TEAMS_AND_USERS_DETAILS}
+      />
+      <Route
+        exact
+        component={EditConnectionFormPage}
+        path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES} />
       <Route exact component={ServicesPage} path={ROUTES.SERVICES_WITH_TAB} />
@@ -235,6 +264,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_DETAILS} />
       <Route exact component={GlossaryPageV1} path={ROUTES.GLOSSARY_TERMS} />
       <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
+      <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
       <Route
         exact
@@ -288,6 +318,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddCustomProperty}
         path={ROUTES.ADD_CUSTOM_PROPERTY}
       />
+
+      <Route
+        exact
+        component={RequestDescriptionPage}
+        path={ROUTES.REQUEST_DESCRIPTION}
+      />
+
+      <Route
+        exact
+        component={UpdateDescriptionPage}
+        path={ROUTES.UPDATE_DESCRIPTION}
+      />
+
+      <Route exact component={TaskDetailPage} path={ROUTES.TASK_DETAIL} />
 
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

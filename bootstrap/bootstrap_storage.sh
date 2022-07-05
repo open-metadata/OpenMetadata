@@ -12,6 +12,7 @@
 
 # Resolve links - $0 may be a softlink
 PRG="${0}"
+debug="$2"
 
 while [ -h "${PRG}" ]; do
   ls=`ls -ld "${PRG}"`
@@ -48,12 +49,12 @@ fi
 
 execute() {
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
-    ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1}
+    ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1} -${debug}
 }
 
 printUsage() {
     cat <<-EOF
-USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate]
+USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-create-all|migrate-all|repair|check-connection|rotate] [debug]
    create           : Creates the tables. The target database should be empty
    migrate          : Migrates the database to the latest version or creates the tables if the database is empty. Use "info" to see the current version and the pending migrations
    info             : Shows the list of migrations applied and the pending migration waiting to be applied on the target database
@@ -68,10 +69,12 @@ USAGE: $0 [create|migrate|info|validate|drop|drop-create|es-drop|es-create|drop-
                       This involves removing entries for the failed migrations and update the checksum of migrations already applied on the target database
    check-connection : Checks if a connection can be successfully obtained for the target database
    rotate           : Rotate the Fernet Key defined in $FERNET_KEY
+   create-ingestion-bot: Create Ingestion bot.
+   debug            : Enable Debugging Mode to get more info
 EOF
 }
 
-if [ $# -gt 1 ]
+if [ $# -gt 2 ]
 then
     echo "More than one argument specified, please use only one of the below options"
     printUsage
@@ -81,7 +84,7 @@ fi
 opt="$1"
 
 case "${opt}" in
-create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate)
+create | drop | migrate | info | validate | repair | check-connection | es-drop | es-create | rotate | create-ingestion-bot)
     execute "${opt}"
     ;;
 drop-create )

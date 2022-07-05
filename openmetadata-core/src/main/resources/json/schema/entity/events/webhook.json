@@ -25,7 +25,7 @@
     },
     "description": {
       "description": "Description of the application.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",

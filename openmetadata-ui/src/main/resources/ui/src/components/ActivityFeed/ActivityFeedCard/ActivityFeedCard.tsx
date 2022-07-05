@@ -26,6 +26,7 @@ import {
   getEntityFQN,
   getEntityType,
 } from '../../../utils/FeedUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { ActivityFeedCardProp } from './ActivityFeedCard.interface';
 import FeedCardBody from './FeedCardBody/FeedCardBody';
@@ -35,6 +36,7 @@ import PopoverContent from './PopoverContent';
 
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
+  feedType,
   className,
   replies,
   repliedUsers,
@@ -48,6 +50,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   onConfirmation,
   updateThreadHandler,
   onReply,
+  taskDetails,
 }) => {
   const entityType = getEntityType(entityLink as string);
   const entityFQN = getEntityFQN(entityLink as string);
@@ -117,11 +120,17 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   }, [feed]);
 
   return (
-    <div className={classNames(className)}>
+    <div
+      className={classNames(
+        className,
+        'hover:tw-bg-gray-100 tw--mx-2.5 tw-px-2.5 tw--mt-1 tw-py-1 tw-mb-1 tw-rounded',
+        {
+          'tw-bg-gray-100': visible,
+        }
+      )}>
       <Popover
         destroyTooltipOnHide
-        align={{ targetOffset: [0, -20] }}
-        color="#434850"
+        align={{ targetOffset: [0, -35] }}
         content={
           <PopoverContent
             isAuthor={isAuthor}
@@ -135,25 +144,28 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
             onReply={onReply}
           />
         }
+        key="reaction-options-popover"
         overlayClassName="ant-popover-feed"
         placement="topRight"
         trigger="hover"
         visible={visible}
         zIndex={9999}
         onVisibleChange={handleVisibleChange}>
-        <div className="tw-flex">
-          <Popover content={<></>} trigger="click">
+        <div className="tw-flex tw-mb-1">
+          <UserPopOverCard userName={feedDetail.from}>
             <span className="tw-cursor-pointer" data-testid="authorAvatar">
-              <ProfilePicture id="" name={feedDetail.from} width="28" />
+              <ProfilePicture id="" name={feedDetail.from} width="32" />
             </span>
-          </Popover>
+          </UserPopOverCard>
           <div className="tw-flex tw-flex-col">
             <FeedCardHeader
               createdBy={feedDetail.from}
               entityFQN={entityFQN as string}
               entityField={entityField as string}
               entityType={entityType as string}
+              feedType={feedType}
               isEntityFeed={isEntityFeed}
+              taskDetails={taskDetails}
               timeStamp={feedDetail.postTs}
             />
             <FeedCardBody

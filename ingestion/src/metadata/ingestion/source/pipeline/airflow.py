@@ -154,7 +154,6 @@ class AirflowSource(Source[CreatePipelineRequest]):
     ) -> OMetaPipelineStatus:
         dag_run_list = self.get_pipeline_status(serialized_dag.dag_id)
         for dag in dag_run_list:
-            tasks = []
             if isinstance(dag.task_instances, Iterable):
                 tasks = dag.task_instances
             else:
@@ -290,26 +289,44 @@ class AirflowSource(Source[CreatePipelineRequest]):
 
         for task in dag.tasks:
             for table_fqn in self.get_inlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table_entity.id, type="table"),
-                        toEntity=EntityReference(
-                            id=pipeline_entity.id, type="pipeline"
-                        ),
-                    )
+                table_entity: Table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_fqn
                 )
+                if table_entity:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=table_entity.id, type="table"
+                            ),
+                            toEntity=EntityReference(
+                                id=pipeline_entity.id, type="pipeline"
+                            ),
+                        )
+                    )
+                else:
+                    logger.warn(
+                        f"Could not find Table [{table_fqn}] from "
+                        f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
+                    )
 
             for table_fqn in self.get_outlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=pipeline_entity.id, type="pipeline"
-                        ),
-                        toEntity=EntityReference(id=table_entity.id, type="table"),
-                    )
+                table_entity: Table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_fqn
                 )
+                if table_entity:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=pipeline_entity.id, type="pipeline"
+                            ),
+                            toEntity=EntityReference(id=table_entity.id, type="table"),
+                        )
+                    )
+                else:
+                    logger.warn(
+                        f"Could not find Table [{table_fqn}] from "
+                        f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                    )
 
     def next_record(self) -> Iterable[Entity]:
         """

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Thread } from '../../generated/entity/feed/thread';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { ThreadUpdatedFunc } from '../../interface/feed.interface';
@@ -33,6 +34,8 @@ export type UserDetails = Record<
 
 export interface Props {
   userData: User;
+  username: string;
+  tab: string;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
@@ -40,8 +43,15 @@ export interface Props {
   isLoggedinUser: boolean;
   isAuthDisabled: boolean;
   updateUserDetails: (data: UserDetails) => void;
-  fetchFeedHandler: (after?: string) => void;
+  fetchFeedHandler: (
+    threadType: ThreadType,
+    after?: string,
+    feedFilter?: FeedFilter
+  ) => void;
   postFeedHandler: (value: string, id: string) => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
   updateThreadHandler: ThreadUpdatedFunc;
+  feedFilter: FeedFilter;
+  setFeedFilter: (value: FeedFilter) => void;
+  threadType: ThreadType.Task | ThreadType.Conversation;
 }

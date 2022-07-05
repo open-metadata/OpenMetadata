@@ -26,7 +26,7 @@
     },
     "description": {
       "description": "Description of the glossary term.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "synonyms": {
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",

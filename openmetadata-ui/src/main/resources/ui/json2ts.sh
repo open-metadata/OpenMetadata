@@ -18,7 +18,7 @@ addLicensing(){
     echo "$txt" > "$dir"
 }
 generateType(){
-    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types
+    ./node_modules/.bin/quicktype -s schema $PWD"/${schema_directory}$1" -o $PWD"/"$om_ui_directory$2 --just-types > /dev/null 2>&1
     if [ -s $om_ui_directory$2 ]
     then
         addLicensing "$om_ui_directory$2"
@@ -35,7 +35,7 @@ getTypes(){
     for file_with_dir in $(find $schema_directory  -name "*.json" | sed -e 's/catalog-rest-service\/src\/main\/resources\/json\/schema\///g')
     do
         joblist=$(jobs | wc -l)
-        while (( ${joblist} >= 10 ))
+        while (( ${joblist} >= 30 ))
             do
                 sleep 1
                 joblist=$(jobs | wc -l)

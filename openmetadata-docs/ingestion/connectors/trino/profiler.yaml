@@ -1,0 +1,28 @@
+source:
+  type: trino
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Trino
+      hostPort: <hostPort>
+      username: <username>
+      catalog: <catalog>
+      proxies:
+        http: http_proxy
+        https: https_proxy
+      params:
+        param: value
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

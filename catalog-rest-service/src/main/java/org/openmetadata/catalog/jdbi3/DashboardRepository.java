@@ -27,6 +27,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -57,8 +58,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
-    dashboard.setDisplayName(dashboard.getDisplayName());
-    dashboard.setService(getService(dashboard));
+    dashboard.setService(getContainer(dashboard.getId()));
     dashboard.setOwner(fields.contains(FIELD_OWNER) ? getOwner(dashboard) : null);
     dashboard.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
@@ -78,10 +78,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         .withFullyQualifiedName(original.getFullyQualifiedName())
         .withName(original.getName())
         .withService(original.getService());
-  }
-
-  private EntityReference getService(Dashboard dashboard) throws IOException {
-    return getContainer(dashboard.getId(), Entity.DASHBOARD);
   }
 
   private void populateService(Dashboard dashboard) throws IOException {
@@ -157,7 +153,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard == null) {
       return null;
     }
-    List<String> chartIds = findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
+    List<EntityRelationshipRecord> chartIds =
+        findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
     return EntityUtil.populateEntityReferences(chartIds, Entity.CHART);
   }
 

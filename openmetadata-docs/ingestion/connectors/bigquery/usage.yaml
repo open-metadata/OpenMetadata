@@ -1,0 +1,40 @@
+source:
+  type: bigquery-usage
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: BigQuery
+      enablePolicyTagImport: true
+      credentials:
+        gcsConfig:
+          type: <type>
+          projectId: <project ID>
+          privateKeyId: <private key ID>
+          privateKey: <private key>
+          clientEmail: <client email>
+          clientId: <client ID>
+          authUri: <auth URI>
+          tokenUri: <token URI>
+          authProviderX509CertUrl: <auth provider x509 certificate URL>
+          clientX509CertUrl: <client certificate URL>
+  sourceConfig:
+    config:
+      queryLogDuration: <query log duration integer>
+      stageFileLocation: <path to store the stage file>
+      resultLimit: <query log limit integer>
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/bigquery_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/bigquery_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>

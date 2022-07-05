@@ -33,8 +33,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PipelineServiceClient;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
-  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel";
-  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel";
+  private static final String INGESTION_PIPELINE_UPDATE_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
+  private static final String INGESTION_PIPELINE_PATCH_FIELDS = "owner,sourceConfig,airflowConfig,loggerLevel,enabled";
   private static PipelineServiceClient pipelineServiceClient;
 
   public IngestionPipelineRepository(CollectionDAO dao) {
@@ -57,7 +57,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public IngestionPipeline setFields(IngestionPipeline ingestionPipeline, Fields fields) throws IOException {
-    ingestionPipeline.setService(getService(ingestionPipeline));
+    ingestionPipeline.setService(getContainer(ingestionPipeline.getId()));
     ingestionPipeline.setOwner(fields.contains(FIELD_OWNER) ? getOwner(ingestionPipeline) : null);
     return ingestionPipeline;
   }
@@ -103,10 +103,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
-  private EntityReference getService(IngestionPipeline ingestionPipeline) throws IOException {
-    return getContainer(ingestionPipeline.getId(), Entity.INGESTION_PIPELINE);
-  }
-
   @Override
   protected void postDelete(IngestionPipeline entity) {
     pipelineServiceClient.deletePipeline(entity.getName());
@@ -129,6 +125,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateOpenMetadataServerConnection(
           original.getOpenMetadataServerConnection(), updated.getOpenMetadataServerConnection());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
+      updateEnabled(original.getEnabled(), updated.getEnabled());
     }
 
     private void updateSourceConfig(SourceConfig origSource, SourceConfig updatedSource)
@@ -159,6 +156,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) throws JsonProcessingException {
       if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
+      }
+    }
+
+    private void updateEnabled(Boolean origEnabled, Boolean updatedEnabled) throws JsonProcessingException {
+      if (updatedEnabled != null && !origEnabled.equals(updatedEnabled)) {
+        recordChange("enabled", origEnabled, updatedEnabled);
       }
     }
   }

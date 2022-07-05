@@ -40,7 +40,7 @@ const AdvancedSearchDropDown: FC<Props> = ({
 
   return (
     <Dropdown
-      className="tw-self-center tw-mr-2 tw-cursor-pointer"
+      className="tw-self-end tw-mb-2 tw-mr-2 tw-cursor-pointer"
       data-testid="dropdown"
       overlay={menu}
       trigger={['click']}>

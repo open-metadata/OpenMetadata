@@ -75,16 +75,22 @@ const PopoverContent: FC<Props> = ({
      * if on reply method is undefined then get the panel element
      * and scroll to the bottom
      */
-    if (isUndefined(onReply)) {
+    if (isUndefined(onReply) && isThread) {
       const feedPanel = document.getElementById('feed-panel') as HTMLElement;
       const threadPanel = document.getElementById(
         'thread-panel'
+      ) as HTMLElement;
+      const taskFeed = document.querySelector(
+        '.ant-layout-sider-task-detail'
       ) as HTMLElement;
       if (!isNil(feedPanel)) {
         feedPanel.scrollTop = feedPanel.scrollHeight;
       }
       if (!isNil(threadPanel)) {
         threadPanel.scrollTop = threadPanel.scrollHeight;
+      }
+      if (!isNil(taskFeed)) {
+        taskFeed.scrollTop = taskFeed.scrollHeight;
       }
     }
   };
@@ -127,6 +133,7 @@ const PopoverContent: FC<Props> = ({
   return (
     <div className="tw-flex tw-gap-x-2">
       <Popover
+        destroyTooltipOnHide
         align={{ targetOffset: [0, -10] }}
         content={reactionList}
         overlayClassName="ant-popover-feed-reactions"
@@ -140,19 +147,21 @@ const PopoverContent: FC<Props> = ({
             alt="add-reaction"
             icon={Icons.REACTION}
             title="Add reactions"
-            width="16px"
+            width="20px"
           />
         </button>
       </Popover>
 
-      <button onClick={handleReply}>
-        <SVGIcons
-          alt="add-reply"
-          icon={Icons.ADD_REPLY}
-          title="Reply"
-          width="16px"
-        />
-      </button>
+      {(onReply || isThread) && (
+        <button onClick={handleReply}>
+          <SVGIcons
+            alt="add-reply"
+            icon={Icons.ADD_REPLY}
+            title="Reply"
+            width="20px"
+          />
+        </button>
+      )}
 
       {deleteButtonCheck ? (
         <button onClick={handleDelete}>
@@ -160,7 +169,7 @@ const PopoverContent: FC<Props> = ({
             alt="delete-reply"
             icon={Icons.FEED_DELETE}
             title="Delete"
-            width="16px"
+            width="20px"
           />
         </button>
       ) : null}

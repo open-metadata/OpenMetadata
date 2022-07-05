@@ -2,19 +2,16 @@
   "$id": "https://open-metadata.org/schema/entity/type.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Type",
-  "description": "This schema defines a type as an entity. Types includes field types and entity types. Custom types can also be defined by the users to extend the metadata system.",
+  "description": "This schema defines a type as an entity. Types includes property types and entity types. Custom types can also be defined by the users to extend the metadata system.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.Type",
   "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
   "definitions": {
-    "category" : {
-      "description" : "Metadata category to which a type belongs to.",
+    "category": {
+      "description": "Metadata category to which a type belongs to.",
       "type": "string",
       "javaType": "org.openmetadata.catalog.entity.type.Category",
-      "enum": [
-        "field",
-        "entity"
-      ],
+      "enum": ["field", "entity"],
       "javaEnums": [
         {
           "name": "Field"
@@ -24,38 +21,34 @@
         }
       ]
     },
-    "fieldName": {
-      "description": "Name of the entity field. Note a field name must be unique for an entity. Field name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-      "type" : "string",
+    "propertyName": {
+      "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
+      "type": "string",
       "pattern": "^[a-z][a-zA-Z0-9]+$"
     },
     "typeName": {
-      "description": "Name of the field or entity types. Note a field name must be unique for an entity. Field name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-      "type" : "string",
+      "description": "Name of the property or entity types. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
+      "type": "string",
       "pattern": "^[a-z][a-zA-Z0-9]+$"
     },
-    "customField" : {
-      "description" : "Type used for adding custom field to an entity to extend it.",
-      "type" : "object",
-      "javaType": "org.openmetadata.catalog.entity.type.CustomField",
+    "customProperty": {
+      "description": "Type used for adding custom property to an entity to extend it.",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.entity.type.CustomProperty",
       "properties": {
         "name": {
-          "description": "Name of the entity field. Note a field name must be unique for an entity. Field name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
-          "$ref" : "#/definitions/fieldName"
+          "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
+          "$ref": "#/definitions/propertyName"
         },
         "description": {
-          "$ref" : "../type/basic.json#/definitions/markdown"
+          "$ref": "../type/basic.json#/definitions/markdown"
         },
-        "fieldType": {
-          "description": "Reference to a field type. Only field types are allows and entity types are not allowed as custom fields to extend an existing entity",
+        "propertyType": {
+          "description": "Reference to a property type. Only property types are allowed and entity types are not allowed as custom properties to extend an existing entity",
           "$ref": "../type/entityReference.json"
         }
       },
-      "required": [
-        "name",
-        "description",
-        "fieldType"
-      ],
+      "required": ["name", "description", "propertyType"],
       "additionalProperties": false
     }
   },
@@ -78,25 +71,25 @@
     },
     "description": {
       "description": "Optional description of entity.",
-      "$ref" : "../type/basic.json#/definitions/markdown"
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "category": {
+      "$ref": "#/definitions/category"
     },
     "nameSpace": {
-      "description": "Namespace or group to which this type belongs to. For example, some of the field types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
+      "description": "Namespace or group to which this type belongs to. For example, some of the property types commonly used can come from `basic` namespace. Some of the entities such as `table`, `database`, etc. come from `data` namespace.",
       "type": "string",
-      "default" : "custom"
-    },
-    "category" : {
-      "$ref" : "#/definitions/category"
+      "default": "custom"
     },
     "schema": {
       "description": "JSON schema encoded as string that defines the type. This will be used to validate the type values.",
       "$ref": "../type/basic.json#/definitions/jsonSchema"
     },
-    "customFields" : {
-      "description": "Custom fields added to extend the entity. Only available for entity type",
-      "type" : "array",
-      "items" : {
-        "$ref" : "#/definitions/customField"
+    "customProperties": {
+      "description": "Custom properties added to extend the entity. Only available for entity type",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/customProperty"
       }
     },
     "version": {

@@ -1,0 +1,32 @@
+source:
+  type: mssql-usage
+  serviceName: "<service name>"
+  serviceConnection:
+    config:
+      type: Mssql
+      scheme: mssql+pytds
+      username: "<username>"
+      password: "<password>"
+      hostPort: "<hostPort>"
+      database: "<database>"
+  sourceConfig:
+    config:
+      queryLogDuration: "<query log duration integer>"
+      stageFileLocation: "<path to store the stage file>"
+      resultLimit: "<query log limit integer>"
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: "/tmp/mssql_usage"
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: "/tmp/mssql_usage"
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: "<OpenMetadata host and port>"
+    authProvider: "<OpenMetadata auth provider>"

@@ -12,6 +12,7 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
@@ -36,8 +37,7 @@ import CopyToClipboardButton from '../buttons/CopyToClipboardButton/CopyToClipbo
 import Description from '../common/description/Description';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageContainerV1 from '../containers/PageContainerV1';
-import PageLayout from '../containers/PageLayout';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import { UserDetails } from '../Users/Users.interface';
 
@@ -162,9 +162,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
     return (
       <div className="tw-mt-4 tw-w-full">
         {isDisplayNameEdit ? (
-          <div className="tw-flex tw-items-center tw-gap-1">
+          <div className="tw-flex tw-items-center tw-gap-2">
             <input
-              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+              className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
               data-testid="displayName"
               id="displayName"
               name="displayName"
@@ -210,7 +210,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
               className="tw-ml-2 focus:tw-outline-none"
               data-testid="edit-displayName"
               onClick={() => setIsDisplayNameEdit(true)}>
-              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
+              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
             </button>
           </Fragment>
         )}
@@ -236,35 +236,50 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <div data-testid="left-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          <div className="tw-h-28 tw-w-28">
-            <SVGIcons
-              alt="bot-profile"
-              icon={Icons.BOT_PROFILE}
-              width="112px"
-            />
-          </div>
-          {getDisplayNameComponent()}
+      <Card
+        className="ant-card-feed"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '16px',
+        }}>
+        <div data-testid="left-panel">
+          <div className="tw-flex tw-flex-col">
+            <div>
+              <SVGIcons
+                alt="bot-profile"
+                icon={Icons.BOT_PROFILE}
+                width="280px"
+              />
+            </div>
+            {getDisplayNameComponent()}
 
-          {getDescriptionComponent()}
+            {getDescriptionComponent()}
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
   const fetchRightPanel = () => {
     return (
-      <div data-testid="right-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
-          <p className="tw-mb-2">
-            Anyone who has your JWT Token will be able to send REST API requests
-            to the OpenMetadata Server. Do not expose the JWT Token in your
-            application code. Do not share it on GitHub or anywhere else online.
-          </p>
+      <Card
+        className="ant-card-feed"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '16px',
+        }}>
+        <div data-testid="right-panel">
+          <div className="tw-flex tw-flex-col">
+            <h6 className="tw-mb-2 tw-text-lg">Token Security</h6>
+            <p className="tw-mb-2">
+              Anyone who has your JWT Token will be able to send REST API
+              requests to the OpenMetadata Server. Do not expose the JWT Token
+              in your application code. Do not share it on GitHub or anywhere
+              else online.
+            </p>
+          </div>
         </div>
-      </div>
+      </Card>
     );
   };
 
@@ -361,7 +376,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const getCenterLayout = () => {
     return (
       <div
-        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4"
+        className="tw-w-full tw-bg-white tw-shadow tw-rounded tw-p-4 tw-mt-4"
         data-testid="center-panel">
         <div className="tw-flex tw-justify-between tw-items-center">
           <h6 className="tw-mb-2 tw-self-center">
@@ -407,23 +422,23 @@ const BotsDetail: FC<BotsDetailProp> = ({
   }, [botsData]);
 
   return (
-    <PageContainerV1 className="tw-py-4">
-      <TitleBreadcrumb
-        className="tw-px-6"
-        titleLinks={[
-          {
-            name: 'Bots',
-            url: ROUTES.BOTS,
-          },
-          { name: botsData.name || '', url: '', activeTitle: true },
-        ]}
-      />
-      <PageLayout
-        classes="tw-h-full tw-px-4"
-        leftPanel={fetchLeftPanel()}
-        rightPanel={fetchRightPanel()}>
-        {getCenterLayout()}
-      </PageLayout>
+    <PageLayout
+      classes="tw-h-full tw-px-4"
+      header={
+        <TitleBreadcrumb
+          className="tw-px-6"
+          titleLinks={[
+            {
+              name: 'Bots',
+              url: ROUTES.BOTS,
+            },
+            { name: botsData.name || '', url: '', activeTitle: true },
+          ]}
+        />
+      }
+      leftPanel={fetchLeftPanel()}
+      rightPanel={fetchRightPanel()}>
+      {getCenterLayout()}
       {isRevokingToken ? (
         <ConfirmationModal
           bodyText="Are you sure you want to revoke access for JWT token?"
@@ -450,7 +465,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
           }}
         />
       ) : null}
-    </PageContainerV1>
+    </PageLayout>
   );
 };
 

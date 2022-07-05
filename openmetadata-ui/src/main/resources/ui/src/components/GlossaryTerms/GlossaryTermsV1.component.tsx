@@ -339,12 +339,7 @@ const GlossaryTermsV1 = ({
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons
-            alt="plus"
-            className="tw-w-3.5 tw-mr-2"
-            icon={Icons.ICON_PLUS_PRIMERY}
-          />
-          Add
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </button>
       </NonAdminAction>
     );
@@ -375,15 +370,7 @@ const GlossaryTermsV1 = ({
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-referencfe"
           onClick={onClick}>
-          <span className="tw-mr-2">
-            <SVGIcons
-              alt="edit"
-              icon={Icons.EDIT_OUTLINE_PRIMARY}
-              title="Edit"
-              width="12px"
-            />
-          </span>
-          <span>Edit</span>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </button>
       </NonAdminAction>
     );
@@ -481,9 +468,9 @@ const GlossaryTermsV1 = ({
 
   const summaryTab = () => {
     return (
-      <div className="tw-flex tw-gap-4">
+      <div className="tw-flex tw-gap-3">
         <div className="tw-w-9/12">
-          <div data-testid="description-container">
+          <div className="tw-mb-4" data-testid="description-container">
             <DescriptionV1
               removeBlur
               description={glossaryTerm.description || ''}
@@ -623,7 +610,7 @@ const GlossaryTermsV1 = ({
             </Fragment>
           </Card>
         </div>
-        <div className="tw-w-3/12">
+        <div className="tw-px-2 tw-w-3/12">
           <Card action={addReviewerButton()} heading="Reviewer">
             <div>{getReviewerTabData()}</div>
           </Card>
@@ -636,7 +623,7 @@ const GlossaryTermsV1 = ({
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-term">
-      <p className="tw-text-lg tw-font-medium tw--mt-6">
+      <p className="tw-text-lg tw-font-medium tw--mt-3">
         {getEntityName(glossaryTerm as unknown as EntityReference)}
       </p>
       {/* TODO: Add this stat when supporting status updation  */}
@@ -645,7 +632,7 @@ const GlossaryTermsV1 = ({
         <div>{glossaryTerm.status}</div>
       </div> */}
 
-      <div className="tw-flex tw-flex-wrap tw-group" data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group tw-mt-3" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossaryTerm?.tags && glossaryTerm.tags.length > 0 && (
@@ -689,7 +676,7 @@ const GlossaryTermsV1 = ({
                     alt="edit"
                     icon="icon-edit"
                     title="Edit"
-                    width="12px"
+                    width="16px"
                   />
                 </button>
               ) : (

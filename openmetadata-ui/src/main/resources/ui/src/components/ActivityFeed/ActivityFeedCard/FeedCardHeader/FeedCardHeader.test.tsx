@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
 
 const FQN = 'service.database.schema.table';
@@ -40,6 +41,8 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
+  getTierTags: jest.fn(),
+  getTagsWithoutTier: jest.fn(),
 }));
 
 jest.mock('../../../../utils/TimeUtils', () => ({
@@ -57,6 +60,7 @@ const mockFeedHeaderProps = {
   entityType: 'y',
   isEntityFeed: true,
   timeStamp: 1647322547179,
+  feedType: ThreadType.Conversation,
 };
 
 describe('Test Feedheader Component', () => {

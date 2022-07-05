@@ -65,6 +65,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
   deletEntityMessage,
   handleIsJoinable,
   afterDeleteAction,
+  manageSectionType,
 }: ManageProps) => {
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
@@ -245,7 +246,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             }
             isOwner={hasEditAccess || Boolean(owner && !currentUser)}
             key={i}
-            permission={Operation.UpdateTags}
+            permission={Operation.EditTags}
             position="left">
             <CardListItem
               card={card}
@@ -282,7 +283,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
     return (
       isAdminUser ||
       isAuthDisabled ||
-      userPermissions[Operation.UpdateTeam] ||
+      userPermissions[Operation.TeamEditUsers] ||
       !hasEditAccess
     );
   };
@@ -396,6 +397,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
             isListLoading={isUserLoading}
             listOwners={listOwners}
             listVisible={listVisible}
+            manageSectionType={manageSectionType}
             owner={owner || ({} as EntityReference)}
             ownerName={currentUser?.displayName || currentUser?.name || ''}
             ownerSearchText={searchText}

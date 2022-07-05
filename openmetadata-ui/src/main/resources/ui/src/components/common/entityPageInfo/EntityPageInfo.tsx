@@ -420,7 +420,7 @@ const EntityPageInfo = ({
         ))}
       </div>
       <div
-        className="tw-flex tw-items-center tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
+        className="tw-flex tw-flex-wrap tw-pt-1 tw-ml-7 tw-group"
         data-testid="entity-tags">
         {(!isEditable || !isTagEditable || deleted) && (
           <>
@@ -450,7 +450,7 @@ const EntityPageInfo = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
-              permission={Operation.UpdateTags}
+              permission={Operation.EditTags}
               position="bottom"
               trigger="click">
               <div
@@ -485,7 +485,7 @@ const EntityPageInfo = ({
                         alt="edit"
                         icon="icon-edit"
                         title="Edit"
-                        width="12px"
+                        width="16px"
                       />
                     </button>
                   ) : (

@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
@@ -47,7 +47,7 @@ class SampleUsageSource(UsageSource):
         self.metadata_config = metadata_config
         self.report = SQLSourceStatus()
         self.metadata = OpenMetadata(metadata_config)
-        self.analysis_date = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        self.analysis_date = datetime.utcnow()
 
         self.service_json = json.load(
             open(
@@ -75,15 +75,19 @@ class SampleUsageSource(UsageSource):
         return cls(config, metadata_config)
 
     def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, str]]]:
-        for row in self.query_logs:
-            yield TableQuery(
-                query=row["query"],
-                userName="",
-                startTime="",
-                endTime="",
-                analysisDate=self.analysis_date,
-                aborted=False,
-                database="ecommerce_db",
-                serviceName=self.config.serviceName,
-                databaseSchema="shopify",
-            )
+        yield TableQueries(
+            queries=[
+                TableQuery(
+                    query=row["query"],
+                    userName="",
+                    startTime="",
+                    endTime="",
+                    analysisDate=self.analysis_date,
+                    aborted=False,
+                    databaseName="ecommerce_db",
+                    serviceName=self.config.serviceName,
+                    databaseSchema="shopify",
+                )
+                for row in self.query_logs
+            ]
+        )

@@ -39,7 +39,7 @@ const GithubStarButton: FunctionComponent = () => {
                 alt="external-link"
                 className="tw-align-middle"
                 icon={Icons.EXTERNAL_LINK_GREY}
-                width="12px"
+                width="16px"
               />
             </a>
           </>

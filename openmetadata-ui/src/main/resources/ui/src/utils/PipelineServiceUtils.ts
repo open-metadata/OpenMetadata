@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/services.const';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/pipeline/glueConnection.json';
 
@@ -21,6 +22,12 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
   switch (type) {
+    case PipelineServiceType.Airbyte: {
+      schema = airbyteConnection;
+
+      break;
+    }
+
     case PipelineServiceType.Airflow: {
       schema = airflowConnection;
 

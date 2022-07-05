@@ -22,7 +22,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "openmetadata-ingestion[airflow-container]~=0.9",
+    "openmetadata-ingestion[airflow-container]~=0.10",
     "pendulum~=2.1.2",
     "packaging~=21.2",
     "setuptools~=58.3.0",

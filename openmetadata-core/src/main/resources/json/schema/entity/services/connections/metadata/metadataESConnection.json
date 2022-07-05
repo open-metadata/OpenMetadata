@@ -39,6 +39,11 @@
       "type": "boolean",
       "default": "true"
     },
+    "includeMlModels": {
+      "description": "Include MlModels for Indexing",
+      "type": "boolean",
+      "default": "true"
+    },
     "includeUsers": {
       "description": "Include Users for Indexing",
       "type": "boolean",

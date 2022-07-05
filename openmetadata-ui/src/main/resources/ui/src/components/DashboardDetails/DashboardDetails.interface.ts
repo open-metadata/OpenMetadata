@@ -19,10 +19,11 @@ import {
   LineagePos,
   LoadingNodeState,
 } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -59,8 +60,13 @@ export interface DashboardDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
-  fetchFeedHandler: (after?: string) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followDashboardHandler: () => void;

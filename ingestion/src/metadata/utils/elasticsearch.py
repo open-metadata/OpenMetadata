@@ -12,12 +12,13 @@
 Helper methods for ES
 """
 
-from typing import Dict, List, Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -36,19 +37,8 @@ ES_INDEX_MAP = {
     Topic.__name__: "topic_search_index",
     Pipeline.__name__: "pipeline_search_index",
     Glossary.__name__: "glossary_search_index",
+    MlModel.__name__: "mlmodel_search_index",
 }
-
-
-def get_query_from_dict(data: Dict[str, Optional[str]]) -> str:
-    """
-    Prepare a query to be passed to ES based on incoming
-    key-value pairs in a dict
-    :param data: key-value pairs to use for searching in ES
-    :return: query string
-    """
-    return " AND ".join(
-        [f"{key}:{value}" for key, value in data.items() if value is not None]
-    )
 
 
 def get_entity_from_es_result(

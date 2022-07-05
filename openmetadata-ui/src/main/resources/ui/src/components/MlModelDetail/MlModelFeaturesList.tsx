@@ -260,7 +260,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                       <NonAdminAction
                         html={getHtmlForNonAdminAction(Boolean(owner))}
                         isOwner={hasEditAccess}
-                        permission={Operation.UpdateTags}
+                        permission={Operation.EditTags}
                         position="left"
                         trigger="click">
                         <TagsContainer
@@ -284,7 +284,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                                 alt="edit"
                                 icon="icon-edit"
                                 title="Edit"
-                                width="12px"
+                                width="16px"
                               />
                             </button>
                           ) : (
@@ -313,7 +313,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                     <NonAdminAction
                       html={getHtmlForNonAdminAction(Boolean(owner))}
                       isOwner={hasEditAccess}
-                      permission={Operation.UpdateDescription}
+                      permission={Operation.EditDescription}
                       position="top">
                       <button
                         className="tw-self-start tw-w-8 tw-h-auto focus:tw-outline-none"
@@ -325,7 +325,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="12px"
+                          width="16px"
                         />
                       </button>
                     </NonAdminAction>

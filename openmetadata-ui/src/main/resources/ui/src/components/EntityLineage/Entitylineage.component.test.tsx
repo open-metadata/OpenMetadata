@@ -127,6 +127,29 @@ const mockEntityLineageProp = {
   entityLineageHandler: jest.fn(),
 };
 
+const mockFlowData = {
+  node: [
+    {
+      id: 'a4b21449-b03b-4527-b482-148f52f92ff2',
+      sourcePosition: 'right',
+      targetPosition: 'left',
+      type: 'default',
+      className: 'leaf-node core',
+      data: {
+        label: 'dim_address etl',
+        isEditMode: false,
+        columns: {},
+        isExpanded: false,
+      },
+      position: {
+        x: 0,
+        y: 0,
+      },
+    },
+  ],
+  edge: [],
+};
+
 jest.mock('../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
   getDataLabel: jest
@@ -138,8 +161,8 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
       <p>Lineage data is not available for deleted entities.</p>
     ),
   getHeaderLabel: jest.fn().mockReturnValue(<p>Header label</p>),
-  getLayoutedElements: jest.fn().mockReturnValue([]),
-  getLineageData: jest.fn().mockReturnValue([]),
+  getLayoutedElementsV1: jest.fn().mockImplementation(() => mockFlowData),
+  getLineageDataV1: jest.fn().mockImplementation(() => mockFlowData),
   getModalBodyText: jest.fn(),
   onLoad: jest.fn(),
   onNodeContextMenu: jest.fn(),

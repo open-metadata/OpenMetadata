@@ -29,6 +29,8 @@ interface Props extends UserData {
   type?: ImageShape;
   textClass?: string;
   className?: string;
+  height?: string;
+  profileImgClasses?: string;
 }
 
 const ProfilePicture = ({
@@ -39,6 +41,8 @@ const ProfilePicture = ({
   textClass = '',
   type = 'square',
   width = '36',
+  height,
+  profileImgClasses,
 }: Props) => {
   const profilePic = useMemo(() => {
     return getUserProfilePic(id, name);
@@ -52,6 +56,7 @@ const ProfilePicture = ({
     return (
       <Avatar
         className={className}
+        height={height}
         name={getEntityName({ name, displayName } as EntityReference)}
         textClass={textClass}
         type={type}
@@ -64,7 +69,10 @@ const ProfilePicture = ({
     return isPicLoading ? (
       <div
         className="tw-inline-block tw-relative"
-        style={{ height: `${width}px`, width: `${width}px` }}>
+        style={{
+          height: `${height || width}px`,
+          width: `${width}px`,
+        }}>
         {getAvatarByName()}
         <div
           className="tw-absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
@@ -84,10 +92,11 @@ const ProfilePicture = ({
 
   return profilePic ? (
     <div
-      className={classNames('profile-image', type)}
-      style={{ height: `${width}px`, width: `${width}px` }}>
+      className={classNames('profile-image', type, className)}
+      style={{ height: `${height || width}px`, width: `${width}px` }}>
       <img
         alt="user"
+        className={profileImgClasses}
         data-testid="profile-image"
         referrerPolicy="no-referrer"
         src={profilePic}

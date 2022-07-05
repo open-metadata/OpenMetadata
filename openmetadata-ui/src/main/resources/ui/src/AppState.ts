@@ -15,6 +15,7 @@ import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser, UserPermissions } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { EntityData } from './components/common/PopOverCard/EntityPopOverCard';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { CurrentTourPageType } from './enums/tour.enum';
 import { Role } from './generated/entity/teams/role';
@@ -25,6 +26,7 @@ import {
 import { ImageList } from './generated/type/profile';
 
 class AppState {
+  urlPathname = '';
   users: Array<User> = [];
   newUser: NewUser = {} as NewUser;
   authDisabled = false;
@@ -36,6 +38,8 @@ class AppState {
   };
   nonSecureUserDetails: User = {} as User;
   userDetails: User = {} as User;
+  userDataProfiles: Record<string, User> = {};
+  entityData: Record<string, EntityData> = {};
   userTeams: Array<UserTeams> = [];
   userRoles: Array<Role> = [];
   userPermissions: UserPermissions = {} as UserPermissions;
@@ -79,7 +83,17 @@ class AppState {
       updateProfilePicsLoading: action,
       isProfilePicLoading: action,
       removeProfilePicsLoading: action,
+      getUrlPathname: action,
+      updateUrlPathname: action,
     });
+  }
+
+  updateUrlPathname(data: string) {
+    this.urlPathname = data;
+  }
+
+  getUrlPathname() {
+    return this.urlPathname;
   }
 
   addUser(data: User) {

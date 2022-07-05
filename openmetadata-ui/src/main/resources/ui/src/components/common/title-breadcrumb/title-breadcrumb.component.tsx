@@ -83,6 +83,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                     className={classes}
                     style={{
                       maxWidth,
+                      fontSize: '16px',
                     }}
                     to={link.url}>
                     {link.name}

@@ -12,11 +12,19 @@
  */
 
 import { Card } from 'antd';
+import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Post } from '../../../generated/entity/feed/thread';
+import {
+  Post,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import AssigneeList from '../../common/AssigneeList/AssigneeList';
+import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import TaskBadge from '../Shared/TaskBadge';
 import { FeedListBodyProp } from './ActivityFeedList.interface';
 
 const FeedListBody: FC<FeedListBodyProp> = ({
@@ -93,31 +101,42 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             id: feed.id,
             reactions: feed.reactions,
           } as Post;
+          const isTask = isEqual(feed.type, ThreadType.Task);
           const postLength = feed?.posts?.length || 0;
           const replies = feed.postsCount ? feed.postsCount - 1 : 0;
-          const repliedUsers = (feed?.posts || [])
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
+          const repliedUsers = [
+            ...new Set((feed?.posts || []).map((f) => f.from)),
+          ];
+          const repliedUniqueUsersList = repliedUsers.slice(
+            0,
+            postLength >= 3 ? 2 : 1
+          );
           const lastPost = feed?.posts?.[postLength - 1];
 
           return (
             <Card
+              className="ant-card-feed tw-relative"
               key={`${index} - card`}
               style={{
-                border: '1px rgb(221, 227, 234) solid',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                boxShadow: '1px 1px 6px rgb(0 0 0 / 12%)',
-                marginRight: '4px',
-                marginLeft: '4px',
+                ...leftPanelAntCardStyle,
+                marginTop: '20px',
+                paddingTop: isTask ? '8px' : '',
+                border: isTask
+                  ? '1px solid #C6B5F6'
+                  : leftPanelAntCardStyle.border,
               }}>
+              {isTask && (
+                <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
+              )}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   isThread
                   data-testid="main-message"
                   entityLink={feed.about}
                   feed={mainFeed}
+                  feedType={feed.type || ThreadType.Conversation}
                   isEntityFeed={isEntityFeed}
+                  taskDetails={feed.task}
                   updateThreadHandler={updateThreadHandler}
                   onReply={() => onReplyThread(feed.id)}
                 />
@@ -125,7 +144,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      repliedUsers,
+                      repliedUniqueUsersList,
                       replies,
                       feed.id,
                       lastPost
@@ -134,6 +153,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                       className="tw-ml-9"
                       data-testid="latest-message"
                       feed={lastPost as Post}
+                      feedType={feed.type || ThreadType.Conversation}
                       isEntityFeed={isEntityFeed}
                       threadId={feed.id}
                       updateThreadHandler={updateThreadHandler}
@@ -144,6 +164,15 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   </Fragment>
                 ) : null}
               </div>
+              {feed.task && (
+                <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
+                  <span className="tw-text-grey-muted">Assignees: </span>
+                  <AssigneeList
+                    assignees={feed.task.assignees || []}
+                    className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                  />
+                </div>
+              )}
             </Card>
           );
         })}

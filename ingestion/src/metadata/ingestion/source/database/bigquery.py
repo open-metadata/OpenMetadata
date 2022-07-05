@@ -111,7 +111,8 @@ class BigquerySource(CommonDbSourceService):
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[1]
 
-    def set_project_id(self):
+    @staticmethod
+    def set_project_id():
         _, project_id = auth.default()
         return project_id
 
@@ -121,6 +122,8 @@ class BigquerySource(CommonDbSourceService):
         :param _:
         :return:
         """
+        if not self.source_config.includeTags:
+            return
         taxonomies = PolicyTagManagerClient().list_taxonomies(
             parent=f"projects/{self.project_id}/locations/{self.service_connection.taxonomyLocation}"
         )
@@ -154,6 +157,8 @@ class BigquerySource(CommonDbSourceService):
         This will only get executed if the tags context
         is properly informed
         """
+        if not self.source_config.includeTags:
+            return
         if column.get("policy_tags"):
             return [
                 TagLabel(

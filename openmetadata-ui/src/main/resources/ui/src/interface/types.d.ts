@@ -269,9 +269,9 @@ declare module 'Models' {
     description: string;
     display_name: string;
     entity_type: string;
-    fqdn: string;
+    fullyQualifiedName: string;
     glossary_id: string;
-    glossary_name: string;
+    glossary: { name: string };
     last_updated_timestamp: number;
     name: string;
   }
@@ -399,7 +399,8 @@ declare module 'Models' {
     | 'databaseServices'
     | 'messagingServices'
     | 'dashboardServices'
-    | 'pipelineServices';
+    | 'pipelineServices'
+    | 'mlmodelServices';
 
   export type SampleData = {
     columns: Array<string>;
@@ -572,13 +573,11 @@ declare module 'Models' {
   };
 
   export interface UserPermissions {
-    UpdateOwner: boolean;
-    UpdateDescription: boolean;
-    SuggestDescription: boolean;
-    UpdateLineage: boolean;
-    SuggestTags: boolean;
-    UpdateTags: boolean;
-    UpdateTeam: boolean;
+    EditOwner: boolean;
+    EditDescription: boolean;
+    EditLineage: boolean;
+    EditTags: boolean;
+    TeamEditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;
@@ -602,5 +601,15 @@ declare module 'Models' {
   export interface SelectableOption {
     readonly label: string;
     readonly value: string;
+  }
+
+  export interface Diff {
+    removed: boolean;
+    added: boolean;
+    value: string;
+  }
+  export interface ScrollHandle {
+    left: boolean;
+    right: boolean;
   }
 }

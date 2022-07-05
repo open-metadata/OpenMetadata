@@ -23,6 +23,7 @@ export interface NavBarProps {
   pathname: string;
   isSearchBoxOpen: boolean;
   username: string;
+  hasNotification: boolean;
   handleSearchBoxOpen: (value: boolean) => void;
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;

@@ -113,9 +113,7 @@ export const createUser = (
   return APIClient.post(`/users`, userDetails);
 };
 
-export const updateUser = (
-  data: Pick<User, 'email' | 'name' | 'displayName' | 'profile' | 'isAdmin'>
-): Promise<AxiosResponse> => {
+export const updateUser = (data: User): Promise<AxiosResponse> => {
   return APIClient.put('/users', data);
 };
 

@@ -90,8 +90,6 @@ import org.openmetadata.catalog.socket.WebSocketManager;
 public class CatalogApplication extends Application<CatalogApplicationConfig> {
   private Authorizer authorizer;
 
-  private SocketAddressFilter socketAddressFilter = null;
-
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
@@ -163,7 +161,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-    intializeWebsockets(environment);
+    intializeWebsockets(catalogConfig, environment);
   }
 
   @SneakyThrows
@@ -216,9 +214,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     AuthenticationConfiguration authenticationConfiguration = catalogConfig.getAuthenticationConfiguration();
     // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
-      if (authorizerConf.getEnableSecureSocketConnection()) {
-        socketAddressFilter = new SocketAddressFilter(authenticationConfiguration, authorizerConf);
-      }
       authorizer =
           Class.forName(authorizerConf.getClassName()).asSubclass(Authorizer.class).getConstructor().newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
@@ -278,26 +273,35 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.getApplicationContext().setErrorHandler(eph);
   }
 
-  private void intializeWebsockets(Environment environment) {
+  private void intializeWebsockets(CatalogApplicationConfig catalogConfig, Environment environment) {
+    SocketAddressFilter socketAddressFilter;
+    String pathSpec = "/api/v1/push/feed/*";
+    if (catalogConfig.getAuthorizerConfiguration() != null) {
+      socketAddressFilter =
+          new SocketAddressFilter(
+              catalogConfig.getAuthenticationConfiguration(), catalogConfig.getAuthorizerConfiguration());
+    } else {
+      socketAddressFilter = new SocketAddressFilter();
+    }
+
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
     environment.getApplicationContext().setContextPath("/");
-    if (socketAddressFilter != null)
-      environment
-          .getApplicationContext()
-          .addFilter(new FilterHolder(socketAddressFilter), "/api/v1/push/feed/*", EnumSet.of(DispatcherType.REQUEST));
-    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), "/api/v1/push/feed/*");
+    environment
+        .getApplicationContext()
+        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter webSocketUpgradeFilter =
           WebSocketUpgradeFilter.configureContext(environment.getApplicationContext());
       webSocketUpgradeFilter.addMapping(
-          new ServletPathSpec("/api/v1/push/feed/*"),
+          new ServletPathSpec(pathSpec),
           (servletUpgradeRequest, servletUpgradeResponse) ->
               new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
     } catch (ServletException ex) {
-      LOG.error("Websocket Upgrade Filter error : ", ex.getMessage());
+      LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
     }
   }
 

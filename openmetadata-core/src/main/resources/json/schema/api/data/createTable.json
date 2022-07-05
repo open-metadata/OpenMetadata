@@ -18,7 +18,7 @@
     },
     "description": {
       "description": "Description of entity instance.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "tableType": {
       "$ref": "../../entity/data/table.json#/definitions/tableType"
@@ -46,6 +46,11 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "maximum": 100,
+      "default": null
+    },
+    "profileQuery": {
+      "description": "Users' raw SQL query to fetch sample data and profile the table",
+      "type": "string",
       "default": null
     },
     "owner": {

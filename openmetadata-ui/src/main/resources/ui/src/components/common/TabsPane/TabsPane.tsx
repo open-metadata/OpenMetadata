@@ -47,13 +47,13 @@ const TabsPane = ({
   rightPosButton,
 }: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
-    return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
+    return 'tw-gh-tabs tw-px-4' + (activeTab === tab ? ' active' : '');
   };
 
   return (
-    <div className={classNames('tw-bg-transparent tw--mx-6', className)}>
+    <div className={classNames('tw-bg-transparent', className)}>
       <nav
-        className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container tw-px-7"
+        className="tw-flex tw-items-center tw-justify-between tw-gh-tabs-container"
         data-testid="tabs"
         id="tabs">
         <div className="tw-flex tw-flex-grow">

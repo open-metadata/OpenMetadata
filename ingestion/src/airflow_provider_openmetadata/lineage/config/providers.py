@@ -25,6 +25,9 @@ from metadata.generated.schema.security.client.auth0SSOClientConfig import (
 from metadata.generated.schema.security.client.azureSSOClientConfig import (
     AzureSSOClientConfig,
 )
+from metadata.generated.schema.security.client.customOidcSSOClientConfig import (
+    CustomOIDCSSOClientConfig,
+)
 from metadata.generated.schema.security.client.googleSSOClientConfig import (
     GoogleSSOClientConfig,
 )
@@ -69,7 +72,7 @@ def load_okta_auth() -> OktaSSOClientConfig:
         orgURL=conf.get(LINEAGE, "org_url"),
         privateKey=conf.get(LINEAGE, "private_key"),
         email=conf.get(LINEAGE, "email"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        scopes=conf.getjson(LINEAGE, "scopes", fallback=[]),
     )
 
 
@@ -94,7 +97,7 @@ def load_azure_auth() -> AzureSSOClientConfig:
         clientSecret=conf.get(LINEAGE, "client_secret"),
         authority=conf.get(LINEAGE, "authority"),
         clientId=conf.get(LINEAGE, "client_id"),
-        scopes=conf.get(LINEAGE, "scopes", fallback=[]),
+        scopes=conf.getjson(LINEAGE, "scopes", fallback=[]),
     )
 
 
@@ -104,3 +107,15 @@ def load_om_auth() -> OpenMetadataJWTClientConfig:
     Load config for Azure Auth
     """
     return OpenMetadataJWTClientConfig(jwtToken=conf.get(LINEAGE, "jwt_token"))
+
+
+@provider_config_registry.add(AuthProvider.custom_oidc.value)
+def load_custom_oidc_auth() -> CustomOIDCSSOClientConfig:
+    """
+    Load config for Custom OIDC Auth
+    """
+    return CustomOIDCSSOClientConfig(
+        clientId=conf.get(LINEAGE, "client_id"),
+        secretKey=conf.get(LINEAGE, "secret_key"),
+        tokenEndpoint=conf.get(LINEAGE, "token_endpoint"),
+    )

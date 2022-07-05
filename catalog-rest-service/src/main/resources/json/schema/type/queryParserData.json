@@ -4,43 +4,60 @@
   "title": "Query Parser Data",
   "description": "This schema defines type of query parser data",
   "type": "object",
-  "properties": {
-    "tables": {
-      "description": "List of tables used in query",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "tableAliases": {
-      "description": "Table names mapped with alias used in query",
-      "type": "object"
-    },
-    "columns": {
-      "description": "Table columns used in query",
-      "type": "object"
-    },
-    "database": {
-      "description": "Database of the associated with query",
-      "type": "string"
-    },
-    "sql": {
-      "description": "SQL query",
-      "type": "string"
-    },
-    "serviceName": {
-      "description": "Name that identifies this database service.",
-      "type": "string"
-    },
-    "date": {
-      "description": "Date of execution of SQL query",
-      "type": "string"
-    },
-    "databaseSchema": {
-      "description": "Database schema of the associated with query",
-      "type": "string"
+  "definitions": {
+    "parsedData": {
+      "properties": {
+        "tables": {
+          "description": "List of tables used in query",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "databaseName": {
+          "description": "Database associated with the table in the query",
+          "type": "string"
+        },
+        "joins": {
+          "description": "Maps each parsed table name of a query to the join information",
+          "type": "object",
+          "additionalProperties": {
+            ".{1,}": {
+              "type": "array",
+              "items": {
+                "$ref": "tableUsageCount.json#/definitions/tableColumnJoin"
+              }
+            }
+          }
+        },
+        "sql": {
+          "description": "SQL query",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "Name that identifies this database service.",
+          "type": "string"
+        },
+        "date": {
+          "description": "Date of execution of SQL query",
+          "type": "string"
+        },
+        "databaseSchema": {
+          "description": "Database schema of the associated with query",
+          "type": "string"
+        }
+      },
+      "required": ["sql", "serviceName", "tables", "databaseName"]
     }
   },
-  "required": ["sql", "serviceName", "tables", "database"],
+  "properties": {
+    "parsedData": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/parsedData"
+      }
+    }
+  },
+
   "additionalProperties": false
 }

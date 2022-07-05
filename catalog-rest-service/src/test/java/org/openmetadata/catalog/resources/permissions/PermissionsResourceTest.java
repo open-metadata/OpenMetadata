@@ -80,48 +80,32 @@ class PermissionsResourceTest extends CatalogApplicationTest {
   }
 
   private Stream<Arguments> getPermissionsTestParams() {
+    HashMap<MetadataOperation, Boolean> adminPermissions = new HashMap<>();
+    HashMap<MetadataOperation, Boolean> dataStewardPermissions = new HashMap<>();
+    HashMap<MetadataOperation, Boolean> dataConsumerPermissions = new HashMap<>();
+    for (MetadataOperation op : MetadataOperation.values()) {
+      adminPermissions.put(op, Boolean.TRUE);
+      dataStewardPermissions.put(op, Boolean.FALSE);
+      dataConsumerPermissions.put(op, Boolean.FALSE);
+    }
+
+    dataStewardPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
+    dataStewardPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
+    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+    dataStewardPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+
+    dataConsumerPermissions.put(MetadataOperation.EDIT_DESCRIPTION, Boolean.TRUE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_LINEAGE, Boolean.FALSE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_OWNER, Boolean.TRUE);
+    dataConsumerPermissions.put(MetadataOperation.EDIT_TAGS, Boolean.TRUE);
+    // put(MetadataOperation.DecryptTokens, Boolean.FALSE);
+    dataConsumerPermissions.put(MetadataOperation.TEAM_EDIT_USERS, Boolean.FALSE);
+
     return Stream.of(
-        Arguments.of(
-            TestUtils.ADMIN_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.SuggestDescription, Boolean.TRUE);
-                put(MetadataOperation.SuggestTags, Boolean.TRUE);
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.TRUE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.DecryptTokens, Boolean.TRUE);
-                put(MetadataOperation.UpdateTeam, Boolean.TRUE);
-              }
-            }),
-        Arguments.of(
-            DATA_STEWARD_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.TRUE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
-                put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
-              }
-            }),
-        Arguments.of(
-            DATA_CONSUMER_USER_NAME,
-            new HashMap<MetadataOperation, Boolean>() {
-              {
-                put(MetadataOperation.SuggestDescription, Boolean.FALSE);
-                put(MetadataOperation.SuggestTags, Boolean.FALSE);
-                put(MetadataOperation.UpdateDescription, Boolean.TRUE);
-                put(MetadataOperation.UpdateLineage, Boolean.FALSE);
-                put(MetadataOperation.UpdateOwner, Boolean.TRUE);
-                put(MetadataOperation.UpdateTags, Boolean.TRUE);
-                put(MetadataOperation.DecryptTokens, Boolean.FALSE);
-                put(MetadataOperation.UpdateTeam, Boolean.FALSE);
-              }
-            }));
+        Arguments.of(TestUtils.ADMIN_USER_NAME, adminPermissions),
+        Arguments.of(DATA_STEWARD_USER_NAME, dataStewardPermissions),
+        Arguments.of(DATA_CONSUMER_USER_NAME, dataConsumerPermissions));
   }
 }

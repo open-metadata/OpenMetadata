@@ -35,6 +35,7 @@ from openmetadata.api.utils import jwt_token_secure
 from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
 from openmetadata.operations.last_dag_logs import last_dag_logs
+from openmetadata.operations.state import disable_dag, enable_dag
 from openmetadata.operations.status import status
 from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
@@ -133,6 +134,10 @@ class REST_API(AppBuilderBaseView):
             return self.delete_dag()
         if api == "last_dag_logs":
             return self.last_dag_logs()
+        if api == "enable_dag":
+            return self.enable_dag()
+        if api == "disable_dag":
+            return self.disable_dag()
 
         raise ValueError(
             f"Invalid api param {api}. Expected deploy_dag or trigger_dag."
@@ -201,13 +206,13 @@ class REST_API(AppBuilderBaseView):
         except ValidationError as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Request Validation Error parsing payload {json_request}. (Workflow)Source expected - {err}",
+                error=f"Request Validation Error parsing payload. (Workflow)Source expected - {err}",
             )
 
         except Exception as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
-                error=f"Internal error testing connection {json_request} - {err} - {traceback.format_exc()}",
+                error=f"Internal error testing connection {err} - {traceback.format_exc()}",
             )
 
     @staticmethod
@@ -294,6 +299,48 @@ class REST_API(AppBuilderBaseView):
 
         try:
             return last_dag_logs(dag_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to get last run logs for '{dag_id}'")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            )
+
+    @staticmethod
+    def enable_dag() -> Response:
+        """
+        Given a DAG ID, mark the dag as enabled
+        """
+        request_json = request.get_json()
+
+        dag_id = request_json.get("dag_id")
+        if not dag_id:
+            return ApiResponse.bad_request(f"Missing dag_id argument in the request")
+
+        try:
+            return enable_dag(dag_id)
+
+        except Exception as exc:
+            logging.info(f"Failed to get last run logs for '{dag_id}'")
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Failed to get last run logs for '{dag_id}' due to {exc} - {traceback.format_exc()}",
+            )
+
+    @staticmethod
+    def disable_dag() -> Response:
+        """
+        Given a DAG ID, mark the dag as disabled
+        """
+        request_json = request.get_json()
+
+        dag_id = request_json.get("dag_id")
+        if not dag_id:
+            return ApiResponse.bad_request(f"Missing dag_id argument in the request")
+
+        try:
+            return disable_dag(dag_id)
 
         except Exception as exc:
             logging.info(f"Failed to get last run logs for '{dag_id}'")

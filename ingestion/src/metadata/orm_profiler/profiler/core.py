@@ -69,9 +69,10 @@ class Profiler(Generic[TMetric]):
         profile_date: datetime = datetime.now(),
         ignore_cols: Optional[List[str]] = None,
         use_cols: Optional[List[Column]] = None,
-        profile_sample: Optional[float] = 100.0,
+        profile_sample: Optional[float] = None,
         timeout_seconds: Optional[int] = TEN_MIN,
         partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -92,6 +93,7 @@ class Profiler(Generic[TMetric]):
         self._profile_sample = profile_sample
         self._profile_date = profile_date
         self._partition_details = partition_details
+        self._profile_sample_query = profile_sample_query
 
         self.validate_composed_metric()
 
@@ -108,6 +110,7 @@ class Profiler(Generic[TMetric]):
             table=table,
             profile_sample=profile_sample,
             partition_details=self._partition_details,
+            profile_sample_query=self._profile_sample_query,
         )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
@@ -118,6 +121,7 @@ class Profiler(Generic[TMetric]):
                 table=table,
                 sample=self.sample,
                 partition_details=self._partition_details,
+                profile_sample_query=self._profile_sample_query,
             )
         )
 
@@ -422,8 +426,10 @@ class Profiler(Generic[TMetric]):
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
-                columnNames=self._table_results.get(ColumnNames.name()).split(","),
+                columnNames=self._table_results.get(ColumnNames.name(), "").split(","),
                 columnProfile=computed_profiles,
+                profileQuery=self._profile_sample_query,
+                profileSample=self._profile_sample,
             )
 
             return profile

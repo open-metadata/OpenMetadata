@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.glossary.GlossaryTermResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -60,6 +61,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException {
     entity.setGlossary(getGlossary(entity));
+    System.out.println("XXX entity glossary " + entity.getGlossary());
     entity.setParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
@@ -74,22 +76,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
-    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-    return ids.size() == 1 ? Entity.getEntityReferenceById(GLOSSARY_TERM, UUID.fromString(ids.get(0)), ALL) : null;
+    return getFromEntityRef(entity.getId(), Relationship.CONTAINS, GLOSSARY_TERM, false);
   }
 
   private List<EntityReference> getChildren(GlossaryTerm entity) throws IOException {
-    List<String> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
+    List<EntityRelationshipRecord> ids = findTo(entity.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
     return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) throws IOException {
-    List<String> ids = findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
+    List<EntityRelationshipRecord> ids =
+        findBoth(entity.getId(), GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM);
     return EntityUtil.populateEntityReferences(ids, GLOSSARY_TERM);
   }
 
   private List<EntityReference> getReviewers(GlossaryTerm entity) throws IOException {
-    List<String> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), GLOSSARY_TERM, Relationship.REVIEWS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 
@@ -181,9 +183,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) throws IOException {
-    List<String> refs = findFrom(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY);
-    ensureSingleRelationship(GLOSSARY_TERM, term.getId(), refs, "glossaries", true);
-    return getGlossary(refs.get(0));
+    return getFromEntityRef(term.getId(), Relationship.CONTAINS, Entity.GLOSSARY, true);
   }
 
   public EntityReference getGlossary(String id) throws IOException {

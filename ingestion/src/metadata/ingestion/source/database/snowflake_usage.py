@@ -11,8 +11,7 @@
 """
 Snowflake usage module
 """
-
-from datetime import timedelta
+from datetime import datetime
 from typing import Iterable, Iterator, Union
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -34,6 +33,7 @@ from metadata.ingestion.api.source import InvalidSourceException
 # This import verifies that the dependencies are available.
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.connections import get_connection
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_queries import SNOWFLAKE_SQL_STATEMENT
 
@@ -42,10 +42,6 @@ SNOWFLAKE_ABORTED_CODE = "1969"
 
 
 class SnowflakeUsageSource(UsageSource):
-    # SELECT statement from mysql information_schema
-    # to extract table and column metadata
-    SQL_STATEMENT = SNOWFLAKE_SQL_STATEMENT
-
     # CONFIG KEYS
     WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
     CLUSTER_SOURCE = "cluster_source"
@@ -57,17 +53,17 @@ class SnowflakeUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        self.end = self.end + timedelta(days=1)
-        self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=self.start,
-            end_date=self.end,
-            result_limit=self.config.sourceConfig.config.resultLimit,
-        )
+
+        # Snowflake does not allow retrieval of data older than 7 days
+        duration = min(self.source_config.queryLogDuration, 6)
+        self.start, self.end = get_start_and_end(duration)
+
+        self.sql_stmt = SNOWFLAKE_SQL_STATEMENT
         self._extract_iter: Union[None, Iterator] = None
         self._database = "Snowflake"
 
     @classmethod
-    def create(cls, config_dict, metadata_config: WorkflowConfig):
+    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
@@ -75,6 +71,16 @@ class SnowflakeUsageSource(UsageSource):
                 f"Expected SnowflakeConnection, but got {connection}"
             )
         return cls(config, metadata_config)
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            result_limit=self.config.sourceConfig.config.resultLimit,
+        )
 
     def _get_raw_extract_iter(self) -> Iterable[TableQuery]:
         if self.config.serviceConnection.__root__.config.database:
@@ -89,19 +95,7 @@ class SnowflakeUsageSource(UsageSource):
                 logger.info(f"Ingesting from database: {row[1]}")
                 self.config.serviceConnection.__root__.config.database = row[1]
                 self.engine = get_connection(self.connection)
-                rows = self.engine.execute(self.sql_stmt)
-                for row in rows:
-                    yield TableQuery(
-                        query=row["query_text"],
-                        userName=row["user_name"],
-                        startTime=str(row["start_time"]),
-                        endTime=str(row["end_time"]),
-                        analysisDate=self.analysis_date,
-                        aborted=self.get_aborted_status(row),
-                        database=self.get_database_name(row),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=row["schema_name"],
-                    )
+                yield from super()._get_raw_extract_iter()
 
     def get_database_name(self, data: dict) -> str:
         """

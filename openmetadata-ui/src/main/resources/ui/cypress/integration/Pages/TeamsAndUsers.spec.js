@@ -126,6 +126,8 @@ describe('TeamsAndUsers page', () => {
         expect(text).equal(updatedName);
       });
 
+    cy.wait(500);
+
     cy.get('[data-testid="edit-description"] > [data-testid="image"]')
       .should('be.visible')
       .click();
@@ -465,10 +467,16 @@ describe('TeamsAndUsers page', () => {
       .should('not.be.visible')
       .click();
 
-    cy.get('.tw-modal-container').should('be.visible');
-    cy.contains('Are you sure you want to delete').should('be.visible');
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
-    cy.get('.tw-modal-container').should('not.exist');
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.contains(`Delete ${NEW_USER.display_name}`).should('be.visible');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .as('confirmBtn');
+    cy.get('@confirmBtn').should('be.disabled');
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    cy.get('@confirmBtn').should('not.be.disabled').click();
 
     cy.reload();
     cy.get('[data-testid="searchbar"]')

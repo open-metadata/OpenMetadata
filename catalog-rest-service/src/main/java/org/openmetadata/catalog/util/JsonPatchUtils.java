@@ -25,16 +25,16 @@ public class JsonPatchUtils {
     String path = jsonPatchMap.get("path").toString();
 
     if (path.contains(FIELD_DESCRIPTION)) {
-      return MetadataOperation.UpdateDescription;
+      return MetadataOperation.EDIT_DESCRIPTION;
     }
     if (path.contains("tags")) {
-      return MetadataOperation.UpdateTags;
+      return MetadataOperation.EDIT_TAGS;
     }
     if (path.contains(FIELD_OWNER)) {
-      return MetadataOperation.UpdateOwner;
+      return MetadataOperation.EDIT_OWNER;
     }
     if (path.startsWith("/users")) { // Ability to update users within a team.
-      return MetadataOperation.UpdateTeam;
+      return MetadataOperation.TEAM_EDIT_USERS;
     }
     return null;
   }

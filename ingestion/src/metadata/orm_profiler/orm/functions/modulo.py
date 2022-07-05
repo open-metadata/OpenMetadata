@@ -47,10 +47,28 @@ def _(element, compiler, **kw):
     return f"{value} % {base}"
 
 
+@compiles(ModuloFn, Dialects.MSSQL)
+def _(element, compiler, **kw):
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"{value} %% {base}"
+
+
 @compiles(ModuloFn, Dialects.BigQuery)
 @compiles(ModuloFn, Dialects.Redshift)
 @compiles(ModuloFn, Dialects.Snowflake)
+@compiles(ModuloFn, Dialects.Postgres)
+@compiles(ModuloFn, Dialects.Athena)
+@compiles(ModuloFn, Dialects.MySQL)
+@compiles(ModuloFn, Dialects.Oracle)
+@compiles(ModuloFn, Dialects.Presto)
 def _(element, compiler, **kw):
 
     value, base = validate_and_compile(element, compiler, **kw)
     return f"MOD({value}, {base})"
+
+
+@compiles(ModuloFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handles modulo function for ClickHouse"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"modulo({value}, {base})"

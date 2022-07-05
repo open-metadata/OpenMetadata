@@ -69,7 +69,7 @@ from metadata.generated.schema.entity.services.connections.database.dynamoDBConn
     DynamoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
-    GlueConnection,
+    GlueConnection as GlueDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
@@ -80,11 +80,20 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+    BackendConnection,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
+    GlueConnection as GluePipelineConnection,
 )
 from metadata.orm_profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.connection_clients import (
@@ -92,10 +101,12 @@ from metadata.utils.connection_clients import (
     DatalakeClient,
     DeltaLakeClient,
     DynamoClient,
-    GlueClient,
+    GlueDBClient,
+    GluePipelineClient,
     KafkaClient,
     LookerClient,
     MetabaseClient,
+    MlflowClientWrapper,
     ModeClient,
     PowerBiClient,
     RedashClient,
@@ -137,7 +148,14 @@ def create_generic_connection(connection, verbose: bool = False) -> Engine:
 @singledispatch
 def get_connection(
     connection, verbose: bool = False
-) -> Union[Engine, DynamoClient, GlueClient, SalesforceClient, KafkaClient]:
+) -> Union[
+    Engine,
+    DynamoClient,
+    GlueDBClient,
+    GluePipelineClient,
+    SalesforceClient,
+    KafkaClient,
+]:
     """
     Given an SQL configuration, build the SQLAlchemy Engine
     """
@@ -209,10 +227,20 @@ def _(connection: DynamoDBConnection, verbose: bool = False) -> DynamoClient:
 
 
 @get_connection.register
-def _(connection: GlueConnection, verbose: bool = False) -> GlueClient:
+def _(connection: GlueDBConnection, verbose: bool = False) -> GlueDBClient:
     from metadata.utils.aws_client import AWSClient
 
-    glue_connection = AWSClient(connection.awsConfig).get_glue_client()
+    glue_connection = AWSClient(connection.awsConfig).get_glue_db_client()
+    return glue_connection
+
+
+@get_connection.register
+def _(
+    connection: GluePipelineConnection, verbose: bool = False
+) -> GluePipelineConnection:
+    from metadata.utils.aws_client import AWSClient
+
+    glue_connection = AWSClient(connection.awsConfig).get_glue_pipeline_client()
     return glue_connection
 
 
@@ -266,7 +294,6 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     from confluent_kafka.admin import AdminClient, ConfigResource
     from confluent_kafka.avro import AvroConsumer
     from confluent_kafka.schema_registry.schema_registry_client import (
-        Schema,
         SchemaRegistryClient,
     )
 
@@ -279,11 +306,22 @@ def _(connection: KafkaConnection, verbose: bool = False) -> KafkaClient:
     if connection.schemaRegistryURL:
         connection.schemaRegistryConfig["url"] = connection.schemaRegistryURL
         schema_registry_client = SchemaRegistryClient(connection.schemaRegistryConfig)
-        admin_client_config["schema.registry.url"] = connection.schemaRegistryURL
-        admin_client_config["group.id"] = "openmetadata-consumer-1"
-        admin_client_config["auto.offset.reset"] = "earliest"
-        admin_client_config["enable.auto.commit"] = False
-        consumer_client = AvroConsumer(admin_client_config)
+        connection.schemaRegistryConfig["url"] = str(connection.schemaRegistryURL)
+        consumer_config = {
+            **connection.consumerConfig,
+            "bootstrap.servers": connection.bootstrapServers,
+        }
+        if "group.id" not in consumer_config:
+            consumer_config["group.id"] = "openmetadata-consumer"
+        if "auto.offset.reset" not in consumer_config:
+            consumer_config["auto.offset.reset"] = "earliest"
+
+        for key in connection.schemaRegistryConfig:
+            consumer_config["schema.registry." + key] = connection.schemaRegistryConfig[
+                key
+            ]
+        logger.debug(consumer_config)
+        consumer_client = AvroConsumer(consumer_config)
 
     return KafkaClient(
         admin_client=admin_client,
@@ -347,7 +385,7 @@ def _(connection: DynamoClient) -> None:
 
 
 @test_connection.register
-def _(connection: GlueClient) -> None:
+def _(connection: GlueDBClient) -> None:
     """
     Test that we can connect to the source using the given aws resource
     :param engine: boto cliet to test
@@ -357,6 +395,27 @@ def _(connection: GlueClient) -> None:
 
     try:
         connection.client.list_workflows()
+    except ClientError as err:
+        raise SourceConnectionException(
+            f"Connection error for {connection} - {err}. Check the connection details."
+        )
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@test_connection.register
+def _(connection: GluePipelineClient) -> None:
+    """
+    Test that we can connect to the source using the given aws resource
+    :param engine: boto cliet to test
+    :return: None or raise an exception if we cannot connect
+    """
+    from botocore.client import ClientError
+
+    try:
+        connection.client.get_paginator("get_databases")
     except ClientError as err:
         raise SourceConnectionException(
             f"Connection error for {connection} - {err}. Check the connection details."
@@ -608,7 +667,7 @@ def _(connection: LookerConnection, verbose: bool = False):
         os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.password.get_secret_value()
     if not os.environ.get("LOOKERSDK_BASE_URL"):
         os.environ["LOOKERSDK_BASE_URL"] = connection.hostPort
-    client = looker_sdk.init31()
+    client = looker_sdk.init40()
     return LookerClient(client=client)
 
 
@@ -697,3 +756,36 @@ def _(connection: ModeClient) -> None:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."
         )
+
+
+@get_connection.register
+def _(connection: MlflowConnection, verbose: bool = False):
+    from mlflow.tracking import MlflowClient
+
+    return MlflowClientWrapper(
+        MlflowClient(
+            tracking_uri=connection.trackingUri,
+            registry_uri=connection.registryUri,
+        )
+    )
+
+
+@test_connection.register
+def _(connection: MlflowClientWrapper) -> None:
+    try:
+        connection.client.list_registered_models()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(_: BackendConnection, verbose: bool = False):
+    """
+    Let's use Airflow's internal connection for this
+    """
+    from airflow import settings
+
+    with settings.Session() as session:
+        return session.get_bind()

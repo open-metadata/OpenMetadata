@@ -27,7 +27,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -54,10 +53,11 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -68,6 +68,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import {
@@ -95,8 +96,6 @@ const PipelineDetailsPage = () => {
   const [pipelineId, setPipelineId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
-  const [isPipelineStatusLoading, setIsPipelineStatusLoading] =
-    useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<EntityReference>>([]);
   const [owner, setOwner] = useState<EntityReference>();
@@ -138,6 +137,9 @@ const PipelineDetailsPage = () => {
   const [pipeLineStatus, setPipelineStatus] = useState<
     Pipeline['pipelineStatus']
   >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -155,21 +157,13 @@ const PipelineDetailsPage = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.PIPELINE,
+      pipelineFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
   const saveUpdatedPipelineData = (
@@ -204,9 +198,18 @@ const PipelineDetailsPage = () => {
       });
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.PIPELINE, pipelineFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.PIPELINE, pipelineFQN),
+      after,
+      threadType,
+      feedFilter
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -227,26 +230,13 @@ const PipelineDetailsPage = () => {
       .finally(() => setIsentityThreadLoading(false));
   };
 
-  const getPipeLineStatus = () => {
-    setIsPipelineStatusLoading(true);
-    getPipelineByFqn(pipelineFQN, TabSpecificField.PIPELINE_STATUS)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          const { pipelineStatus: status } = res.data;
-          setPipelineStatus(status);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-pipeline-status-error']
-        );
-      })
-      .finally(() => {
-        setIsPipelineStatusLoading(false);
-      });
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, filterType, type);
   };
 
   const fetchServiceDetails = (type: string, fqn: string) => {
@@ -289,6 +279,7 @@ const PipelineDetailsPage = () => {
             name,
             tasks,
             pipelineUrl,
+            pipelineStatus,
             version,
           } = res.data;
           setDisplayName(displayName || name);
@@ -327,6 +318,13 @@ const PipelineDetailsPage = () => {
             serviceType: serviceType,
             timestamp: 0,
           });
+
+          setPipelineUrl(pipelineUrl);
+          setTasks(tasks);
+
+          setPipelineStatus(
+            (pipelineStatus as Pipeline['pipelineStatus']) || []
+          );
 
           fetchServiceDetails(service.type, service.name)
             .then((hostPort: string) => {
@@ -375,11 +373,6 @@ const PipelineDetailsPage = () => {
       }
       case TabSpecificField.ACTIVITY_FEED: {
         getFeedData();
-
-        break;
-      }
-      case TabSpecificField.PIPELINE_STATUS: {
-        getPipeLineStatus();
 
         break;
       }
@@ -726,18 +719,18 @@ const PipelineDetailsPage = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={displayName}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followPipelineHandler={followPipeline}
           followers={followers}
           isLineageLoading={isLineageLoading}
           isNodeLoading={isNodeLoading}
-          isPipelineStatusLoading={isPipelineStatusLoading}
           isentityThreadLoading={isentityThreadLoading}
           lineageLeafNodes={leafNodes}
           loadNodeHandler={loadNodeHandler}

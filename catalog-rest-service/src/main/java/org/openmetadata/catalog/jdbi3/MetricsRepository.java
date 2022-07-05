@@ -50,7 +50,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
-    metrics.setService(getService(metrics)); // service is a default field
+    metrics.setService(getContainer(metrics.getId())); // service is a default field
     metrics.setOwner(fields.contains(FIELD_OWNER) ? getOwner(metrics) : null);
     metrics.setUsageSummary(
         fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
@@ -87,10 +87,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
     storeOwner(metrics, metrics.getOwner());
     applyTags(metrics);
-  }
-
-  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics ID
-    return getContainer(metrics.getId(), Entity.METRICS);
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID

@@ -92,7 +92,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ok == TestCaseResult(
@@ -107,7 +106,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ko == TestCaseResult(
@@ -122,7 +120,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_aborted == TestCaseResult(
@@ -146,7 +143,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ok == TestCaseResult(
@@ -161,7 +157,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ko == TestCaseResult(
@@ -176,7 +171,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_aborted == TestCaseResult(
@@ -199,7 +193,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ok == TestCaseResult(
@@ -217,7 +210,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ok_2 == TestCaseResult(
@@ -234,7 +226,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_ko == TestCaseResult(
@@ -251,7 +242,6 @@ class MetricsTest(TestCase):
             execution_date=EXECUTION_DATE,
             session=self.session,
             table=User,
-            profile_sample=100.0,
         )
 
         assert res_aborted == TestCaseResult(

@@ -32,13 +32,11 @@ config = """
       "config":{
         "type": "DatabaseUsage"
       }
-      
     }
   },
   "processor": {
     "type": "query-parser",
-    "config": {
-    }
+    "config": {}
   },
   "stage": {
     "type": "table-usage",
@@ -68,39 +66,22 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.dim_address": 200,
-            "shopify.shop": 300,
-            "shopify.dim_customer": 250,
-            "dim_customer": 76,
-            "shopify.dim_location": 150,
-            "dim_location.shop_id": 50,
-            "shop": 56,
-            "shop_id": 50,
-            "shopify.dim_staff": 150,
-            "shopify.fact_line_item": 200,
-            "shopify.fact_order": 310,
-            "shopify.product": 10,
-            "shopify.fact_sale": 520,
-            "dim_address": 24,
-            "api": 4,
-            "dim_location": 8,
-            "product": 32,
-            "dim_staff": 10,
-            "fact_line_item": 34,
-            "fact_order": 30,
-            "fact_sale": 54,
-            "fact_session": 62,
-            "raw_customer": 20,
-            "raw_order": 26,
-            "raw_product_catalog": 12,
+            "shopify.raw_product_catalog": 2,
+            "dim_customer": 2,
+            "fact_order": 2,
+            "shopify.fact_sale": 3,
+            "shopify.raw_customer": 10,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()
+        table_usage_map = {}
+
+        for key, value in workflow.stage.table_usage.items():
+            table_usage_map[key[0]] = value.count
+
         for table_name, expected_count in expected_result.items():
             try:
-                self.assertEqual(
-                    workflow.stage.table_usage[table_name].count, expected_count
-                )
+                self.assertEqual(table_usage_map[table_name], expected_count)
             except KeyError as err:
                 self.assertTrue(False)
         workflow.stop()

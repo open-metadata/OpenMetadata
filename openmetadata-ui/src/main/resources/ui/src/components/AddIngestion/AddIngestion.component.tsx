@@ -92,6 +92,9 @@ const AddIngestion = ({
   const [ingestSampleData, setIngestSampleData] = useState(
     (data?.sourceConfig.config as ConfigClass)?.generateSampleData ?? true
   );
+  const [databaseServiceName, setDatabaseServiceName] = useState(
+    (data?.sourceConfig.config as ConfigClass)?.dbServiceName ?? ''
+  );
   const [description, setDescription] = useState(data?.description ?? '');
   const [repeatFrequency, setRepeatFrequency] = useState(
     data?.airflowConfig.scheduleInterval ?? INGESTION_SCHEDULER_INITIAL_VALUE
@@ -157,6 +160,9 @@ const AddIngestion = ({
   );
   const [includeView, setIncludeView] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeViews)
+  );
+  const [includeTag, setIncludeTags] = useState(
+    Boolean((data?.sourceConfig.config as ConfigClass)?.includeTags)
   );
   const [includeLineage, setIncludeLineage] = useState(
     Boolean((data?.sourceConfig.config as ConfigClass)?.includeLineage ?? true)
@@ -388,6 +394,7 @@ const AddIngestion = ({
 
         return {
           includeViews: includeView,
+          includeTags: includeTag,
           databaseFilterPattern: getFilterPatternData(
             databaseFilterPattern,
             showDatabaseFilter
@@ -425,6 +432,7 @@ const AddIngestion = ({
             dashboardFilterPattern,
             showDashboardFilter
           ),
+          dbServiceName: databaseServiceName,
           type: ConfigType.DashboardMetadata,
         };
       }
@@ -461,6 +469,7 @@ const AddIngestion = ({
             showFqnFilter
           ),
           type: profilerIngestionType,
+          generateSampleData: ingestSampleData,
         };
       }
       case PipelineType.Metadata:
@@ -603,14 +612,17 @@ const AddIngestion = ({
             chartFilterPattern={chartFilterPattern}
             dashboardFilterPattern={dashboardFilterPattern}
             databaseFilterPattern={databaseFilterPattern}
+            databaseServiceName={databaseServiceName}
             description={description}
             enableDebugLog={enableDebugLog}
             fqnFilterPattern={fqnFilterPattern}
             getExcludeValue={getExcludeValue}
             getIncludeValue={getIncludeValue}
+            handleDatasetServiceName={(val) => setDatabaseServiceName(val)}
             handleDescription={(val) => setDescription(val)}
             handleEnableDebugLog={() => setEnableDebugLog((pre) => !pre)}
             handleIncludeLineage={() => setIncludeLineage((pre) => !pre)}
+            handleIncludeTags={() => setIncludeTags((pre) => !pre)}
             handleIncludeView={() => setIncludeView((pre) => !pre)}
             handleIngestSampleData={() => setIngestSampleData((pre) => !pre)}
             handleIngestionName={(val) => setIngestionName(val)}
@@ -620,6 +632,7 @@ const AddIngestion = ({
             handleShowFilter={handleShowFilter}
             handleStageFileLocation={(val) => setStageFileLocation(val)}
             includeLineage={includeLineage}
+            includeTags={includeTag}
             includeView={includeView}
             ingestSampleData={ingestSampleData}
             ingestionName={ingestionName}

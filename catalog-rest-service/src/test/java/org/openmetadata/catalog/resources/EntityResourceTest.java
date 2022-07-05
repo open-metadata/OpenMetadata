@@ -101,6 +101,7 @@ import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.MlModelService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
@@ -118,6 +119,7 @@ import org.openmetadata.catalog.resources.metadata.TypeResourceTest;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.services.MlModelServiceResourceTest;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -188,6 +190,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference PULSAR_REFERENCE;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference GLUE_REFERENCE;
+
+  public static EntityReference MLFLOW_REFERENCE;
 
   public static EntityReference AWS_STORAGE_SERVICE_REFERENCE;
   public static EntityReference GCP_STORAGE_SERVICE_REFERENCE;
@@ -272,6 +276,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new PipelineServiceResourceTest().setupPipelineServices(test);
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
+    new MlModelServiceResourceTest().setupMlModelServices(test);
 
     new TableResourceTest().setupDatabaseSchemas(test);
   }
@@ -380,16 +385,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     params.put("fields", allFields);
     listEntities(params, ADMIN_AUTH_HEADERS);
 
-    // Adding any parameter that is allowed should result in an error
+    // Requesting invalid fields should result in an error
     String invalidField = "invalidField";
     assertResponse(
         () -> getEntity(entity.getId(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid field name invalidField");
+        CatalogExceptionMessage.invalidField(invalidField));
+
     assertResponse(
         () -> getEntityByName(entity.getFullyQualifiedName(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid field name invalidField");
+        CatalogExceptionMessage.invalidField(invalidField));
 
     params.put("fields", invalidField);
     assertResponse(() -> listEntities(params, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name invalidField");
@@ -890,6 +896,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             DashboardService.class,
             MessagingService.class,
             IngestionPipeline.class,
+            MlModelService.class,
             Type.class);
     if (services.contains(entity.getClass())) {
       assertNotEquals(oldVersion, entity.getVersion()); // Version did change
@@ -1569,7 +1576,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          noPermission(userName, "UpdateDescription"));
+          noPermission(userName, "editDescription"));
       // Revert to original.
       entity.setDescription(originalDescription);
       return entity;

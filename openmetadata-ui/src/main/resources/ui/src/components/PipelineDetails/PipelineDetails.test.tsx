@@ -95,6 +95,7 @@ const PipelineDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   pipelineFQN: '',
   deletePostHandler: jest.fn(),
@@ -185,7 +186,7 @@ describe('Test PipelineDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Task');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const manageTab = await findByTestId(tabs, 'Manage');
 
@@ -206,8 +207,13 @@ describe('Test PipelineDetails component', () => {
       }
     );
     const taskDetail = await findByTestId(container, 'tasks-dag');
+    const pipelineStatus = await findByTestId(
+      container,
+      'pipeline-status-list'
+    );
 
     expect(taskDetail).toBeInTheDocument();
+    expect(pipelineStatus).toBeInTheDocument();
   });
 
   it('Check if active tab is activity feed', async () => {
@@ -222,24 +228,9 @@ describe('Test PipelineDetails component', () => {
     expect(activityFeedList).toBeInTheDocument();
   });
 
-  it('Check if active tab is executions', async () => {
-    const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-    const pipelineStatus = await findByTestId(
-      container,
-      'pipeline-status-list'
-    );
-
-    expect(pipelineStatus).toBeInTheDocument();
-  });
-
   it('Check if active tab is lineage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={3} />,
       {
         wrapper: MemoryRouter,
       }
@@ -251,7 +242,7 @@ describe('Test PipelineDetails component', () => {
 
   it('Check if active tab is manage', async () => {
     const { container } = render(
-      <PipelineDetails {...PipelineDetailsProps} activeTab={5} />,
+      <PipelineDetails {...PipelineDetailsProps} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }

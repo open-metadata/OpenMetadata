@@ -137,6 +137,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_join_request: Join data to add
         """
+
         logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
@@ -208,6 +209,33 @@ class OMetaTableMixin:
                 databaseSchema=table.databaseSchema,
                 tags=table.tags,
                 viewDefinition=table.viewDefinition,
+            )
+            return self.create_or_update(updated)
+
+        return None
+
+    def update_profile_query(self, fqn: str, **kwargs) -> Optional[Table]:
+        """
+        Update the profileQuery property of a Table, given
+        its FQN.
+
+        :param fqn: Table FQN
+        :param profile_sample: new profile sample to set
+        :return: Updated table
+        """
+        table = self.get_by_name(entity=Table, fqn=fqn)
+        if table:
+            updated = CreateTableRequest(
+                name=table.name,
+                description=table.description,
+                tableType=table.tableType,
+                columns=table.columns,
+                tableConstraints=table.tableConstraints,
+                owner=table.owner,
+                databaseSchema=table.databaseSchema,
+                tags=table.tags,
+                viewDefinition=table.viewDefinition,
+                **kwargs,
             )
             return self.create_or_update(updated)
 

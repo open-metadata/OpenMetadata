@@ -58,10 +58,10 @@
         },
         "description": {
           "description": "Description of this Task.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/markdown"
         },
         "taskUrl": {
-          "description": "Task URL suffix to visit/manage. This URL points to respective pipeline service UI.",
+          "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
           "type": "string"
         },
         "downstreamTasks": {
@@ -143,7 +143,7 @@
     },
     "description": {
       "description": "Description of this Pipeline.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -158,7 +158,7 @@
       "type": "string"
     },
     "pipelineUrl": {
-      "description": "Pipeline URL suffix to visit/manage. This URL points to respective pipeline service UI.",
+      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string"
     },
     "concurrency": {

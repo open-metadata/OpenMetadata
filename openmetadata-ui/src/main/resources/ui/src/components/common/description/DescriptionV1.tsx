@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
 import React, { Fragment } from 'react';
+import { EntityField } from '../../../constants/feed.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
@@ -69,21 +70,13 @@ const DescriptionV1 = ({
       <NonAdminAction
         html={getHtmlForNonAdminAction(Boolean(owner))}
         isOwner={hasEditAccess}
-        permission={Operation.UpdateDescription}
+        permission={Operation.EditDescription}
         position="right">
         <button
           className="focus:tw-outline-none tw-text-primary"
           data-testid="edit-description"
           onClick={onDescriptionEdit}>
-          <span className="tw-mr-2">
-            <SVGIcons
-              alt="edit"
-              icon={Icons.EDIT_OUTLINE_PRIMARY}
-              title="Edit"
-              width="12px"
-            />
-          </span>
-          <span>Edit</span>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </button>
       </NonAdminAction>
     ) : (
@@ -130,7 +123,7 @@ const DescriptionV1 = ({
         <div
           className={classNames(
             'tw-w-5 tw-min-w-max tw-flex',
-            description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
+            description?.trim() ? 'tw-pl-1' : ''
           )}>
           {isUndefined(descriptionThread) &&
           onEntityFieldSelect &&
@@ -138,7 +131,7 @@ const DescriptionV1 = ({
             <button
               className="focus:tw-outline-none tw-ml-2 tw--mt-6"
               data-testid="request-description"
-              onClick={() => onEntityFieldSelect?.('description')}>
+              onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
               <PopOver
                 position="top"
                 title="Request description"
@@ -176,7 +169,11 @@ const DescriptionV1 = ({
                   data-testid="start-description-thread"
                   onClick={() =>
                     onThreadLinkSelect?.(
-                      getEntityFeedLink(entityType, entityFqn, 'description')
+                      getEntityFeedLink(
+                        entityType,
+                        entityFqn,
+                        EntityField.DESCRIPTION
+                      )
                     )
                   }>
                   <SVGIcons

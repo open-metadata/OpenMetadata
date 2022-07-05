@@ -12,11 +12,15 @@
  */
 
 import { TabSpecificField } from '../enums/entity.enum';
-import { Pipeline, StatusType } from '../generated/entity/data/pipeline';
+import {
+  Pipeline,
+  StatusType,
+  TaskStatus,
+} from '../generated/entity/data/pipeline';
 import { Icons } from './SvgUtils';
 
 export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}`;
+${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}`;
 
 export const pipelineDetailsTabs = [
   {
@@ -24,14 +28,9 @@ export const pipelineDetailsTabs = [
     path: 'details',
   },
   {
-    name: 'Activity Feed',
+    name: 'Activity Feed & Task',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: 'Executions',
-    path: 'execution',
-    field: TabSpecificField.PIPELINE_STATUS,
   },
   {
     name: 'Lineage',
@@ -52,18 +51,13 @@ export const getCurrentPipelineTab = (tab: string) => {
 
       break;
 
-    case 'execution':
+    case 'lineage':
       currentTab = 3;
 
       break;
 
-    case 'lineage':
-      currentTab = 4;
-
-      break;
-
     case 'manage':
-      currentTab = 5;
+      currentTab = 4;
 
       break;
 
@@ -96,6 +90,21 @@ export const getModifiedPipelineStatus = (
   } else {
     return data.filter((d) => d?.executionStatus === status);
   }
+};
+
+export const getFilteredPipelineStatus = (
+  status: StatusType,
+  pipelineStatus: Pipeline['pipelineStatus'] = []
+) => {
+  if (!status) {
+    return pipelineStatus;
+  } else {
+    return pipelineStatus.filter((d) => d?.executionStatus === status);
+  }
+};
+
+export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
+  return tasks.find((task) => task.name === taskName)?.executionStatus || '';
 };
 
 export const STATUS_OPTIONS = [

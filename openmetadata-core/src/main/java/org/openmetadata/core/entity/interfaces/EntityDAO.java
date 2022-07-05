@@ -130,17 +130,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default T findEntityById(UUID id, Include include) throws IOException {
-    Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id.toString(), getCondition(include));
-    T entity = null;
-    if (json != null) {
-      entity = JsonUtils.readValue(json, clz);
-    }
-    if (entity == null) {
-      String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
-    return entity;
+    return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
   }
 
   default T findEntityById(UUID id) throws IOException {
@@ -153,15 +143,18 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SneakyThrows
   default T findEntityByName(String fqn, Include include) {
+    return jsonToEntity(findByName(getTableName(), getNameColumn(), fqn, getCondition(include)), fqn);
+  }
+
+  default T jsonToEntity(String json, String identity) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), getNameColumn(), fqn, getCondition(include));
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
     }
     return entity;
   }
@@ -170,7 +163,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return findEntityById(id).getEntityReference();
   }
 
-  default EntityReference findEntityReferenceByName(String fqn) throws IOException {
+  default EntityReference findEntityReferenceByName(String fqn) {
     return findEntityByName(fqn).getEntityReference();
   }
 
@@ -178,7 +171,7 @@ public interface EntityDAO<T extends EntityInterface> {
     return findEntityById(id, include).getEntityReference();
   }
 
-  default EntityReference findEntityReferenceByName(String fqn, Include include) throws IOException {
+  default EntityReference findEntityReferenceByName(String fqn, Include include) {
     return findEntityByName(fqn, include).getEntityReference();
   }
 

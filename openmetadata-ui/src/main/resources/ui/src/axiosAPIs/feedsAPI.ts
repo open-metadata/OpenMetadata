@@ -14,19 +14,24 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { configOptions } from '../constants/constants';
+import { TaskOperation } from '../constants/feed.constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
-import { Post } from '../generated/entity/feed/thread';
+import { Post, TaskDetails, ThreadType } from '../generated/entity/feed/thread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
   entityLink?: string,
-  after?: string
+  after?: string,
+  type?: ThreadType,
+  filterType?: FeedFilter
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
       entityLink: entityLink,
       after,
+      type,
+      filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
     },
   });
 };
@@ -34,7 +39,8 @@ export const getAllFeeds: Function = (
 export const getFeedsWithFilter: Function = (
   userId?: string,
   filterType?: FeedFilter,
-  after?: string
+  after?: string,
+  type?: ThreadType
 ): Promise<AxiosResponse> => {
   let config = {};
 
@@ -44,12 +50,14 @@ export const getFeedsWithFilter: Function = (
         userId,
         filterType,
         after,
+        type,
       },
     };
   } else {
     config = {
       params: {
         after,
+        type,
       },
     };
   }
@@ -58,11 +66,13 @@ export const getFeedsWithFilter: Function = (
 };
 
 export const getFeedCount: Function = (
-  entityLink?: string
+  entityLink?: string,
+  type?: ThreadType
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed/count`, {
     params: {
       entityLink: entityLink,
+      type,
     },
   });
 };
@@ -108,4 +118,16 @@ export const updatePost: Function = (
     data,
     configOptions
   );
+};
+
+export const getTask: Function = (taskID: string): Promise<AxiosResponse> => {
+  return APIClient.get(`/feed/tasks/${taskID}`);
+};
+
+export const updateTask: Function = (
+  operation: TaskOperation,
+  taskId: string,
+  taskDetail: TaskDetails
+) => {
+  return APIClient.put(`/feed/tasks/${taskId}/${operation}`, taskDetail);
 };

@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import screenShot2 from '../assets/img/ss-explore.png';
-import screenShot1 from '../assets/img/ss-landing.png';
-import screenShot3 from '../assets/img/ss-table-details.png';
-import screenShot4 from '../assets/img/ss-users.png';
+import lineage from '../assets/img/lineage.png';
+import screenShot2 from '../assets/img/screenShot1.png';
+import screenShot1 from '../assets/img/screenShot2.png';
+import screenShot3 from '../assets/img/screenShot3.png';
+import screenShot4 from '../assets/img/screenShot4.png';
 
 export const LOGIN_SLIDE = [
   {
@@ -35,6 +36,11 @@ export const LOGIN_SLIDE = [
     image: screenShot4,
     description:
       'Fosters Collaboration among the Producers and Consumers of Data',
+  },
+  {
+    image: lineage,
+    description:
+      'Deeply understand table relations; thanks to column-level lineage.',
   },
 ];
 
