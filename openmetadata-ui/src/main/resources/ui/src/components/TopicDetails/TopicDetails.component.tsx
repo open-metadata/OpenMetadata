@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { EntityTags, ExtraInfo } from 'Models';
 import React, {
   Fragment,
@@ -21,7 +22,7 @@ import React, {
 } from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -48,6 +49,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -95,6 +97,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   sampleData,
   updateThreadHandler,
   entityFieldTaskCount,
+  lineageTabData,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -209,6 +212,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 4,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+        selectedName: 'icon-lineagecolor',
+      },
+      isProtected: false,
+      position: 5,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -218,7 +232,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 5,
+      position: 6,
     },
   ];
   const extraInfo: Array<ExtraInfo> = [
@@ -485,6 +499,29 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 </div>
               )}
               {activeTab === 5 && (
+                <div
+                  className={classNames(
+                    'tw-px-2',
+                    location.pathname.includes(ROUTES.TOUR)
+                      ? 'tw-h-70vh'
+                      : 'tw-h-full'
+                  )}
+                  id="lineageDetails">
+                  <EntityLineageComponent
+                    addLineageHandler={lineageTabData.addLineageHandler}
+                    deleted={deleted}
+                    entityLineage={lineageTabData.entityLineage}
+                    entityLineageHandler={lineageTabData.entityLineageHandler}
+                    isLoading={lineageTabData.isLineageLoading}
+                    isNodeLoading={lineageTabData.isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageTabData.lineageLeafNodes}
+                    loadNodeHandler={lineageTabData.loadNodeHandler}
+                    removeLineageHandler={lineageTabData.removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 6 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
