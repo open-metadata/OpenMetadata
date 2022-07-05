@@ -32,12 +32,6 @@ from metadata.generated.schema.type.usageDetails import (
 )
 
 
-class DeleteTable(BaseModel):
-    """Entity Reference of a table to be deleted"""
-
-    table: Table
-
-
 class ESEntityReference(BaseModel):
     """JsonSchema genereated pydantic contains many unnecessary fields its not one-to-one representation of JsonSchema
     Example all the "__root__" fields. This will not index into ES elegnatly hence we are creating special class
