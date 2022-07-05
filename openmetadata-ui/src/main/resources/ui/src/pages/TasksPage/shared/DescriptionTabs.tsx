@@ -12,8 +12,9 @@
  */
 
 import { Tabs } from 'antd';
+import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import { Diff, EditorContentRef } from 'Models';
+import { EditorContentRef } from 'Models';
 import React, { useState } from 'react';
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -37,7 +38,7 @@ export const DescriptionTabs = ({
 }: Props) => {
   const { TabPane } = Tabs;
 
-  const [diffs, setDiffs] = useState<Diff[]>([]);
+  const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
 
   const onTabChange = (key: string) => {
