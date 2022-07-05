@@ -150,9 +150,9 @@ const Appbar: React.FC = (): JSX.Element => {
     return (
       <div>
         <div className="tw-text-grey-muted tw-text-xs">{name}</div>
-        {userRoleArr.map((r, i) => (
+        {userRoleArr.map((userRole, i) => (
           <p className="tw-font-medium" key={i}>
-            {r}
+            {userRole}
           </p>
         ))}
         <hr className="tw-my-1.5" />
