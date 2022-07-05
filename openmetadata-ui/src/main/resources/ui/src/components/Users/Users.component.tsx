@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isEmpty, isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -134,8 +134,8 @@ const Users = ({
   };
 
   const activeTabHandler = (tabNum: number) => {
+    setFeedFilter(tabNum === 1 ? FeedFilter.ALL : FeedFilter.OWNER);
     setActiveTab(tabNum);
-    setFeedFilter(FeedFilter.ALL);
     // To reset search params appends from other page for proper navigation
     location.search = '';
     if (profileInfo[tabNum - 1].path !== tab) {
@@ -670,11 +670,9 @@ const Users = ({
             variant="link"
             onClick={() => setShowFilterList((visible) => !visible)}>
             <span className="tw-font-medium tw-text-grey">
-              {
-                (activeTab === 1 ? userPageFilterList : filterListTasks).find(
-                  (f) => f.value === feedFilter
-                )?.name
-              }
+              {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
+                (f) => f.value === feedFilter
+              )?.name || capitalize(feedFilter)}
             </span>
             <DropDownIcon />
           </Button>
