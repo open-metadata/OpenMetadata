@@ -42,6 +42,7 @@ import java.util.Optional;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -50,8 +51,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
@@ -79,6 +78,9 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
+import org.openmetadata.catalog.security.saml.SamlRedirectServlet;
+import org.openmetadata.catalog.security.saml.SamlResponseServlet;
+import org.openmetadata.catalog.security.saml.SamlSettingsHolder;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 import org.openmetadata.catalog.slack.SlackWebhookEventPublisher;
 import org.openmetadata.catalog.socket.FeedServlet;
@@ -158,10 +160,21 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
+
+    intializeWebsockets(catalogConfig, environment);
+
+    // try init
+    SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+    ServletRegistration.Dynamic samlRedirectServlet =
+        environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
+    samlRedirectServlet.addMapping("/api/v1/saml/login");
+    ServletRegistration.Dynamic samlRecieverServlet =
+        environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
+    samlRecieverServlet.addMapping("/api/v1/saml/acs");
+
     FilterRegistration.Dynamic micrometerFilter =
         environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
     micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
-    intializeWebsockets(catalogConfig, environment);
   }
 
   @SneakyThrows
@@ -287,11 +300,13 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-    environment.getApplicationContext().setContextPath("/");
-    environment
-        .getApplicationContext()
-        .addFilter(new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
-    environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
+
+    ServletRegistration.Dynamic pushNotificationServlet =
+        environment.servlets().addServlet("Push Notification", new FeedServlet());
+    pushNotificationServlet.addMapping(pathSpec);
+    FilterRegistration.Dynamic pushFeedFilter = environment.servlets().addFilter("PushFeedFilter", socketAddressFilter);
+    pushFeedFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, pathSpec);
+
     // Upgrade connection to websocket from Http
     try {
       WebSocketUpgradeFilter webSocketUpgradeFilter =

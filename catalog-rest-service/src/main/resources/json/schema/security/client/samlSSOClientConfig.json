@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/security/client/samlSSOClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SamlSSOClientConfig",
+  "description": "SAML SSO client security configs.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.security.client.SamlSSOClientConfig",
+  "definitions": {
+    "idp": {
+      "javaType": "org.openmetadata.catalog.type.IdentityProviderConfig",
+      "description": "This schema defines defines the identity provider config.",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "description": "Identity Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        },
+        "ssoLoginUrl": {
+          "description": "SSO Login URL.",
+          "type": "string"
+        },
+        "ssoLogoutUrl": {
+          "description": "SSO Logout URL.",
+          "type": "string"
+        },
+        "idpX509Certificate": {
+          "description": "X509 Certificate ",
+          "type": "string"
+        }
+      },
+      "required": ["entityId", "ssoLoginUrl"],
+      "additionalProperties": false
+    },
+    "sp": {
+      "javaType": "org.openmetadata.catalog.type.ServiceProviderConfig",
+      "description": "This schema defines defines the identity provider config.",
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "description": "Service Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        },
+        "acs": {
+          "description": "Assertion Consumer URL.",
+          "type": "string"
+        },
+        "logoutUrl": {
+          "description": "SSO Logout URL.",
+          "type": "string"
+        },
+        "spX509Certificate": {
+          "description": "X509 Certificate ",
+          "type": "string"
+        },
+        "callback": {
+          "description": "Service Provider Entity ID usually same as the SSO login URL.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["entityId", "acs"]
+    }
+  },
+  "properties": {
+    "idp": {
+      "$ref": "#/definitions/idp"
+    },
+    "sp": {
+      "$ref": "#/definitions/sp"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["idp", "sp"]
+}

@@ -30,6 +30,7 @@ import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
 
@@ -103,6 +104,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private boolean sandboxModeEnabled;
+
+  @JsonProperty("samlConfiguration")
+  @Getter
+  @Setter
+  private SamlSSOClientConfig samlConfiguration;
 
   @Override
   public String toString() {
