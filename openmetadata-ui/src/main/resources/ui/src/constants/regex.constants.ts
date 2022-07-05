@@ -19,3 +19,6 @@ export const FQN_REGEX = new RegExp(
   `("${FQN_SEPARATOR_CHAR}*?"|[^"${FQN_SEPARATOR_CHAR}\\s]+)(?=\\s*.|\\s*$)`,
   'g'
 );
+
+export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
+export const nameWithSpace = /\s/g;
