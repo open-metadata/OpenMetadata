@@ -13,8 +13,14 @@
 
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { CSSProperties, Fragment } from 'react';
-import { Handle, HandleProps, NodeProps, Position } from 'react-flow-renderer';
+import React, { CSSProperties, Fragment, useEffect } from 'react';
+import {
+  Handle,
+  HandleProps,
+  NodeProps,
+  Position,
+  useUpdateNodeInternals,
+} from 'react-flow-renderer';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { getNodeRemoveButton } from '../../utils/EntityLineageUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
@@ -91,7 +97,8 @@ const getHandle = (
 };
 
 const CustomNode = (props: NodeProps) => {
-  const { data, type, isConnectable, selected } = props;
+  const updateNodeInternals = useUpdateNodeInternals();
+  const { data, type, isConnectable, selected, id } = props;
   /* eslint-disable-next-line */
   const {
     label,
@@ -101,6 +108,10 @@ const CustomNode = (props: NodeProps) => {
     isEditMode,
     isExpanded,
   } = data;
+
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [isEditMode, isExpanded]);
 
   return (
     <div className="nowheel">
