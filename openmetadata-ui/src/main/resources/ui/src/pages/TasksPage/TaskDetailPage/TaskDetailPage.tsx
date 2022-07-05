@@ -17,9 +17,9 @@ import { Button, Card, Dropdown, Layout, Menu, Modal, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
+import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EditorContentRef, EntityReference, EntityTags } from 'Models';
+import { EditorContentRef, EntityReference } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -37,7 +37,6 @@ import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEdi
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
-import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -47,7 +46,6 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TaskOperation } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Column } from '../../../generated/entity/data/table';
 import {
   TaskDetails,
   TaskType,
@@ -55,8 +53,8 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import {
   deletePost,
@@ -67,24 +65,26 @@ import {
 } from '../../../utils/FeedUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import {
-  getEntityLink,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
   getDescriptionDiff,
+  isDescriptionTask,
+  isTagsTask,
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
+import ColumnDetail from '../shared/ColumnDetail';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import { DiffView } from '../shared/DiffView';
+import EntityDetail from '../shared/EntityDetail';
+import TagSuggestion from '../shared/TagSuggestion';
+import TaskStatus from '../shared/TaskStatus';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import {
   EntityData,
@@ -116,24 +116,13 @@ const TaskDetailPage = () => {
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [comment, setComment] = useState<string>('');
+  const [tagsSuggestion, setTagsSuggestion] = useState<TagLabel[]>([]);
 
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
-  const entityTier = useMemo(() => {
-    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
-
-    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [entityData.tags]);
-
-  const entityTags = useMemo(() => {
-    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
-
-    return tags.map((tag) => `#${tag.tagFQN}`).join('  ');
-  }, [entityData.tags]);
 
   const entityType = useMemo(() => {
     return getEntityType(taskDetail.about);
@@ -174,6 +163,12 @@ const TaskDetailPage = () => {
   const isCreator = isEqual(taskDetail.createdBy, currentUser?.name);
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
+
+  const isTaskDescription = isDescriptionTask(
+    taskDetail.task?.type as TaskType
+  );
+
+  const isTaskTags = isTagsTask(taskDetail.task?.type as TaskType);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -428,10 +423,17 @@ const TaskDetailPage = () => {
         setAssignees(assigneesArr);
         setOptions(assigneesArr);
       }
-      if (!taskSuggestion) {
-        setTaskAction(TASK_ACTION_LIST[1]);
+
+      if (isTaskTags) {
+        const tagsSuggestion = JSON.parse(taskSuggestion || '[]');
+        isEmpty(tagsSuggestion) && setTaskAction(TASK_ACTION_LIST[1]);
+        setTagsSuggestion(tagsSuggestion);
+      } else {
+        if (!taskSuggestion) {
+          setTaskAction(TASK_ACTION_LIST[1]);
+        }
+        setSuggestion(taskSuggestion || '');
       }
-      setSuggestion(taskSuggestion || '');
     }
   };
 
@@ -446,108 +448,6 @@ const TaskDetailPage = () => {
   useEffect(() => {
     onTaskDetailChange();
   }, [taskDetail]);
-
-  const TaskStatusElement = ({ status }: { status: ThreadTaskStatus }) => {
-    const openCheck = isEqual(status, ThreadTaskStatus.Open);
-    const closedCheck = isEqual(status, ThreadTaskStatus.Closed);
-
-    return (
-      <Fragment>
-        <div
-          className={classNames(
-            'tw-rounded-3xl tw-px-2 tw-p-0',
-            {
-              'tw-bg-task-status-bg': openCheck,
-            },
-            { 'tw-bg-gray-100': closedCheck }
-          )}>
-          <span
-            className={classNames(
-              'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
-              {
-                'tw-bg-task-status-fg': openCheck,
-              },
-              {
-                'tw-bg-gray-500': closedCheck,
-              }
-            )}
-          />
-          <span
-            className={classNames(
-              'tw-ml-1',
-              { 'tw-text-task-status-fg': openCheck },
-              { 'tw-text-gray-500': closedCheck }
-            )}>
-            {status}
-          </span>
-        </div>
-      </Fragment>
-    );
-  };
-
-  const ColumnDetail = ({ column }: { column: Column }) => {
-    return !isEmpty(column) && !isUndefined(column) ? (
-      <div className="tw-mb-4" data-testid="column-details">
-        <div className="tw-flex">
-          <span className="tw-text-grey-muted tw-flex-none tw-mr-1">
-            Column type:
-          </span>{' '}
-          <Ellipses tooltip rows={1}>
-            {column.dataTypeDisplay}
-          </Ellipses>
-        </div>
-        {column.tags && column.tags.length ? (
-          <div className="tw-flex tw-mt-4">
-            <SVGIcons
-              alt="icon-tag"
-              className="tw-mr-1"
-              icon="icon-tag-grey"
-              width="12"
-            />
-            <div>{column.tags.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</div>
-          </div>
-        ) : null}
-      </div>
-    ) : null;
-  };
-
-  const EntityDetail = () => {
-    return (
-      <div data-testid="entityDetail">
-        <div className="tw-flex tw-ml-6">
-          <span className="tw-text-grey-muted">Owner:</span>{' '}
-          <span>
-            {entityData.owner ? (
-              <span className="tw-flex tw-ml-1">
-                <ProfilePicture
-                  displayName={getEntityName(entityData.owner)}
-                  id=""
-                  name={getEntityName(entityData.owner)}
-                  width="20"
-                />
-                <span className="tw-ml-1">
-                  {getEntityName(entityData.owner)}
-                </span>
-              </span>
-            ) : (
-              <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
-            )}
-          </span>
-          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
-          <p data-testid="tier">
-            {entityTier ? (
-              entityTier
-            ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
-            )}
-          </p>
-        </div>
-        <p className="tw-ml-6" data-testid="tags">
-          {entityTags}
-        </p>
-      </div>
-    );
-  };
 
   const getDiffView = () => {
     const oldValue = taskDetail.task?.oldValue;
@@ -613,7 +513,7 @@ const TaskDetailPage = () => {
                 },
               ]}
             />
-            <EntityDetail />
+            <EntityDetail entityData={entityData} />
 
             <Card
               data-testid="task-metadata"
@@ -624,7 +524,7 @@ const TaskDetailPage = () => {
                 {`Task #${taskId}`} {taskDetail.message}
               </p>
               <p className="tw-flex tw-mb-4" data-testid="task-metadata">
-                <TaskStatusElement
+                <TaskStatus
                   status={taskDetail.task?.status as ThreadTaskStatus}
                 />
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
@@ -718,54 +618,65 @@ const TaskDetailPage = () => {
             <Card
               data-testid="task-data"
               style={{ ...cardStyles, marginTop: '16px', marginLeft: '24px' }}>
-              <div data-testid="task-description-tabs">
-                <p className="tw-text-grey-muted">Description:</p>{' '}
-                {!isEmpty(taskDetail) && (
-                  <Fragment>
-                    {isTaskClosed ? (
-                      getDiffView()
-                    ) : (
-                      <div data-testid="description-task">
-                        {isRequestDescription && (
-                          <div data-testid="request-description">
-                            {isTaskActionEdit && hasEditAccess() ? (
-                              <RichTextEditor
-                                height="208px"
-                                initialValue={suggestion}
-                                placeHolder="Add description"
-                                style={{ marginTop: '0px' }}
-                                onTextChange={onSuggestionChange}
-                              />
-                            ) : (
-                              <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                {getCurrentDescription()}
-                              </div>
-                            )}
-                          </div>
-                        )}
+              {isTaskDescription && (
+                <div data-testid="task-description-tabs">
+                  <p className="tw-text-grey-muted">Description:</p>{' '}
+                  {!isEmpty(taskDetail) && (
+                    <Fragment>
+                      {isTaskClosed ? (
+                        getDiffView()
+                      ) : (
+                        <div data-testid="description-task">
+                          {isRequestDescription && (
+                            <div data-testid="request-description">
+                              {isTaskActionEdit && hasEditAccess() ? (
+                                <RichTextEditor
+                                  height="208px"
+                                  initialValue={suggestion}
+                                  placeHolder="Add description"
+                                  style={{ marginTop: '0px' }}
+                                  onTextChange={onSuggestionChange}
+                                />
+                              ) : (
+                                <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                                  {getCurrentDescription()}
+                                </div>
+                              )}
+                            </div>
+                          )}
 
-                        {isUpdateDescription && (
-                          <div data-testid="update-description">
-                            {isTaskActionEdit && hasEditAccess() ? (
-                              <DescriptionTabs
-                                description={currentDescription()}
-                                markdownRef={markdownRef}
-                                suggestion={suggestion}
-                                onChange={onSuggestionChange}
-                              />
-                            ) : (
-                              <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                {getCurrentDescription()}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Fragment>
-                )}
-              </div>
+                          {isUpdateDescription && (
+                            <div data-testid="update-description">
+                              {isTaskActionEdit && hasEditAccess() ? (
+                                <DescriptionTabs
+                                  description={currentDescription()}
+                                  markdownRef={markdownRef}
+                                  suggestion={suggestion}
+                                  onChange={onSuggestionChange}
+                                />
+                              ) : (
+                                <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                                  {getCurrentDescription()}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Fragment>
+                  )}
+                </div>
+              )}
 
+              {isTaskTags && (
+                <div data-testid="task-tags-tabs">
+                  <p className="tw-text-grey-muted">Tags:</p>{' '}
+                  <TagSuggestion
+                    selectedTags={tagsSuggestion}
+                    onChange={setTagsSuggestion}
+                  />
+                </div>
+              )}
               {hasEditAccess() && !isTaskClosed && (
                 <div
                   className="tw-flex tw-justify-end"

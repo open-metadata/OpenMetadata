@@ -13,10 +13,12 @@
 
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
@@ -32,6 +34,7 @@ import {
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import { getRequestTagsPath } from '../../../utils/TasksUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
@@ -89,6 +92,7 @@ const EntityPageInfo = ({
   entityFqn,
   entityType,
 }: Props) => {
+  const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
@@ -100,6 +104,10 @@ const EntityPageInfo = ({
   const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
     document.getElementById('version-and-follow-section')?.offsetWidth
   );
+
+  const handleRequestTags = () => {
+    history.push(getRequestTagsPath(entityType as string, entityFqn as string));
+  };
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -270,32 +278,52 @@ const EntityPageInfo = ({
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
       return !isUndefined(tagThread) ? (
-        <p
-          className="link-text tw-m-0 tw-ml-1 tw-w-8 tw-flex-none"
+        <button
+          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
           onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
           <span className="tw-flex">
-            <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+            <SVGIcons alt="comments" icon={Icons.COMMENT} />
             <span className="tw-ml-1" data-testid="tag-thread-count">
               {tagThread.count}
             </span>
           </span>
-        </p>
+        </button>
       ) : (
-        <p
-          className="link-text tw-self-start tw-w-8 tw-m-0 tw-ml-1  tw-flex-none"
+        <button
+          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
           data-testid="start-tag-thread"
           onClick={() =>
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, 'tags')
             )
           }>
-          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
-        </p>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} />
+        </button>
       );
     } else {
       return null;
     }
+  };
+
+  const getRequestTagsElements = () => {
+    const hasTags = !isEmpty(tags);
+
+    return onThreadLinkSelect ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="request-description"
+        onClick={handleRequestTags}>
+        <Popover
+          destroyTooltipOnHide
+          content={hasTags ? 'Request update tags' : 'Request tags'}
+          overlayClassName="ant-popover-request-description"
+          trigger="hover"
+          zIndex={9999}>
+          <SVGIcons alt="request-tags" icon={Icons.REQUEST} />
+        </Popover>
+      </button>
+    ) : null;
   };
 
   useEffect(() => {
@@ -501,7 +529,10 @@ const EntityPageInfo = ({
                 </TagsContainer>
               </div>
             </NonAdminAction>
-            {getThreadElements()}
+            <div className="tw--mt-1.5">
+              {getRequestTagsElements()}
+              {getThreadElements()}
+            </div>
           </Fragment>
         )}
       </div>

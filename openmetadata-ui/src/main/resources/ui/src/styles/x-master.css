@@ -1191,12 +1191,12 @@ code {
 }
 /* Antd custom button CSS */
 
-.ant-select-assignee {
+.ant-select-custom {
   width: 100%;
   margin: 8px 0px;
   outline: none;
 }
-.ant-select-assignee:not(.ant-select-disabled):hover .ant-select-selector {
+.ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
   border-color: #7147e8;
 }
 .ant-select-focused {
