@@ -37,7 +37,9 @@ fi
 
 TABLE_INITIALIZER_MAIN_CLASS=org.openmetadata.catalog.util.TablesInitializer
 LIBS_DIR="${BOOTSTRAP_DIR}"/../libs/
-echo $LIBS_DIR
+if  [ ${debug} ] ; then
+  echo $LIBS_DIR
+fi
 if [ -d "${LIBS_DIR}" ]; then
   for file in "${LIBS_DIR}"*.jar;
   do
@@ -48,8 +50,10 @@ else
 fi
 
 execute() {
+  if  [ ${debug} ] ; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
-    ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1} -${debug}
+  fi
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${SCRIPT_ROOT_DIR} --${1} -${debug}
 }
 
 printUsage() {
