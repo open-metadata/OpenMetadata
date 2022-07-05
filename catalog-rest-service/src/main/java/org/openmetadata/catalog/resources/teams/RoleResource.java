@@ -75,7 +75,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Api(value = "Roles collection", tags = "Roles collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "roles", order = 1) // Load after PolicyResource at Order 0
+@Collection(name = "roles", order = 2) // Load after PolicyResource at Order 0
 // policies exist before
 // loading roles
 @Slf4j

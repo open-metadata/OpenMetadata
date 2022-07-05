@@ -12,15 +12,15 @@
  */
 
 import classNames from 'classnames';
+import { Change } from 'diff';
 import { uniqueId } from 'lodash';
-import { Diff } from 'Models';
 import React from 'react';
 
 export const DiffView = ({
   diffArr,
   className,
 }: {
-  diffArr: Diff[];
+  diffArr: Change[];
   className?: string;
 }) => {
   const elements = diffArr.map((diff) => {

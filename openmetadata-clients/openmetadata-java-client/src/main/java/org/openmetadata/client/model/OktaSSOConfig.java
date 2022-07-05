@@ -117,5 +117,4 @@ public class OktaSSOConfig {
     }
     return sb.toString();
   }
-
 }

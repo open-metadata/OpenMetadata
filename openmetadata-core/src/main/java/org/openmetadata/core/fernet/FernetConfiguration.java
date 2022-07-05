@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'react-table';
-declare module 'quilljs-markdown';
-declare module 'quill-mention';
-declare module 'quill-emoji';
+package org.openmetadata.core.fernet;
+
+import javax.validation.constraints.NotEmpty;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class FernetConfiguration {
+  @NotEmpty private String fernetKey;
+}

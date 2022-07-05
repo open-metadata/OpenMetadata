@@ -33,6 +33,7 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -229,12 +230,10 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         arr?.forEach((i) => {
           if (isEqual(i.name, changedColName)) {
             const flag: { [x: string]: boolean } = {};
-            const uniqueTags: Array<
-              TagLabel & { added: boolean; removed: boolean }
-            > = [];
+            const uniqueTags: Array<TagLabelWithStatus> = [];
             const tagsDiff = getTagsDiff(oldTags, newTags);
-            [...tagsDiff, ...(i.tags as Array<TagLabel>)].forEach(
-              (elem: TagLabel & { added: boolean; removed: boolean }) => {
+            [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+              (elem: TagLabelWithStatus) => {
                 if (!flag[elem.tagFQN as string]) {
                   flag[elem.tagFQN as string] = true;
                   uniqueTags.push(elem);
@@ -332,13 +331,12 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabelWithStatus) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
         uniqueTags.push(elem);

@@ -40,6 +40,7 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   addToRecentSearched,
+  getEntityName,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -145,6 +146,20 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUsersRoles = (userRoleArr: string[], name: string) => {
+    return (
+      <div>
+        <div className="tw-text-grey-muted tw-text-xs">{name}</div>
+        {userRoleArr.map((userRole, i) => (
+          <p className="tw-font-medium" key={i}>
+            {userRole}
+          </p>
+        ))}
+        <hr className="tw-my-1.5" />
+      </div>
+    );
+  };
+
   const getUserName = () => {
     const currentUser = isAuthDisabled
       ? appState.nonSecureUserDetails
@@ -175,9 +190,9 @@ const Appbar: React.FC = (): JSX.Element => {
 
     const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
-    const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+    const roles = currentUser?.roles?.map((r) => getEntityName(r)) || [];
     const inheritedRoles =
-      currentUser?.inheritedRoles?.map((r) => r.displayName) || [];
+      currentUser?.inheritedRoles?.map((r) => getEntityName(r)) || [];
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
@@ -190,31 +205,13 @@ const Appbar: React.FC = (): JSX.Element => {
           <span className="tw-font-medium tw-cursor-pointer">{name}</span>
         </Link>
         <hr className="tw-my-1.5" />
-        {roles.length > 0 ? (
-          <div>
-            <div className="tw-font-medium tw-text-xs">Roles</div>
-            {roles.map((r, i) => (
-              <p className="tw-text-grey-muted" key={i}>
-                {r}
-              </p>
-            ))}
-            <hr className="tw-my-1.5" />
-          </div>
-        ) : null}
-        {inheritedRoles.length > 0 ? (
-          <div>
-            <div className="tw-font-medium tw-text-xs">Inherited Roles</div>
-            {inheritedRoles.map((inheritedRole, i) => (
-              <p className="tw-text-grey-muted" key={i}>
-                {inheritedRole}
-              </p>
-            ))}
-            <hr className="tw-my-1.5" />
-          </div>
-        ) : null}
+        {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
+        {inheritedRoles.length > 0
+          ? getUsersRoles(inheritedRoles, 'Inherited Roles')
+          : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-font-medium tw-text-xs">Teams</span>
+            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>

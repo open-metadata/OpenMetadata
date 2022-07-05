@@ -512,15 +512,6 @@ declare module 'Models' {
     profileName?: string;
   };
 
-  export type TourSteps = {
-    content?: string | React.ReactNode;
-    actionType?: string;
-    position?: string | number[];
-    selector?: string;
-    userTypeText?: string;
-    waitTimer?: number;
-  };
-
   export interface FormErrorData {
     [key: string]: string | undefined;
   }
@@ -573,13 +564,11 @@ declare module 'Models' {
   };
 
   export interface UserPermissions {
-    UpdateOwner: boolean;
-    UpdateDescription: boolean;
-    SuggestDescription: boolean;
-    UpdateLineage: boolean;
-    SuggestTags: boolean;
-    UpdateTags: boolean;
-    UpdateTeam: boolean;
+    EditOwner: boolean;
+    EditDescription: boolean;
+    EditLineage: boolean;
+    EditTags: boolean;
+    TeamEditUsers: boolean;
   }
   export interface EditorContentRef {
     getEditorContent: () => string;
@@ -605,11 +594,6 @@ declare module 'Models' {
     readonly value: string;
   }
 
-  export interface Diff {
-    removed: boolean;
-    added: boolean;
-    value: string;
-  }
   export interface ScrollHandle {
     left: boolean;
     right: boolean;

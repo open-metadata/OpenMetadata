@@ -15,7 +15,7 @@ package org.openmetadata.catalog.resources.policies;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
@@ -30,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import javax.ws.rs.client.WebTarget;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -50,6 +52,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.PolicyUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -77,8 +80,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Override
+  @SneakyThrows
   public void validateCreatedEntity(Policy policy, CreatePolicy createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getPolicyUrl(), policy.getPolicyUrl());
+    assertEquals(createRequest.getPolicyType(), policy.getPolicyType());
+    if (createRequest.getLocation() != null) {
+      assertEquals(createRequest.getLocation(), policy.getLocation().getId());
+    }
+    assertEquals(createRequest.getRules(), EntityUtil.resolveRules(policy.getRules()));
   }
 
   @Override
@@ -120,8 +128,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithValidRules_200_ok(TestInfo test) throws IOException {
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.UpdateDescription, true, 0));
-    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.UpdateTags, true, 1));
+    rules.add(PolicyUtils.accessControlRule(null, null, MetadataOperation.EDIT_DESCRIPTION, true, 0));
+    rules.add(PolicyUtils.accessControlRule(null, null, "DataConsumer", MetadataOperation.EDIT_TAGS, true, 1));
     CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
@@ -143,44 +151,29 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   @Test
   void post_AccessControlPolicyWithDuplicateRules_400_error(TestInfo test) {
     List<Rule> rules = new ArrayList<>();
-    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.UpdateDescription, true, 0));
-    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.UpdateTags, true, 1));
-    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.UpdateTags, true, 1));
-    CreatePolicy create = createAccessControlPolicyWithRules(getEntityName(test), rules);
+    rules.add(PolicyUtils.accessControlRule("rule1", null, null, MetadataOperation.EDIT_DESCRIPTION, true, 0));
+    rules.add(PolicyUtils.accessControlRule("rule2", null, null, MetadataOperation.EDIT_TAGS, true, 1));
+    rules.add(PolicyUtils.accessControlRule("rule3", null, null, MetadataOperation.EDIT_TAGS, true, 1));
+    String policyName = getEntityName(test);
+    CreatePolicy create = createAccessControlPolicyWithRules(policyName, rules);
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
-            "Found multiple rules with operation UpdateTags within policy %s. "
+            "Found multiple rules with operation EditTags within policy %s. "
                 + "Please ensure that operation across all rules within the policy are distinct",
-            getEntityName(test)));
+            policyName));
   }
 
   @Test
   void patch_PolicyAttributes_200_ok(TestInfo test) throws IOException {
     Policy policy = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS).withLocation(null);
 
-    URI uri = null;
-    try {
-      uri = new URI("http://www.example.com/policy1");
-    } catch (URISyntaxException e) {
-      fail("could not construct URI for test");
-    }
-
-    // Add policyUrl which was previously null and set enabled to false
+    // Set enabled to false
     String origJson = JsonUtils.pojoToJson(policy);
-    policy.setPolicyUrl(uri);
     policy.setEnabled(false);
     ChangeDescription change = getChangeDescription(policy.getVersion());
-    change.getFieldsAdded().add(new FieldChange().withName("policyUrl").withNewValue(uri));
     change.getFieldsUpdated().add(new FieldChange().withName("enabled").withOldValue(true).withNewValue(false));
-    policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Remove policyUrl
-    origJson = JsonUtils.pojoToJson(policy);
-    policy.setPolicyUrl(null);
-    change = getChangeDescription(policy.getVersion());
-    change.getFieldsDeleted().add(new FieldChange().withName("policyUrl").withOldValue(uri));
     policy = patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     EntityReference locationReference = location.getEntityReference();
@@ -191,6 +184,15 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     change = getChangeDescription(policy.getVersion());
     change.getFieldsAdded().add(new FieldChange().withName("location").withNewValue(locationReference));
     patchEntityAndCheck(policy, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void get_policyResources() throws HttpResponseException {
+    // Get list of policy resources and make sure it has all the entities and other resources
+    List<String> resources = getPolicyResources(ADMIN_AUTH_HEADERS);
+    List<String> entities = Entity.listEntities();
+    assertTrue(resources.containsAll(entities));
+    assertTrue(resources.contains("lineage"));
   }
 
   @Override
@@ -227,5 +229,10 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     LocationResourceTest locationResourceTest = new LocationResourceTest();
     CreateLocation createLocation = locationResourceTest.createRequest(LOCATION_NAME, "", "", null);
     return TestUtils.post(getResource("locations"), createLocation, Location.class, ADMIN_AUTH_HEADERS);
+  }
+
+  public final List<String> getPolicyResources(Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(collectionName + "/resources");
+    return (List<String>) TestUtils.get(target, List.class, authHeaders);
   }
 }

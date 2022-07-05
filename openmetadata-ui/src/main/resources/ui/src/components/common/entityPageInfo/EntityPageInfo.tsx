@@ -200,7 +200,7 @@ const EntityPageInfo = ({
           )}>
           <button
             className={classNames(
-              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center',
+              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center tw-h-full tw-flex tw-items-center',
               !isUndefined(isVersionSelected)
                 ? 'tw-border-white'
                 : 'tw-border-primary'
@@ -214,7 +214,7 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
+            className="tw-text-xs tw-border-l-0 tw-font-medium tw-p-2 tw-rounded-r tw-cursor-pointer hover:tw-underline tw-flex tw-self-center"
             data-testid="version-value">
             {parseFloat(version).toFixed(1)}
           </span>
@@ -450,7 +450,7 @@ const EntityPageInfo = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
-              permission={Operation.UpdateTags}
+              permission={Operation.EditTags}
               position="bottom"
               trigger="click">
               <div
