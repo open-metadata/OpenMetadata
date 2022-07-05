@@ -13,19 +13,19 @@ Configure and schedule MLflow **metadata** workflow from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md" %}
-[run-mlflow-connector-with-the-airflow-sdk.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
-{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md" %}
-[run-mlflow-connector-using-the-cli.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
 ## **Requirements**
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) or follow the [OpenMetadata & Prefect](../../../../overview/run-openmetadata-with-prefect.md) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](broken-reference) or follow the [OpenMetadata & Prefect](broken-reference) guide.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select MLflow as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (20).png>)
+![](<../../../../.gitbook/assets/image (29).png>)
 
 ### 4. Name and Describe your Service
 
@@ -59,7 +59,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other MLflow services that you might be ingesting metadata from.
 
-![](<../../../../.gitbook/assets/image (29).png>)
+![](<../../../../.gitbook/assets/image (20).png>)
 
 ### 5. Configure the Service Connection
 
@@ -87,7 +87,7 @@ The MLflow Model Registry component is a centralized model store, set of APIs, a
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1) (1) (1) (1) (1).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1) (1) (1) (1) (2).png>)
 
 <details>
 
@@ -155,7 +155,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -163,14 +163,14 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md" %}
-[run-mlflow-connector-with-the-airflow-sdk.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-with-the-airflow-sdk.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md" %}
-[run-mlflow-connector-using-the-cli.md](../../../../integrations/connectors/mlflow/run-mlflow-connector-using-the-cli.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}

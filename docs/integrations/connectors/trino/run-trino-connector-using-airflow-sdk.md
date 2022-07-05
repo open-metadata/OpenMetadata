@@ -337,4 +337,4 @@ with DAG(
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](../../../../data-lineage/dbt-integration/).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](broken-reference).

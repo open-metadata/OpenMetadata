@@ -10,7 +10,7 @@ description: >-
 
 This page will guide you on setting up the link between your Airflow host and the OpenMetadata server. Note that to enable the workflow deployment from the UI, you need the Airflow APIs correctly installed in your Airflow host.
 
-This can be done either by using our custom Docker [image](https://hub.docker.com/r/openmetadata/ingestion) or following this [guide](../../../integrations/airflow/custom-airflow-installation.md) to set up your existing Airflow service.
+This can be done either by using our custom Docker [image](https://hub.docker.com/r/openmetadata/ingestion) or following this [guide](broken-reference) to set up your existing Airflow service.
 
 ## Configuration
 

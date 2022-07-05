@@ -25,4 +25,4 @@ global:
 
 ## Upgrade Helm Release
 
-Head towards [upgrade-openmetadata-on-kubernetes.md](../../../../../upgrade/upgrade-on-kubernetes/upgrade-openmetadata-on-kubernetes.md "mention") to upgrade your OpenMetadata Helm Release.
+Head towards [Broken link](broken-reference "mention") to upgrade your OpenMetadata Helm Release.

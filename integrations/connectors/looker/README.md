@@ -49,7 +49,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 From the dropdown menu, select Dashboard Services. Select Looker as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (24) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (24) (1) (1) (1) (1).png>)
 
 ### 4. Name and Describe your Service
 

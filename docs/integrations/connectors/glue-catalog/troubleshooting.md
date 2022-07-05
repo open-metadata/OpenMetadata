@@ -26,6 +26,6 @@ Max retries exceeded with url: /api/v1/services/databaseServices/name/glue
 Failed to establish a new connection: [Errno 61] Connection refused'))
 ```
 
-To correct this problem, follow the procedure [Try OpenMetadata in Docker](../../../../overview/run-openmetadata.md) to deploy OpenMetadata.
+To correct this problem, follow the procedure [Try OpenMetadata in Docker](broken-reference) to deploy OpenMetadata.
 
 Then re-run the metadata ingestion workflow in Run Glue Connector.

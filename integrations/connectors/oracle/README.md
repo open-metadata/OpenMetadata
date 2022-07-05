@@ -103,7 +103,7 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![Add Ingestion Page](<../../../docs/.gitbook/assets/image (22) (1) (1) (1) (1).png>)
+![Add Ingestion Page](<../../../docs/.gitbook/assets/image (22) (1) (1) (1) (1) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
 

@@ -1,7 +1,7 @@
 # Deploy on Docker
 
-{% content-ref url="../../../deploy/deploy-on-docker/using-python-cli.md" %}
-[using-python-cli.md](../../../deploy/deploy-on-docker/using-python-cli.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
 {% hint style="info" %}
@@ -111,7 +111,7 @@ docker compose up -d
 ```
 
 {% hint style="info" %}
-For a secure OpenMetadata instance, follow the [Enable Security](../../../deploy/local-deployment/enable-security.md) guide
+For a secure OpenMetadata instance, follow the [Enable Security](broken-reference) guide
 {% endhint %}
 
 ### 2. Verify all containers are up and running
@@ -189,8 +189,8 @@ You don't have docker-compose installed, please install it and re-run the comman
 
 If you come across the above error when attempting to install OpenMetadata, this can be due to an older version of docker-compose that you have, or because docker compose is not installed properly. Please check the [Requirements](./#requirements) section above and confirm that you have the supported versions installed.
 
-{% content-ref url="../../../deploy/local-deployment/binding-named-volumes.md" %}
-[binding-named-volumes.md](../../../deploy/local-deployment/binding-named-volumes.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
 {% content-ref url="../secure-openmetadata/" %}
