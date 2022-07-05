@@ -364,7 +364,7 @@ const EntityTable = ({
     isAdminUser ||
     hasEditAccess ||
     isAuthDisabled ||
-    userPermissions[Operation.UpdateDescription];
+    userPermissions[Operation.EditDescription];
 
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const getColumnName = (cell: any) => {
@@ -654,7 +654,7 @@ const EntityTable = ({
                               <NonAdminAction
                                 html={getHtmlForNonAdminAction(Boolean(owner))}
                                 isOwner={hasEditAccess}
-                                permission={Operation.UpdateTags}
+                                permission={Operation.EditTags}
                                 position="left"
                                 trigger="click">
                                 <TagsContainer

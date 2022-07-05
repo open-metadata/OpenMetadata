@@ -1576,7 +1576,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          noPermission(userName, "UpdateDescription"));
+          noPermission(userName, "editDescription"));
       // Revert to original.
       entity.setDescription(originalDescription);
       return entity;

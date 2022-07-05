@@ -19,9 +19,11 @@ import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
 import { EntityField } from '../../../constants/feed.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { useAuth } from '../../../hooks/authHooks';
+import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import {
@@ -74,7 +76,7 @@ const Description: FC<DescriptionProps> = ({
     return (
       isAdminUser ||
       Boolean(hasEditAccess) ||
-      userPermissions[Operation.UpdateDescription] ||
+      userPermissions[Operation.EditDescription] ||
       isAuthDisabled
     );
   };
@@ -181,10 +183,15 @@ const Description: FC<DescriptionProps> = ({
             <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
           </button>
         )}
+        {isTaskSupported(entityType as EntityType) ? (
+          <Fragment>
+            {' '}
+            <RequestDescriptionEl />
+            {getDescriptionTaskElement()}
+          </Fragment>
+        ) : null}
 
-        <RequestDescriptionEl />
         <DescriptionThreadEl descriptionThread={thread} />
-        {getDescriptionTaskElement()}
       </div>
     ) : null;
   };
