@@ -26,6 +26,11 @@ export const mlModelTabs = [
     path: 'details',
   },
   {
+    name: 'Lineage',
+    path: 'lineage',
+    field: TabSpecificField.LINEAGE,
+  },
+  {
     name: 'Manage',
     path: 'manage',
   },
@@ -38,11 +43,14 @@ export const getCurrentMlModelTab = (tab: string) => {
       currentTab = 2;
 
       break;
-    case 'manage':
+    case 'lineage':
       currentTab = 3;
 
       break;
+    case 'manage':
+      currentTab = 4;
 
+      break;
     case 'features':
       currentTab = 1;
 

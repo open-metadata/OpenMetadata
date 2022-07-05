@@ -14,7 +14,13 @@
 import classNames from 'classnames';
 import { startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityTags, ExtraInfo } from 'Models';
+import {
+  EntityTags,
+  ExtraInfo,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
 import React, {
   FC,
   Fragment,
@@ -33,6 +39,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
@@ -43,6 +50,8 @@ import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../containers/PageContainer';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
+import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
@@ -56,6 +65,16 @@ interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   tagUpdateHandler: (updatedMlModel: Mlmodel) => void;
   updateMlModelFeatures: (updatedMlModel: Mlmodel) => void;
   settingsUpdateHandler: (updatedMlModel: Mlmodel) => Promise<void>;
+  lineageTabData: {
+    loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
+    addLineageHandler: (edge: Edge) => Promise<void>;
+    removeLineageHandler: (data: EdgeData) => void;
+    entityLineageHandler: (lineage: EntityLineage) => void;
+    isLineageLoading?: boolean;
+    entityLineage: EntityLineage;
+    lineageLeafNodes: LeafNodes;
+    isNodeLoading: LoadingNodeState;
+  };
 }
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
@@ -68,6 +87,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   tagUpdateHandler,
   settingsUpdateHandler,
   updateMlModelFeatures,
+  lineageTabData,
 }) => {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
@@ -185,6 +205,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       position: 2,
     },
     {
+      name: 'Lineage',
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -194,7 +219,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       },
       isProtected: false,
       protectedState: !mlModelDetail.owner || hasEditAccess(),
-      position: 3,
+      position: 4,
     },
   ];
 
@@ -452,6 +477,22 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                 </div>
               )}
               {activeTab === 3 && (
+                <div className="tw-px-2 tw-h-full" id="lineageDetails">
+                  <EntityLineageComponent
+                    addLineageHandler={lineageTabData.addLineageHandler}
+                    deleted={mlModelDetail.deleted}
+                    entityLineage={lineageTabData.entityLineage}
+                    entityLineageHandler={lineageTabData.entityLineageHandler}
+                    isLoading={lineageTabData.isLineageLoading}
+                    isNodeLoading={lineageTabData.isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageTabData.lineageLeafNodes}
+                    loadNodeHandler={lineageTabData.loadNodeHandler}
+                    removeLineageHandler={lineageTabData.removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

@@ -1322,7 +1322,11 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {
-    if (!isEmpty(entityLineage) && !deleted) {
+    if (
+      !isEmpty(entityLineage) &&
+      !isUndefined(entityLineage.entity) &&
+      !deleted
+    ) {
       setUpdatedLineageData(entityLineage);
       setElementsHandleV1(entityLineage);
     }
