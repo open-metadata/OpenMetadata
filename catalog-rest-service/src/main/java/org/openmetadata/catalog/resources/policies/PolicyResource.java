@@ -27,6 +27,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -48,6 +50,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
@@ -62,8 +65,10 @@ import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/policies")
 @Api(value = "Policies collection", tags = "Policies collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -71,6 +76,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "policies")
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
+  public static final List<String> RESOURCES = new ArrayList<>();
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -87,6 +93,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     // Set up the PolicyEvaluator, before loading seed data.
     PolicyEvaluator policyEvaluator = PolicyEvaluator.getInstance();
     policyEvaluator.setPolicyRepository(dao);
+
     // Load any existing rules from database, before loading seed data.
     policyEvaluator.load();
     dao.initSeedDataFromResources();
@@ -99,6 +106,17 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     }
 
     public PolicyList(List<Policy> data, String beforeCursor, String afterCursor, int total) {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
+
+  public static class OperationList extends ResultList<MetadataOperation> {
+    @SuppressWarnings("unused")
+    OperationList() {
+      // Empty constructor needed for deserialization
+    }
+
+    public OperationList(List<MetadataOperation> data, String beforeCursor, String afterCursor, int total) {
       super(data, beforeCursor, afterCursor, total);
     }
   }
@@ -268,6 +286,30 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return dao.getVersion(id, version);
   }
 
+  @GET
+  @Path("/resources")
+  @Operation(
+      operationId = "listPolicyResources",
+      summary = "Get list of policy resources used in authoring a policy.",
+      tags = "policies",
+      description = "Get all the resources used in policy authoring",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "policy", content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Policy for instance {id} and version {version} is" + " " + "not found")
+      })
+  public List<String> listPolicyResources(@Context UriInfo uriInfo, @Context SecurityContext securityContext)
+      throws IOException {
+    if (RESOURCES.isEmpty()) {
+      // Load set of resource types
+      RESOURCES.addAll(Entity.listEntities());
+      RESOURCES.add("lineage");
+      Collections.sort(RESOURCES);
+    }
+    return RESOURCES;
+  }
+
   @POST
   @Operation(
       operationId = "createPolicy",
@@ -367,7 +409,6 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   private Policy getPolicy(CreatePolicy create, String user) {
     Policy policy =
         copy(new Policy(), create, user)
-            .withPolicyUrl(create.getPolicyUrl())
             .withPolicyType(create.getPolicyType())
             .withRules(create.getRules())
             .withEnabled(create.getEnabled());

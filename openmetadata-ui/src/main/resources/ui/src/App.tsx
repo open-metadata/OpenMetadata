@@ -31,6 +31,7 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import { AuthProvider } from './authentication/auth-provider/AuthProvider';
 import WebSocketProvider from './components/web-scoket/web-scoket.provider';
 import { toastOptions } from './constants/toast.constants';
+import ErrorBoundry from './ErrorBoundry/ErrorBoundry';
 import AppRouter from './router/AppRouter';
 
 const App: FunctionComponent = () => {
@@ -51,11 +52,13 @@ const App: FunctionComponent = () => {
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router>
-          <WebSocketProvider>
-            <AuthProvider childComponentType={AppRouter}>
-              <AppRouter />
-            </AuthProvider>
-          </WebSocketProvider>
+          <ErrorBoundry>
+            <WebSocketProvider>
+              <AuthProvider childComponentType={AppRouter}>
+                <AppRouter />
+              </AuthProvider>
+            </WebSocketProvider>
+          </ErrorBoundry>
         </Router>
         <ToastContainer {...toastOptions} newestOnTop />
       </div>

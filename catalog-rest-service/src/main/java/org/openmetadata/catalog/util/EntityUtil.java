@@ -40,6 +40,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -351,5 +352,14 @@ public final class EntityUtil {
         .withDisplayName(from.getDisplayName())
         .withFullyQualifiedName(from.getFullyQualifiedName())
         .withDeleted(from.getDeleted());
+  }
+
+  public static List<Rule> resolveRules(List<Object> rules) throws IOException {
+    List<Rule> resolvedRules = new ArrayList<>();
+    for (Object ruleObject : rules) {
+      // Cast to access control policy Rule.
+      resolvedRules.add(JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
+    }
+    return resolvedRules;
   }
 }

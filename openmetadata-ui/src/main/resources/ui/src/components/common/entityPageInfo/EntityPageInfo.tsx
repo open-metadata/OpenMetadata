@@ -450,7 +450,7 @@ const EntityPageInfo = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
-              permission={Operation.UpdateTags}
+              permission={Operation.EditTags}
               position="bottom"
               trigger="click">
               <div

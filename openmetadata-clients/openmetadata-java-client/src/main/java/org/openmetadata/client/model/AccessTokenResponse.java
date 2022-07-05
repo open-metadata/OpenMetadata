@@ -15,7 +15,6 @@ package org.openmetadata.client.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -113,8 +112,7 @@ public class AccessTokenResponse {
     CLIENT_CREDENTIALS("client_credentials"),
     IMPLICIT("implicit");
     private final String value;
-    private static final Map<String, AccessTokenResponse.GrantType> CONSTANTS =
-        new HashMap<>();
+    private static final Map<String, AccessTokenResponse.GrantType> CONSTANTS = new HashMap<>();
 
     static {
       for (AccessTokenResponse.GrantType c : values()) {
