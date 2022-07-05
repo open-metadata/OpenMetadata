@@ -1,0 +1,4 @@
+root: ./docs/
+
+redirects:
+    roadmap: ./overview/roadmap.md
