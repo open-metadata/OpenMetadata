@@ -44,7 +44,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
 
 ### 2. Create a New Service
 
@@ -56,7 +56,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select BigQuery as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (56).png>)
+![](<../../../../.gitbook/assets/image (56) (2).png>)
 
 ### 4. Name and Describe your Service
 
@@ -234,7 +234,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../../.gitbook/assets/image (126).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (43) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -242,7 +242,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../../.gitbook/assets/image (35).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (8) (2).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

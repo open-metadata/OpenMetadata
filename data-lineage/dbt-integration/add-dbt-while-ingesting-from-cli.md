@@ -11,7 +11,46 @@ Refer to the documentation [here](https://docs.getdbt.com/docs/introduction) to 
 
 Please make sure to have necessary permissions enabled so that the files can be read from their respective sources.
 
-## Add DBT Source
+## Setting up a Redshift source connector with DBT
+
+DBT can be ingested with source connectors like Redshift, Snowflake, BigQuery and other connectors which support DBT. \
+For a detailed list of connectors that support DBT [click here](https://docs.getdbt.com/docs/available-adapters).
+
+This example shows ingesting DBT with a Redshift service.
+
+### Add a Redshift service in OpenMetadata
+
+Below is a sample yaml config for Redshift service. Add the DBT Source of the manifest.json and catalog.json&#x20;
+
+```
+source:
+  type: redshift
+  serviceName: aws_redshift
+  serviceConnection:
+    config:
+      hostPort: cluster.name.region.redshift.amazonaws.com:5439
+      username: username
+      password: strong_password
+      database: dev
+      type: Redshift
+  sourceConfig:
+    config:
+      schemaFilterPattern:
+        excludes:
+        - information_schema.*
+        - '[\w]*event_vw.*'
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
+```
+
+Modify the `sourceConfig` part of the yaml config as shown below according to the preferred source for DBT manifest.json and catalog.json files
+
+### Add DBT Source
 
 DBT sources for manifest and catalog files can be configured as shown in the yaml configs below.
 
@@ -102,4 +141,18 @@ sourceConfig:
     dbtConfigSource:
       dbtCatalogHttpPath: <catalog.json file path>
       dbtManifestHttpPath: <manifest.json file path>
+```
+
+**DBT Cloud**
+
+Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with DBT cloud account setup if not done already.\
+OpenMetadata uses DBT cloud APIs to fetch the `run artifacts` (manifest.json and catalog.json) from the most recent DBT run.\
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your DBT cloud account.
+
+```
+sourceConfig:
+  config:
+    dbtConfigSource:
+      dbtCloudAuthToken: dbt_cloud_auth_token
+      dbtCloudAccountId: dbt_cloud_account_id
 ```

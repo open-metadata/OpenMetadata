@@ -10,7 +10,7 @@ We will be going through a series of steps on how to configure DBT in OpenMetada
 
 Below is an example showing the yaml config of the Redshift connector. The below example shows how to fetch the DBT files from AWS s3 bucket.
 
-For more information on getting the DBT files from other sources like gcs, file server etc. please take a look [here](add-dbt-while-ingesting-from-cli.md#add-dbt-source).
+For more information on getting the DBT files from other sources like gcs, file server etc. please take a look [here](broken-reference).
 
 ```
 source:

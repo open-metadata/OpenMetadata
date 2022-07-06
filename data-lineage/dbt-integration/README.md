@@ -17,7 +17,7 @@ For information regarding setting up a DBT project and creating models please re
 
 OpenMetadata includes an integration for DBT that enables you to see what models are being used to generate tables.
 
-Openmetadata parses the [manifest](https://docs.getdbt.com/reference/artifacts/manifest-json) and [catalog](https://docs.getdbt.com/reference/artifacts/catalog-json) json files and shows the queries from which the models are being generated.&#x20;
+Openmetadata parses the [manifest](https://docs.getdbt.com/reference/artifacts/manifest-json) and [catalog](https://docs.getdbt.com/reference/artifacts/catalog-json) json files and shows the queries from which the models are being generated.
 
 Metadata regarding the tables and views generated via DBT is also ingested and can be seen.
 
@@ -25,10 +25,10 @@ Metadata regarding the tables and views generated via DBT is also ingested and c
 
 ### Configure DBT via UI or CLI
 
-{% content-ref url="add-dbt-while-ingesting-from-ui.md" %}
-[add-dbt-while-ingesting-from-ui.md](add-dbt-while-ingesting-from-ui.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
-{% content-ref url="add-dbt-while-ingesting-from-cli.md" %}
-[add-dbt-while-ingesting-from-cli.md](add-dbt-while-ingesting-from-cli.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}

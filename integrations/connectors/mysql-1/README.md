@@ -13,12 +13,12 @@ Configure and schedule Tableau **metadata** workflows from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="broken-reference/" %}
+[broken-reference](broken-reference/)
 {% endcontent-ref %}
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="broken-reference/" %}
+[broken-reference](broken-reference/)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -131,7 +131,7 @@ Review your configuration settings. If they match what you intended, click _Depl
 
 If something doesn't look right, click the _Back_ button to return to the appropriate step and change the settings as needed.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../docs/.gitbook/assets/image (20) (1) (1).png>)
 
 <details>
 
@@ -189,14 +189,14 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="broken-reference/" %}
+[broken-reference](broken-reference/)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="broken-reference/" %}
+[broken-reference](broken-reference/)
 {% endcontent-ref %}

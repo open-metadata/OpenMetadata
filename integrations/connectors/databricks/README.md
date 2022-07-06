@@ -37,7 +37,7 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
@@ -59,7 +59,7 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Snowflake services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (20) (1).png>)
+![](<../../../.gitbook/assets/image (20).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
@@ -213,7 +213,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (40) (1) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (40) (1) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 

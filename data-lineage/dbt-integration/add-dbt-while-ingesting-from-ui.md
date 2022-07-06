@@ -11,9 +11,28 @@ Refer to the documentation [here](https://docs.getdbt.com/docs/introduction) to 
 
 Please make sure to have necessary permissions enabled so that the files can be read from their respective sources.
 
-## Add DBT Source
+## Setting up a Redshift source connector with DBT
 
-DBT sources for manifest and catalog files can be configured as shown UI below.
+DBT can be ingested with source connectors like Redshift, Snowflake, BigQuery and other connectors which support DBT. \
+For a detailed list of connectors that support DBT [click here](https://docs.getdbt.com/docs/available-adapters).
+
+Below example shows ingesting DBT with a Redshift service.
+
+### Add a Redshift service in OpenMetadata
+
+![Select the Redshift Service](<../../.gitbook/assets/image (79).png>)
+
+![Enter a name for the service](<../../.gitbook/assets/image (18).png>)
+
+![Add necessary config to connect to redshift service](<../../.gitbook/assets/image (56).png>)
+
+![New service is created we can proceed to Adding Ingestion](<../../.gitbook/assets/image (81).png>)
+
+![Add database or schema as required](<../../.gitbook/assets/image (51).png>)
+
+### Add DBT Source
+
+DBT sources for manifest and catalog files can be configured as shown UI below. The DBT files are needed to be stored on one of these sources.
 
 #### AWS S3 Buckets
 
@@ -37,7 +56,7 @@ Entering the credentials directly into the form
 
 Entering the path of file in which the GCS bucket credentials are stored.
 
-![Enter the path of the GCS credentials file](<../../.gitbook/assets/image (5) (1) (1) (1).png>)
+![Enter the path of file in which GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (25).png>)
 
 For more information on Google Cloud Storage authentication click [here](https://cloud.google.com/docs/authentication/getting-started#create-service-account-console).
 
@@ -52,3 +71,11 @@ Path of the `manifest.json` and `catalog.json` files stored in the local system 
 File server path of the `manifest.json` and `catalog.json` files stored on a file server directly provided.
 
 ![Enter the file server path of the DBT files](<../../.gitbook/assets/image (60).png>)
+
+**DBT Cloud**
+
+Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with DBT cloud account setup if not done already.\
+OpenMetadata uses DBT cloud APIs to fetch the `run artifacts` (manifest.json and catalog.json) from the most recent DBT run.\
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your DBT cloud account.
+
+![](<../../.gitbook/assets/image (1).png>)

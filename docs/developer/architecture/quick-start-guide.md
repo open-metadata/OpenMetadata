@@ -37,7 +37,7 @@ OpenMetadata uses the [Dropwizard](https://www.dropwizard.io) Java framework to 
 
 ## System and Components
 
-![Overview of the OpenMetadata components and high-level interactions.](<../../../.gitbook/assets/quickstart-guide.drawio (2) (1) (1) (3) (2) (4).png>)
+![Overview of the OpenMetadata components and high-level interactions.](<../../../.gitbook/assets/quickstart-guide.drawio (2) (1) (1) (3) (4).png>)
 
 ### Events
 

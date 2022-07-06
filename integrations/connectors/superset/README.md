@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Mode service as desired.
 
-![](<../../../.gitbook/assets/image (40) (1).png>)
+![](<../../../.gitbook/assets/image (40) (2).png>)
 
 <details>
 
@@ -155,7 +155,7 @@ After configuring the workflow, you can click on _Deploy_ to create the pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (65).png>)
+![](<../../../.gitbook/assets/image (1) (3).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,7 +165,7 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-![](<../../../.gitbook/assets/image (1) (1).png>)
+![](<../../../.gitbook/assets/image (65).png>)
 
 ## Run using Airflow SDK
 
