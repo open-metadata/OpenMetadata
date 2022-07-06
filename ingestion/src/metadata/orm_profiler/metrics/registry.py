@@ -35,7 +35,6 @@ from metadata.orm_profiler.metrics.static.like_count import LikeCount
 from metadata.orm_profiler.metrics.static.max import Max
 from metadata.orm_profiler.metrics.static.max_length import MaxLength
 from metadata.orm_profiler.metrics.static.mean import Mean
-from metadata.orm_profiler.metrics.window.median import Median
 from metadata.orm_profiler.metrics.static.min import Min
 from metadata.orm_profiler.metrics.static.min_length import MinLength
 from metadata.orm_profiler.metrics.static.not_like_count import NotLikeCount
@@ -44,6 +43,7 @@ from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.metrics.static.stddev import StdDev
 from metadata.orm_profiler.metrics.static.sum import Sum
 from metadata.orm_profiler.metrics.static.unique_count import UniqueCount
+from metadata.orm_profiler.metrics.window.median import Median
 from metadata.orm_profiler.registry import MetricRegistry
 
 
