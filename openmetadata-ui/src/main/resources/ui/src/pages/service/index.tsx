@@ -24,6 +24,7 @@ import {
   checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
@@ -324,6 +325,23 @@ const ServicePage: FunctionComponent = () => {
           reject();
         });
     });
+  };
+
+  const handleEnableDisableIngestion = (id: string) => {
+    enableDisableIngestionPipelineById(id)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          getAllIngestionWorkflows();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+      });
   };
 
   const deleteIngestionById = (
@@ -861,6 +879,7 @@ const ServicePage: FunctionComponent = () => {
             currrentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
+            handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestions}
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}
