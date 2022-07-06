@@ -16,6 +16,7 @@ import {
   findByTestId,
   findByText,
   fireEvent,
+  queryByTestId,
   render,
 } from '@testing-library/react';
 import React from 'react';
@@ -45,6 +46,7 @@ const mockPaging = {
 
 const mockPaginghandler = jest.fn();
 const mockDeleteIngestion = jest.fn();
+const handleEnableDisableIngestion = jest.fn();
 const mockDeployIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
@@ -89,7 +91,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -131,7 +133,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -187,7 +189,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -223,7 +225,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -261,7 +263,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -312,7 +314,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={jest.fn()}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -332,5 +334,77 @@ describe('Test Ingestion page', () => {
     const viewButton = await findByTestId(container, 'airflow-tree-view');
 
     expect(viewButton).toBeInTheDocument();
+  });
+
+  it('Pause button should be present if enabled is available', async () => {
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint="http://localhost"
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const pauseButton = await findByTestId(container, 'pause');
+
+    expect(pauseButton).toBeInTheDocument();
+
+    fireEvent.click(pauseButton);
+
+    expect(handleEnableDisableIngestion).toBeCalled();
+  });
+
+  it('Unpause button should be present if enabled is false', async () => {
+    const { container } = render(
+      <Ingestion
+        isRequiredDetailsAvailable
+        airflowEndpoint="http://localhost"
+        currrentPage={1}
+        deleteIngestion={mockDeleteIngestion}
+        deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        ingestionList={
+          [
+            { ...mockIngestionWorkFlow.data.data, enabled: false },
+          ] as unknown as IngestionPipeline[]
+        }
+        paging={mockPaging}
+        pagingHandler={mockPaginghandler}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        serviceDetails={mockService}
+        serviceList={[]}
+        serviceName=""
+        triggerIngestion={mockTriggerIngestion}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const unpause = await findByTestId(container, 'unpause');
+    const run = queryByTestId(container, 'run');
+
+    expect(unpause).toBeInTheDocument();
+    expect(run).not.toBeInTheDocument();
+
+    fireEvent.click(unpause);
+
+    expect(handleEnableDisableIngestion).toBeCalled();
   });
 });
