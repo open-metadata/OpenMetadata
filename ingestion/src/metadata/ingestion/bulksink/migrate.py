@@ -173,11 +173,14 @@ class MigrateBulkSink(BulkSink):
                 table_entities = self.metadata.search_entities_using_es(
                     search_index="table_search_index",
                     service_name=table.get("service").get("name"),
-                    table_name=table_obj.get("table"),
+                    table_name=table_obj.get("name"),
                     database_name=table_obj.get("database"),
                     schema_name=table_obj.get("database_schema"),
                 )
                 if len(table_entities) < 1:
+                    logger.info(
+                        f'No entity found for {table_obj.get("database")}.{table_obj.get("database_schema")}.{table_obj.get("name")}'
+                    )
                     continue
                 table_entity: Table = table_entities[0]
                 self.update_through_patch(
