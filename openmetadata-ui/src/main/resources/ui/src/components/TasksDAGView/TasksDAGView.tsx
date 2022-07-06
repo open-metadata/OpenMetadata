@@ -22,7 +22,7 @@ import ReactFlow, {
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
-import { getLayoutedElementsV1, onLoad } from '../../utils/EntityLineageUtils';
+import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
 import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
 import TaskNode from './TaskNode';
 
@@ -92,7 +92,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       return [...prev, ...taskEdges];
     }, [] as Edge[]);
 
-    const { node: nodeValue, edge: edgeValue } = getLayoutedElementsV1({
+    const { node: nodeValue, edge: edgeValue } = getLayoutedElements({
       node: nodes,
       edge: edges,
     });

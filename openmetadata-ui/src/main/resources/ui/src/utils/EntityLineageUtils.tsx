@@ -154,7 +154,7 @@ export const getColumnType = (edges: Edge[], id: string) => {
   return EntityLineageNodeType.NOT_CONNECTED;
 };
 
-export const getLineageDataV1 = (
+export const getLineageData = (
   entityLineage: EntityLineage,
   onSelect: (state: boolean, value: SelectedNode) => void,
   loadNodeHandler: (node: EntityReference, pos: LineagePos) => void,
@@ -425,7 +425,7 @@ export const getDeletedLineagePlaceholder = () => {
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-export const getLayoutedElementsV1 = (
+export const getLayoutedElements = (
   elements: CustomeElement,
   direction = EntityLineageDirection.LEFT_RIGHT
 ) => {
