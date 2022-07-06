@@ -32,15 +32,15 @@ From the Services > Ingestion tab, you can then re-create and deploy the Ingesti
 
 ### Clear the Cache!
 
-Are you having some issues with the UI after upgrading to 0.11? Make sure you are cleaning the browser cache to properly pick up all the updated components and definitions.
+Are you having some issues with the UI after upgrading to 0.11? Make sure you clean the browser cache to pick up all the updated components and definitions properly.
 
 ### Metadata Workflow Updates
 
-On 0.11 we moved around a couple of things from the `metadata` ingestion workflow, specifically in the `sourceConfig`:
+In the 0.11.0 release, we moved around a couple of things from the `metadata` ingestion workflow, specifically in the `sourceConfig`:
 
 * `generateSampleData`: this now happens on the profiler workflow. This option is removed from the metadata pipeline
-* `sampleDataQuery` is not needed anymore, as in the profiler workflow we use real automated sampling
-* `enableDataProfiler` is disabled. We do not support anymore run the profiler from metadata workflows
+* `sampleDataQuery` is not needed anymore, as in the profiler workflow, we use real automated sampling
+* `enableDataProfiler` is part of profiler workflow.  As running the profiler takes a longer time, we moved the profiler into a separate ingestion workflow. This way, one can schedule the metadata extraction workflows to be more frequent and get the latest metadata. Please refer to the examples here to schedule a profiler workflow [https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/examples/workflows/redshift\_profiler.yaml](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/examples/workflows/redshift\_profiler.yaml)
 
 ### Service Connection Updates
 
