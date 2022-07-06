@@ -154,14 +154,20 @@ class MetadataRestSink(Sink[Entity]):
         """
         log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
         try:
-            self.metadata.create_or_update(entity_request)
+            created = self.metadata.create_or_update(entity_request)
+            if created:
+                self.status.records_written(
+                    f"{type(created).__name__}: {created.fullyQualifiedName.__root__}"
+                )
+                logger.info(f"Successfully ingested {log}")
+            else:
+                self.status.failure(log)
+                logger.error(f"Failed to ingest {log}")
 
         except APIError as err:
             logger.error(f"Failed to ingest {log}")
             logger.error(err)
             self.status.failure(log)
-
-        logger.info(f"Successfully ingested {log}")
 
     def write_datamodel(self, datamodel_link: DataModelLink) -> None:
         """
