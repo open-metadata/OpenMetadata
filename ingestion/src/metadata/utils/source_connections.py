@@ -88,6 +88,15 @@ from metadata.generated.schema.entity.services.connections.database.verticaConne
 from metadata.generated.schema.security.credentials.gcsCredentials import GCSValues
 
 
+class OracleConnectionError(Exception):
+    """
+    Custom Exception Class to be thown when both
+    service name and database schema is passed in config
+    """
+
+    pass
+
+
 def get_connection_url_common(connection):
     url = f"{connection.scheme.value}://"
 
@@ -149,9 +158,12 @@ def _(connection: MssqlConnection):
 
 @get_connection_url.register
 def _(connection: OracleConnection):
+    if connection.oracleServiceName and connection.databaseSchema:
+        raise OracleConnectionError(
+            "Please pass either Service Name or Database Schema not both"
+        )
     url = get_connection_url_common(connection)
     if connection.oracleServiceName:
-        assert not connection.database
         url = f"{url}/?service_name={connection.oracleServiceName}"
     return url
 
