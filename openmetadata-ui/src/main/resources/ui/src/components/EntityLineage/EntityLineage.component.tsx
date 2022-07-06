@@ -66,8 +66,8 @@ import {
   getColumnType,
   getDataLabel,
   getDeletedLineagePlaceholder,
-  getLayoutedElementsV1,
-  getLineageDataV1,
+  getLayoutedElements,
+  getLineageData,
   getModalBodyText,
   getNodeRemoveButton,
   getUniqueFlowElements,
@@ -461,7 +461,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     setConfirmDelete(false);
   };
 
-  const setElementsHandleV1 = (data: EntityLineage) => {
+  const setElementsHandle = (data: EntityLineage) => {
     let uniqueElements: CustomeElement = {
       node: [],
       edge: [],
@@ -471,7 +471,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       edges: [...(edges || [])],
     };
     if (!isEmpty(data)) {
-      const graphElements = getLineageDataV1(
+      const graphElements = getLineageData(
         data,
         selectNodeHandler,
         loadNodeHandler,
@@ -491,7 +491,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         node: getUniqueFlowElements(graphElements.node) as Node[],
         edge: getUniqueFlowElements(graphElements.edge) as Edge[],
       };
-      const { node, edge } = getLayoutedElementsV1(uniqueElements);
+      const { node, edge } = getLayoutedElements(uniqueElements);
       setNodes(node);
       setEdges(edge);
 
@@ -1288,7 +1288,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
   useEffect(() => {
     if (!deleted && !isEmpty(updatedLineageData)) {
-      setElementsHandleV1(updatedLineageData);
+      setElementsHandle(updatedLineageData);
     }
   }, [isNodeLoading, isEditMode]);
 
@@ -1328,7 +1328,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       !deleted
     ) {
       setUpdatedLineageData(entityLineage);
-      setElementsHandleV1(entityLineage);
+      setElementsHandle(entityLineage);
     }
   }, [entityLineage]);
 

@@ -240,8 +240,15 @@ class CommonDbSourceService(
                     "" if view_definition is None else str(view_definition)
                 )
                 return view_definition
+
             except NotImplementedError:
                 logger.error("View definition not implemented")
+                return ""
+
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.debug(err)
+                logger.error(f"Failed to fetch view definition for {table_name}")
                 return ""
 
     def is_partition(

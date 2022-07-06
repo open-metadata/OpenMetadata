@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2022 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'react-table';
-declare module 'quilljs-markdown';
-declare module 'quill-mention';
-declare module 'quill-emoji';
+import { TagLabel } from '../generated/type/tagLabel';
+
+export interface TagLabelWithStatus extends TagLabel {
+  added: boolean | undefined;
+  removed: boolean | undefined;
+}

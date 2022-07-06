@@ -432,6 +432,10 @@
           "description": "Variance of a column.",
           "type": "number"
         },
+        "median": {
+          "description": "Median of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {

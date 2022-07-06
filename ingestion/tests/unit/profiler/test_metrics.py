@@ -599,3 +599,46 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name).get(Metrics.HISTOGRAM.name) is None
+
+    def test_not_like_count(self):
+        """
+        Check NOT_LIKE count
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+
+        test_cases = [
+            ("b%", 0),
+            ("Jo%", 2),
+            ("Ja%", 1),
+            ("J%", 3),
+        ]
+
+        for expression, expected in test_cases:
+            with self.subTest(expression=expression, expected=expected):
+                not_like = add_props(expression=expression)(
+                    Metrics.NOT_LIKE_COUNT.value
+                )
+                res = (
+                    Profiler(
+                        not_like, session=self.session, table=User, use_cols=[User.name]
+                    )
+                    .execute()
+                    ._column_results
+                )
+
+                assert res.get(User.name.name)[Metrics.NOT_LIKE_COUNT.name] == expected
+
+    def test_median(self):
+        """
+        Check MEDIAN
+        """
+
+        median = Metrics.MEDIAN.value
+        res = (
+            Profiler(median, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30

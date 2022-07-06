@@ -52,7 +52,10 @@ export const SEARCH_ENTITY_DASHBOARD = {
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
-  pipeline_1: { term: 'Snowflake ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
+  pipeline_1: {
+    term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
   pipeline_2: {
     term: 'Hive ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
@@ -142,4 +145,11 @@ export const NEW_GLOSSARY_TERMS = {
     description: 'This is the Sales',
     synonyms: 'give,disposal,deal',
   },
+};
+
+export const service = {
+  name: 'Glue',
+  description: 'This is a Glue service',
+  newDescription: 'This is updated Glue service description',
+  Owner: 'Cloud_Infra',
 };

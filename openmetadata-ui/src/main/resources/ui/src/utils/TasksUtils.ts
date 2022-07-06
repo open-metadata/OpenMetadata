@@ -12,9 +12,8 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { diffWordsWithSpace } from 'diff';
+import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
-import { Diff } from 'Models';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
 import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
@@ -95,7 +94,7 @@ export const getTaskDetailPath = (taskId: string) => {
 export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
-): Diff[] => {
+): Change[] => {
   return diffWordsWithSpace(oldValue, newValue);
 };
 
