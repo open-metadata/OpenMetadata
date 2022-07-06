@@ -1,6 +1,8 @@
 # Upgrade on Docker
 
-When upgrading to the 0.10 version of OpenMetadata, please note that this version is a **backward incompatible release**. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
+Upgrading from **0.10 to 0.11** can be done directly on your instances.
+
+Please note that the 0.10 version of OpenMetadata is a **backward incompatible release**. Please ensure that you've taken a backup of metadata of your OpenMetadata instance **prior to upgrading to the 0.10 release**.
 
 {% hint style="danger" %}
 **The 0.10 Release consists of backward incompatible changes.**
