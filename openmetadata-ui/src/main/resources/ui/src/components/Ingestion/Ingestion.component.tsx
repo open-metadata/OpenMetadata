@@ -472,18 +472,21 @@ const Ingestion: React.FC<IngestionProps> = ({
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <div className="tw-flex">
-                          {ingestion.enabled &&
-                            getTriggerDeployButton(ingestion)}
                           {ingestion.enabled ? (
-                            <button
-                              className="link-text tw-mr-2"
-                              data-testid="pause"
-                              disabled={!isRequiredDetailsAvailable}
-                              onClick={() =>
-                                handleEnableDisableIngestion(ingestion.id || '')
-                              }>
-                              Pause
-                            </button>
+                            <Fragment>
+                              {getTriggerDeployButton(ingestion)}
+                              <button
+                                className="link-text tw-mr-2"
+                                data-testid="pause"
+                                disabled={!isRequiredDetailsAvailable}
+                                onClick={() =>
+                                  handleEnableDisableIngestion(
+                                    ingestion.id || ''
+                                  )
+                                }>
+                                Pause
+                              </button>
+                            </Fragment>
                           ) : (
                             <button
                               className="link-text tw-mr-2"
