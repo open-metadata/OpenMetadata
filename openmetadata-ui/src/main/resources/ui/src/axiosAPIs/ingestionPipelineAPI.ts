@@ -61,6 +61,12 @@ export const deployIngestionPipelineById = (
   return APIClient.post(`/services/ingestionPipelines/deploy/${id}`);
 };
 
+export const enableDisableIngestionPipelineById = (
+  id: string
+): Promise<AxiosResponse> => {
+  return APIClient.post(`/services/ingestionPipelines/toggleIngestion/${id}`);
+};
+
 export const deleteIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {

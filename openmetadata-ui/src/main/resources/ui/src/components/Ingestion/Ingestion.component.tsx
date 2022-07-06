@@ -57,6 +57,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   deployIngestion,
   paging,
   pagingHandler,
+  handleEnableDisableIngestion,
   currrentPage,
 }: IngestionProps) => {
   const history = useHistory();
@@ -286,12 +287,14 @@ const Ingestion: React.FC<IngestionProps> = ({
       const status =
         i === lastFiveIngestions.length - 1 ? (
           <p
-            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+            key={i}>
             {capitalize(r.state)}
           </p>
         ) : (
           <p
             className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            key={i}
           />
         );
 
@@ -469,7 +472,29 @@ const Ingestion: React.FC<IngestionProps> = ({
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <div className="tw-flex">
-                          {getTriggerDeployButton(ingestion)}
+                          {ingestion.enabled &&
+                            getTriggerDeployButton(ingestion)}
+                          {ingestion.enabled ? (
+                            <button
+                              className="link-text tw-mr-2"
+                              data-testid="pause"
+                              disabled={!isRequiredDetailsAvailable}
+                              onClick={() =>
+                                handleEnableDisableIngestion(ingestion.id || '')
+                              }>
+                              Pause
+                            </button>
+                          ) : (
+                            <button
+                              className="link-text tw-mr-2"
+                              data-testid="unpause"
+                              disabled={!isRequiredDetailsAvailable}
+                              onClick={() =>
+                                handleEnableDisableIngestion(ingestion.id || '')
+                              }>
+                              Unpause
+                            </button>
+                          )}
                           <button
                             className="link-text tw-mr-2"
                             data-testid="edit"

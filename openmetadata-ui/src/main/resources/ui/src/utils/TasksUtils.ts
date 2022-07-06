@@ -106,7 +106,7 @@ export const fetchOptions = (
     .then((res: AxiosResponse) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line
-            const suggestOptions = hits.map((hit: any) => ({
+      const suggestOptions = hits.map((hit: any) => ({
         label: hit._source.name ?? hit._source.display_name,
         value: hit._id,
         type: hit._source.entityType,

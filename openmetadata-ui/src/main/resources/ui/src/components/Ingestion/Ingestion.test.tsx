@@ -89,6 +89,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -130,6 +131,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -185,6 +187,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -220,6 +223,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -257,6 +261,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
@@ -307,6 +312,7 @@ describe('Test Ingestion page', () => {
         currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
+        handleEnableDisableIngestion={jest.fn()}
         ingestionList={
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
