@@ -93,9 +93,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>${maven-src-plugin.version}</version>
-                <configuration>
-                    <skipSource>true</skipSource>
-                </configuration>
             </plugin>
 
             <plugin>
@@ -121,6 +118,13 @@
                 <groupId>io.swagger.codegen.v3</groupId>
                 <artifactId>swagger-codegen-maven-plugin</artifactId>
                 <version>3.0.16</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.github.jknack</groupId>
+                        <artifactId>handlebars</artifactId>
+                        <version>4.3.0</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <goals>
