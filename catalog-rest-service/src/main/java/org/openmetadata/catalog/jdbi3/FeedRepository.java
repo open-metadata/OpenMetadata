@@ -204,32 +204,42 @@ public class FeedRepository {
         case TABLE:
           Table table = JsonUtils.readValue(json, Table.class);
           String oldJson = JsonUtils.pojoToJson(table);
-          if (entityLink.getFieldName().equals("columns")) {
-            Optional<Column> col =
-                table.getColumns().stream().filter(c -> c.getName().equals(entityLink.getArrayFieldName())).findFirst();
-            if (col.isPresent()) {
-              Column column = col.get();
-              if (descriptionTasks.contains(taskType)) {
-                column.setDescription(newValue);
-              } else if (tagTasks.contains(taskType)) {
-                List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-                column.setTags(tags);
+          if (entityLink.getFieldName() != null) {
+            if (entityLink.getFieldName().equals("columns")) {
+              Optional<Column> col =
+                  table.getColumns().stream()
+                      .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+                      .findFirst();
+              if (col.isPresent()) {
+                Column column = col.get();
+                if (descriptionTasks.contains(taskType)) {
+                  column.setDescription(newValue);
+                } else if (tagTasks.contains(taskType)) {
+                  List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+                  column.setTags(tags);
+                }
+              } else {
+                throw new IllegalArgumentException(
+                    String.format(
+                        "The Column with name '%s' is not found in the table.", entityLink.getArrayFieldName()));
               }
+            } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
+              table.setDescription(newValue);
+            } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
+              List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
+              table.setTags(tags);
             } else {
+              // Not supported
               throw new IllegalArgumentException(
                   String.format(
-                      "The Column with name '%s' is not found in the table.", entityLink.getArrayFieldName()));
+                      "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
             }
-          } else if (descriptionTasks.contains(taskType) && entityLink.getFieldName().equals("description")) {
-            table.setDescription(newValue);
-          } else if (tagTasks.contains(taskType) && entityLink.getFieldName().equals("tags")) {
-            List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-            table.setTags(tags);
           } else {
             // Not supported
             throw new IllegalArgumentException(
                 String.format(
-                    "The field name %s is not supported for %s task.", entityLink.getFieldName(), task.getType()));
+                    "The Entity link with no field name - %s is not supported for %s task.",
+                    entityLink, task.getType()));
           }
           String updatedEntityJson = JsonUtils.pojoToJson(table);
           JsonPatch patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
@@ -479,7 +489,7 @@ public class FeedRepository {
   }
 
   @Transaction
-  public ThreadCount getThreadsCount(String link, ThreadType type, boolean isResolved) {
+  public ThreadCount getThreadsCount(String link, ThreadType type, TaskStatus taskStatus, boolean isResolved) {
     ThreadCount threadCount = new ThreadCount();
     List<List<String>> result;
     List<EntityLinkThreadCount> entityLinkThreadCounts = new ArrayList<>();
@@ -489,7 +499,13 @@ public class FeedRepository {
       result =
           dao.feedDAO()
               .listCountByEntityLink(
-                  StringUtils.EMPTY, Entity.THREAD, StringUtils.EMPTY, IS_ABOUT.ordinal(), type, isResolved);
+                  StringUtils.EMPTY,
+                  Entity.THREAD,
+                  StringUtils.EMPTY,
+                  IS_ABOUT.ordinal(),
+                  type,
+                  taskStatus,
+                  isResolved);
     } else {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);
@@ -511,6 +527,7 @@ public class FeedRepository {
                     entityLink.getFullyQualifiedFieldType(),
                     IS_ABOUT.ordinal(),
                     type,
+                    taskStatus,
                     isResolved);
       }
     }
@@ -560,12 +577,12 @@ public class FeedRepository {
       // Get one extra result used for computing before cursor
       List<String> jsons;
       if (paginationType == PaginationType.BEFORE) {
-        jsons = dao.feedDAO().listBefore(limit + 1, time, isResolved, threadType);
+        jsons = dao.feedDAO().listBefore(limit + 1, time, taskStatus, isResolved, threadType);
       } else {
-        jsons = dao.feedDAO().listAfter(limit + 1, time, isResolved, threadType);
+        jsons = dao.feedDAO().listAfter(limit + 1, time, taskStatus, isResolved, threadType);
       }
       threads = JsonUtils.readObjects(jsons, Thread.class);
-      total = dao.feedDAO().listCount(isResolved, threadType);
+      total = dao.feedDAO().listCount(taskStatus, isResolved, threadType);
     } else {
       // Either one or both the filters are enabled
       // we don't support both the filters together. If both are not null, entity link takes precedence
@@ -592,6 +609,7 @@ public class FeedRepository {
                         limit + 1,
                         time,
                         threadType,
+                        taskStatus,
                         isResolved,
                         IS_ABOUT.ordinal());
           } else {
@@ -603,6 +621,7 @@ public class FeedRepository {
                         limit + 1,
                         time,
                         threadType,
+                        taskStatus,
                         isResolved,
                         IS_ABOUT.ordinal());
           }
@@ -613,6 +632,7 @@ public class FeedRepository {
                       entityLink.getFullyQualifiedFieldValue(),
                       entityLink.getFullyQualifiedFieldType(),
                       threadType,
+                      taskStatus,
                       isResolved,
                       IS_ABOUT.ordinal());
         }
@@ -853,16 +873,12 @@ public class FeedRepository {
     List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
     if (paginationType == PaginationType.BEFORE) {
-      jsons =
-          dao.feedDAO()
-              .listTasksAssignedToBefore(userTeamJsonPostgres, userTeamJsonMysql, limit, time, status.toString());
+      jsons = dao.feedDAO().listTasksAssignedToBefore(userTeamJsonPostgres, userTeamJsonMysql, limit, time, status);
     } else {
-      jsons =
-          dao.feedDAO()
-              .listTasksAssignedToAfter(userTeamJsonPostgres, userTeamJsonMysql, limit, time, status.toString());
+      jsons = dao.feedDAO().listTasksAssignedToAfter(userTeamJsonPostgres, userTeamJsonMysql, limit, time, status);
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    int totalCount = dao.feedDAO().listCountTasksAssignedTo(userTeamJsonPostgres, userTeamJsonMysql, status.toString());
+    int totalCount = dao.feedDAO().listCountTasksAssignedTo(userTeamJsonPostgres, userTeamJsonMysql, status);
     sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }
@@ -891,12 +907,12 @@ public class FeedRepository {
     String username = user.getName();
     List<String> jsons;
     if (paginationType == PaginationType.BEFORE) {
-      jsons = dao.feedDAO().listTasksAssignedByBefore(username, limit, time, status.toString());
+      jsons = dao.feedDAO().listTasksAssignedByBefore(username, limit, time, status);
     } else {
-      jsons = dao.feedDAO().listTasksAssignedByAfter(username, limit, time, status.toString());
+      jsons = dao.feedDAO().listTasksAssignedByAfter(username, limit, time, status);
     }
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
-    int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, status.toString());
+    int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, status);
     sortPostsInThreads(threads);
     return new FilteredThreads(threads, totalCount);
   }

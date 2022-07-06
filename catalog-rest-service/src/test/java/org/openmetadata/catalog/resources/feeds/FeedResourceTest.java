@@ -20,6 +20,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -310,13 +311,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
   @Test
   void post_validTaskAndList_200() throws IOException {
-    int totalTaskCount = listTasks(null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    int totalTaskCount = listTasks(null, null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int assignedByCount =
-        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, ADMIN_AUTH_HEADERS)
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
     int assignedToCount =
-        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, ADMIN_AUTH_HEADERS)
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, null, ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
     CreateTaskDetails taskDetails =
@@ -330,7 +331,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
     createAndCheck(create, userAuthHeaders);
-    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
     TaskDetails task = tasks.getData().get(0).getTask();
     assertNotNull(task.getId());
     int task1Id = task.getId();
@@ -356,6 +357,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withAssignees(List.of(USER.getEntityReference()))
             .withType(TaskType.RequestDescription)
             .withSuggestion("new description2");
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
     create =
         new CreateThread()
             .withAbout(about)
@@ -364,7 +366,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             .withMessage("Request Description for " + TABLE2.getName())
             .withTaskDetails(taskDetails);
     createAndCheck(create, userAuthHeaders);
-    tasks = listTasks(null, null, null, null, userAuthHeaders);
+    tasks = listTasks(null, null, null, null, null, userAuthHeaders);
     task = tasks.getData().get(0).getTask();
     assertNotNull(task.getId());
     int task2Id = task.getId();
@@ -376,20 +378,38 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(totalTaskCount + 2, tasks.getData().size());
 
     // try to list tasks with filters
-    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, userAuthHeaders);
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, null, userAuthHeaders);
     task = tasks.getData().get(0).getTask();
     assertEquals(task1Id, task.getId());
     assertEquals("new description", task.getSuggestion());
     assertEquals(assignedByCount + 1, tasks.getPaging().getTotal());
     assertEquals(assignedByCount + 1, tasks.getData().size());
 
-    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, userAuthHeaders);
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, null, userAuthHeaders);
     task = tasks.getData().get(0).getTask();
     assertEquals(task2Id, task.getId());
     assertEquals(USER.getFullyQualifiedName(), task.getAssignees().get(0).getFullyQualifiedName());
     assertEquals("new description2", task.getSuggestion());
     assertEquals(assignedToCount + 1, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + 1, tasks.getData().size());
+
+    tasks = listTasks(null, null, null, TaskStatus.Open, null, userAuthHeaders);
+    int totalOpenTaskCount = tasks.getPaging().getTotal();
+    tasks = listTasks(null, null, null, TaskStatus.Closed, null, userAuthHeaders);
+    int totalClosedTaskCount = tasks.getPaging().getTotal();
+
+    // close a task and test the task status filter
+    ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
+    resolveTask(task2Id, resolveTask, userAuthHeaders);
+
+    tasks = listTasks(null, null, null, TaskStatus.Open, null, userAuthHeaders);
+    assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2Id)));
+    assertEquals(totalOpenTaskCount - 1, tasks.getPaging().getTotal());
+
+    tasks = listTasks(null, null, null, TaskStatus.Closed, null, userAuthHeaders);
+    assertEquals(task2Id, tasks.getData().get(0).getTask().getId());
+    assertEquals(totalClosedTaskCount + 1, tasks.getPaging().getTotal());
+    assertEquals(totalClosedTaskCount + 1, tasks.getData().size());
   }
 
   @Test
@@ -413,7 +433,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
     createAndCheck(create, userAuthHeaders);
 
-    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
     TaskDetails task = tasks.getData().get(0).getTask();
     assertNotNull(task.getId());
     int taskId = task.getId();
@@ -520,7 +540,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
     createAndCheck(create, userAuthHeaders);
 
-    ThreadList tasks = listTasks(null, null, null, null, userAuthHeaders);
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
     TaskDetails task = tasks.getData().get(0).getTask();
     assertNotNull(task.getId());
     int taskId = task.getId();
@@ -584,7 +604,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     // Get the first page
     ThreadList threads =
         listThreads(
-            entityLink, null, userAuthHeaders, null, null, ThreadType.Conversation.toString(), limit, null, null);
+            entityLink, null, userAuthHeaders, null, null, null, ThreadType.Conversation.toString(), limit, null, null);
     assertEquals(limit, threads.getData().size());
     assertEquals(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
@@ -600,6 +620,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
               entityLink,
               null,
               userAuthHeaders,
+              null,
               null,
               null,
               ThreadType.Conversation.toString(),
@@ -624,6 +645,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             userAuthHeaders,
             null,
             null,
+            null,
             ThreadType.Conversation.toString(),
             limit,
             null,
@@ -637,6 +659,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
             entityLink,
             null,
             userAuthHeaders,
+            null,
             null,
             null,
             ThreadType.Conversation.toString(),
@@ -1074,16 +1097,30 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   public static ThreadList listTasks(
-      String entityLink, String userId, String filterType, Integer limitPosts, Map<String, String> authHeaders)
+      String entityLink,
+      String userId,
+      String filterType,
+      TaskStatus taskStatus,
+      Integer limitPosts,
+      Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
-        entityLink, limitPosts, authHeaders, userId, filterType, ThreadType.Task.toString(), null, null, null);
+        entityLink,
+        limitPosts,
+        authHeaders,
+        userId,
+        filterType,
+        taskStatus,
+        ThreadType.Task.toString(),
+        null,
+        null,
+        null);
   }
 
   public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
-        entityLink, limitPosts, authHeaders, null, null, ThreadType.Conversation.toString(), null, null, null);
+        entityLink, limitPosts, authHeaders, null, null, null, ThreadType.Conversation.toString(), null, null, null);
   }
 
   public static ThreadList listThreads(
@@ -1092,6 +1129,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
       Map<String, String> authHeaders,
       String userId,
       String filterType,
+      TaskStatus taskStatus,
       String threadType,
       Integer limitParam,
       String before,
@@ -1100,6 +1138,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("feed");
     target = userId != null ? target.queryParam("userId", userId) : target;
     target = filterType != null ? target.queryParam("filterType", filterType) : target;
+    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     target = threadType != null ? target.queryParam("type", threadType) : target;
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
