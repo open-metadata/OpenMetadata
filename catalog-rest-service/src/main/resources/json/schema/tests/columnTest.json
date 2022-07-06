@@ -45,6 +45,18 @@
             },
             {
               "$ref": "./column/columnValuesLengthsToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValuesToNotMatchRegex.json"
+            },
+            {
+              "$ref": "./column/columnValueStdDevToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMedianToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMeanToBeBetween.json"
             }
           ]
         },
@@ -60,7 +72,11 @@
             "columnValueLengthsToBeBetween",
             "columnValueMaxToBeBetween",
             "columnValueMinToBeBetween",
-            "columnValuesSumToBeBetween"
+            "columnValuesSumToBeBetween",
+            "columnValuesToNotMatchRegex",
+            "columnValueStdDevToBeBetween",
+            "columnValueMedianToBeBetween",
+            "columnValueMeanToBeBetween"
           ]
         }
       },
