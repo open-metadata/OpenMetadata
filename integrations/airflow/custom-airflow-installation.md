@@ -8,7 +8,7 @@ If you already have an Airflow instance up and running, you might want to reuse 
 
 There are three different angles here:
 
-1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](../../docs/integrations/airflow/airflow-lineage.md).
+1. Installing the ingestion modules directly on the host to enable the [Airflow Lineage Backend](airflow-lineage.md).
 2. Installing connector modules on the host to run specific workflows.
 3. Installing the Airflow APIs to enable the workflow deployment through the UI.
 
@@ -22,7 +22,7 @@ Goals:
 * Track DAG and Task status.
 * Document lineage as code directly on the DAG definition and ingest it when the DAGs run.
 
-You can find the full information in [Airflow Lineage Backend](../../docs/integrations/airflow/airflow-lineage.md). But as a quick summary, you need to
+You can find the full information in [Airflow Lineage Backend](airflow-lineage.md). But as a quick summary, you need to
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -36,7 +36,7 @@ What this does is add the full core `openmetadata-ingestion` package plus some v
 
 > If you see any `pip` errors when running this command due to `sqlalchemy`, please check that the correct version of the packages got installed. E.g., `SQLAlchemy==1.4.xx` and your `apache-airflow==2.x.y`. We are waiting for Airflow to remove the upper constraint on `sqlalchemy`, but the code should be compatible as is. You can find further information [here](https://github.com/apache/airflow/pull/16630).
 
-Afterward, you can jump into `airflow.cfg` following the [Airflow Lineage Backend](../../docs/integrations/airflow/airflow-lineage.md) guide.
+Afterward, you can jump into `airflow.cfg` following the [Airflow Lineage Backend](airflow-lineage.md) guide.
 
 ### Airflow 1.10.15
 
@@ -50,7 +50,7 @@ pip3 install "openmetadata-ingestion[airflow-container-1.10.15]"
 {% endtab %}
 {% endtabs %}
 
-You should either run this command or the one above, but not both, which will result in version incompatibilities. Then, follow the [Airflow Lineage Backend](../../docs/integrations/airflow/airflow-lineage.md) guide to prepare the `airflow.cfg` file and configure your DAGs.
+You should either run this command or the one above, but not both, which will result in version incompatibilities. Then, follow the [Airflow Lineage Backend](airflow-lineage.md) guide to prepare the `airflow.cfg` file and configure your DAGs.
 
 ## Connector Modules
 
@@ -62,7 +62,7 @@ The current approach we are following here is preparing the metadata ingestion D
 
 > Note that we are working towards preparing specific `DockerOperator`s that will simplify this process and reduce requirements' inconsistencies in the Airflow host. We do not yet have a clear support or guide here, as it might depend on specific architectures. We are working on this and will be a part of future releases.
 
-Then, you can just follow the guides for each [Connector](../../docs/integrations/connectors/). In the end, the installation process will look like this:
+Then, you can just follow the guides for each [Connector](../connectors/). In the end, the installation process will look like this:
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -108,4 +108,4 @@ On top of this installation, you'll need to follow these steps:
 
 ### Configure the OpenMetadata Server
 
-Finally, you can check how to [Configure Airflow in the OpenMetadata Server](../../docs/integrations/airflow/configure-airflow-in-the-openmetadata-server.md) to enable workflow deployments from the UI.
+Finally, you can check how to [Configure Airflow in the OpenMetadata Server](configure-airflow-in-the-openmetadata-server.md) to enable workflow deployments from the UI.

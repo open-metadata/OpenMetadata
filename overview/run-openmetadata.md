@@ -247,7 +247,7 @@ Username: `admin`
 
 Password: `admin`
 
-![](../docs/.gitbook/assets/airflow-login.png)
+![](../.gitbook/assets/airflow-login.png)
 
 ### 10. Begin using OpenMetadata
 
@@ -259,13 +259,13 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../docs/.gitbook/assets/landing-page.png)
+![](../.gitbook/assets/landing-page.png)
 
 ### Next Steps
 
-1. Visit the [Features](../docs/overview/features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-3. Visit the [API](../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+1. Visit the [Features](features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../metadata-standard/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ### Troubleshooting
 
@@ -285,6 +285,6 @@ If you need support please get in touch on Slack: [https://slack.open-metadata.o
 
 OpenMetadata has support for Google SSO, Okta SSO, custom OIDC, Auth0, and Azure SSO as identity providers. Please check Secure OpenMetadata section about how to configure them.
 
-{% content-ref url="../docs/deploy/secure-openmetadata/" %}
-[secure-openmetadata](../docs/deploy/secure-openmetadata/)
+{% content-ref url="../deploy/secure-openmetadata/" %}
+[secure-openmetadata](../deploy/secure-openmetadata/)
 {% endcontent-ref %}

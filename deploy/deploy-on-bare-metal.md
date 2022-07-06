@@ -62,7 +62,7 @@ Visit the [releases page](https://github.com/open-metadata/OpenMetadata/releases
 
 For example, the release for version 0.6 is found in the Assets section at the link highlighted in the figure below.
 
-<img src="../docs/.gitbook/assets/image (4) (2) (1) (1).png" alt="" data-size="original">
+<img src="../.gitbook/assets/image (4) (2) (1).png" alt="" data-size="original">
 
 ### 2. Untar the release download
 
@@ -135,14 +135,14 @@ server {
 
 ## Next Steps
 
-1. Visit the [Features](../docs/overview/features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-3. Visit the [API](../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+1. Visit the [Features](../overview/features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../metadata-standard/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ## Enable Security
 
-OpenMetadata has support for Google, Okta, Auth0, Azure SSO, and custom OIDC as identity providers. Please check [Secure OpenMetadata](../docs/deploy/secure-openmetadata/) for configuring Single Sign On.
+OpenMetadata has support for Google, Okta, Auth0, Azure SSO, and custom OIDC as identity providers. Please check [Secure OpenMetadata](secure-openmetadata/) for configuring Single Sign On.
 
-{% content-ref url="../docs/deploy/secure-openmetadata/" %}
-[secure-openmetadata](../docs/deploy/secure-openmetadata/)
+{% content-ref url="secure-openmetadata/" %}
+[secure-openmetadata](secure-openmetadata/)
 {% endcontent-ref %}

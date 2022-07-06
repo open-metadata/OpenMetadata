@@ -39,25 +39,25 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (61) (1).png>)
+![Add a New Service from the Database Services Page](<../../../.gitbook/assets/image (245).png>)
 
 ### 3. Select the Service Type
 
 Select Oracle as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (6).png>)
+![](<../../../.gitbook/assets/image (31).png>)
 
 ### 4. Name and Describe your Service
 
 Provide a name and description for your service as illustrated below.
 
-![](<../../../.gitbook/assets/image (15).png>)
+![](<../../../.gitbook/assets/image (64).png>)
 
 #### Service Name
 
@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Oracle service as desired.
 
-![Connection Details page](<../../../docs/.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3).png>)
+![Connection Details page](<../../../.gitbook/assets/sandbox-beta.open-metadata.org\_databaseServices\_add-service (3) (1).png>)
 
 <details>
 
@@ -103,13 +103,13 @@ Enter the details for any additional connection arguments such as security or pr
 
 </details>
 
-![Add Ingestion Page](<../../../docs/.gitbook/assets/image (22) (1) (1).png>)
+![Add Ingestion Page](<../../../.gitbook/assets/image (194).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![Add a Metadata Ingestion Workflow from the Service Page](<../../../docs/.gitbook/assets/image (68) (1) (1) (1) (2).png>)
+![Add a Metadata Ingestion Workflow from the Service Page](<../../../.gitbook/assets/image (68) (1) (1) (1) (2).png>)
 
 <details>
 
@@ -199,13 +199,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (54).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![Ingestion Pipeline Page](<../../../docs/.gitbook/assets/image (9).png>)
+![Ingestion Pipeline Page](<../../../.gitbook/assets/image (9) (2).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -213,7 +213,7 @@ If there were any errors during the workflow deployment process, the Ingestion P
 
 You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
-![Edit and Deploy the Ingestion Pipeline](<../../../docs/.gitbook/assets/image (19) (1).png>)
+![Edit and Deploy the Ingestion Pipeline](<../../../.gitbook/assets/image (19) (1) (1).png>)
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
@@ -221,8 +221,8 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to configure the Data Profiler and about executing Data Quality tests from the UI below:
 
-{% content-ref url="../../../docs/data-quality/profiler-workflow.md" %}
-[profiler-workflow.md](../../../docs/data-quality/profiler-workflow.md)
+{% content-ref url="../../../data-quality/profiler-workflow.md" %}
+[profiler-workflow.md](../../../data-quality/profiler-workflow.md)
 {% endcontent-ref %}
 
 ## DBT Integration

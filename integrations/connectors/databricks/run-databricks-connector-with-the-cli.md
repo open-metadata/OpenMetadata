@@ -13,9 +13,9 @@ Configure and schedule Databricks **metadata** and **profiler** workflows using 
 
 ## Requirements
 
-Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
-### **Install the Python module for this connector**&#x20;
+### **Install the Python module for this connector**
 
 Once the virtual environment is set up and activated as described in Step 1, run the following command to install the Python module for this connector.
 
@@ -77,7 +77,6 @@ Copy and paste the configuration template below into the `databricks.json` the f
     }
   }
 }
-
 ```
 {% endcode %}
 
@@ -106,7 +105,7 @@ In this step, we will configure the Hive service settings required for this conn
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: **** `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
+* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
@@ -155,7 +154,6 @@ We support different security providers. You can find their definitions [here](h
         }
     }
 }
-
 ```
 
 ### 2. Run with the CLI
@@ -226,7 +224,7 @@ This is a sample config for a Databricks profiler:
 * You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json).
 * The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `"type": "Profiler"` is still required to be present.
 
-Note that the `fqnFilterPattern`  supports regex as `include` or `exclude`. E.g.,
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
 
 ```
 "fqnFilterPattern": {

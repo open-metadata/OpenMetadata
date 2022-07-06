@@ -11,7 +11,7 @@ Configure and schedule Metabase **metadata** workflows using your own Airflow in
 
 ## Requirements
 
-Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ## Metadata Ingestion
 

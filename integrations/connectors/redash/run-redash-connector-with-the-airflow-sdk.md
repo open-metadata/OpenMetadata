@@ -11,7 +11,7 @@ Configure and schedule Redash **metadata** workflows using your own Airflow inst
 
 ## Requirements
 
-Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ## Metadata Ingestion
 
@@ -46,7 +46,6 @@ workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-
 ```
 
 #### Source Configuration - Service Connection

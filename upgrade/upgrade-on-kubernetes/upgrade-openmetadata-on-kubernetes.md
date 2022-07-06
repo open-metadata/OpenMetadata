@@ -196,4 +196,4 @@ pod "openmetadata-6488765769-b8nw7" deleted
 
 ## What's Next
 
-Head on to the [connectors](../../docs/integrations/connectors/) section to ingest data from various sources.
+Head on to the [connectors](../../integrations/connectors/) section to ingest data from various sources.

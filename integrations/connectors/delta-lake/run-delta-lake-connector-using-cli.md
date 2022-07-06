@@ -13,7 +13,7 @@ Configure and schedule Delta Lake **metadata**, and **profiler** workflows using
 
 ## Requirements
 
-Follow this [guide](../../../docs/integrations/airflow/) to learn how to set up Airflow to run the metadata ingestions.
+Follow this [guide](../../airflow/) to learn how to set up Airflow to run the metadata ingestions.
 
 ### Python requirements
 

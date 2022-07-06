@@ -1,0 +1,30 @@
+# Configure OpenMetadata Helm
+
+## Update Helm Values
+
+Once the `client id` and `client secret` are generated, see the snippet below for an example of where to place the `client id` value and update authorizer configurations.
+
+```
+global:
+  ...
+  authorizer:
+    className: "org.openmetadata.catalog.security.DefaultAuthorizer"
+    # JWT Filter
+    containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
+    initialAdmins: 
+    - "suresh"
+    botPrincipals: 
+    - "ingestion-bot"
+    principalDomain: "open-metadata.org"
+  authentication:
+    provider: "google"
+    publicKeys: 
+    - "https://www.googleapis.com/oauth2/v3/certs"
+    authority: "https://accounts.google.com"
+    clientId: "{client id}"
+    callbackUrl: "http://localhost:8585/callback"
+```
+
+## Upgrade Helm Release
+
+Head towards [Broken link](broken-reference "mention") to upgrade your OpenMetadata Helm Release.

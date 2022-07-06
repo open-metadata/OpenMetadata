@@ -13,7 +13,7 @@ Configure and schedule Amundsen **metadata** workflows using the `metadata` CLI.
 
 Follow this [guide](https://docs.open-metadata.org/overview/run-openmetadata#procedure) to learn how to install the `metadata` CLI.
 
-In order to execute the workflows, you will need a running OpenMetadata server.&#x20;
+In order to execute the workflows, you will need a running OpenMetadata server.
 
 ### Python requirements
 
@@ -23,22 +23,21 @@ To run the Amundsen ingestion, you will need to install:
 pip3 install 'openmetadata-ingestion[amundsen]'
 ```
 
-Note: Make sure you are running  `openmetadata-ingestion` version 0.10.2 or above.
+Note: Make sure you are running `openmetadata-ingestion` version 0.10.2 or above.
 
 ### Create Database Services
 
-You need to create database services before ingesting the metadata from Amundsen.&#x20;
+You need to create database services before ingesting the metadata from Amundsen.
 
 In the below example we have 5 tables from 3 data sources i.e hive, dynamo & delta so in OpenMetadata we have to create database services with the same name as the source.
 
-![Amundsen dashboard](<../../.gitbook/assets/image (3) (2).png>)
+![Amundsen dashboard](<../../.gitbook/assets/image (178).png>)
 
 To create database service follow these steps
 
 ### 1. Visit the _Services_ Page <a href="#1.-visit-the-services-page" id="1.-visit-the-services-page"></a>
 
-The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.To visit the _Services_ page, select _Services_ from the _Settings_ menu.\
-
+The first step is ingesting the metadata from your sources. Under Settings you will find a **Services** link an external source system to OpenMetadata. Once a service is created, it can be used to configure metadata, usage, and profiler workflows.To visit the _Services_ page, select _Services_ from the _Settings_ menu.\\
 
 ![Navigate to Settings >> Services](https://1627621137-files.gitbook.io/\~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FXztAI0iox9PPEym7VTye%2Fuploads%2Fgit-blob-b4d98517ea6565137da86128df9f83855767cc05%2Fimage.png?alt=media)
 
@@ -46,21 +45,21 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../.gitbook/assets/image (61) (1).png>)
+![Add a New Service from the Database Services Page](<../../.gitbook/assets/image (245).png>)
 
 ### 3. Select the Service Type
 
 Select the service type which are available on the amundsen and create a service one by one. In this example we will need to create services for hive, dynamo db & deltalake. Possible service names are `athena, bigquery, db2, druid, delta, salesforce, oracle, glue, snowflake, hive` .
 
-![](<../../.gitbook/assets/image (1) (2).png>)
+![](<../../.gitbook/assets/image (41).png>)
 
-![Service Created](<../../.gitbook/assets/image (45) (2).png>)
+![Service Created](<../../.gitbook/assets/image (318).png>)
 
 Note: Adding ingestion in this step is optional, because we will fetch the metadata from amundsen.
 
 After creating all the database services, my service page looks like below and we are ready to start with the amundsen ingestion via cli.
 
-![](<../../.gitbook/assets/image (79) (3).png>)
+![](<../../.gitbook/assets/image (324).png>)
 
 ## Metadata Ingestion
 
@@ -100,7 +99,6 @@ workflowConfig:
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: no-auth
-
 ```
 
 #### Source Configuration - Service Connection
@@ -121,7 +119,7 @@ For the Connection Arguments, In case you are using Single-Sign-On (SSO) for aut
 
 In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
-`"authenticator" : "externalbrowser"`&#x20;
+`"authenticator" : "externalbrowser"`
 
 #### Sink Configuration
 

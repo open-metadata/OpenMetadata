@@ -91,7 +91,7 @@ If you want to customise helm values for the dependencies as per your cluster, y
 {% endhint %}
 
 {% hint style="warning" %}
-Airflow uses DAGs and Logs for persistence volumes with Kubernetes Executor.&#x20;
+Airflow uses DAGs and Logs for persistence volumes with Kubernetes Executor.
 
 Make sure your kubernetes cluster storage provisioner has persistent volumes capability of ReadWriteMany Access Mode. Modify the Helm Values for airflow as per your requirement here.
 
@@ -134,15 +134,15 @@ kubectl port-forward <openmetadata-front end pod name> 8585:8585
 
 ### Next Steps
 
-1. Visit the [Features](../../docs/overview/features.md) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](../../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-3. Visit the [API](../../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+1. Visit the [Features](../../overview/features.md) overview page and explore the OpenMetadata UI.
+2. Visit the [Connectors](../../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+3. Visit the [API](../../metadata-standard/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ## Next Steps
 
-* Visit the [Features](../../docs/overview/features.md) overview page and explore the OpenMetadata UI.
-* Visit the [Connectors](../../docs/integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
-* Visit the [API](../../docs/openmetadata-apis/apis/overview.md) documentation and explore the OpenMetadata APIs.
+* Visit the [Features](../../overview/features.md) overview page and explore the OpenMetadata UI.
+* Visit the [Connectors](../../integrations/connectors/) documentation to see what services you can integrate with OpenMetadata.
+* Visit the [API](../../metadata-standard/apis/overview.md) documentation and explore the OpenMetadata APIs.
 
 ## Troubleshooting
 
@@ -191,7 +191,7 @@ MySql and ElasticSearch OpenMetadata Dependencies as deployed as StatefulSets an
 
 ## Enable Security
 
-OpenMetadata has support for Google, Okta, Auth0, and Azure SSO as identity providers. Please check [Secure OpenMetadata](../../docs/deploy/secure-openmetadata/) for configuring Single Sign On.
+OpenMetadata has support for Google, Okta, Auth0, and Azure SSO as identity providers. Please check [Secure OpenMetadata](../secure-openmetadata/) for configuring Single Sign On.
 
 ## Values
 

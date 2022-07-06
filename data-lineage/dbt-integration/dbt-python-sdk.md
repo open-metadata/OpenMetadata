@@ -76,4 +76,4 @@ _parse_data_model()
 
 The models which are extracted are shown in the Openmetada UI in the `DBT` tab
 
-![DBT Models](<../../.gitbook/assets/image (9) (1).png>)
+![DBT Models](<../../.gitbook/assets/image (117).png>)

@@ -20,15 +20,15 @@ Below example shows ingesting DBT with a Redshift service.
 
 ### Add a Redshift service in OpenMetadata
 
-![Select the Redshift Service](<../../.gitbook/assets/image (79).png>)
+![Select the Redshift Service](<../../.gitbook/assets/image (304).png>)
 
-![Enter a name for the service](<../../.gitbook/assets/image (18).png>)
+![Enter a name for the service](<../../.gitbook/assets/image (66).png>)
 
-![Add necessary config to connect to redshift service](<../../.gitbook/assets/image (56).png>)
+![Add necessary config to connect to redshift service](<../../.gitbook/assets/image (231).png>)
 
-![New service is created we can proceed to Adding Ingestion](<../../.gitbook/assets/image (81).png>)
+![New service is created we can proceed to Adding Ingestion](<../../.gitbook/assets/image (311).png>)
 
-![Add database or schema as required](<../../.gitbook/assets/image (51).png>)
+![Add database or schema as required](<../../.gitbook/assets/image (210).png>)
 
 ### Add DBT Source
 
@@ -40,7 +40,7 @@ OpenMetadata connects to the AWS s3 bucket via the credentials provided and scan
 
 The name of the s3 bucket and prefix path to the folder in which `manifest.json` and `catalog.json` files are stored can be provided. In the case where these parameters are not provided all the buckets are scanned for the files.
 
-![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (4) (1) (1).png>)
+![Enter AWS S3 bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (4) (1) (2).png>)
 
 #### Google Cloud Storage Buckets
 
@@ -52,11 +52,11 @@ GCS credentials can be stored in two ways:
 
 Entering the credentials directly into the form
 
-![Enter the GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (62).png>)
+![Enter the GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (62) (2).png>)
 
 Entering the path of file in which the GCS bucket credentials are stored.
 
-![Enter the path of file in which GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (25).png>)
+![Enter the path of file in which GCS bucket credentials in which the DBT files are stored](<../../.gitbook/assets/image (103).png>)
 
 For more information on Google Cloud Storage authentication click [here](https://cloud.google.com/docs/authentication/getting-started#create-service-account-console).
 
@@ -78,4 +78,4 @@ Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for
 OpenMetadata uses DBT cloud APIs to fetch the `run artifacts` (manifest.json and catalog.json) from the most recent DBT run.\
 The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your DBT cloud account.
 
-![](<../../.gitbook/assets/image (1).png>)
+![](<../../.gitbook/assets/image (32).png>)

@@ -2,10 +2,10 @@
 
 The following database connectors supports usage workflow in OpenMetadata:
 
-* [BigQuery](../docs/integrations/connectors/bigquery/)
-* [Snowflake](../docs/integrations/connectors/snowflake/)
+* [BigQuery](../integrations/connectors/bigquery/)
+* [Snowflake](../integrations/connectors/snowflake/)
 * [MSSQL](../integrations/connectors/mssql/)
-* [Redshift](../docs/integrations/connectors/redshift/)
+* [Redshift](../integrations/connectors/redshift/)
 * [Clickhouse](../docs/data-lineage/broken-reference/)
 
 If you are using any other database connector, direct execution of usage workflow is not possible. This is mainly because these database connectors does not maintain query execution logs which is required for usage workflow. This documentation will help you to learn, how to execute the usage workflow using a query log file for all the database connectors.
@@ -14,8 +14,8 @@ If you are using any other database connector, direct execution of usage workflo
 
 A query log file is a CSV file which contains the following information.
 
-* **query:** This field contains the literal query that has been executed in the database.&#x20;
-* **user\_name (optional):** Enter the database user name which has executed this query.&#x20;
+* **query:** This field contains the literal query that has been executed in the database.
+* **user\_name (optional):** Enter the database user name which has executed this query.
 * **start\_time (optional):** Enter the query execution start time in `YYYY-MM-DD HH:MM:SS` format.
 * **end\_time (optional):** Enter the query execution end time in `YYYY-MM-DD HH:MM:SS` format.
 * **aborted (optional):** This field accepts values as `true` or `false` and indicates whether the query was aborted during execution
@@ -30,7 +30,7 @@ In order to run a Usage Workflow we need to make sure that Metadata Ingestion Wo
 
 ### 1. Create a configuration file using template YAML
 
-Create a new file called  `query_log_usage.yaml` in the current directory. Note that the current directory should be the `openmetadata` directory.
+Create a new file called `query_log_usage.yaml` in the current directory. Note that the current directory should be the `openmetadata` directory.
 
 Copy and paste the configuration template below into the `query_log_usage.yaml` the file you created.
 

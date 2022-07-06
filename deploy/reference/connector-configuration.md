@@ -234,7 +234,7 @@ The syntax and semantics for `schema_filter_pattern` are the same as for [`table
 
 Use the `source.config.generate_sample_data` field to control whether or not to generate sample data to include in table views in the OpenMetadata user interface. See the figure below for an example.
 
-![](<../../docs/.gitbook/assets/sample-data (1).png>)
+![](<../../.gitbook/assets/sample-data (1).png>)
 
 Explicitly include sample data by adding the following key-value pair in the `source.config` field of your configuration file.
 
@@ -258,7 +258,7 @@ Note: `generate_sample_data` is set to `true` by default.
 
 DBT provides transformation logic that creates tables and views from raw data. OpenMetadata includes an integration for DBT that enables you to see the models used to generate a table from that table's details page in the OpenMetadata user interface. See the figure below for an example.
 
-![](../../docs/.gitbook/assets/dbt-tab.png)
+![](../../.gitbook/assets/dbt-tab.png)
 
 To include DBT models and metadata in your ingestion workflows, specify the location of the DBT manifest and catalog files as fields in your configuration file.
 
