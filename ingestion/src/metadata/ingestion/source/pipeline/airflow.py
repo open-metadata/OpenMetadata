@@ -298,8 +298,12 @@ class AirflowSource(Source[CreatePipelineRequest]):
                         if to_entity:
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
-                                    fromEntity=EntityReference(id=from_entity.id, type="table"),
-                                    toEntity=EntityReference(id=to_entity.id, type="table"),
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id, type="table"
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_entity.id, type="table"
+                                    ),
                                 )
                             )
                             if lineage_details:
@@ -307,9 +311,9 @@ class AirflowSource(Source[CreatePipelineRequest]):
                             yield lineage
                         else:
                             logger.warn(
-                            f"Could not find Table [{to_fqn}] from "
-                            f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
-                    )
+                                f"Could not find Table [{to_fqn}] from "
+                                f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                            )
                 else:
                     logger.warn(
                         f"Could not find Table [{from_fqn}] from "
