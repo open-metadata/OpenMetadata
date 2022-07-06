@@ -73,7 +73,7 @@ describe('Services page should work properly', () => {
     updateService();
   });
 
-  it('Update owner and check description', () => {
+  it.skip('Update owner and check description', () => {
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();

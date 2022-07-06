@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/column/columnValueStdDevToBeBetween.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "columnValueStdDevToBeBetween",
+    "description": "This schema defines the test ColumnValueStdDevToBeBetween. Test the std. dev. value in a col is within a range.",
+    "type": "object",
+    "javaType": "org.openmetadata.catalog.tests.column.ColumnValueStdDevToBeBetween",
+    "properties": {
+      "minValueForStdDevInCol": {
+        "description": "Expected std. dev value for the column to be greater or equal than",
+        "type": "integer"
+      },
+      "maxValueForStdDevInCol": {
+        "description": "Expected std. dev value for the column to be greater or equal than",
+        "type": "integer"
+      }
+    },
+    "anyOf": [{ "required": ["minValueForStdDevInCol"] }, { "required": ["maxValueForStdDevInCol"] }],
+    "additionalProperties": false
+  }
+  
