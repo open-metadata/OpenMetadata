@@ -21,12 +21,12 @@
       "default": "Looker"
     },
     "clientId": {
-      "title": "Username",
+      "title": "Client ID",
       "description": "User's Client ID. This user should have privileges to read all the metadata in Looker.",
       "type": "string"
     },
     "clientSecret": {
-      "title": "Password",
+      "title": "Client Secret",
       "description": "User's Client Secret.",
       "type": "string",
       "format": "password"
