@@ -374,7 +374,7 @@ class Profiler(Generic[TMetric]):
                         metric.name(): row
                     }  # Snowflake does not return a Row object when table is empty throwing an error
                 )
-            except (TimeoutError, Exception) as err:
+            except (Exception) as err:
                 logger.warning(
                     f"Error trying to compute column profile for {col.name} - {err}"
                 )
