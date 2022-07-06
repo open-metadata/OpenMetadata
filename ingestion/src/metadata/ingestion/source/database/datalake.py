@@ -170,7 +170,7 @@ class DatalakeSource(Source[Entity]):
     def get_s3_files(self, bucket_name, prefix):
         kwargs = {"Bucket": bucket_name}
         if prefix:
-            kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}{'/'}"
+            kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
         for key in self.client.list_objects(**kwargs)["Contents"]:
             try:
                 if filter_by_table(
