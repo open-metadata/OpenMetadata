@@ -99,6 +99,11 @@ class SqlColumnHandlerMixin:
         except NotImplementedError:
             logger.warning("Cannot obtain unique constraints - NotImplementedError")
             unique_constraints = []
+        try:
+            foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
+        except NotImplementedError:
+            logger.warning("Cannot obtain foreign constraints - NotImplementedError")
+            foreign_constraints = []
 
         pk_columns = (
             pk_constraints.get("constrained_columns")
@@ -106,11 +111,18 @@ class SqlColumnHandlerMixin:
             else {}
         )
 
+        foreign_columns = []
+        for foreign_constraint in foreign_constraints:
+            if len(foreign_constraint) > 0 and foreign_constraint.get(
+                "constrained_columns"
+            ):
+                foreign_columns.extend(foreign_constraint.get("constrained_columns"))
+
         unique_columns = []
         for constraint in unique_constraints:
             if constraint.get("column_names"):
                 unique_columns.extend(constraint.get("column_names"))
-        return pk_columns, unique_columns
+        return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
         parsed_string["dataLength"] = self._check_col_length(
@@ -143,11 +155,20 @@ class SqlColumnHandlerMixin:
         Get columns types and constraints information
         """
         # Get inspector information:
-        pk_columns, unique_columns = self._get_columns_with_constraints(
-            schema_name, table_name, inspector
-        )
+        (
+            pk_columns,
+            unique_columns,
+            foreign_columns,
+        ) = self._get_columns_with_constraints(schema_name, table_name, inspector)
         table_columns = []
         table_constraints = []
+        if foreign_columns:
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.FOREIGN_KEY,
+                    columns=foreign_columns,
+                )
+            )
         columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         for column in columns:
             try:
@@ -163,12 +184,12 @@ class SqlColumnHandlerMixin:
                         column, pk_columns, unique_columns
                     )
                     if not col_constraint and len(pk_columns) > 1:
-                        table_constraints = [
+                        table_constraints.append(
                             TableConstraint(
                                 constraintType=ConstraintType.PRIMARY_KEY,
                                 columns=pk_columns,
                             )
-                        ]
+                        )
                     col_data_length = self._check_col_length(col_type, column["type"])
                     precision = ColumnTypeParser.check_col_precision(
                         col_type, column["type"]
