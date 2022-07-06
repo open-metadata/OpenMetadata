@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { diffArrays, diffWordsWithSpace } from 'diff';
+import { ArrayChange, diffArrays, diffWordsWithSpace } from 'diff';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -35,6 +35,7 @@ import {
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityName } from './CommonUtils';
+import { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { isValidJSONString } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 
@@ -183,17 +184,16 @@ export const getTagsDiff = (
   oldTagList: Array<TagLabel>,
   newTagList: Array<TagLabel>
 ) => {
-  const tagDiff = diffArrays(oldTagList, newTagList);
+  const tagDiff = diffArrays<TagLabel, TagLabel>(oldTagList, newTagList);
   const result = tagDiff
-
-    .map((part: any) =>
+    .map((part: ArrayChange<TagLabel>) =>
       (part.value as Array<TagLabel>).map((tag) => ({
         ...tag,
         added: part.added,
         removed: part.removed,
       }))
     )
-    ?.flat(Infinity);
+    ?.flat(Infinity) as Array<TagLabelWithStatus>;
 
   return result;
 };

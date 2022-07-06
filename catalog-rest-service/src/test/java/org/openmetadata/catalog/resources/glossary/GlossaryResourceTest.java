@@ -34,13 +34,11 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
 import org.openmetadata.catalog.entity.data.Glossary;
-import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
-import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -76,7 +74,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
     GLOSSARY1_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY1_TERM1_REF = GLOSSARY1_TERM1.getEntityReference();
-    GLOSSARY1_TERM1_LABEL = getTagLabel(GLOSSARY1_TERM1);
+    GLOSSARY1_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY1_TERM1);
     validateTagLabel(GLOSSARY1_TERM1_LABEL);
 
     createGlossaryTerm =
@@ -86,15 +84,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             .withGlossary(GLOSSARY2_REF);
     GLOSSARY2_TERM1 = glossaryTermResourceTest.createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
     GLOSSARY2_TERM1_REF = GLOSSARY2_TERM1.getEntityReference();
-    GLOSSARY2_TERM1_LABEL = getTagLabel(GLOSSARY2_TERM1);
+    GLOSSARY2_TERM1_LABEL = EntityUtil.getTagLabel(GLOSSARY2_TERM1);
     validateTagLabel(GLOSSARY2_TERM1_LABEL);
-  }
-
-  private TagLabel getTagLabel(GlossaryTerm term) {
-    return new TagLabel()
-        .withTagFQN(term.getFullyQualifiedName())
-        .withDescription(term.getDescription())
-        .withSource(Source.GLOSSARY);
   }
 
   @Test

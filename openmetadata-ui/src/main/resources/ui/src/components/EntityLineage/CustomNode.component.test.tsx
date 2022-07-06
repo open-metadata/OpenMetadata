@@ -113,6 +113,7 @@ jest.mock('react-flow-renderer', () => ({
     Right: 'right',
     Bottom: 'bottom',
   },
+  useUpdateNodeInternals: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 describe('Test CustomNode Component', () => {

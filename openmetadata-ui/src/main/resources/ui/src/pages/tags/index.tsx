@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -43,6 +43,7 @@ import ConfirmationModal from '../../components/Modals/ConfirmationModal/Confirm
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -149,8 +150,10 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
+      } else if (nameWithSpace.test(data.name)) {
         errData['name'] = 'Name with space is not allowed';
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = 'Name with delimiters are not allowed';
       } else if (
         !isUndefined(
           categories.find((item) => toLower(item.name) === toLower(data.name))
@@ -308,8 +311,10 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
+      } else if (nameWithSpace.test(data.name)) {
         errData['name'] = 'Name with space is not allowed';
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = 'Name with delimiters are not allowed';
       } else if (
         !isUndefined(
           currentCategory?.children?.find(
@@ -713,10 +718,12 @@ const TagsPage = () => {
                       description: '',
                       categoryType: TagCategoryType.Descriptive,
                     }}
+                    isSaveButtonDisabled={!isEmpty(errorDataCategory)}
                     onCancel={() => setIsAddingCategory(false)}
-                    onChange={(data) =>
-                      onNewCategoryChange(data as TagCategory)
-                    }
+                    onChange={(data) => {
+                      setErrorDataCategory({});
+                      onNewCategoryChange(data as TagCategory);
+                    }}
                     onSave={(data) => createCategory(data as TagCategory)}
                   />
                 )}
@@ -732,8 +739,12 @@ const TagsPage = () => {
                       description: '',
                       categoryType: '',
                     }}
+                    isSaveButtonDisabled={!isEmpty(errorDataTag)}
                     onCancel={() => setIsAddingTag(false)}
-                    onChange={(data) => onNewTagChange(data as TagCategory)}
+                    onChange={(data) => {
+                      setErrorDataTag({});
+                      onNewTagChange(data as TagCategory);
+                    }}
                     onSave={(data) => createPrimaryTag(data as TagCategory)}
                   />
                 )}

@@ -26,6 +26,7 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import { bytesToSize } from '../../utils/StringsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -205,13 +206,12 @@ const TopicVersion: FC<TopicVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabelWithStatus) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
         uniqueTags.push(elem);
