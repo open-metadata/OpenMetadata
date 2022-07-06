@@ -145,6 +145,7 @@ const TeamsAndUsers = ({
                 )}
               </div>
             ))}
+            {!teams.length && <>No teams found</>}
           </>
         </Card>
         {hasAccess && (
@@ -194,6 +195,8 @@ const TeamsAndUsers = ({
                 {getCountBadge(user.count, '', activeUserTab === user.name)}
               </div>
             ))}
+
+            {!usersData.length && <>No user found</>}
           </Card>
         )}
       </>
