@@ -243,6 +243,7 @@
   * [Backup Metadata](upgrade/upgrade-on-kubernetes/backup-metadata.md)
   * [Upgrade OpenMetadata on Kubernetes](upgrade/upgrade-on-kubernetes/upgrade-openmetadata-on-kubernetes.md)
 * [Upgrade from 0.9 to 0.10](upgrade/upgrade-from-0.9-to-0.10.md)
+* [Upgrade from 0.10 to 0.11](upgrade/upgrade-from-0.10-to-0.11.md)
 
 ## 🔎 Data Discovery
 
