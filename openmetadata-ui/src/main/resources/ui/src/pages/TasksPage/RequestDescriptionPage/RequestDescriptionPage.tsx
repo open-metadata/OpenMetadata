@@ -31,6 +31,7 @@ import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePic
 import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { EntityField } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateThread,
@@ -99,7 +100,7 @@ const RequestDescription = () => {
   const back = () => history.goBack();
 
   const getColumnDetails = useCallback(() => {
-    if (!isNil(field) && !isNil(value) && field === 'columns') {
+    if (!isNil(field) && !isNil(value) && field === EntityField.COLUMNS) {
       const column = getSanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
       const columnObject = getColumnObject(column[0], entityData.columns || []);
@@ -127,7 +128,7 @@ const RequestDescription = () => {
     if (field && value) {
       return `${field}${ENTITY_LINK_SEPARATOR}${value}${ENTITY_LINK_SEPARATOR}description`;
     } else {
-      return 'description';
+      return EntityField.DESCRIPTION;
     }
   };
 

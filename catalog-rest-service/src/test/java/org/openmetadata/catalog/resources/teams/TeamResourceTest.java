@@ -13,7 +13,6 @@
 
 package org.openmetadata.catalog.resources.teams;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -128,24 +127,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertEquals(team.getId(), user2.getTeams().get(0).getId());
   }
 
-  @Test
-  void get_teamWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    CreateTeam create = createRequest(test);
-    Team team = createEntity(create, ADMIN_AUTH_HEADERS);
-
-    // Empty query field .../teams?fields=
-    assertResponse(
-        () -> getEntity(team.getId(), "test", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("test"));
-
-    // .../teams?fields=invalidField
-    assertResponse(
-        () -> getEntity(team.getId(), "invalidField", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("invalidField"));
-  }
-
   /**
    * @see EntityResourceTest put_addDeleteFollower_200 for tests related getting team with entities owned by the team
    */
@@ -209,7 +190,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
             patchEntity(
                 team.getId(), originalJson, team, SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
         FORBIDDEN,
-        CatalogExceptionMessage.noPermission(randomUserName, "UpdateTeam"));
+        CatalogExceptionMessage.noPermission(randomUserName, "TeamEditUsers"));
 
     // Ensure user with UpdateTeam permission can add users to a team.
     User teamManagerUser = createTeamManager(test);
@@ -227,7 +208,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
     Rule rule =
-        new Rule().withName("TeamManagerPolicy-UpdateTeam").withAllow(true).withOperation(MetadataOperation.UpdateTeam);
+        new Rule()
+            .withName("TeamManagerPolicy-UpdateTeam")
+            .withAllow(true)
+            .withOperation(MetadataOperation.TEAM_EDIT_USERS);
 
     // Create a policy with the rule
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();

@@ -21,7 +21,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -41,10 +40,11 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -54,6 +54,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import {
@@ -105,6 +106,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
     EntityFieldThreadCount[]
   >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const [sampleData, setSampleData] = useState<TopicSampleData>();
@@ -125,28 +129,27 @@ const TopicDetailsPage: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TOPIC, topicFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-count-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.TOPIC,
+      topicFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
-  const fetchActivityFeed = (after?: string) => {
+  const fetchActivityFeed = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TOPIC, topicFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.TOPIC, topicFQN),
+      after,
+      threadType,
+      feedType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -165,6 +168,15 @@ const TopicDetailsPage: FunctionComponent = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    filterType?: FeedFilter,
+    type?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    fetchActivityFeed(after, filterType, type);
   };
 
   const fetchTabSpecificData = (tabField = '') => {
@@ -561,11 +573,12 @@ const TopicDetailsPage: FunctionComponent = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={fetchActivityFeed}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followTopicHandler={followTopic}
           followers={followers}
           isSampleDataLoading={isSampleDataLoading}

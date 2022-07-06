@@ -12,12 +12,14 @@
  */
 
 import { Card } from 'antd';
-import { uniqueId } from 'lodash';
+import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
-import { getEntityName } from '../../../utils/CommonUtils';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import {
+  Post,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import AssigneeList from '../../common/AssigneeList/AssigneeList';
 import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
@@ -99,11 +101,16 @@ const FeedListBody: FC<FeedListBodyProp> = ({
             id: feed.id,
             reactions: feed.reactions,
           } as Post;
+          const isTask = isEqual(feed.type, ThreadType.Task);
           const postLength = feed?.posts?.length || 0;
           const replies = feed.postsCount ? feed.postsCount - 1 : 0;
-          const repliedUsers = (feed?.posts || [])
-            .map((f) => f.from)
-            .slice(0, postLength >= 3 ? 2 : 1);
+          const repliedUsers = [
+            ...new Set((feed?.posts || []).map((f) => f.from)),
+          ];
+          const repliedUniqueUsersList = repliedUsers.slice(
+            0,
+            postLength >= 3 ? 2 : 1
+          );
           const lastPost = feed?.posts?.[postLength - 1];
 
           return (
@@ -113,9 +120,14 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               style={{
                 ...leftPanelAntCardStyle,
                 marginTop: '20px',
-                paddingTop: feed.type === ThreadType.Task ? '8px' : '',
+                paddingTop: isTask ? '8px' : '',
+                border: isTask
+                  ? '1px solid #C6B5F6'
+                  : leftPanelAntCardStyle.border,
               }}>
-              {feed.type === ThreadType.Task && <TaskBadge />}
+              {isTask && (
+                <TaskBadge status={feed.task?.status as ThreadTaskStatus} />
+              )}
               <div data-testid="message-container" key={index}>
                 <ActivityFeedCard
                   isThread
@@ -132,7 +144,7 @@ const FeedListBody: FC<FeedListBodyProp> = ({
                   <Fragment>
                     {getThreadFooter(
                       postLength,
-                      repliedUsers,
+                      repliedUniqueUsersList,
                       replies,
                       feed.id,
                       lastPost
@@ -155,25 +167,10 @@ const FeedListBody: FC<FeedListBodyProp> = ({
               {feed.task && (
                 <div className="tw-border-t tw-border-main tw-py-1 tw-flex">
                   <span className="tw-text-grey-muted">Assignees: </span>
-                  <span className="tw-ml-0.5 tw-align-middle tw-grid tw-grid-cols-4">
-                    {feed.task.assignees.map((assignee) => (
-                      <UserPopOverCard
-                        key={uniqueId()}
-                        type={assignee.type}
-                        userName={assignee.name || ''}>
-                        <span className="tw-flex tw-m-1.5 tw-mt-0">
-                          <ProfilePicture
-                            id=""
-                            name={getEntityName(assignee)}
-                            width="20"
-                          />
-                          <span className="tw-ml-1">
-                            {getEntityName(assignee)}
-                          </span>
-                        </span>
-                      </UserPopOverCard>
-                    ))}
-                  </span>
+                  <AssigneeList
+                    assignees={feed.task.assignees || []}
+                    className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                  />
                 </div>
               )}
             </Card>

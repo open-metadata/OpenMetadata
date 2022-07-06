@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.glossary;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.Entity.FIELD_TAGS;
@@ -25,6 +26,8 @@ import static org.openmetadata.catalog.Entity.GLOSSARY;
 import static org.openmetadata.catalog.Entity.GLOSSARY_TERM;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.glossaryTermMismatch;
+import static org.openmetadata.catalog.resources.databases.TableResourceTest.getColumn;
+import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityReferenceList;
@@ -50,14 +53,19 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateGlossary;
 import org.openmetadata.catalog.api.data.CreateGlossaryTerm;
+import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.Glossary;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.GlossaryTerm.Status;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.resources.EntityResourceTest;
+import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -236,15 +244,26 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     CreateGlossaryTerm create = createRequest("t1", "", "", null).withGlossary(g1Ref);
     GlossaryTerm t1 = createEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference tRef1 = t1.getEntityReference();
+    TagLabel t1Label = EntityUtil.getTagLabel(t1);
 
     // Create glossary term t11 under t1
     create = createRequest("t11", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef1);
     GlossaryTerm t11 = createEntity(create, ADMIN_AUTH_HEADERS);
     EntityReference tRef11 = t11.getEntityReference();
+    TagLabel t11Label = EntityUtil.getTagLabel(t11);
 
     // Create glossary term t111 under t11
     create = createRequest("t111", "", "", null).withReviewers(null).withGlossary(g1Ref).withParent(tRef11);
     GlossaryTerm t111 = createEntity(create, ADMIN_AUTH_HEADERS);
+    TagLabel t111Label = EntityUtil.getTagLabel(t111);
+
+    // Assign glossary terms to a table
+    // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    List<Column> columns = Arrays.asList(getColumn("c1", BIGINT, t11Label), getColumn("c2", BIGINT, t111Label));
+    CreateTable createTable =
+        tableResourceTest.createRequest("glossaryTermDelTest").withTags(List.of(t1Label)).withColumns(columns);
+    Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     //
     // Glossary that has terms and glossary terms that have children CAN'T BE DELETED without recursive flag
@@ -265,13 +284,28 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //
     // Glossary that has terms and glossary terms that have children CAN BE DELETED recursive flag
     //
-    deleteAndCheckEntity(t11, true, true, ADMIN_AUTH_HEADERS); // Delete both t11 and the child t11
+
+    // Delete both t11 and the child t11
+    deleteAndCheckEntity(t11, true, true, ADMIN_AUTH_HEADERS);
     assertEntityDeleted(t11.getId(), true);
     assertEntityDeleted(t111.getId(), true);
 
-    glossaryResourceTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS); // Delete the entire glossary
+    // Check to see the tags assigned are deleted
+    table = tableResourceTest.getEntity(table.getId(), "tags, columns", ADMIN_AUTH_HEADERS);
+    assertTrue(table.getColumns().get(0).getTags().isEmpty()); // tag t11 removed
+    assertTrue(table.getColumns().get(1).getTags().isEmpty()); // tag t111 removed
+    assertFalse(table.getTags().isEmpty()); // tag t1 still exists
+
+    // Delete the entire glossary
+    glossaryResourceTest.deleteAndCheckEntity(g1, true, true, ADMIN_AUTH_HEADERS);
     glossaryResourceTest.assertEntityDeleted(g1.getId(), true);
     assertEntityDeleted(t1.getId(), true);
+
+    // Check to see the tags assigned are deleted
+    table = tableResourceTest.getEntity(table.getId(), "tags, columns", ADMIN_AUTH_HEADERS);
+    assertTrue(table.getColumns().get(0).getTags().isEmpty()); // tag t11 is removed
+    assertTrue(table.getColumns().get(1).getTags().isEmpty()); // tag t111 is removed
+    assertTrue(table.getTags().isEmpty()); // tag t1 is removed
   }
 
   public GlossaryTerm createTerm(Glossary glossary, GlossaryTerm parent, String termName) throws IOException {

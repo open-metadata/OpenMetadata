@@ -37,6 +37,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.jdbi3.FeedRepository;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.socket.WebSocketManager;
@@ -84,28 +85,36 @@ public class ChangeEventHandler implements EventHandler {
       // Add a new thread to the entity for every change event
       // for the event to appear in activity feeds
       if (Entity.shouldDisplayEntityChangeOnFeed(changeEvent.getEntityType())) {
-        for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
-          // Don't create a thread if there is no message
-          if (!thread.getMessage().isEmpty()) {
-            EntityInterface entity;
-            // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
-            if (responseContext.getEntity() instanceof ChangeEvent) {
-              ChangeEvent change = (ChangeEvent) responseContext.getEntity();
-              entity = (EntityInterface) change.getEntity();
-            } else {
-              entity = (EntityInterface) responseContext.getEntity();
+        // ignore usageSummary updates in the feed
+        boolean shouldIgnore = false;
+        if (Entity.TABLE.equals(changeEvent.getEntityType()) && changeEvent.getChangeDescription() != null) {
+          List<FieldChange> fields = changeEvent.getChangeDescription().getFieldsUpdated();
+          shouldIgnore = fields.stream().anyMatch(field -> field.getName().equals("usageSummary"));
+        }
+        if (!shouldIgnore) {
+          for (var thread : listOrEmpty(getThreads(responseContext, loggedInUserName))) {
+            // Don't create a thread if there is no message
+            if (!thread.getMessage().isEmpty()) {
+              EntityInterface entity;
+              // In case of ENTITY_FIELDS_CHANGED entity from responseContext will be a ChangeEvent
+              if (responseContext.getEntity() instanceof ChangeEvent) {
+                ChangeEvent change = (ChangeEvent) responseContext.getEntity();
+                entity = (EntityInterface) change.getEntity();
+              } else {
+                entity = (EntityInterface) responseContext.getEntity();
+              }
+              EntityReference entityReference = entity.getEntityReference();
+              EntityReference owner;
+              try {
+                owner = Entity.getOwner(entityReference);
+              } catch (Exception exception) {
+                owner = null;
+              }
+              EntityLink about = EntityLink.parse(thread.getAbout());
+              feedDao.create(thread, entity.getId(), owner, about);
+              String jsonThread = mapper.writeValueAsString(thread);
+              WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
             }
-            EntityReference entityReference = entity.getEntityReference();
-            EntityReference owner;
-            try {
-              owner = Entity.getOwner(entityReference);
-            } catch (Exception exception) {
-              owner = null;
-            }
-            EntityLink about = EntityLink.parse(thread.getAbout());
-            feedDao.create(thread, entity.getId(), owner, about);
-            String jsonThread = mapper.writeValueAsString(thread);
-            WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.feedBroadcastChannel, jsonThread);
           }
         }
       }
@@ -131,11 +140,11 @@ public class ChangeEventHandler implements EventHandler {
                         .sendToOne(e.getId(), WebSocketManager.taskBroadcastChannel, jsonThread);
                   } else if (Entity.TEAM.equals(e.getType())) {
                     // fetch all that are there in the team
-                    List<String> userIds =
+                    List<EntityRelationshipRecord> records =
                         dao.relationshipDAO()
                             .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
                     WebSocketManager.getInstance()
-                        .sendToManyWithString(userIds, WebSocketManager.taskBroadcastChannel, jsonThread);
+                        .sendToManyWithString(records, WebSocketManager.taskBroadcastChannel, jsonThread);
                   }
                 });
             return;

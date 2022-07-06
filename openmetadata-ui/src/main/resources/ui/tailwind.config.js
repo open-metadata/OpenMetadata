@@ -51,6 +51,7 @@ const badgeBG = '#D5D8DC';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
 const lightBG = '#F4F0FD';
+const taskStatusBG = '#E5F3F1';
 
 // Borders and Separators
 const mainBorder = '#DCE3EC';
@@ -64,6 +65,7 @@ const textBody = '#37352f';
 const textMuted = '#6B7280';
 const textDark = '#000000';
 const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
+const taskStatus = '#008376';
 
 module.exports = {
   purge: [
@@ -150,6 +152,8 @@ module.exports = {
         'border-gray': grayBorder,
         'feed-background': '#F8FBFF',
         'feed-hover': '#EBF2F9',
+        'task-status-bg': taskStatusBG,
+        'task-status-fg': taskStatus,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -180,7 +184,7 @@ module.exports = {
         700: '700px',
       },
       minWidth: {
-        badgeCount: '30px',
+        badgeCount: '46px',
         64: '16rem',
       },
       maxWidth: {

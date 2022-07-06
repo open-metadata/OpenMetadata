@@ -56,6 +56,7 @@ import {
   getServiceDetailsPath,
   getTeamAndUserDetailsPath,
 } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -657,7 +658,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 blurWithBodyBG
                 description={description}
                 entityFieldThreads={getEntityFieldThreadCounts(
-                  'description',
+                  EntityField.DESCRIPTION,
                   entityFieldThreadCount
                 )}
                 entityFqn={databaseSchemaFQN}
@@ -686,6 +687,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                     id="activityfeed">
                     <div />
                     <ActivityFeedList
+                      hideFeedFilter
+                      hideThreadFilter
                       isEntityFeed
                       withSidePanel
                       className=""

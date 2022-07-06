@@ -24,11 +24,6 @@
       "description": "Owner of this Policy.",
       "$ref": "../../type/entityReference.json"
     },
-    "policyUrl": {
-      "description": "Link to a well documented definition of this Policy.",
-      "type": "string",
-      "format": "uri"
-    },
     "policyType": {
       "$ref": "../../entity/policies/policy.json#/definitions/policyType"
     },

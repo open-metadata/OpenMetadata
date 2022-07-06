@@ -155,7 +155,7 @@ class OpenMetadataValidationAction(ValidationAction):
         if self.ometa_service_name:
             return self.ometa_conn.get_by_name(
                 entity=Table,
-                fqdn=f"{self.ometa_service_name}.{database}.{schema_name}.{table_name}",
+                fqn=f"{self.ometa_service_name}.{database}.{schema_name}.{table_name}",
             )
 
         table_entity = [

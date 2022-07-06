@@ -225,7 +225,7 @@ def _create_lineage_by_table_name(
 
     except Exception as err:
         logger.debug(traceback.format_exc())
-        logger.error(traceback.format_exc())
+        logger.error(f"Error creating lineage - {err}")
 
 
 def populate_column_lineage_map(raw_column_lineage):

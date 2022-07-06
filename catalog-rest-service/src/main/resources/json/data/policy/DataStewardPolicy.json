@@ -5,29 +5,28 @@
   "description": "Policy for Data Steward Role to perform operations on metadata entities",
   "policyType": "AccessControl",
   "enabled": true,
-  "deleted": false,
   "rules": [
     {
-      "name": "DataStewardPolicy-UpdateDescription",
-      "operation": "UpdateDescription",
+      "name": "DataStewardPolicy-editDescription",
+      "operation": "EditDescription",
       "allow": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardPolicy-UpdateLineage",
-      "operation": "UpdateLineage",
+      "name": "DataStewardPolicy-editLineage",
+      "operation": "EditLineage",
       "allow": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardPolicy-UpdateOwner",
-      "operation": "UpdateOwner",
+      "name": "DataStewardPolicy-editOwner",
+      "operation": "EditOwner",
       "allow": true,
       "priority": 1000
     },
     {
-      "name": "DataStewardPolicy-UpdateTags",
-      "operation": "UpdateTags",
+      "name": "DataStewardPolicy-editTags",
+      "operation": "EditTags",
       "allow": true,
       "priority": 1000
     }

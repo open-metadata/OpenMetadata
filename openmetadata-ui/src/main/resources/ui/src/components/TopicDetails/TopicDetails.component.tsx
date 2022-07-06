@@ -12,14 +12,22 @@
  */
 
 import { EntityTags, ExtraInfo } from 'Models';
-import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Topic } from '../../generated/entity/data/topic';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -86,6 +94,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   isSampleDataLoading,
   sampleData,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -93,6 +102,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -163,7 +175,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -205,7 +217,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 5,
     },
@@ -321,10 +332,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
-
   const onThreadPanelClose = () => {
     setThreadLink('');
   };
@@ -351,6 +364,13 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedFilter, threadType) => {
+      fetchFeedHandler(paging.after, feedFilter, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -358,7 +378,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={topicFQN}
@@ -393,8 +413,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={topicFQN}
@@ -442,6 +466,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -459,17 +484,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                   <SchemaEditor value={JSON.stringify(getConfigObject())} />
                 </div>
               )}
-              {activeTab === 5 && !deleted && (
+              {activeTab === 5 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={topicDetails.id}
                     entityName={topicDetails.name}
                     entityType={EntityType.TOPIC}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.TOPIC}
                     onSave={onSettingsUpdate}
                   />
@@ -490,6 +517,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />

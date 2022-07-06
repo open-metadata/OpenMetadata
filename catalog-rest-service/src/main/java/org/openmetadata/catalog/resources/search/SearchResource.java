@@ -272,7 +272,7 @@ public class SearchResource {
     hb.field(highlightColumns);
     hb.field(highlightColumnDescriptions);
     hb.field(highlightColumnChildren);
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder().query(queryStringBuilder).from(from).size(size);
+    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryStringBuilder, hb, from, size);
     searchSourceBuilder.aggregation(AggregationBuilders.terms("Database").field("database.name.keyword"));
     searchSourceBuilder.aggregation(AggregationBuilders.terms("DatabaseSchema").field("databaseSchema.name.keyword"));
 

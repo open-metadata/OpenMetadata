@@ -14,7 +14,13 @@
 package org.openmetadata.client.gateway;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import feign.Feign;
 import feign.RequestInterceptor;
+import feign.form.FormEncoder;
+import feign.jackson.JacksonDecoder;
+import feign.jackson.JacksonEncoder;
+import feign.okhttp.OkHttpClient;
+import feign.slf4j.Slf4jLogger;
 import io.swagger.client.ApiClient;
 import io.swagger.client.api.CatalogApi;
 import org.openmetadata.catalog.api.CatalogVersion;
@@ -41,6 +47,12 @@ public class OpenMetadata {
   public OpenMetadata(OpenMetadataServerConnection config) {
     serverConfig = config;
     apiClient = new ApiClient();
+    Feign.Builder builder = Feign.builder()
+            .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
+            .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
+            .logger(new Slf4jLogger())
+            .client(new OkHttpClient());
+    apiClient.setFeignBuilder(builder);
     AuthenticationProviderFactory factory = new AuthenticationProviderFactory();
     apiClient.addAuthorization("oauth", factory.getAuthProvider(config));
     basePath = config.getHostPort() + "/";

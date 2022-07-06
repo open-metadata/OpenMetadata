@@ -30,6 +30,7 @@ interface Props extends UserData {
   textClass?: string;
   className?: string;
   height?: string;
+  profileImgClasses?: string;
 }
 
 const ProfilePicture = ({
@@ -41,6 +42,7 @@ const ProfilePicture = ({
   type = 'square',
   width = '36',
   height,
+  profileImgClasses,
 }: Props) => {
   const profilePic = useMemo(() => {
     return getUserProfilePic(id, name);
@@ -90,10 +92,11 @@ const ProfilePicture = ({
 
   return profilePic ? (
     <div
-      className={classNames('profile-image', type)}
+      className={classNames('profile-image', type, className)}
       style={{ height: `${height || width}px`, width: `${width}px` }}>
       <img
         alt="user"
+        className={profileImgClasses}
         data-testid="profile-image"
         referrerPolicy="no-referrer"
         src={profilePic}

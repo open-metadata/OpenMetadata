@@ -135,7 +135,7 @@ const TeamDetails = ({
       isHidden: !(
         hasAccess ||
         isOwner() ||
-        userPermissions[Operation.UpdateOwner]
+        userPermissions[Operation.EditOwner]
       ),
       position: 4,
     },
@@ -347,7 +347,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button
@@ -365,7 +365,7 @@ const TeamDetails = ({
             ) : (
               <Fragment>
                 <div
-                  className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+                  className="tw-grid lg:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
                   data-testid="user-data-container">
                   {sortedUser.map((user, index) => {
                     const User = {

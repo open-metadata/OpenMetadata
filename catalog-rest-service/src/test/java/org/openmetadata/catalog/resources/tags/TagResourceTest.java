@@ -54,7 +54,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -100,11 +99,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
-    return new TagLabel()
-        .withTagFQN(tag.getFullyQualifiedName())
-        .withDescription(tag.getDescription())
-        .withSource(Source.TAG);
+    return EntityUtil.getTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
   }
 
   @Test

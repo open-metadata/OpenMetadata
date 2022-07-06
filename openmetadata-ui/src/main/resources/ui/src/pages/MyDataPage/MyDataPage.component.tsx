@@ -16,7 +16,13 @@ import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormatedTableData } from 'Models';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
@@ -40,7 +46,7 @@ import {
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
@@ -71,8 +77,8 @@ const MyDataPage = () => {
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
+  const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
@@ -81,10 +87,6 @@ const MyDataPage = () => {
 
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const { socket } = useWebSocketConnector();
-
-  const feedFilterHandler = (filter: FeedFilter) => {
-    setFeedFilter(filter);
-  };
 
   const setTableCount = (count = 0) => {
     setCountTables(count);
@@ -309,9 +311,18 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (filterType: FeedFilter, after?: string) => {
+  const getFeedData = (
+    filterType?: FeedFilter,
+    after?: string,
+    type?: ThreadType
+  ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(currentUser?.id, filterType, after)
+    getFeedsWithFilter(
+      currentUser?.id,
+      filterType ?? FeedFilter.ALL,
+      after,
+      type
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -327,6 +338,14 @@ const MyDataPage = () => {
         setIsFeedLoading(false);
       });
   };
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+      !after && setEntityThread([]);
+      getFeedData(filterType, after, type);
+    },
+    [getFeedData, setEntityThread]
+  );
 
   const postFeedHandler = (value: string, id: string) => {
     const data = {
@@ -410,15 +429,31 @@ const MyDataPage = () => {
       });
   };
 
+  // Fetch tasks list to show count for Pending tasks
+  const fetchMyTaskData = useCallback(() => {
+    if (!currentUser || !currentUser.id) {
+      return;
+    }
+
+    getFeedsWithFilter(
+      currentUser.id,
+      FeedFilter.ASSIGNED_TO,
+      undefined,
+      ThreadType.Task
+    ).then((res: AxiosResponse) => {
+      res.data && setPendingTaskCount(res.data.paging.total);
+    });
+  }, [currentUser]);
+
   useEffect(() => {
     fetchOMDMode();
     fetchData(true);
+    fetchMyTaskData();
   }, []);
 
   useEffect(() => {
-    getFeedData(feedFilter);
-    setEntityThread([]);
-  }, [feedFilter]);
+    getFeedData();
+  }, []);
 
   useEffect(() => {
     if (
@@ -440,15 +475,23 @@ const MyDataPage = () => {
           ]);
         }
       });
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setPendingTaskCount((prevCount) =>
+            prevCount ? prevCount + 1 : prevCount
+          );
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
     };
   }, [socket]);
 
   const onRefreshFeeds = () => {
-    setEntityThread((prevData) => [...activityFeeds, ...prevData]);
+    getFeedData();
     setActivityFeeds([]);
   };
 
@@ -476,15 +519,14 @@ const MyDataPage = () => {
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}
-            feedFilter={feedFilter}
-            feedFilterHandler={feedFilterHandler}
-            fetchFeedHandler={getFeedData}
+            fetchFeedHandler={handleFeedFetchFromFeedList}
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}
+            pendingTaskCount={pendingTaskCount}
             postFeedHandler={postFeedHandler}
             updateThreadHandler={updateThreadHandler}
             onRefreshFeeds={onRefreshFeeds}

@@ -39,3 +39,26 @@ export const profileInfo = [
     path: 'following',
   },
 ];
+
+export const USER_PROFILE_TABS = [
+  {
+    name: 'Activity',
+    isProtected: false,
+    position: 1,
+  },
+  {
+    name: 'Tasks',
+    isProtected: false,
+    position: 2,
+  },
+  {
+    name: 'My Data',
+    isProtected: false,
+    position: 3,
+  },
+  {
+    name: 'Following',
+    isProtected: false,
+    position: 4,
+  },
+];

@@ -57,10 +57,7 @@ import {
 } from '../../generated/api/lineage/addLineage';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import {
-  Edge as EntityEdge,
-  EntityLineage,
-} from '../../generated/type/entityLineage';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
 import { useAuth } from '../../hooks/authHooks';
@@ -117,7 +114,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   const { userPermissions, isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [lineageData, setLineageData] = useState<EntityLineage>(entityLineage);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -170,6 +166,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     }),
     []
   );
+
+  const customEdges = useMemo(() => ({ buttonedge: CustomEdge }), []);
 
   /**
    * take node as input and check if node is main entity or not
@@ -257,7 +255,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
       removeLineageHandler(edgeData);
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       setEdges((es) => {
-        return es.filter((e) => e.id !== data.id);
+        return es.filter(
+          (e) => e.source !== data.source.id && e.target !== data.target.id
+        );
       });
 
       /**
@@ -374,6 +374,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               };
               if (newCol.fromColumns?.length) {
                 return [...col, newCol];
+              } else {
+                return col;
               }
             }
 
@@ -401,13 +403,15 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
           }),
         });
       }
-      setEdges((pre) =>
-        pre.filter(
+      setEdges((pre) => {
+        return pre.filter(
           (e) =>
-            e.sourceHandle !== data.data?.sourceHandle &&
-            e.targetHandle !== data.data?.targetHandle
-        )
-      );
+            !(
+              e.sourceHandle === data.data?.sourceHandle &&
+              e.targetHandle === data.data?.targetHandle
+            )
+        );
+      });
       addLineageHandler(selectedEdge);
       setNewAddedNode({} as Node);
       setSelectedEntity({} as EntityReference);
@@ -450,18 +454,25 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
     });
   };
 
-  const setElementsHandleV1 = () => {
+  /**
+   * Reset State between view and edit mode toggle
+   */
+  const resetViewEditState = () => {
+    setConfirmDelete(false);
+  };
+
+  const setElementsHandleV1 = (data: EntityLineage) => {
     let uniqueElements: CustomeElement = {
       node: [],
       edge: [],
     };
     const currentData = {
-      nodes: [...nodes],
-      edges: [...edges],
+      nodes: [...(nodes || [])],
+      edges: [...(edges || [])],
     };
-    if (!isEmpty(updatedLineageData)) {
+    if (!isEmpty(data)) {
       const graphElements = getLineageDataV1(
-        updatedLineageData,
+        data,
         selectNodeHandler,
         loadNodeHandler,
         lineageLeafNodes,
@@ -480,9 +491,12 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         node: getUniqueFlowElements(graphElements.node) as Node[],
         edge: getUniqueFlowElements(graphElements.edge) as Edge[],
       };
-    }
+      const { node, edge } = getLayoutedElementsV1(uniqueElements);
+      setNodes(node);
+      setEdges(edge);
 
-    return uniqueElements;
+      resetViewEditState();
+    }
   };
 
   /**
@@ -603,8 +617,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
 
           if (columnConnection) {
             const allEdge = [
-              ...(entityLineage.downstreamEdges || []),
-              ...(entityLineage.upstreamEdges || []),
+              ...(updatedLineageData.downstreamEdges || []),
+              ...(updatedLineageData.upstreamEdges || []),
             ];
             const currentEdge = allEdge.find(
               (e) => e.fromEntity === source && e.toEntity === target
@@ -701,39 +715,80 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
             return getUniqueFlowElements(addEdge(newEdgeData, els)) as Edge[];
           });
 
-          const updatedDownStreamEdges = () => {
-            return edgeType === 'downstream'
-              ? [
-                  ...(updatedLineageData.downstreamEdges as EntityEdge[]),
-                  {
-                    fromEntity: sourceNode?.id as string,
-                    toEntity: targetNode?.id as string,
+          const updatedDownStreamEdges = (pre: EntityLineage) => {
+            if (edgeType !== 'downstream') {
+              return pre.downstreamEdges;
+            }
+
+            const isExist = pre.downstreamEdges?.find(
+              (e) => e.fromEntity === source && e.toEntity === target
+            );
+
+            if (!isUndefined(isExist)) {
+              const updatedEdge: EntityLineage['downstreamEdges'] = [];
+              pre.downstreamEdges?.forEach((e) => {
+                if (e.fromEntity === source && e.toEntity === target) {
+                  updatedEdge.push({
+                    ...e,
                     lineageDetails: newEdge.edge.lineageDetails,
-                  },
-                ]
-              : updatedLineageData.downstreamEdges;
+                  });
+                } else {
+                  updatedEdge.push(e);
+                }
+              });
+
+              return updatedEdge;
+            }
+
+            return [
+              ...(pre.downstreamEdges || []),
+              {
+                fromEntity: sourceNode?.id as string,
+                toEntity: targetNode?.id as string,
+                lineageDetails: newEdge.edge.lineageDetails,
+              },
+            ];
           };
 
-          const updatedUpStreamEdges = () => {
-            return edgeType === 'upstream'
-              ? [
-                  ...(updatedLineageData.upstreamEdges as EntityEdge[]),
-                  {
-                    fromEntity: sourceNode?.id as string,
-                    toEntity: targetNode?.id as string,
+          const updatedUpStreamEdges = (pre: EntityLineage) => {
+            if (edgeType !== 'upstream') {
+              return pre.upstreamEdges;
+            }
+
+            const isExist = pre.upstreamEdges?.find(
+              (e) => e.fromEntity === source && e.toEntity === target
+            );
+
+            if (!isUndefined(isExist)) {
+              const updatedEdge: EntityLineage['upstreamEdges'] = [];
+              pre.upstreamEdges?.forEach((e) => {
+                if (e.fromEntity === source && e.toEntity === target) {
+                  updatedEdge.push({
+                    ...e,
                     lineageDetails: newEdge.edge.lineageDetails,
-                  },
-                ]
-              : updatedLineageData.upstreamEdges;
+                  });
+                } else {
+                  updatedEdge.push(e);
+                }
+              });
+
+              return updatedEdge;
+            }
+
+            return [
+              ...(pre.upstreamEdges || []),
+              {
+                fromEntity: sourceNode?.id as string,
+                toEntity: targetNode?.id as string,
+                lineageDetails: newEdge.edge.lineageDetails,
+              },
+            ];
           };
 
-          const getUpdatedNodes = () => {
+          const getUpdatedNodes = (pre: EntityLineage) => {
             return !isEmpty(selectedEntity)
-              ? [
-                  ...(updatedLineageData.nodes as Array<EntityReference>),
-                  selectedEntity,
-                ]
-              : updatedLineageData.nodes;
+              ? [...(pre.nodes || []), selectedEntity]
+              : pre.nodes;
           };
 
           setTimeout(() => {
@@ -741,13 +796,17 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
               .then(() => {
                 setStatus('success');
                 setLoading(false);
+                setUpdatedLineageData((pre) => {
+                  const newData = {
+                    ...pre,
+                    nodes: getUpdatedNodes(pre),
+                    downstreamEdges: updatedDownStreamEdges(pre),
+                    upstreamEdges: updatedUpStreamEdges(pre),
+                  };
+
+                  return newData;
+                });
                 setTimeout(() => {
-                  setUpdatedLineageData({
-                    ...updatedLineageData,
-                    nodes: getUpdatedNodes(),
-                    downstreamEdges: updatedDownStreamEdges(),
-                    upstreamEdges: updatedUpStreamEdges(),
-                  });
                   setStatus('initial');
                 }, 100);
                 setNewAddedNode({} as Node);
@@ -1092,7 +1151,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 <p>You do not have permission to edit the lineage</p>
               </Fragment>
             }
-            permission={Operation.UpdateLineage}>
+            permission={Operation.EditLineage}>
             <ControlButton
               className={classNames(
                 'tw-h-9 tw-w-9 tw-rounded-full tw-px-1 tw-shadow-lg tw-cursor-pointer',
@@ -1102,7 +1161,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 },
                 {
                   'tw-opacity-40':
-                    !userPermissions[Operation.UpdateLineage] &&
+                    !userPermissions[Operation.EditLineage] &&
                     !isAuthDisabled &&
                     !isAdminUser,
                 }
@@ -1203,13 +1262,6 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   /**
-   * Reset State between view and edit mode toggle
-   */
-  const resetViewEditState = () => {
-    setConfirmDelete(false);
-  };
-
-  /**
    * Handle updated linegae nodes
    * Change newly added node label based on entity:EntityReference
    */
@@ -1235,14 +1287,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   };
 
   useEffect(() => {
-    if (!deleted) {
-      const { node, edge } = getLayoutedElementsV1(setElementsHandleV1());
-      setNodes(node);
-      setEdges(edge);
-
-      resetViewEditState();
+    if (!deleted && !isEmpty(updatedLineageData)) {
+      setElementsHandleV1(updatedLineageData);
     }
-  }, [lineageData, isNodeLoading, isEditMode]);
+  }, [isNodeLoading, isEditMode]);
 
   useEffect(() => {
     const newNodes = updatedLineageData.nodes?.filter(
@@ -1274,9 +1322,9 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
   }, [selectedEdge, confirmDelete]);
 
   useEffect(() => {
-    if (!isEmpty(entityLineage)) {
-      setLineageData(entityLineage);
+    if (!isEmpty(entityLineage) && !deleted) {
       setUpdatedLineageData(entityLineage);
+      setElementsHandleV1(entityLineage);
     }
   }, [entityLineage]);
 
@@ -1294,7 +1342,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         <ReactFlowProvider>
           <ReactFlow
             data-testid="react-flow-component"
-            edgeTypes={{ buttonedge: CustomEdge }}
+            edgeTypes={customEdges}
             edges={edges}
             maxZoom={2}
             minZoom={0.5}

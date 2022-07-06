@@ -80,10 +80,14 @@ class MetadataUsageBulkSink(BulkSink):
         Method to ingest lineage by sql queries
         """
 
-        for query in queries:
+        create_queries = [
+            query.query for query in queries if "create" in query.query.lower()
+        ]
+
+        for query in create_queries:
             lineages = get_lineage_by_query(
                 self.metadata,
-                query=query.query,
+                query=query,
                 service_name=self.service_name,
                 database_name=database_name,
                 schema_name=schema_name,
@@ -183,65 +187,67 @@ class MetadataUsageBulkSink(BulkSink):
                 table_usage = TableUsageCount(**json.loads(record))
 
                 self.service_name = table_usage.serviceName
-            table_entities = None
-            try:
-                table_entities = get_table_entities_from_query(
-                    metadata=self.metadata,
-                    service_name=self.service_name,
-                    database_name=table_usage.databaseName,
-                    database_schema=table_usage.databaseSchema,
-                    table_name=table_usage.table,
-                )
-            except Exception as err:
-                logger.error(
-                    f"Cannot get table entities from query table {table_usage.table} - {err}"
-                )
-                logger.debug(traceback.format_exc())
-
-            if not table_entities:
-                logger.warning(
-                    f"Could not fetch table {table_usage.databaseName}.{table_usage.table}"
-                )
-                continue
-
-            for table_entity in table_entities:
-                if table_entity is not None:
-                    table_join_request = None
-                    try:
-                        self.__populate_table_usage_map(
-                            table_usage=table_usage, table_entity=table_entity
-                        )
-                        table_join_request = self.__get_table_joins(
-                            table_entity=table_entity, table_usage=table_usage
-                        )
-                        logger.debug("table join request {}".format(table_join_request))
-
-                        if (
-                            table_join_request is not None
-                            and len(table_join_request.columnJoins) > 0
-                        ):
-                            self.metadata.publish_frequently_joined_with(
-                                table_entity, table_join_request
-                            )
-                    except APIError as err:
-                        self.status.failures.append(table_join_request)
-                        logger.error(
-                            "Failed to update query join for {}, {}".format(
-                                table_usage.table, err
-                            )
-                        )
-                    except Exception as err:
-                        logger.error(
-                            f"Error getting usage and join information for {table_entity.name.__root__} - {err}"
-                        )
-                        logger.debug(traceback.format_exc())
-                else:
-                    logger.warning(
-                        f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
+                table_entities = None
+                try:
+                    table_entities = get_table_entities_from_query(
+                        metadata=self.metadata,
+                        service_name=self.service_name,
+                        database_name=table_usage.databaseName,
+                        database_schema=table_usage.databaseSchema,
+                        table_name=table_usage.table,
                     )
-                    self.status.warnings.append(f"Table: {table_usage.table}")
+                except Exception as err:
+                    logger.error(
+                        f"Cannot get table entities from query table {table_usage.table} - {err}"
+                    )
+                    logger.debug(traceback.format_exc())
 
-        self.__publish_usage_records()
+                if not table_entities:
+                    logger.warning(
+                        f"Could not fetch table {table_usage.databaseName}.{table_usage.table}"
+                    )
+                    continue
+
+                for table_entity in table_entities:
+                    if table_entity is not None:
+                        table_join_request = None
+                        try:
+                            self.__populate_table_usage_map(
+                                table_usage=table_usage, table_entity=table_entity
+                            )
+                            table_join_request = self.__get_table_joins(
+                                table_entity=table_entity, table_usage=table_usage
+                            )
+                            logger.debug(
+                                "table join request {}".format(table_join_request)
+                            )
+
+                            if (
+                                table_join_request is not None
+                                and len(table_join_request.columnJoins) > 0
+                            ):
+                                self.metadata.publish_frequently_joined_with(
+                                    table_entity, table_join_request
+                                )
+                        except APIError as err:
+                            self.status.failures.append(table_join_request)
+                            logger.error(
+                                "Failed to update query join for {}, {}".format(
+                                    table_usage.table, err
+                                )
+                            )
+                        except Exception as err:
+                            logger.error(
+                                f"Error getting usage and join information for {table_entity.name.__root__} - {err}"
+                            )
+                            logger.debug(traceback.format_exc())
+                    else:
+                        logger.warning(
+                            f"Could not fetch table {table_usage.databaseName}.{table_usage.databaseSchema}.{table_usage.table}"
+                        )
+                        self.status.warnings.append(f"Table: {table_usage.table}")
+
+            self.__publish_usage_records()
         try:
             self.metadata.compute_percentile(Table, self.today)
             self.metadata.compute_percentile(Database, self.today)

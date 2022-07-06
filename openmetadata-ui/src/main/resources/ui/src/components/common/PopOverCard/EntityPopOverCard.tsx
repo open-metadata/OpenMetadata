@@ -75,12 +75,18 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
   }, [entityData.tags]);
 
   const getData = () => {
+    const setEntityDetails = (entityDetail: EntityData) => {
+      AppState.entityData[entityFQN] = entityDetail;
+    };
+
     const fields = 'tags,owner';
 
     switch (entityType) {
       case EntityType.TABLE:
         getTableDetailsByFQN(entityFQN, fields)
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -89,6 +95,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.TOPIC:
         getTopicByFqn(entityFQN, fields)
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -97,6 +105,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.DASHBOARD:
         getDashboardByFqn(entityFQN, fields)
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -105,6 +115,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.PIPELINE:
         getPipelineByFqn(entityFQN, fields)
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -113,6 +125,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.MLMODEL:
         getMlModelByFQN(entityFQN, fields)
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -121,6 +135,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.DATABASE:
         getDatabaseDetailsByFQN(entityFQN, 'owner')
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -129,6 +145,8 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       case EntityType.DATABASE_SCHEMA:
         getDatabaseSchemaDetailsByFQN(entityFQN, 'owner')
           .then((res: AxiosResponse) => {
+            setEntityDetails(res.data);
+
             setEntityData(res.data);
           })
           .catch((err: AxiosError) => showErrorToast(err));
@@ -216,6 +234,15 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     );
   };
 
+  const onMouseOver = () => {
+    const entitydetails = AppState.entityData[entityFQN];
+    if (entitydetails) {
+      setEntityData(entitydetails);
+    } else {
+      getData();
+    }
+  };
+
   return (
     <Popover
       destroyTooltipOnHide
@@ -225,7 +252,7 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
       title={<PopoverTitle />}
       trigger="hover"
       zIndex={9999}>
-      <div onMouseOver={getData}>{children}</div>
+      <div onMouseOver={onMouseOver}>{children}</div>
     </Popover>
   );
 };

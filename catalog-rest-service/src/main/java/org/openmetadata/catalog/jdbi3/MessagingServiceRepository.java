@@ -16,15 +16,10 @@ package org.openmetadata.catalog.jdbi3;
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.Include;
-import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
@@ -79,19 +74,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public EntityUpdater getUpdater(MessagingService original, MessagingService updated, Operation operation) {
     return new MessagingServiceUpdater(original, updated, operation);
-  }
-
-  private List<EntityReference> getIngestionPipelines(MessagingService service) throws IOException {
-    List<String> ingestionPipelineIds =
-        findTo(service.getId(), Entity.MESSAGING_SERVICE, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);
-    List<EntityReference> ingestionPipelines = new ArrayList<>();
-    for (String ingestionPipelineId : ingestionPipelineIds) {
-      ingestionPipelines.add(
-          daoCollection
-              .ingestionPipelineDAO()
-              .findEntityReferenceById(UUID.fromString(ingestionPipelineId), Include.ALL));
-    }
-    return ingestionPipelines;
   }
 
   public class MessagingServiceUpdater extends EntityUpdater {

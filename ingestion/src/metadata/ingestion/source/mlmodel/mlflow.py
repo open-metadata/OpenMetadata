@@ -40,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.connections import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -92,10 +93,10 @@ class MlflowSource(Source[CreateMlModelRequest]):
 
         self.metadata = OpenMetadata(metadata_config)
 
-        self.client = MlflowClient(
-            tracking_uri=self.service_connection.trackingUri,
-            registry_uri=self.service_connection.registryUri,
-        )
+        self.connection = get_connection(self.service_connection)
+        self.test_connection()
+        self.client = self.connection.client
+
         self.status = MlFlowStatus()
         self.service = self.metadata.get_service_or_create(
             entity=MlModelService, config=config

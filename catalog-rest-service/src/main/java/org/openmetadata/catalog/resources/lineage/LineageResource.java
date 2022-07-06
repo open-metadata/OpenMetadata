@@ -165,7 +165,7 @@ public class LineageResource {
   public Response addLineage(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.EDIT_LINEAGE);
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -201,7 +201,7 @@ public class LineageResource {
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
           String toId)
       throws IOException {
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.UpdateLineage);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, null, MetadataOperation.EDIT_LINEAGE);
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {

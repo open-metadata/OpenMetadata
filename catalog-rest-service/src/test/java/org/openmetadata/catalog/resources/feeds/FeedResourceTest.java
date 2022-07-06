@@ -29,6 +29,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermi
 import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -70,6 +71,7 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.feed.CloseTask;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
@@ -435,7 +437,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
+    String diff = getPlaintextDiff("old description", "accepted description");
+    String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
+    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
@@ -471,7 +475,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     String oldDescription =
         table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription();
 
-    closeTask(taskId, userAuthHeaders);
+    closeTask(taskId, "closing comment", userAuthHeaders);
 
     // closing the task should not affect description of the table
     tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
@@ -491,7 +495,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
+    assertEquals("Closed the Task with comment - closing comment", taskThread.getPosts().get(0).getMessage());
   }
 
   @Test
@@ -542,7 +546,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(TaskStatus.Closed, task.getStatus());
     assertEquals(1, taskThread.getPostsCount());
     assertEquals(1, taskThread.getPosts().size());
-    assertEquals("Closed the Task.", taskThread.getPosts().get(0).getMessage());
+    String diff = getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
+    String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
+    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
   }
 
   private static Stream<Arguments> provideStringsForListThreads() {
@@ -866,7 +872,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
     assertEquals(initialThreadCount + 3, threads.getData().size());
     assertEquals(
-        String.format("Started to follow **table** `%s`", TABLE2.getFullyQualifiedName()),
+        String.format("Followed **table** `%s`", TABLE2.getFullyQualifiedName()),
         threads.getData().get(0).getMessage());
     assertEquals("Message 2", threads.getData().get(1).getMessage());
 
@@ -1062,9 +1068,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TestUtils.put(target, resolveTask, Status.OK, authHeaders);
   }
 
-  public static void closeTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
+  public static void closeTask(int id, String comment, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("feed/tasks/" + id + "/close");
-    TestUtils.put(target, new ResolveTask().withNewValue(""), Status.OK, authHeaders);
+    TestUtils.put(target, new CloseTask().withComment(comment), Status.OK, authHeaders);
   }
 
   public static ThreadList listTasks(

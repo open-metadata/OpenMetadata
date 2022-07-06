@@ -17,9 +17,9 @@ import { Button, Card, Dropdown, Layout, Menu, Modal, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower, uniqueId } from 'lodash';
+import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EditorContentRef, EntityTags } from 'Models';
+import { EditorContentRef, EntityReference, EntityTags } from 'Models';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -36,6 +36,7 @@ import {
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
@@ -48,6 +49,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column } from '../../../generated/entity/data/table';
 import {
+  TaskDetails,
   TaskType,
   Thread,
   ThreadTaskStatus,
@@ -168,7 +170,7 @@ const TaskDetailPage = () => {
     taskDetail.task?.status,
     ThreadTaskStatus.Closed
   );
-  // const isTaskOpen = isEqual(taskDetail.task?.status, ThreadTaskStatus.Open);
+
   const isCreator = isEqual(taskDetail.createdBy, currentUser?.name);
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
@@ -255,7 +257,10 @@ const TaskDetailPage = () => {
       );
 
       if (existingAssignee) {
-        return existingAssignee;
+        return {
+          id: existingAssignee.id,
+          type: existingAssignee.type,
+        };
       } else {
         return {
           id: assignee.value,
@@ -269,10 +274,31 @@ const TaskDetailPage = () => {
       task: { ...(taskDetail.task || {}), assignees: newAssignees },
     };
 
-    const patch = compare(taskDetail, updatedTask);
+    // existing task assignees should only have id and type for the patch to work
+    const existingAssignees = taskDetail.task?.assignees;
+    let oldTask: Thread = taskDetail;
+    if (existingAssignees) {
+      const formattedAssignees: EntityReference[] = existingAssignees.map(
+        (assignee: EntityReference) => {
+          return {
+            id: assignee.id,
+            type: assignee.type,
+          };
+        }
+      );
+      oldTask = {
+        ...taskDetail,
+        task: {
+          ...(taskDetail.task as TaskDetails),
+          assignees: formattedAssignees,
+        },
+      };
+    }
+
+    const patch = compare(oldTask, updatedTask);
     updateThread(taskDetail.id, patch)
-      .then((res: AxiosResponse) => {
-        setTaskDetail(res.data);
+      .then(() => {
+        fetchTaskDetail();
       })
       .catch((err: AxiosError) => showErrorToast(err));
     setEditAssignee(false);
@@ -293,14 +319,16 @@ const TaskDetailPage = () => {
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot accept empty description');
+      showErrorToast(
+        'Cannot accept an empty description. Please add a description.'
+      );
     }
   };
 
   const onTaskReject = () => {
     if (comment) {
       updateTask(TaskOperation.REJECT, taskDetail.task?.id, {
-        newValue: comment,
+        comment,
       })
         .then(() => {
           showSuccessToast('Task Closed Successfully');
@@ -313,7 +341,7 @@ const TaskDetailPage = () => {
         })
         .catch((err: AxiosError) => showErrorToast(err));
     } else {
-      showErrorToast('Cannot close task without comment');
+      showErrorToast('Cannot close task without a comment');
     }
     setModalVisible(false);
   };
@@ -429,7 +457,7 @@ const TaskDetailPage = () => {
           className={classNames(
             'tw-rounded-3xl tw-px-2 tw-p-0',
             {
-              'tw-bg-green-100': openCheck,
+              'tw-bg-task-status-bg': openCheck,
             },
             { 'tw-bg-gray-100': closedCheck }
           )}>
@@ -437,7 +465,7 @@ const TaskDetailPage = () => {
             className={classNames(
               'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
               {
-                'tw-bg-green-500': openCheck,
+                'tw-bg-task-status-fg': openCheck,
               },
               {
                 'tw-bg-gray-500': closedCheck,
@@ -447,7 +475,7 @@ const TaskDetailPage = () => {
           <span
             className={classNames(
               'tw-ml-1',
-              { 'tw-text-green-500': openCheck },
+              { 'tw-text-task-status-fg': openCheck },
               { 'tw-text-gray-500': closedCheck }
             )}>
             {status}
@@ -552,7 +580,7 @@ const TaskDetailPage = () => {
       newDescription || ''
     );
 
-    return !diffs.length ? (
+    return !newDescription && !oldDescription ? (
       <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
     ) : (
       <DiffView className="tw-p-2" diffArr={diffs} />
@@ -627,7 +655,10 @@ const TaskDetailPage = () => {
 
               <ColumnDetail column={columnObject} />
               <div className="tw-flex" data-testid="task-assignees">
-                <span className="tw-text-grey-muted tw-self-center">
+                <span
+                  className={classNames('tw-text-grey-muted', {
+                    'tw-self-center tw-mr-2': editAssignee,
+                  })}>
                   Assignees:
                 </span>
                 {editAssignee ? (
@@ -650,6 +681,7 @@ const TaskDetailPage = () => {
                     </Button>
                     <Button
                       className="tw-mx-1 tw-self-center ant-btn-primary-custom"
+                      disabled={!assignees.length}
                       size="small"
                       type="primary"
                       onClick={onTaskUpdate}>
@@ -661,39 +693,20 @@ const TaskDetailPage = () => {
                   </Fragment>
                 ) : (
                   <Fragment>
-                    <span
-                      className={classNames('tw-self-center tw-mr-1 tw-flex', {
-                        'tw-grid tw-grid-cols-4':
-                          (taskDetail.task?.assignees || []).length > 2,
-                      })}>
-                      {taskDetail.task?.assignees?.map((assignee) => (
-                        <UserPopOverCard
-                          key={uniqueId()}
-                          type={assignee.type}
-                          userName={assignee.name || ''}>
-                          <span className="tw-flex tw-mx-1.5">
-                            <ProfilePicture
-                              id=""
-                              name={getEntityName(assignee)}
-                              width="20"
-                            />
-                            <span className="tw-ml-1">
-                              {getEntityName(assignee)}
-                            </span>
-                          </span>
-                        </UserPopOverCard>
-                      ))}
-                    </span>
+                    <AssigneeList
+                      assignees={taskDetail?.task?.assignees || []}
+                      className="tw-ml-0.5 tw-align-middle tw-inline-flex tw-flex-wrap"
+                    />
                     {(hasEditAccess() || isCreator) && !isTaskClosed && (
                       <button
-                        className="focus:tw-outline-none tw-self-baseline"
+                        className="focus:tw-outline-none tw-self-baseline tw-flex-none"
                         data-testid="edit-suggestion"
                         onClick={() => setEditAssignee(true)}>
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
                           title="Edit"
-                          width="12px"
+                          width="14px"
                         />
                       </button>
                     )}
@@ -715,7 +728,7 @@ const TaskDetailPage = () => {
                       <div data-testid="description-task">
                         {isRequestDescription && (
                           <div data-testid="request-description">
-                            {isTaskActionEdit ? (
+                            {isTaskActionEdit && hasEditAccess() ? (
                               <RichTextEditor
                                 height="208px"
                                 initialValue={suggestion}
@@ -733,7 +746,7 @@ const TaskDetailPage = () => {
 
                         {isUpdateDescription && (
                           <div data-testid="update-description">
-                            {isTaskActionEdit ? (
+                            {isTaskActionEdit && hasEditAccess() ? (
                               <DescriptionTabs
                                 description={currentDescription()}
                                 markdownRef={markdownRef}
@@ -764,27 +777,37 @@ const TaskDetailPage = () => {
                     Close with comment
                   </Button>
 
-                  <Dropdown.Button
-                    className="ant-btn-primary-dropdown"
-                    icon={
-                      <FontAwesomeIcon
-                        className="tw-text-sm"
-                        icon={faChevronDown}
-                      />
-                    }
-                    overlay={
-                      <Menu
-                        selectable
-                        items={TASK_ACTION_LIST}
-                        selectedKeys={[taskAction.key]}
-                        onClick={(info) => onTaskActionChange(info.key)}
-                      />
-                    }
-                    trigger={['click']}
-                    type="primary"
-                    onClick={onTaskResolve}>
-                    {taskAction.label}
-                  </Dropdown.Button>
+                  {taskDetail.task?.suggestion ? (
+                    <Dropdown.Button
+                      className="ant-btn-primary-dropdown"
+                      icon={
+                        <FontAwesomeIcon
+                          className="tw-text-sm"
+                          icon={faChevronDown}
+                        />
+                      }
+                      overlay={
+                        <Menu
+                          selectable
+                          items={TASK_ACTION_LIST}
+                          selectedKeys={[taskAction.key]}
+                          onClick={(info) => onTaskActionChange(info.key)}
+                        />
+                      }
+                      trigger={['click']}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      {taskAction.label}
+                    </Dropdown.Button>
+                  ) : (
+                    <Button
+                      className="ant-btn-primary-custom"
+                      disabled={!suggestion}
+                      type="primary"
+                      onClick={onTaskResolve}>
+                      Add Description
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -825,7 +848,7 @@ const TaskDetailPage = () => {
                 disabled: !comment,
                 className: 'ant-btn-primary-custom',
               }}
-              okText="Close"
+              okText="Close with comment"
               title={`Close Task #${taskDetail.task?.id} ${taskDetail.message}`}
               visible={modalVisible}
               width={700}

@@ -23,9 +23,7 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
-import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.validation.Validators;
-import io.dropwizard.setup.Environment;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -43,6 +41,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
@@ -59,13 +58,16 @@ import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 public final class TablesInitializer {
+  private static final String DEBUG_MODE_ENABLED = "debug_mode";
   private static final String OPTION_SCRIPT_ROOT_PATH = "script-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
   private static final Options OPTIONS;
+  private static boolean DEBUG_MODE = false;
 
   static {
     OPTIONS = new Options();
+    OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("s", OPTION_SCRIPT_ROOT_PATH, true, "Root directory of script path");
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(null, SchemaMigrationOption.CREATE.toString(), false, "Run sql migrations from scratch");
@@ -112,13 +114,15 @@ public final class TablesInitializer {
       usage();
       System.exit(1);
     }
-
+    if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
+      DEBUG_MODE = true;
+    }
     boolean isSchemaMigrationOptionSpecified = false;
     SchemaMigrationOption schemaMigrationOptionSpecified = null;
     for (SchemaMigrationOption schemaMigrationOption : SchemaMigrationOption.values()) {
       if (commandLine.hasOption(schemaMigrationOption.toString())) {
         if (isSchemaMigrationOptionSpecified) {
-          System.out.println(
+          printToConsoleMandatory(
               "Only one operation can be execute at once, please select one of 'create', ',migrate', "
                   + "'validate', 'info', 'drop', 'repair', 'check-connection'.");
           System.exit(1);
@@ -129,7 +133,7 @@ public final class TablesInitializer {
     }
 
     if (!isSchemaMigrationOptionSpecified) {
-      System.out.println(
+      printToConsoleMandatory(
           "One of the option 'create', ',migrate', 'validate', 'info', 'drop', 'repair', "
               + "'check-connection' must be specified to execute.");
       System.exit(1);
@@ -156,7 +160,7 @@ public final class TablesInitializer {
     String password = dataSourceFactory.getPassword();
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
-      System.out.println("Disabling validation on schema migrate");
+      printToConsoleInDebug("Disabling validation on schema migrate");
     }
     String scriptRootPath = commandLine.getOptionValue(OPTION_SCRIPT_ROOT_PATH);
     Flyway flyway =
@@ -170,9 +174,9 @@ public final class TablesInitializer {
     RestHighLevelClient client = ElasticSearchClientUtils.createElasticSearchClient(esConfig);
     try {
       execute(config, flyway, client, schemaMigrationOptionSpecified);
-      System.out.printf("\"%s\" option successful%n", schemaMigrationOptionSpecified);
+      printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
-      System.err.printf("\"%s\" option failed : %s%n", schemaMigrationOptionSpecified, e);
+      printError(schemaMigrationOptionSpecified + "option failed with : " + e);
       System.exit(1);
     }
     System.exit(0);
@@ -180,9 +184,17 @@ public final class TablesInitializer {
 
   static Flyway get(
       String url, String user, String password, String scriptRootPath, String dbSubType, boolean validateOnMigrate) {
-    System.out.format(
-        "url %s, user %s, password %s, scriptRoot %s, validateOnMigrate %s",
-        url, user, password, scriptRootPath, validateOnMigrate);
+    printToConsoleInDebug(
+        "Url:"
+            + url
+            + " User:"
+            + user
+            + " Password:"
+            + password
+            + " ScriptRoot: "
+            + scriptRootPath
+            + "ValidateOnMigrate:"
+            + validateOnMigrate);
     String location = "filesystem:" + scriptRootPath + File.separator + dbSubType;
     return Flyway.configure()
         .encoding(StandardCharsets.UTF_8)
@@ -227,14 +239,14 @@ public final class TablesInitializer {
         flyway.migrate();
         break;
       case INFO:
-        System.out.println(dumpToAsciiTable(flyway.info().all()));
+        printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
         break;
       case VALIDATE:
         flyway.validate();
         break;
       case DROP:
         flyway.clean();
-        System.out.println("DONE");
+        printToConsoleMandatory("DONE");
         break;
       case CHECK_CONNECTION:
         try {
@@ -271,9 +283,27 @@ public final class TablesInitializer {
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
   }
 
+  private static void printToConsoleInDebug(String message) {
+    if (DEBUG_MODE) {
+      System.out.println(message);
+    }
+  }
+
+  private static void printError(String message) {
+    System.err.println(message);
+  }
+
+  private static void printToConsoleMandatory(String message) {
+    System.out.println(message);
+  }
+
   private static void createIngestionBot(CatalogApplicationConfig config) {
-    Environment environment = new Environment("bootstrap");
-    final Jdbi jdbi = new JdbiFactory().build(environment, config.getDataSourceFactory(), "database");
+    final Jdbi jdbi =
+        Jdbi.create(
+            config.getDataSourceFactory().getUrl(),
+            config.getDataSourceFactory().getUser(),
+            config.getDataSourceFactory().getPassword());
+    jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     String domain =
@@ -304,10 +334,10 @@ public final class TablesInitializer {
     try {
       addOrUpdateUser(user, jdbi);
       if (jwtAuthMechanism != null) {
-        System.out.println(jwtAuthMechanism.getJWTToken());
+        printToConsoleMandatory(JsonUtils.pojoToJson(user));
       }
     } catch (Exception exception) {
-      System.out.format("User entry:" + user.getName() + "already exists.");
+      printToConsoleMandatory("User entry:" + user.getName() + "already exists.");
       throw new RuntimeException("Failed to create ingestion-bot");
     }
   }
@@ -316,7 +346,7 @@ public final class TablesInitializer {
     CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
     UserRepository userRepository = new UserRepository(daoObject);
     User addedUser = userRepository.create(null, user);
-    System.out.println("Added user entry: " + addedUser.getName());
+    printToConsoleInDebug("Added user entry: " + addedUser.getName());
   }
 
   enum SchemaMigrationOption {

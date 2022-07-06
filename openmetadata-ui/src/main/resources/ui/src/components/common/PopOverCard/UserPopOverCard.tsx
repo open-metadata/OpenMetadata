@@ -12,17 +12,17 @@
  */
 
 import { Popover } from 'antd';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import AppState from '../../../AppState';
 import { getUserByName } from '../../../axiosAPIs/userAPI';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName, getNonDeletedTeams } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
@@ -37,16 +37,19 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const getData = () => {
-    if (type === 'user') {
-      setIsLoading(true);
-      getUserByName(userName, 'profile,roles,teams,follows,owns')
-        .then((res: AxiosResponse) => {
-          setUserData(res.data);
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err);
-        })
-        .finally(() => setIsLoading(false));
+    const userdetails = AppState.userDataProfiles[userName];
+    if (userdetails) {
+      setUserData(userdetails);
+      setIsLoading(false);
+    } else {
+      if (type === 'user') {
+        setIsLoading(true);
+        getUserByName(userName, 'profile,roles,teams,follows,owns')
+          .then((res: AxiosResponse) => {
+            AppState.userDataProfiles[userName] = res.data;
+          })
+          .finally(() => setIsLoading(false));
+      }
     }
   };
 

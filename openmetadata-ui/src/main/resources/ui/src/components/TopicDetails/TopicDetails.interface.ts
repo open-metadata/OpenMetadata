@@ -12,9 +12,10 @@
  */
 
 import { EntityFieldThreadCount, EntityTags } from 'Models';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
-import { Thread } from '../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -45,10 +46,15 @@ export interface TopicDetailsProps {
   isentityThreadLoading: boolean;
   feedCount: number;
   entityFieldThreadCount: EntityFieldThreadCount[];
+  entityFieldTaskCount: EntityFieldThreadCount[];
   paging: Paging;
   isSampleDataLoading?: boolean;
   sampleData?: TopicSampleData;
-  fetchFeedHandler: (after?: string) => void;
+  fetchFeedHandler: (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadFilter?: ThreadType
+  ) => void;
   createThread: (data: CreateThread) => void;
   setActiveTabHandler: (value: number) => void;
   followTopicHandler: () => void;

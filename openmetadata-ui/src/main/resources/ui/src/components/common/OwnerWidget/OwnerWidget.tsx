@@ -116,7 +116,7 @@ const OwnerWidget = ({
           return false;
         }
 
-        return userPermissions[Operation.UpdateOwner];
+        return userPermissions[Operation.EditOwner];
       }
     }
 

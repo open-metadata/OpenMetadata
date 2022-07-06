@@ -385,16 +385,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     params.put("fields", allFields);
     listEntities(params, ADMIN_AUTH_HEADERS);
 
-    // Adding any parameter that is allowed should result in an error
+    // Requesting invalid fields should result in an error
     String invalidField = "invalidField";
     assertResponse(
         () -> getEntity(entity.getId(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid field name invalidField");
+        CatalogExceptionMessage.invalidField(invalidField));
+
     assertResponse(
         () -> getEntityByName(entity.getFullyQualifiedName(), invalidField, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid field name invalidField");
+        CatalogExceptionMessage.invalidField(invalidField));
 
     params.put("fields", invalidField);
     assertResponse(() -> listEntities(params, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name invalidField");
@@ -1575,7 +1576,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       assertResponse(
           () -> patchEntity(entity.getId(), originalJson, entity, authHeaders(userName + "@open-metadata.org")),
           FORBIDDEN,
-          noPermission(userName, "UpdateDescription"));
+          noPermission(userName, "editDescription"));
       // Revert to original.
       entity.setDescription(originalDescription);
       return entity;

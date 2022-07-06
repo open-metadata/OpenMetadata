@@ -78,34 +78,32 @@ const CheckboxUserCard = ({
           )}
         </>
       </div>
-      {isActionVisible && (
-        <div className="tw-flex-none">
-          {isCheckBoxes ? (
-            <input
-              checked={isChecked}
-              className="tw-p-1 custom-checkbox"
-              data-testid="checkboxAddUser"
-              type="checkbox"
-              onChange={(e) => {
-                setIsChecked(e.target.checked);
-                onSelect?.(item.id as string, e.target.checked);
-              }}
+      {isActionVisible &&
+        (isCheckBoxes ? (
+          <input
+            checked={isChecked}
+            className="tw-p-1 custom-checkbox tw-self-center"
+            data-testid="checkboxAddUser"
+            type="checkbox"
+            onChange={(e) => {
+              setIsChecked(e.target.checked);
+              onSelect?.(item.id as string, e.target.checked);
+            }}
+          />
+        ) : (
+          <span
+            className="tw-flex-none"
+            data-testid="remove"
+            onClick={() => onRemove?.(item.id as string)}>
+            <SVGIcons
+              alt="delete"
+              className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
+              icon="icon-delete"
+              title="Remove"
+              width="16px"
             />
-          ) : (
-            <span
-              data-testid="remove"
-              onClick={() => onRemove?.(item.id as string)}>
-              <SVGIcons
-                alt="delete"
-                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                icon="icon-delete"
-                title="Remove"
-                width="16px"
-              />
-            </span>
-          )}
-        </div>
-      )}
+          </span>
+        ))}
     </div>
   );
 };

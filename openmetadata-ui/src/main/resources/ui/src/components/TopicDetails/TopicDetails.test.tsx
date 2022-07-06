@@ -88,6 +88,7 @@ const TopicDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   topicFQN: '',
   deletePostHandler: jest.fn(),
@@ -159,7 +160,7 @@ describe('Test TopicDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Task');
     const configTab = await findByTestId(tabs, 'Config');
     const manageTab = await findByTestId(tabs, 'Manage');
 

@@ -296,12 +296,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
           data-testid="add-new-reviewer"
           disabled={isHasAccess}
           onClick={() => setShowRevieweModal(true)}>
-          <SVGIcons
-            alt="plus"
-            className="tw-w-3.5 tw-mr-2"
-            icon={Icons.ICON_PLUS_PRIMERY}
-          />
-          <span>Add</span>
+          <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
         </button>
       </NonAdminAction>
     );
@@ -313,12 +308,12 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         <NonAdminAction
           html={<p>{TITLE_FOR_UPDATE_OWNER}</p>}
           isOwner={isOwner()}
-          permission={Operation.UpdateOwner}
+          permission={Operation.EditOwner}
           position="left">
           <Button
             data-testid="owner-dropdown"
             disabled={
-              !userPermissions[Operation.UpdateOwner] &&
+              !userPermissions[Operation.EditOwner] &&
               !isAuthDisabled &&
               !hasEditAccess
             }
@@ -326,15 +321,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
             theme="primary"
             variant="text"
             onClick={handleSelectOwnerDropdown}>
-            <span className="tw-mr-2">
-              <SVGIcons
-                alt="edit"
-                icon={Icons.EDIT_OUTLINE_PRIMARY}
-                title="Edit"
-                width="16px"
-              />
-            </span>
-            <span>Edit</span>
+            <SVGIcons alt="edit" icon={Icons.EDIT} title="Edit" width="16px" />
           </Button>
         </NonAdminAction>
         {listVisible && (
@@ -416,9 +403,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     <div
       className="tw-w-full tw-h-full tw-flex tw-flex-col"
       data-testid="glossary-details">
-      <div
-        className="tw-flex tw-flex-wrap tw-group tw--mt-6 tw-mb-5"
-        data-testid="tags">
+      <div className="tw-flex tw-flex-wrap tw-group tw-mb-5" data-testid="tags">
         {!isTagEditable && (
           <>
             {glossary?.tags && glossary.tags.length > 0 && (
@@ -436,7 +421,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         )}
         <NonAdminAction
           isOwner={Boolean(glossary.owner)}
-          permission={Operation.UpdateTags}
+          permission={Operation.EditTags}
           position="bottom"
           title={TITLE_FOR_NON_OWNER_ACTION}
           trigger="click">

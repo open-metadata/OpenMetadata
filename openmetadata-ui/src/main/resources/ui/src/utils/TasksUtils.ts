@@ -12,9 +12,8 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { diffWordsWithSpace } from 'diff';
+import { Change, diffWordsWithSpace } from 'diff';
 import { isEqual, isUndefined } from 'lodash';
-import { Diff } from 'Models';
 import { getDashboardByFqn } from '../axiosAPIs/dashboardAPI';
 import { getUserSuggestions } from '../axiosAPIs/miscAPI';
 import { getPipelineByFqn } from '../axiosAPIs/pipelineAPI';
@@ -95,7 +94,7 @@ export const getTaskDetailPath = (taskId: string) => {
 export const getDescriptionDiff = (
   oldValue: string,
   newValue: string
-): Diff[] => {
+): Change[] => {
   return diffWordsWithSpace(oldValue, newValue);
 };
 
@@ -107,7 +106,7 @@ export const fetchOptions = (
     .then((res: AxiosResponse) => {
       const hits = res.data.suggest['metadata-suggest'][0]['options'];
       // eslint-disable-next-line
-      const suggestOptions = hits.map((hit: any) => ({
+            const suggestOptions = hits.map((hit: any) => ({
         label: hit._source.name ?? hit._source.display_name,
         value: hit._id,
         type: hit._source.entityType,

@@ -51,6 +51,9 @@ public final class Entity {
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
+  // List of entities
+  private static final List<String> ENTITY_LIST = new ArrayList<>();
+
   // Common field names
   public static final String FIELD_OWNER = "owner";
   public static final String FIELD_NAME = "name";
@@ -138,12 +141,19 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    ENTITY_LIST.add(entity);
+    Collections.sort(ENTITY_LIST);
+
     LOG.info(
         "Registering entity {} {} {} {}",
         clazz,
         entity,
         dao.getEntityClass().getSimpleName(),
         entityRepository.getClass().getSimpleName());
+  }
+
+  public static List<String> listEntities() {
+    return Collections.unmodifiableList(ENTITY_LIST);
   }
 
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {

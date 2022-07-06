@@ -399,10 +399,11 @@ public interface CollectionDAO {
 
     // TODO delete this
     @SqlQuery(
-        "SELECT toId FROM entity_relationship "
+        "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity "
             + "ORDER BY toId")
-    List<String> findTo(
+    @RegisterRowMapper(ToRelationshipMapper.class)
+    List<EntityRelationshipRecord> findTo(
         @Bind("fromId") String fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
@@ -423,10 +424,11 @@ public interface CollectionDAO {
     // Find from operations
     //
     @SqlQuery(
-        "SELECT fromId FROM entity_relationship "
+        "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation AND fromEntity = :fromEntity "
             + "ORDER BY fromId")
-    List<String> findFrom(
+    @RegisterRowMapper(FromRelationshipMapper.class)
+    List<EntityRelationshipRecord> findFrom(
         @Bind("toId") String toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -679,7 +681,8 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved AND (:type IS NULL OR type = :type) AND "
             + "id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation) "
+            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkBefore(
@@ -695,7 +698,8 @@ public interface CollectionDAO {
         "SELECT json FROM thread_entity WHERE updatedAt < :after AND resolved = :resolved AND "
             + "(:type IS NULL OR type = :type) AND "
             + "id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation) "
+            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkAfter(
@@ -711,7 +715,8 @@ public interface CollectionDAO {
         "SELECT count(id) FROM thread_entity WHERE resolved = :resolved AND "
             + "(:type IS NULL OR type = :type) AND "
             + "id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "toFQN LIKE CONCAT(:fqnPrefix, '%') AND fromType='THREAD' AND toType LIKE CONCAT(:toType, '%') AND relation= :relation)")
+            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)")
     int listCountThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
@@ -727,7 +732,8 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQN=te.id "
-            + "WHERE fr.toFQN LIKE CONCAT(:fqnPrefix, '%') AND fr.toType like concat(:toType, '%') AND fr.fromType = :fromType "
+            + "WHERE (fr.toFQN LIKE CONCAT(:fqnPrefix, '.%') OR fr.toFQN=:fqnPrefix) AND "
+            + "(fr.toType like concat(:toType, '.%') OR fr.toType=:toType)AND fr.fromType = :fromType "
             + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:type IS NULL OR te.type = :type) "
             + "GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)

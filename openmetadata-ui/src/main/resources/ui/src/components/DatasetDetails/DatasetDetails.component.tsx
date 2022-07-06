@@ -14,10 +14,17 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { Fragment, RefObject, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -28,6 +35,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -132,6 +140,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   fetchFeedHandler,
   handleExtentionUpdate,
   updateThreadHandler,
+  entityFieldTaskCount,
 }: DatasetDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -146,6 +155,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -203,7 +215,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Task',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -301,7 +313,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 10,
     },
@@ -521,8 +532,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -557,6 +571,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
+
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
 
   return (
     <PageContainer>
@@ -602,8 +623,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <div className="tw-col-span-3 tw--ml-5">
                     <Description
                       description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
+                        EntityField.DESCRIPTION,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -634,8 +659,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={columns}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'columns',
+                        EntityField.COLUMNS,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -666,6 +695,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
                     updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -773,17 +803,19 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   tableDetails={tableDetails}
                 />
               )}
-              {activeTab === 10 && !deleted && (
+              {activeTab === 10 && (
                 <div>
                   <ManageTab
                     allowDelete
-                    allowSoftDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={tableDetails.id}
                     entityName={tableDetails.name}
                     entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.TABLE}
                     onSave={onSettingsUpdate}
                   />
@@ -804,6 +836,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              threadType={threadType}
               updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />

@@ -75,9 +75,24 @@ class BaseColumnTestBuilder(ABC):
             testCaseStatus=TestCaseStatus.Success
             if self.result["success"]
             else TestCaseStatus.Failed,
-            result="Failing rows percentage: "
-            f"{self.result['result']['unexpected_percent']}",
+            result=self._get_expectation_result(),
         )
+
+    def _get_expectation_result(self):
+        """Get the expectation result"""
+        if self.result["result"]:
+            if self.result["result"].get("unexpected_percent"):
+                return (
+                    "Failing rows percentage: "
+                    f"{str(self.result['result'].get('unexpected_percent'))}"
+                )
+            if self.result["result"].get("observed_value"):
+                return (
+                    "Observed values: "
+                    f"{str(self.result['result'].get('observed_value'))}"
+                )
+
+        return None
 
     def build_test_request(self, *, config, test_type) -> CreateColumnTestRequest:
         """Build a test case request to add the test to the tabe

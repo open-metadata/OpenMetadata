@@ -56,7 +56,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
   @Override
   public Location setFields(Location location, Fields fields) throws IOException {
-    location.setService(getService(location));
+    location.setService(getContainer(location.getId()));
     location.setPath(location.getPath());
     location.setOwner(fields.contains(FIELD_OWNER) ? getOwner(location) : null);
     location.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(location) : null);
@@ -199,10 +199,6 @@ public class LocationRepository extends EntityRepository<Location> {
   @Override
   public EntityUpdater getUpdater(Location original, Location updated, Operation operation) {
     return new LocationUpdater(original, updated, operation);
-  }
-
-  private EntityReference getService(Location location) throws IOException {
-    return getContainer(location.getId(), Entity.LOCATION);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {

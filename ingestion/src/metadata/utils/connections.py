@@ -80,6 +80,9 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
+    MlflowConnection,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
@@ -103,6 +106,7 @@ from metadata.utils.connection_clients import (
     KafkaClient,
     LookerClient,
     MetabaseClient,
+    MlflowClientWrapper,
     ModeClient,
     PowerBiClient,
     RedashClient,
@@ -750,6 +754,28 @@ def _(connection: ModeConnection, verbose: bool = False):
 def _(connection: ModeClient) -> None:
     try:
         connection.client.get_user_account()
+    except Exception as err:
+        raise SourceConnectionException(
+            f"Unknown error connecting with {connection} - {err}."
+        )
+
+
+@get_connection.register
+def _(connection: MlflowConnection, verbose: bool = False):
+    from mlflow.tracking import MlflowClient
+
+    return MlflowClientWrapper(
+        MlflowClient(
+            tracking_uri=connection.trackingUri,
+            registry_uri=connection.registryUri,
+        )
+    )
+
+
+@test_connection.register
+def _(connection: MlflowClientWrapper) -> None:
+    try:
+        connection.client.list_registered_models()
     except Exception as err:
         raise SourceConnectionException(
             f"Unknown error connecting with {connection} - {err}."

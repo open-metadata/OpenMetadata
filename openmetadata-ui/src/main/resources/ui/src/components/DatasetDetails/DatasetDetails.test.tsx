@@ -145,6 +145,7 @@ const DatasetDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   showTestForm: false,
   testMode: 'table' as DatasetTestModeType,
   handleAddTableTestCase: jest.fn(),
@@ -232,7 +233,7 @@ describe('Test MyDataDetailsPage page', () => {
     const description = await findByText(container, /Description/i);
     const tabs = await findByTestId(container, 'tabs');
     const schemaTab = await findByTestId(tabs, 'Schema');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Task');
     const sampleDataTab = await findByTestId(tabs, 'Sample Data');
     const queriesTab = await findByTestId(tabs, 'Queries');
     const profilerTab = await findByTestId(tabs, 'Profiler');

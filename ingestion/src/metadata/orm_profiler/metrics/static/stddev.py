@@ -57,7 +57,7 @@ def _(element, compiler, **kw):
     If table is empty, clickhouse returns NaN.
     """
     proc = compiler.process(element.clauses, **kw)
-    return "if(isNaN(stddevPop(%s)), null, 'stddevPop(%s))" % ((proc,) * 2)
+    return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
 
 
 class StdDev(StaticMetric):

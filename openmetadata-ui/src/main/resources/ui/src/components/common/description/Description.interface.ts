@@ -13,6 +13,7 @@
 
 import { EntityFieldThreads } from 'Models';
 import { Table } from '../../../generated/entity/data/table';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 
 export interface DescriptionProps {
   entityName?: string;
@@ -26,7 +27,8 @@ export interface DescriptionProps {
   entityType?: string;
   entityFqn?: string;
   entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
+  entityFieldTasks?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => void;

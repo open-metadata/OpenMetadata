@@ -15,3 +15,4 @@ query
 "select * from shopify.raw_customer"
 "select * from shopify.raw_customer"
 "select * from shopify.raw_customer"
+"create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address"
