@@ -220,6 +220,9 @@ const ColumnTestForm = ({
       case ColumnTestType.ColumnValueMaxToBeBetween:
       case ColumnTestType.ColumnValueMinToBeBetween:
       case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
         if (!isUndefined(minValue) && !isUndefined(maxValue)) {
           errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
@@ -246,6 +249,7 @@ const ColumnTestForm = ({
         break;
       }
 
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
       case ColumnTestType.ColumnValuesToMatchRegex:
         errMsg.regex = isEmpty(regex);
 
@@ -288,6 +292,22 @@ const ColumnTestForm = ({
           maxValueForColSum: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
+      case ColumnTestType.ColumnValueMedianToBeBetween:
+        return {
+          minValueForMedianInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMedianInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+        return {
+          minValueForMeanInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMeanInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+        return {
+          minValueForStdDevInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForStdDevInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
       case ColumnTestType.ColumnValuesMissingCountToBeEqual: {
         const filterMatchValue = missingValueMatch.filter(
           (value) => !isEmpty(value)
@@ -313,6 +333,11 @@ const ColumnTestForm = ({
       case ColumnTestType.ColumnValuesToMatchRegex:
         return {
           regex: regex,
+        };
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
+        return {
+          forbiddenRegex: regex,
         };
 
       case ColumnTestType.ColumnValuesToBeNotNull:
@@ -674,6 +699,9 @@ const ColumnTestForm = ({
       case ColumnTestType.ColumnValueMaxToBeBetween:
       case ColumnTestType.ColumnValueMinToBeBetween:
       case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         return getMinMaxField();
 
       case ColumnTestType.ColumnValuesMissingCountToBeEqual:
@@ -685,6 +713,7 @@ const ColumnTestForm = ({
       case ColumnTestType.ColumnValuesToBeInSet:
         return getColumnValuesToBeInSetField();
 
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
       case ColumnTestType.ColumnValuesToMatchRegex:
         return getColumnValuesToMatchRegexFields();
 
