@@ -7,10 +7,10 @@ source:
       username: default
       password: ''
       hostPort: localhost:8123
-      database: default
+      databaseSchema: default
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
       schemaFilterPattern:
         excludes:
         - system.*

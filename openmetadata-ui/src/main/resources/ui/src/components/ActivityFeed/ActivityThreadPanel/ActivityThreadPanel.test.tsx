@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findAllByText,
+  findByTestId,
+  findByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,6 +29,7 @@ const mockActivityThreadPanelProp = {
   postFeedHandler: jest.fn(),
   createThread: jest.fn(),
   deletePostHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../../../axiosAPIs/feedsAPI', () => ({
@@ -71,12 +77,14 @@ describe('Test ActivityThreadPanel Component', () => {
       { wrapper: MemoryRouter }
     );
     const panelOverlay = await findByText(container, /FeedPanelOverlay/i);
-    const panelHeader = await findByText(container, /FeedPanelHeader/i);
-    const panelThreadList = await findByText(container, /ActivityThreadList/i);
+
+    const panelThreadList = await findAllByText(
+      container,
+      /ActivityThreadList/i
+    );
 
     expect(panelOverlay).toBeInTheDocument();
-    expect(panelHeader).toBeInTheDocument();
-    expect(panelThreadList).toBeInTheDocument();
+    expect(panelThreadList).toHaveLength(2);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

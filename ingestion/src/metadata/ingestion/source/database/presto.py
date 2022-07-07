@@ -10,20 +10,21 @@
 #  limitations under the License.
 
 import re
+from typing import Iterable
 
 from pyhive.sqlalchemy_presto import PrestoDialect, _type_map
 from sqlalchemy import inspect, types, util
 from sqlalchemy.engine import reflection
-from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
+    PrestoConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ometa_logger
@@ -78,13 +79,16 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
 PrestoDialect.get_columns = get_columns
 
-from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
-    PrestoConnection,
-)
-
 
 class PrestoSource(CommonDbSourceService):
+    """
+    Presto does not support querying by table type: Getting views is not supported.
+    """
+
     def __init__(self, config, metadata_config):
+        self.presto_connection: PrestoConnection = (
+            config.serviceConnection.__root__.config
+        )
         super().__init__(config, metadata_config)
 
     @classmethod
@@ -97,23 +101,6 @@ class PrestoSource(CommonDbSourceService):
             )
         return cls(config, metadata_config)
 
-    def get_database_entity(self, _) -> Database:
-        return Database(
-            name=self.service_connection.catalog,
-            service=EntityReference(
-                id=self.service.id, type=self.service_connection.type.value
-            ),
-        )
-
-    def get_schemas(self, inspector: Inspector) -> str:
-        return (
-            inspector.get_schema_names()
-            if not self.service_connection.database
-            else [self.service_connection.database]
-        )
-
-    def prepare(self):
-        self.source_config.includeViews = (
-            False  # Presto includes views when fetching tables
-        )
-        return super().prepare()
+    def get_database_names(self) -> Iterable[str]:
+        self.inspector = inspect(self.engine)
+        yield self.presto_connection.catalog

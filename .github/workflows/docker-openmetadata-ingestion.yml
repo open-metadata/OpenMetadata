@@ -11,13 +11,25 @@
 
 name: docker-openmetadata-ingestion docker
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Input tag"
+        required: true
   release:
     types: [published]
 
 jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
+    env:
+      input: ${{ github.event.inputs.tag }}
+      
     steps:
+      - name: Check trigger type
+        if: ${{ env.input == '' }}
+        run: echo "input=0.10.4" >> $GITHUB_ENV
+        
       - name: Check out the Repo
         uses: actions/checkout@v2
 
@@ -32,6 +44,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           password: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get install -y python3-venv antlr4
+
+      - name: Install open-metadata dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_dev generate
       
       - name: Build and push
         uses: docker/build-push-action@v2
@@ -40,5 +62,5 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' }}
           # Update tags before every release
-          tags: 'openmetadata/ingestion:0.10.0,openmetadata/ingestion:latest'
+          tags: 'openmetadata/ingestion:$input,openmetadata/ingestion:latest'
           file: ./ingestion/Dockerfile

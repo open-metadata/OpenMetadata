@@ -16,6 +16,7 @@ from typing import Iterable, List
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
@@ -153,6 +154,11 @@ class MetadataSource(Source[Entity]):
             yield from self.fetch_entities(
                 entity_class=Pipeline,
                 fields=["owner", "tags", "followers", "tasks"],
+            )
+        if self.service_connection.includeMlModels:
+            yield from self.fetch_entities(
+                entity_class=MlModel,
+                fields=["owner", "tags", "followers"],
             )
         if self.service_connection.includeUsers:
             yield from self.fetch_entities(

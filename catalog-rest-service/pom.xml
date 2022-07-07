@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>catalog</artifactId>
-    <groupId>org.openmetadata</groupId>
+    <groupId>org.open-metadata</groupId>
     <version>0.11.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -31,7 +31,7 @@
       <artifactId>fernet-java8</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.openmetadata</groupId>
+      <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -327,7 +327,7 @@
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
-      <version>1.0.69</version>
+      <version>${json-schema-validator.version}</version>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
@@ -389,6 +389,21 @@
     <dependency>
       <groupId>org.jeasy</groupId>
       <artifactId>easy-rules-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.socket</groupId>
+      <artifactId>socket.io-server</artifactId>
+      <version>4.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.socket</groupId>
+      <artifactId>engine.io-server-jetty</artifactId>
+      <version>6.2.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-server</artifactId>
+      <version>9.4.46.v20220331</version>
     </dependency>
   </dependencies>
 
@@ -478,9 +493,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
         <version>${maven-src-plugin.version}</version>
-        <configuration>
-          <skipSource>true</skipSource>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.jsonschema2pojo</groupId>

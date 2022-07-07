@@ -114,7 +114,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,profileSample,customMetrics,"
+      "tableConstraints,tablePartition,usageSummary,owner,profileSample,profileQuery,customMetrics,"
           + "tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries,dataModel,tests,"
           + "extension";
 
@@ -357,7 +357,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       operationId = "deleteTable",
       summary = "Delete a table",
       tags = "tables",
-      description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
+      description = "Delete a table by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
@@ -770,6 +770,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             .withTags(create.getTags())
             .withViewDefinition(create.getViewDefinition())
             .withProfileSample(create.getProfileSample())
+            .withProfileQuery(create.getProfileQuery())
             .withDatabaseSchema(create.getDatabaseSchema()));
   }
 

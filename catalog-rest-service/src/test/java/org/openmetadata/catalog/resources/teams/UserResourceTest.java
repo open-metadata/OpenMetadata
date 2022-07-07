@@ -78,12 +78,12 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Role;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.locations.LocationResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.teams.authn.GenerateTokenRequest;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -476,21 +476,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(user1, users.getData().get(0));
   }
 
-  @Test
-  void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    User user = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // Empty query field .../users?fields=
-    assertResponseContains(
-        () -> getEntity(user.getId(), "test", ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid field name");
-
-    // .../users?fields=invalidField
-    assertResponse(
-        () -> getEntity(user.getId(), "invalidField", ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        CatalogExceptionMessage.invalidField("invalidField"));
-  }
-
   /**
    * @see EntityResourceTest put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
    * @see EntityResourceTest put_addDeleteFollower_200 for tests related getting user with follows list
@@ -681,7 +666,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     JWTAuthMechanism authMechanism = new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Seven);
     TestUtils.put(
         getResource(String.format("users/generateToken/%s", user.getId())),
-        JWTTokenExpiry.Seven,
+        new GenerateTokenRequest().withJWTTokenExpiry(JWTTokenExpiry.Seven),
         OK,
         ADMIN_AUTH_HEADERS);
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);

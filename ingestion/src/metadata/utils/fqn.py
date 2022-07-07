@@ -14,19 +14,23 @@ Filter information has been taken from the
 ES indexes definitions
 """
 import re
-from typing import List, Optional, Type, TypeVar
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
-from antlr4 import *
+from antlr4.CommonTokenStream import CommonTokenStream
+from antlr4.error.ErrorStrategy import BailErrorStrategy
+from antlr4.InputStream import InputStream
+from antlr4.tree.Tree import ParseTreeWalker
 from pydantic import BaseModel
 
 from metadata.antlr.split_listener import SplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
@@ -121,7 +125,8 @@ def _(
     schema_name: Optional[str],
     table_name: str,
     retries: int = 3,
-) -> Optional[str]:
+    fetch_multiple_entities: bool = False,
+) -> Union[Optional[str], Optional[List[str]]]:
     """
     Building logic for tables
     :param metadata: OMeta client
@@ -138,20 +143,26 @@ def _(
         )
 
     if not database_name or not schema_name:
-        es_result = metadata.es_search_from_service(
+
+        fqn_search_string = _build(
+            service_name, database_name or "*", schema_name or "*", table_name
+        )
+
+        es_result = metadata.es_search_from_fqn(
             entity_type=Table,
-            service_name=service_name,
-            filters={
-                "database": database_name,
-                "database_schema": schema_name,
-                "name": table_name,
-            },
+            fqn_search_string=fqn_search_string,
             retries=retries,
         )
-        entity: Optional[Table] = get_entity_from_es_result(entity_list=es_result)
-        return str(entity.fullyQualifiedName.__root__) if entity else None
-
-    return _build(service_name, database_name, schema_name, table_name)
+        entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+            entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+        )
+        if not entity:
+            return None
+        if fetch_multiple_entities:
+            return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return str(entity.fullyQualifiedName.__root__)
+    fqn = _build(service_name, database_name, schema_name, table_name)
+    return [fqn] if fetch_multiple_entities else fqn
 
 
 @fqn_build_registry.add(DatabaseSchema)
@@ -197,6 +208,20 @@ def _(
     return _build(service_name, dashboard_name)
 
 
+@fqn_build_registry.add(Chart)
+def _(
+    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    chart_name: str,
+) -> str:
+    if not service_name or not chart_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{chart_name}``"
+        )
+    return _build(service_name, chart_name)
+
+
 @fqn_build_registry.add(Tag)
 def _(
     _: OpenMetadata,  # ES Index not necessary for Tag FQN building
@@ -232,3 +257,32 @@ def _(
     pipeline_name: str,
 ) -> str:
     return _build(service_name, pipeline_name)
+
+
+@fqn_build_registry.add(Column)
+def _(
+    _: OpenMetadata,  # ES Search not enabled for Columns
+    *,
+    service_name: str,
+    database_name: str,
+    schema_name: str,
+    table_name: str,
+    column_name: str,
+) -> str:
+    return _build(service_name, database_name, schema_name, table_name, column_name)
+
+
+def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
+    """
+    Given a table name, try to extract database, schema and
+    table info
+    :param table_name: raw table name
+    :return: dict with data
+    """
+
+    details: List[str] = split(table_name)
+    # Pad None to the left until size of list is 3
+    full_details: List[Optional[str]] = ([None] * (3 - len(details))) + details
+
+    database, database_schema, table = full_details
+    return {"database": database, "database_schema": database_schema, "table": table}

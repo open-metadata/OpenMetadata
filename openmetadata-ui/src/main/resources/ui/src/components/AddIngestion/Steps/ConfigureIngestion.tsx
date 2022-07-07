@@ -28,25 +28,29 @@ import { ConfigureIngestionProps } from '../addIngestion.interface';
 const ConfigureIngestion = ({
   ingestionName,
   description = '',
+  databaseServiceName,
   databaseFilterPattern,
   dashboardFilterPattern,
   schemaFilterPattern,
   tableFilterPattern,
   topicFilterPattern,
   chartFilterPattern,
+  pipelineFilterPattern,
   fqnFilterPattern,
+  includeLineage,
   includeView,
+  includeTags,
   markDeletedTables,
   serviceCategory,
-  enableDataProfiler,
-  ingestSampleData,
   pipelineType,
   showDatabaseFilter,
+  ingestSampleData,
   showDashboardFilter,
   showSchemaFilter,
   showTableFilter,
   showTopicFilter,
   showChartFilter,
+  showPipelineFilter,
   showFqnFilter,
   queryLogDuration,
   stageFileLocation,
@@ -58,10 +62,12 @@ const ConfigureIngestion = ({
   handleIngestionName,
   handleDescription,
   handleShowFilter,
-  handleEnableDataProfiler,
+  handleIncludeLineage,
   handleIncludeView,
+  handleIncludeTags,
   handleMarkDeletedTables,
   handleIngestSampleData,
+  handleDatasetServiceName,
   handleQueryLogDuration,
   handleStageFileLocation,
   handleResultLimit,
@@ -69,6 +75,25 @@ const ConfigureIngestion = ({
   onNext,
 }: ConfigureIngestionProps) => {
   const markdownRef = useRef<EditorContentRef>();
+
+  const getIngestSampleToggle = (label: string, desc: string) => {
+    return (
+      <>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>{label}</label>
+            <ToggleSwitchV1
+              checked={ingestSampleData}
+              handleCheck={handleIngestSampleData}
+              testId="ingest-sample-data"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">{desc}</p>
+        </Field>
+        {getSeparator('')}
+      </>
+    );
+  };
 
   const getDebugLogToggle = () => {
     return (
@@ -107,30 +132,15 @@ const ConfigureIngestion = ({
           </Field>
           <Field>
             <div className="tw-flex tw-gap-1">
-              <label>Enable Data Profiler</label>
+              <label>Include tags</label>
               <ToggleSwitchV1
-                checked={enableDataProfiler}
-                handleCheck={handleEnableDataProfiler}
-                testId="data-profiler"
+                checked={includeTags}
+                handleCheck={handleIncludeTags}
+                testId="include-tags"
               />
             </div>
             <p className="tw-text-grey-muted tw-mt-3">
-              Enable Data Profiler to collect metrics and distribution of data
-              in the table. This will however slowdown the metadata extraction.
-            </p>
-            {getSeparator('')}
-          </Field>
-          <Field>
-            <div className="tw-flex tw-gap-1">
-              <label>Ingest Sample Data</label>
-              <ToggleSwitchV1
-                checked={ingestSampleData}
-                handleCheck={handleIngestSampleData}
-                testId="ingest-sample-data"
-              />
-            </div>
-            <p className="tw-text-grey-muted tw-mt-3">
-              Extract sample data from each table
+              Enable extracting tags from the data source
             </p>
             {getSeparator('')}
           </Field>
@@ -158,6 +168,51 @@ const ConfigureIngestion = ({
           )}
         </div>
       </>
+    );
+  };
+
+  const getPipelineFieldToggles = () => {
+    return (
+      <div>
+        <Field>
+          <div className="tw-flex tw-gap-1">
+            <label>Include lineage</label>
+            <ToggleSwitchV1
+              checked={includeLineage}
+              handleCheck={handleIncludeLineage}
+              testId="include-lineage"
+            />
+          </div>
+          <p className="tw-text-grey-muted tw-mt-3">
+            Configuration to turn off fetching lineage from pipelines.
+          </p>
+          {getSeparator('')}
+        </Field>
+        {getDebugLogToggle()}
+      </div>
+    );
+  };
+
+  const getDashboardDBServiceName = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label tw-mb-1" htmlFor="name">
+          Database Service Name
+        </label>
+        <p className="tw-text-grey-muted tw-mt-1 tw-mb-2 tw-text-sm">
+          Database Service Name for creation of lineage
+        </p>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="name"
+          id="name"
+          name="name"
+          type="text"
+          value={databaseServiceName}
+          onChange={(e) => handleDatasetServiceName(e.target.value)}
+        />
+        {getSeparator('')}
+      </Field>
     );
   };
 
@@ -231,6 +286,7 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.CHART}
             />
             {getSeparator('')}
+            {getDashboardDBServiceName()}
             {getDebugLogToggle()}
           </Fragment>
         );
@@ -251,7 +307,30 @@ const ConfigureIngestion = ({
               type={FilterPatternEnum.TOPIC}
             />
             {getSeparator('')}
+            {getIngestSampleToggle(
+              'Ingest Sample Data',
+              'Extract sample data from each topic'
+            )}
             {getDebugLogToggle()}
+          </Fragment>
+        );
+      case ServiceCategory.PIPELINE_SERVICES:
+        return (
+          <Fragment>
+            <FilterPattern
+              checked={showPipelineFilter}
+              excludePattern={pipelineFilterPattern.excludes ?? []}
+              getExcludeValue={getExcludeValue}
+              getIncludeValue={getIncludeValue}
+              handleChecked={(value) =>
+                handleShowFilter(value, FilterPatternEnum.PIPELINE)
+              }
+              includePattern={pipelineFilterPattern.includes ?? []}
+              showSeparator={false}
+              type={FilterPatternEnum.PIPELINE}
+            />
+            {getSeparator('')}
+            {getPipelineFieldToggles()}
           </Fragment>
         );
       default:
@@ -276,6 +355,7 @@ const ConfigureIngestion = ({
       </Fragment>
     );
   };
+
   const getMetadataFields = () => {
     return (
       <>
@@ -379,6 +459,10 @@ const ConfigureIngestion = ({
         </div>
         <div>{getProfilerFilterPatternField()}</div>
         {getSeparator('')}
+        {getIngestSampleToggle(
+          'Ingest Sample Data',
+          'Extract sample data from each profile'
+        )}
         {getDebugLogToggle()}
         <div>
           <Field>

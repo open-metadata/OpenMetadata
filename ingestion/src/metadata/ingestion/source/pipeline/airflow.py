@@ -13,18 +13,26 @@ Airflow source to extract metadata from OM UI
 """
 import sys
 import traceback
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, Iterable, List, Optional, cast
 
-from airflow.models import BaseOperator
+from airflow.models import BaseOperator, DagRun
 from airflow.models.serialized_dag import SerializedDagModel
+from airflow.models.taskinstance import TaskInstance
 from airflow.serialization.serialized_objects import SerializedDAG
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import (
+    Pipeline,
+    PipelineStatus,
+    StatusType,
+    Task,
+    TaskStatus,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -43,6 +51,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
+from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.connections import (
@@ -66,6 +75,13 @@ class AirflowSourceStatus(SourceStatus):
 
     def dropped(self, topic: str) -> None:
         self.filtered.append(topic)
+
+
+STATUS_MAP = {
+    "success": StatusType.Successful.value,
+    "failed": StatusType.Failed.value,
+    "queued": StatusType.Pending.value,
+}
 
 
 class AirflowSource(Source[CreatePipelineRequest]):
@@ -94,7 +110,9 @@ class AirflowSource(Source[CreatePipelineRequest]):
         self.service: PipelineService = self.metadata.get_service_or_create(
             entity=PipelineService, config=config
         )
-
+        self.numberOfStatus = (
+            self.config.serviceConnection.__root__.config.numberOfStatus
+        )
         # Create the connection to the database
         self._session = None
         self.engine: Engine = get_connection(self.service_connection.connection)
@@ -121,6 +139,44 @@ class AirflowSource(Source[CreatePipelineRequest]):
 
     def prepare(self):
         pass
+
+    def get_pipeline_status(self, dag_id: str) -> DagRun:
+        dag_run_list: DagRun = (
+            self.session.query(DagRun)
+            .filter(DagRun.dag_id == dag_id)
+            .order_by(DagRun.execution_date.desc())
+            .limit(self.numberOfStatus)
+        )
+        return dag_run_list
+
+    def fetch_pipeline_status(
+        self, serialized_dag: SerializedDAG, pipeline_fqn: str
+    ) -> OMetaPipelineStatus:
+        dag_run_list = self.get_pipeline_status(serialized_dag.dag_id)
+        for dag in dag_run_list:
+            if isinstance(dag.task_instances, Iterable):
+                tasks = dag.task_instances
+            else:
+                tasks = [dag.task_instances]
+
+            task_statuses = [
+                TaskStatus(
+                    name=task.task_id,
+                    executionStatus=STATUS_MAP.get(
+                        task.state, StatusType.Pending.value
+                    ),
+                )
+                for task in tasks
+            ]
+
+            pipeline_status = PipelineStatus(
+                taskStatus=task_statuses,
+                executionStatus=STATUS_MAP.get(dag._state, StatusType.Pending.value),
+                executionDate=dag.execution_date.timestamp(),
+            )
+            yield OMetaPipelineStatus(
+                pipeline_fqn=pipeline_fqn, pipeline_status=pipeline_status
+            )
 
     def list_dags(self) -> Iterable[SerializedDagModel]:
         """
@@ -233,26 +289,44 @@ class AirflowSource(Source[CreatePipelineRequest]):
 
         for task in dag.tasks:
             for table_fqn in self.get_inlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table_entity.id, type="table"),
-                        toEntity=EntityReference(
-                            id=pipeline_entity.id, type="pipeline"
-                        ),
-                    )
+                table_entity: Table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_fqn
                 )
+                if table_entity:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=table_entity.id, type="table"
+                            ),
+                            toEntity=EntityReference(
+                                id=pipeline_entity.id, type="pipeline"
+                            ),
+                        )
+                    )
+                else:
+                    logger.warn(
+                        f"Could not find Table [{table_fqn}] from "
+                        f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
+                    )
 
             for table_fqn in self.get_outlets(task) or []:
-                table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-                yield AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=EntityReference(
-                            id=pipeline_entity.id, type="pipeline"
-                        ),
-                        toEntity=EntityReference(id=table_entity.id, type="table"),
-                    )
+                table_entity: Table = self.metadata.get_by_name(
+                    entity=Table, fqn=table_fqn
                 )
+                if table_entity:
+                    yield AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=pipeline_entity.id, type="pipeline"
+                            ),
+                            toEntity=EntityReference(id=table_entity.id, type="table"),
+                        )
+                    )
+                else:
+                    logger.warn(
+                        f"Could not find Table [{table_fqn}] from "
+                        f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                    )
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -265,16 +339,17 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     self.source_config.pipelineFilterPattern, serialized_dag.dag_id
                 ):
                     yield from self.fetch_pipeline(serialized_dag)
-
+                    pipeline_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.service.name.__root__,
+                        pipeline_name=serialized_dag.dag_id,
+                    )
+                    yield from self.fetch_pipeline_status(serialized_dag, pipeline_fqn)
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,
-                            fqn=fqn.build(
-                                self.metadata,
-                                entity_type=Pipeline,
-                                service_name=self.service.name.__root__,
-                                pipeline_name=serialized_dag.dag_id,
-                            ),
+                            fqn=pipeline_fqn,
                         )
                         yield from self.fetch_lineage(serialized_dag, pipeline_entity)
                 else:

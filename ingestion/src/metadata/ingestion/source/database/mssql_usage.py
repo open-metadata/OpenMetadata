@@ -23,18 +23,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
-
-# This import verifies that the dependencies are available.
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.sql_queries import MSSQL_SQL_USAGE_STATEMENT
 
 
 class MssqlUsageSource(UsageSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         super().__init__(config, metadata_config)
-        start, end = get_start_and_end(config.sourceConfig.config.queryLogDuration)
-        self.analysis_date = start
-        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT.format(start_date=start, end_date=end)
+        self.sql_stmt = MSSQL_SQL_USAGE_STATEMENT
 
     @classmethod
     def create(cls, config_dict, metadata_config: WorkflowConfig):

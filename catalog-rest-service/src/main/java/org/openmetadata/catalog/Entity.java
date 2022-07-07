@@ -51,6 +51,9 @@ public final class Entity {
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<?>> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
+  // List of entities
+  private static final List<String> ENTITY_LIST = new ArrayList<>();
+
   // Common field names
   public static final String FIELD_OWNER = "owner";
   public static final String FIELD_NAME = "name";
@@ -62,6 +65,7 @@ public final class Entity {
   public static final String FIELD_PIPELINE_STATUSES = "pipelineStatuses";
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
+  public static final String FIELD_USAGE_SUMMARY = "usageSummary";
 
   //
   // Service entities
@@ -71,6 +75,7 @@ public final class Entity {
   public static final String DASHBOARD_SERVICE = "dashboardService";
   public static final String PIPELINE_SERVICE = "pipelineService";
   public static final String STORAGE_SERVICE = "storageService";
+  public static final String MLMODEL_SERVICE = "mlmodelService";
 
   //
   // Data asset entities
@@ -136,12 +141,19 @@ public final class Entity {
     DAO_MAP.put(entity, dao);
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    ENTITY_LIST.add(entity);
+    Collections.sort(ENTITY_LIST);
+
     LOG.info(
         "Registering entity {} {} {} {}",
         clazz,
         entity,
         dao.getEntityClass().getSimpleName(),
         entityRepository.getClass().getSimpleName());
+  }
+
+  public static List<String> listEntities() {
+    return Collections.unmodifiableList(ENTITY_LIST);
   }
 
   public static EntityReference getEntityReference(EntityReference ref) throws IOException {

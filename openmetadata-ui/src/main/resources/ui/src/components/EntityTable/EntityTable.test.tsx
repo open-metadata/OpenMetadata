@@ -196,18 +196,35 @@ const mockGlossaryList = [
   {
     name: 'Tag1',
     displayName: 'Tag1',
-    fqdn: 'Glossary.Tag1',
+    fullyQualifiedName: 'Glossary.Tag1',
     type: 'glossaryTerm',
     id: 'glossaryTagId1',
   },
   {
     name: 'Tag2',
     displayName: 'Tag2',
-    fqdn: 'Glossary.Tag2',
+    fullyQualifiedName: 'Glossary.Tag2',
     type: 'glossaryTerm',
     id: 'glossaryTagId2',
   },
 ];
+
+jest.mock('../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+    })),
+  };
+});
+
+jest.mock('../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
 
 jest.mock('@fortawesome/react-fontawesome', () => ({
   FontAwesomeIcon: jest.fn().mockReturnValue(<i>Icon</i>),
@@ -248,7 +265,9 @@ jest.mock('../tags/tags', () => {
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+    return terms.map(
+      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
+    );
   }),
 }));
 
@@ -319,13 +338,6 @@ describe('Test EntityTable Component', () => {
     );
 
     expect(requestDescriptionButton).toBeInTheDocument();
-
-    fireEvent.click(
-      requestDescriptionButton,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    expect(onEntityFieldSelect).toBeCalled();
 
     const descriptionThread = queryByTestId(tableRows[0], 'field-thread');
     const startDescriptionThread = queryByTestId(

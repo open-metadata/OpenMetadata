@@ -17,25 +17,58 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.openmetadata</groupId>
+  <groupId>org.open-metadata</groupId>
   <artifactId>catalog</artifactId>
+  <name>OpenMetadata-catalog</name>
+  <description>Openmetadata catalog</description>
   <version>0.11.0-SNAPSHOT</version>
+  <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>common</module>
     <module>catalog-rest-service</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
+    <module>openmetadata-core</module>
+    <module>openmetadata-clients</module>
   </modules>
   <packaging>pom</packaging>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+
   <scm>
     <connection>scm:git:git@github.com:Open-Metadata/OpenMetadata</connection>
     <developerConnection>scm:git:git@github.com:Open-Metadata/OpenMetadata</developerConnection>
     <url>scm:git:git@github.com:Open-Metadata/OpenMetadata</url>
   </scm>
 
+  <developers>
+    <developer>
+      <name>OpenMetadata</name>
+      <email>openmetadata@getcollate.io</email>
+      <organization>Get Collate</organization>
+      <organizationUrl>https://getcollate.io/</organizationUrl>
+    </developer>
+  </developers>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+    <repository>
+      <id>ossrh</id>
+      <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+  </distributionManagement>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mockito.version>4.5.1</mockito.version>
+    <mockito.version>4.6.1</mockito.version>
     <slf4j.version>1.7.36</slf4j.version>
     <jackson.version>2.13.3</jackson.version>
     <dropwizard.version>2.0.28</dropwizard.version>
@@ -53,7 +86,7 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi3.version>3.28.0</jdbi3.version>
+    <jdbi3.version>3.30.0</jdbi3.version>
     <jeasy.version>4.1.0</jeasy.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <commons-io.version>2.11.0</commons-io.version>
@@ -61,7 +94,7 @@
     <redshift-jdbc.version>2.1.0.7</redshift-jdbc.version>
     <gson.version>2.9.0</gson.version>
     <mysql.connector.version>8.0.29</mysql.connector.version>
-    <postgres.connector.version>42.3.5</postgres.connector.version>
+    <postgres.connector.version>42.3.6</postgres.connector.version>
     <jsonschema2pojo.version>1.1.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.24</lombok.version>
@@ -96,6 +129,7 @@
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.0</testng.version>
     <dropwizard-micrometer.version>2.0.5</dropwizard-micrometer.version>
+    <json-schema-validator.version>1.0.70</json-schema-validator.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -582,7 +616,7 @@
             <dependency>
               <groupId>com.puppycrawl.tools</groupId>
               <artifactId>checkstyle</artifactId>
-              <version>10.2</version>
+              <version>10.3</version>
             </dependency>
           </dependencies>
         </plugin>
@@ -606,6 +640,49 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <version>${maven-src-plugin.version}</version>
+          <executions>
+            <execution>
+              <id>attach-sources</id>
+              <goals>
+                <goal>jar-no-fork</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <version>2.10.3</version>
+          <configuration>
+            <additionalparam>-Xdoclint:none</additionalparam>
+          </configuration>
+          <executions>
+            <execution>
+              <id>attach-javadocs</id>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-gpg-plugin</artifactId>
+          <version>1.5</version>
+          <executions>
+            <execution>
+              <id>sign-artifacts</id>
+              <phase>verify</phase>
+              <goals>
+                <goal>sign</goal>
+              </goals>
+            </execution>
+          </executions>
         </plugin>
 
         <!-- Test plugins -->
@@ -677,12 +754,12 @@
       <plugin>
         <groupId>org.sonatype.plugins</groupId>
         <artifactId>nexus-staging-maven-plugin</artifactId>
-        <version>1.6.7</version>
+        <version>1.6.13</version>
         <extensions>true</extensions>
         <configuration>
           <serverId>ossrh</serverId>
-          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
         </configuration>
       </plugin>
       <plugin>

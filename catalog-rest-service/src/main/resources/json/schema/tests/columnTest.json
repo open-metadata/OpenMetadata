@@ -26,13 +26,37 @@
               "$ref": "./column/columnValuesToBeNotInSet.json"
             },
             {
-              "$ref": "column/columnValuesToBeBetween.json"
+              "$ref": "./column/columnValuesToBeInSet.json"
+            },
+            {
+              "$ref": "./column/columnValuesToBeBetween.json"
             },
             {
               "$ref": "./column/columnValuesMissingCountToBeEqual.json"
             },
             {
+              "$ref": "./column/columnValueMaxToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMinToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValuesSumToBeBetween.json"
+            },
+            {
               "$ref": "./column/columnValuesLengthsToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValuesToNotMatchRegex.json"
+            },
+            {
+              "$ref": "./column/columnValueStdDevToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMedianToBeBetween.json"
+            },
+            {
+              "$ref": "./column/columnValueMeanToBeBetween.json"
             }
           ]
         },
@@ -42,9 +66,17 @@
             "columnValuesToBeNotNull",
             "columnValuesToMatchRegex",
             "columnValuesToBeNotInSet",
+            "columnValuesToBeInSet",
             "columnValuesToBeBetween",
             "columnValuesMissingCountToBeEqual",
-            "columnValueLengthsToBeBetween"
+            "columnValueLengthsToBeBetween",
+            "columnValueMaxToBeBetween",
+            "columnValueMinToBeBetween",
+            "columnValuesSumToBeBetween",
+            "columnValuesToNotMatchRegex",
+            "columnValueStdDevToBeBetween",
+            "columnValueMedianToBeBetween",
+            "columnValueMeanToBeBetween"
           ]
         }
       },

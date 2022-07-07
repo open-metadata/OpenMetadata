@@ -33,15 +33,16 @@ export interface TeamsAndUsersProps {
   isTeamVisible: boolean;
   activeUserTab: UserType | undefined;
   activeUserTabHandler: (value: UserType | undefined) => void;
-  users: User[];
-  admins: User[];
+  usersCount: number;
+  adminsCount: number;
   selectedUserList: User[];
-  bots: User[];
   teams: Team[];
-  currentTeam: Team | undefined;
+  currentTeam: Team;
   currentTeamUsers: User[];
   teamUserPagin: Paging;
+  userPaging: Paging;
   currentTeamUserPage: number;
+  currentUserPage: number;
   teamUsersSearchText: string;
   isDescriptionEditable: boolean;
   isRightPannelLoading: boolean;
@@ -56,9 +57,13 @@ export interface TeamsAndUsersProps {
     [key: string]: string;
   };
   updateTeamHandler: (data: Team) => Promise<void>;
-  handleDeleteUser: (id: string) => void;
+  handleDeleteUser: () => void;
   handleTeamUsersSearchAction: (text: string) => void;
   teamUserPaginHandler: (
+    cursorValue: string | number,
+    activePage?: number
+  ) => void;
+  userPagingHandler: (
     cursorValue: string | number,
     activePage?: number
   ) => void;
@@ -79,7 +84,7 @@ export interface TeamsAndUsersProps {
 }
 
 export interface TeamDetailsProp {
-  currentTeam: Team | undefined;
+  currentTeam: Team;
   teams: Team[];
   currentTeamUsers: User[];
   teamUserPagin: Paging;

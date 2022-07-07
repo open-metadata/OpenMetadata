@@ -33,6 +33,11 @@ export interface DBTConfigFormProps extends DBTFormCommonProps {
   handleSourceChange?: (src: DBT_SOURCES) => void;
 }
 
+export type DbtConfigCloud = Pick<
+  DbtConfigSource,
+  'dbtCloudAccountId' | 'dbtCloudAuthToken'
+>;
+
 export type DbtConfigLocal = Pick<
   DbtConfigSource,
   'dbtCatalogFilePath' | 'dbtManifestFilePath'
@@ -68,6 +73,8 @@ export interface DbtSourceTypes {
 }
 
 export type DbtGCSCreds = GCSCredentialsValues;
+
+export type ErrorDbtCloud = Record<keyof DbtConfigCloud, string>;
 
 export type ErrorDbtLocal = Record<keyof DbtConfigLocal, string>;
 

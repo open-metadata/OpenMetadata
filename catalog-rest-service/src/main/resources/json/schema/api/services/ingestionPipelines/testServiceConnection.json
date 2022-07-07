@@ -6,7 +6,7 @@
   "type": "object",
   "properties": {
     "connection": {
-      "description": "Database Connection.",
+      "description": "Connection object.",
       "oneOf": [
         {
           "$ref": "../../../entity/services/databaseService.json#/definitions/databaseConnection"
@@ -16,13 +16,19 @@
         },
         {
           "$ref": "../../../entity/services/messagingService.json#/definitions/messagingConnection"
+        },
+        {
+          "$ref": "../../../entity/services/pipelineService.json#/definitions/pipelineConnection"
+        },
+        {
+          "$ref": "../../../entity/services/mlmodelService.json#/definitions/mlModelConnection"
         }
       ]
     },
     "connectionType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "type": "string",
-      "enum": ["Database", "Dashboard", "Messaging"],
+      "enum": ["Database", "Dashboard", "Messaging", "Pipeline", "MlModel"],
       "javaEnums": [
         {
           "name": "Database"
@@ -32,6 +38,12 @@
         },
         {
           "name": "Messaging"
+        },
+        {
+          "name": "Pipeline"
+        },
+        {
+          "name": "MlModel"
         }
       ]
     }

@@ -31,6 +31,7 @@ const mockActivityThreadListProp = {
   onThreadIdSelect: jest.fn(),
   onThreadSelect: jest.fn(),
   onConfirmation: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 jest.mock('../ActivityFeedCard/ActivityFeedCard', () => {
@@ -45,7 +46,7 @@ jest.mock('../ActivityFeedList/FeedListSeparator', () => {
   return jest.fn().mockReturnValue(<p>FeedListSeparator</p>);
 });
 
-jest.mock('../FeedCardFooter/FeedCardFooter', () => {
+jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
 
@@ -75,10 +76,6 @@ describe('Test ActivityThreadList Component', () => {
 
     const thread1 = await findByTestId(container, 'thread0');
     const mainMessage = await findByTestId(thread1, 'main-message');
-    const mainMessageReplyButton = await findByTestId(
-      thread1,
-      'main-message-reply-button'
-    );
 
     const quickReplyButton = queryByTestId(thread1, 'quick-reply-button');
     const repliesContainer = queryByTestId(thread1, 'replies-container');
@@ -86,7 +83,6 @@ describe('Test ActivityThreadList Component', () => {
 
     expect(thread1).toBeInTheDocument();
     expect(mainMessage).toBeInTheDocument();
-    expect(mainMessageReplyButton).toBeInTheDocument();
     expect(quickReplyButton).not.toBeInTheDocument();
     expect(repliesContainer).not.toBeInTheDocument();
     expect(latestReply).not.toBeInTheDocument();
@@ -106,14 +102,14 @@ describe('Test ActivityThreadList Component', () => {
       thread2,
       'main-message-reply-button'
     );
-    const quickReplyButton = queryByTestId(thread2, 'quick-reply-button');
+
     const repliesContainer = queryByTestId(thread2, 'replies-container');
     const latestReply = queryByTestId(thread2, 'latest-reply');
 
     expect(thread2).toBeInTheDocument();
     expect(mainMessage).toBeInTheDocument();
     expect(mainMessageReplyButton).not.toBeInTheDocument();
-    expect(quickReplyButton).toBeInTheDocument();
+
     expect(repliesContainer).toBeInTheDocument();
     expect(latestReply).toBeInTheDocument();
   });

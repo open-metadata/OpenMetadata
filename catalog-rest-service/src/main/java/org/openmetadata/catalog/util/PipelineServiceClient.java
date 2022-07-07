@@ -88,6 +88,9 @@ public abstract class PipelineServiceClient {
   /* Get the status of a deployed pipeline */
   public abstract IngestionPipeline getPipelineStatus(IngestionPipeline ingestionPipeline);
 
+  /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
+  public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);
+
   /* Get the all last run logs of a deployed pipeline */
   public abstract Map<String, String> getLastIngestionLogs(String pipelineName);
 }

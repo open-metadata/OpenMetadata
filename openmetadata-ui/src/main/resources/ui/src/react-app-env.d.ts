@@ -13,19 +13,7 @@
 
 /* eslint-disable */
 /// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-codemirror2';
-declare module 'react-slick';
-declare module 'slick-carousel';
 declare module 'react-table';
-declare module 'recharts';
-declare module 'diff';
-declare module '@deuex-solutions/react-tour';
-declare module 'dagre';
-declare module 'turndown';
 declare module 'quilljs-markdown';
 declare module 'quill-mention';
 declare module 'quill-emoji';

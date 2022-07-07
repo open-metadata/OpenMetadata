@@ -11,32 +11,46 @@
  *  limitations under the License.
  */
 
-import classNames from 'classnames';
-import { isNil, uniqueId } from 'lodash';
-import moment from 'moment';
-import React, { FC, Fragment, HTMLAttributes, useState } from 'react';
+import { isNil } from 'lodash';
+import React, { FC, Fragment, HTMLAttributes, useMemo, useState } from 'react';
 import Select, { SingleValue } from 'react-select';
-import { Pipeline, StatusType } from '../../generated/entity/data/pipeline';
-import { withLoader } from '../../hoc/withLoader';
 import {
-  getModifiedPipelineStatus,
-  getStatusBadgeIcon,
+  Pipeline,
+  PipelineStatus,
+  StatusType,
+} from '../../generated/entity/data/pipeline';
+import {
+  getFilteredPipelineStatus,
   STATUS_OPTIONS,
 } from '../../utils/PipelineDetailsUtils';
-import SVGIcons from '../../utils/SvgUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
+import ExecutionStrip from '../ExecutionStrip/ExecutionStrip';
 import CustomOption from './CustomOption';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
   pipelineStatus: Pipeline['pipelineStatus'];
+  selectedExec: PipelineStatus;
+  onSelectExecution: (e: PipelineStatus) => void;
 }
 interface Option {
   value: string;
   label: string;
 }
 
-const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
+const PipelineStatusList: FC<Prop> = ({
+  className,
+  pipelineStatus,
+  selectedExec,
+  onSelectExecution,
+}: Prop) => {
   const [selectedFilter, setSelectedFilter] = useState('');
+
+  const executions = useMemo(() => {
+    return getFilteredPipelineStatus(
+      selectedFilter as StatusType,
+      pipelineStatus
+    );
+  }, [selectedFilter, pipelineStatus]);
 
   const handleOnChange = (
     value: SingleValue<unknown>,
@@ -53,7 +67,7 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
   if (isNil(pipelineStatus) || pipelineStatus.length === 0) {
     return (
       <div
-        className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
+        className="tw-mt-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8"
         data-testid="no-data">
         <span>No Execution data available.</span>
       </div>
@@ -63,7 +77,7 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
       <Fragment>
         <div className={className} data-testid="pipeline-status-list">
           <div className="tw-flex tw-justify-between tw-mt-2 tw-mb-4">
-            <div />
+            <div className="tw-text-base">Executions</div>
             <div data-testid="filter-dropdown">
               <Select
                 isClearable
@@ -77,56 +91,21 @@ const PipelineStatusList: FC<Prop> = ({ className, pipelineStatus }: Prop) => {
               />
             </div>
           </div>
-          <table
-            className="tw-w-full"
-            data-testid="pipeline-status-table"
-            id="pipeline-status-table">
-            <thead>
-              <tr className="tableHead-row">
-                <th className="tableHead-cell">Task Name</th>
-                <th className="tableHead-cell">Status</th>
-                <th className="tableHead-cell">Date &amp; Time</th>
-              </tr>
-            </thead>
-            <tbody className="tableBody">
-              {getModifiedPipelineStatus(
-                selectedFilter as StatusType,
-                pipelineStatus
-              ).map((status) => (
-                <tr
-                  className={classNames('tableBody-row')}
-                  data-testid="tableBody-row"
-                  key={uniqueId()}>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {status?.name}
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    <div className="tw-flex tw-items-center">
-                      <SVGIcons
-                        alt={status?.executionStatus ?? ''}
-                        icon={getStatusBadgeIcon(
-                          status?.executionStatus as StatusType
-                        )}
-                        width="16px"
-                      />
-                      <span className="tw-ml-2">{status?.executionStatus}</span>
-                    </div>
-                  </td>
-                  <td className="tableBody-cell" data-testid="tableBody-cell">
-                    {status?.executionDate
-                      ? moment(status?.executionDate).format(
-                          'DD-MM-YYYY hh:mm A'
-                        )
-                      : '--'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {executions.length ? (
+            <ExecutionStrip
+              executions={executions}
+              selectedExecution={selectedExec}
+              onSelectExecution={onSelectExecution}
+            />
+          ) : (
+            <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+              <span>No execution data is available</span>
+            </div>
+          )}
         </div>
       </Fragment>
     );
   }
 };
 
-export default withLoader<Prop>(PipelineStatusList);
+export default PipelineStatusList;

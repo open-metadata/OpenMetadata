@@ -4,8 +4,6 @@ source:
   serviceConnection:
     config:
       type: BigQuery
-      enablePolicyTagImport: true
-      projectId: project_id
       credentials:
         gcsConfig:
           type: service_account
@@ -23,8 +21,7 @@ source:
       queryLogDuration: '1'
 processor:
   type: query-parser
-  config:
-    filter: ''
+  config: {}
 stage:
   type: table-usage
   config:

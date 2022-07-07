@@ -42,7 +42,7 @@ export const SEARCH_ENTITY_TOPIC = {
 
 export const SEARCH_ENTITY_DASHBOARD = {
   dashboard_1: {
-    term: 'Sales Dashboard',
+    term: 'Slack Dashboard',
     entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   dashboard_2: {
@@ -52,9 +52,12 @@ export const SEARCH_ENTITY_DASHBOARD = {
 };
 
 export const SEARCH_ENTITY_PIPELINE = {
-  pipeline_1: { term: 'Hive ETL', entity: MYDATA_SUMMARY_OPTIONS.pipelines },
-  pipeline_2: {
+  pipeline_1: {
     term: 'Snowflake ETL',
+    entity: MYDATA_SUMMARY_OPTIONS.pipelines,
+  },
+  pipeline_2: {
+    term: 'Hive ETL',
     entity: MYDATA_SUMMARY_OPTIONS.pipelines,
   },
   pipeline_3: {
@@ -71,10 +74,6 @@ export const DELETE_ENTITY = {
   topic: {
     term: 'shop_updates',
     entity: MYDATA_SUMMARY_OPTIONS.topics,
-  },
-  dashboard: {
-    term: 'Misc Charts',
-    entity: MYDATA_SUMMARY_OPTIONS.dashboards,
   },
   pipeline: {
     term: 'Presto ETL',
@@ -129,4 +128,28 @@ export const NEW_TAG_CATEGORY = {
 export const NEW_TAG = {
   name: 'test',
   description: 'This is the Test tag',
+};
+
+export const NEW_GLOSSARY = {
+  name: 'Business Glossary',
+  description: 'This is the Business glossary',
+};
+export const NEW_GLOSSARY_TERMS = {
+  term_1: {
+    name: 'Purchase',
+    description: 'This is the Purchase',
+    synonyms: 'buy,collect,acquire',
+  },
+  term_2: {
+    name: 'Sales',
+    description: 'This is the Sales',
+    synonyms: 'give,disposal,deal',
+  },
+};
+
+export const service = {
+  name: 'Glue',
+  description: 'This is a Glue service',
+  newDescription: 'This is updated Glue service description',
+  Owner: 'Cloud_Infra',
 };

@@ -14,6 +14,7 @@
 /* eslint-disable */
 
 import { Editor, Viewer } from '@toast-ui/react-editor';
+import classNames from 'classnames';
 import React, {
   createRef,
   forwardRef,
@@ -36,6 +37,10 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       hideModeSwitch = true,
       initialValue = '',
       readonly,
+      height,
+      className,
+      style,
+      onTextChange,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -48,6 +53,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
         ?.getInstance()
         .getMarkdown() as string;
       setEditorValue(value);
+      onTextChange && onTextChange(value);
     };
 
     useImperativeHandle(ref, () => ({
@@ -61,7 +67,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }, [initialValue]);
 
     return (
-      <div className="tw-my-4">
+      <div className={classNames(className, 'tw-my-4')} style={style}>
         {readonly ? (
           <div
             className="tw-border tw-border-main tw-p-2 tw-rounded"
@@ -76,6 +82,7 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
           <div data-testid="editor">
             <Editor
               extendedAutolinks={extendedAutolinks}
+              height={height ?? '280px'}
               hideModeSwitch={hideModeSwitch}
               initialEditType={editorType}
               initialValue={editorValue}

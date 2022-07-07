@@ -29,11 +29,6 @@
       "description": "AWS storageServiceName Name.",
       "type": "string"
     },
-    "pipelineServiceName": {
-      "title": "Pipeline Service Name",
-      "description": "AWS pipelineServiceName Name.",
-      "type": "string"
-    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
@@ -45,14 +40,8 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsProfiler": {
-      "title": "Supports Profiler",
-      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-  "required": [
-    "awsConfig", "storageServiceName", "pipelineServiceName"
-  ]
+  "required": ["awsConfig", "storageServiceName"]
 }

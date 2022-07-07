@@ -349,7 +349,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
-        .withUsers(dao.getEntityReferences(ct.getUsers()))
-        .withDefaultRoles(dao.getEntityReferences(ct.getDefaultRoles()));
+        .withUsers(dao.toEntityReferences(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(dao.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE));
   }
 }

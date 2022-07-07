@@ -52,7 +52,7 @@ export const button = {
   },
   link: {
     default: {
-      base: 'tw-text-grey-muted dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-underline focus:tw-underline 
         hover:tw-text-gray-600 active:tw-text-gray-600`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',

@@ -20,7 +20,7 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   { name: 'Schedule Interval', step: 3 },
 ];
 
-export const INGESTION_SCHEDULER_INITIAL_VALUE = '5 * * * *';
+export const INGESTION_SCHEDULER_INITIAL_VALUE = '0 * * * *';
 
 export const INITIAL_FILTER_PATTERN: FilterPattern = {
   includes: [],

@@ -53,6 +53,10 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String entityTypeNotSupported(String entityType) {
+    return String.format("Entity type %s not supported", entityType);
+  }
+
   public static String deletedUser(UUID id) {
     return String.format("User %s is deleted", id);
   }

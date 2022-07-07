@@ -8,9 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceRequest,
@@ -21,24 +21,45 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceRequest,
 )
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceRequest,
-)
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import (
+    EntityReference,
+    EntityReferenceList,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+om_chart_type_dict = {
+    "line": ChartType.Line,
+    "big_number": ChartType.Line,
+    "big_number_total": ChartType.Line,
+    "dual_line": ChartType.Line,
+    "line_multi": ChartType.Line,
+    "table": ChartType.Table,
+    "dist_bar": ChartType.Bar,
+    "bar": ChartType.Bar,
+    "box_plot": ChartType.BoxPlot,
+    "boxplot": ChartType.BoxPlot,
+    "histogram": ChartType.Histogram,
+    "treemap": ChartType.Area,
+    "area": ChartType.Area,
+    "pie": ChartType.Pie,
+    "text": ChartType.Text,
+    "scatter": ChartType.Scatter,
+}
 
 
 def get_start_and_end(duration):
@@ -46,7 +67,8 @@ def get_start_and_end(duration):
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
+    # Add one day to make sure we are handling today's queries
+    end = (today + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
@@ -185,8 +207,12 @@ def datetime_to_ts(date: datetime) -> int:
     return int(date.timestamp() * 1_000)
 
 
-def _get_formmated_table_name(table_name):
-    return table_name.replace("[", "").replace("]", "")
+def get_formatted_entity_name(name: str) -> Optional[str]:
+    return (
+        name.replace("[", "").replace("]", "").replace("<default>.", "")
+        if name
+        else None
+    )
 
 
 def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
@@ -197,3 +223,50 @@ def get_raw_extract_iter(alchemy_helper) -> Iterable[Dict[str, Any]]:
     rows = alchemy_helper.execute_query()
     for row in rows:
         yield row
+
+
+def replace_special_with(raw: str, replacement: str) -> str:
+    """
+    Replace special characters in a string by a hyphen
+    :param raw: raw string to clean
+    :param replacement: string used to replace
+    :return: clean string
+    """
+    return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
+
+
+def get_standard_chart_type(raw_chart_type: str) -> str:
+    """
+    Get standard chart type supported by OpenMetadata based on raw chart type input
+    :param raw_chart_type: raw chart type to be standardize
+    :return: standard chart type
+    """
+    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+
+
+def get_chart_entities_from_id(
+    chart_ids: List[str], metadata: OpenMetadata, service_name: str
+) -> List[EntityReferenceList]:
+    entities = []
+    for id in chart_ids:
+        chart: Chart = metadata.get_by_name(
+            entity=Chart,
+            fqn=fqn.build(
+                metadata, Chart, chart_name=str(id), service_name=service_name
+            ),
+        )
+        if chart:
+            entity = EntityReference(id=chart.id, type="chart")
+            entities.append(entity)
+    return entities
+
+
+def find_in_list(element: Any, container: Iterable[Any]) -> Optional[Any]:
+    """
+    If the element is in the container, return it.
+    Otherwise, return None
+    :param element: to find
+    :param container: container with element
+    :return: element or None
+    """
+    return next(iter([elem for elem in container if elem == element]), None)

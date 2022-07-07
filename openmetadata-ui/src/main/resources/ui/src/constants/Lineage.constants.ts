@@ -3,6 +3,7 @@ import { ElementLoadingState } from '../components/EntityLineage/EntityLineage.i
 import { EntityType } from '../enums/entity.enum';
 
 export const foreignObjectSize = 40;
+export const zoomValue = 1;
 
 export const entityData = [
   {
@@ -11,13 +12,15 @@ export const entityData = [
   },
   { type: EntityType.PIPELINE, label: capitalize(EntityType.PIPELINE) },
   { type: EntityType.DASHBOARD, label: capitalize(EntityType.DASHBOARD) },
+  { type: EntityType.TOPIC, label: capitalize(EntityType.TOPIC) },
+  { type: EntityType.MLMODEL, label: capitalize(EntityType.MLMODEL) },
 ];
 
 export const positionX = 150;
 export const positionY = 60;
 
-export const nodeWidth = 300;
-export const nodeHeight = 40;
+export const nodeWidth = 400;
+export const nodeHeight = 50;
 
 export const ELEMENT_DELETE_STATE = {
   loading: false,

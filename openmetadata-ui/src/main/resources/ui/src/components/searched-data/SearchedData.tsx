@@ -17,6 +17,7 @@ import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE } from '../../constants/constants';
+import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TableType } from '../../generated/entity/data/table';
 import { Paging } from '../../generated/type/paging';
 import { pluralize } from '../../utils/CommonUtils';
@@ -38,6 +39,7 @@ type SearchedDataProp = {
   searchText?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
+  isFilterSelected: boolean;
 };
 
 const ASSETS_NAME = [
@@ -58,6 +60,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   showOnlyChildren = false,
   searchText,
   totalValue,
+  isFilterSelected,
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
@@ -118,15 +121,30 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             tableType={table.tableType as TableType}
             tags={table.tags}
             tier={
-              (table.tier || getTierFromSearchTableTags(table.tags))?.split(
-                FQN_SEPARATOR_CHAR
-              )[1]
+              (
+                table.tier?.tagFQN ||
+                getTierFromSearchTableTags(
+                  (table.tags || []).map((tag) => tag.tagFQN)
+                )
+              )?.split(FQN_SEPARATOR_CHAR)[1]
             }
             usage={table.weeklyPercentileRank}
           />
         </div>
       );
     });
+  };
+
+  const ResultCount = () => {
+    if (showResultCount && (isFilterSelected || searchText)) {
+      if (MAX_RESULT_HITS === totalValue) {
+        return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
+      } else {
+        return <div className="tw-mb-1">{pluralize(totalValue, 'result')}</div>;
+      }
+    } else {
+      return null;
+    }
   };
 
   return (
@@ -140,11 +158,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
               {children}
               {!showOnlyChildren ? (
                 <>
-                  {showResultCount && searchText ? (
-                    <div className="tw-mb-1">
-                      {pluralize(totalValue, 'result')}
-                    </div>
-                  ) : null}
+                  <ResultCount />
                   {data.length > 0 ? (
                     <div
                       className="tw-grid tw-grid-rows-1 tw-grid-cols-1"

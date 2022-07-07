@@ -13,6 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
+import { CookieStorage } from 'cookie-storage';
 import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -22,15 +23,16 @@ import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { createUser } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import PageContainer from '../../components/containers/PageContainer';
-import DropDown from '../../components/dropdown/DropDown';
-import { ROUTES } from '../../constants/constants';
-import { Team } from '../../generated/entity/teams/team';
+import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
+import { REDIRECT_PATHNAME, ROUTES } from '../../constants/constants';
 import jsonData from '../../jsons/en';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import { getImages } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { fetchAllUsers } from '../../utils/UserDataUtils';
+
+const cookieStorage = new CookieStorage();
 
 const Signup = () => {
   const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
@@ -42,10 +44,14 @@ const Signup = () => {
     name: getNameFromEmail(appState.newUser.email),
     email: appState.newUser.email || '',
   });
-  const [teams, setTeams] = useState<Array<Team>>([]);
+  const [countTeams, setCountTeams] = useState<number>(0);
   const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
+
+  const setTeamCount = (count = 0) => {
+    setCountTeams(count);
+  };
 
   const getUserPermissions = () => {
     getLoggedInUserPermissions()
@@ -64,19 +70,6 @@ const Signup = () => {
       });
   };
 
-  const selectedTeamsHandler = (id?: string) => {
-    setSelectedTeams((prevState: Array<string | undefined>) => {
-      if (prevState.includes(id as string)) {
-        const selectedTeam = [...prevState];
-        const index = selectedTeam.indexOf(id as string);
-        selectedTeam.splice(index, 1);
-
-        return selectedTeam;
-      } else {
-        return [...prevState, id];
-      }
-    });
-  };
   const createNewUser = (details: {
     [name: string]: string | Array<string> | UserProfile;
   }) => {
@@ -87,6 +80,7 @@ const Signup = () => {
           appState.updateUserDetails(res.data);
           fetchAllUsers();
           getUserPermissions();
+          cookieStorage.removeItem(REDIRECT_PATHNAME);
           history.push(ROUTES.HOME);
         } else {
           setLoading(false);
@@ -115,7 +109,7 @@ const Signup = () => {
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (teams.length) {
+    if (countTeams) {
       setTeamError(!selectedTeams.length);
       if (details.name && details.displayName && selectedTeams.length > 0) {
         createNewUser({
@@ -139,16 +133,6 @@ const Signup = () => {
     }
   };
 
-  const getTeamsData = (teams: Array<Team>) => {
-    return teams
-      .filter((team) => team.isJoinable)
-      .map((team: Team) => {
-        return {
-          name: team.displayName as string,
-          value: team.id,
-        };
-      });
-  };
   const errorMsg = (value: string) => {
     return (
       <div
@@ -163,15 +147,20 @@ const Signup = () => {
   };
 
   useEffect(() => {
-    getTeams()
-      .then((res: AxiosResponse) => {
-        setTeams(res?.data?.data || []);
+    getTeams('', 0)
+      .then((res) => {
+        if (res.data) {
+          setTeamCount(res.data.paging?.total || 0);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-teams-error']
+          jsonData['api-error-messages']['unexpected-server-response']
         );
+        setTeamCount(0);
       });
   }, []);
   useEffect(() => {
@@ -265,25 +254,14 @@ const Signup = () => {
                       className={classNames(
                         'tw-block tw-text-body tw-text-grey-body tw-mb-2',
                         {
-                          'required-field': teams.length,
+                          'required-field': countTeams,
                         }
-                      )}
-                      htmlFor="email">
+                      )}>
                       Select teams
                     </label>
-                    <DropDown
-                      className={classNames('tw-bg-white', {
-                        'tw-bg-gray-100 tw-cursor-not-allowed':
-                          teams.length === 0,
-                      })}
-                      dropDownList={getTeamsData(teams)}
-                      label="Select..."
-                      selectedItems={selectedTeams as Array<string>}
-                      type="checkbox"
-                      onSelect={(_e, value) => selectedTeamsHandler(value)}
-                    />
+                    <TeamsSelectable onSelectionChange={setSelectedTeams} />
                     {teamError && errorMsg('Atleast one team is required')}
-                    {teams.length === 0 ? (
+                    {countTeams === 0 ? (
                       <div
                         className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
                         data-testid="toast">

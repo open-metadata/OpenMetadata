@@ -30,7 +30,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class SqlColumnHandler:
+class SqlColumnHandlerMixin:
     def fetch_column_tags(self, column: dict, col_obj: Column) -> None:
         if self.source_config.includeTags:
             logger.info("Fetching tags not implemeneted for this connector")
@@ -42,7 +42,14 @@ class SqlColumnHandler:
         col_type: str,
         col_data_length: str,
         arr_data_type: str,
+        precision: Optional[Tuple[str, str]],
     ) -> str:
+        if precision:
+            return (
+                data_type_display
+                if data_type_display
+                else f"{col_type}({precision[0]},{precision[1]})"
+            )
         dataTypeDisplay = (
             f"{data_type_display}"
             if data_type_display
@@ -80,15 +87,23 @@ class SqlColumnHandler:
                 data_type_display = column["type"]
         return data_type_display, arr_data_type, parsed_string
 
+    @staticmethod
     def _get_columns_with_constraints(
-        self, schema: str, table: str, inspector: Inspector
-    ) -> Tuple[List]:
-        pk_constraints = inspector.get_pk_constraint(table, schema)
+        schema_name: str, table_name: str, inspector: Inspector
+    ) -> Tuple[List, List]:
+        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
-            unique_constraints = inspector.get_unique_constraints(table, schema)
+            unique_constraints = inspector.get_unique_constraints(
+                table_name, schema_name
+            )
         except NotImplementedError:
             logger.warning("Cannot obtain unique constraints - NotImplementedError")
             unique_constraints = []
+        try:
+            foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
+        except NotImplementedError:
+            logger.warning("Cannot obtain foreign constraints - NotImplementedError")
+            foreign_constraints = []
 
         pk_columns = (
             pk_constraints.get("constrained_columns")
@@ -96,16 +111,24 @@ class SqlColumnHandler:
             else {}
         )
 
+        foreign_columns = []
+        for foreign_constraint in foreign_constraints:
+            if len(foreign_constraint) > 0 and foreign_constraint.get(
+                "constrained_columns"
+            ):
+                foreign_columns.extend(foreign_constraint.get("constrained_columns"))
+
         unique_columns = []
         for constraint in unique_constraints:
             if constraint.get("column_names"):
                 unique_columns.extend(constraint.get("column_names"))
-        return pk_columns, unique_columns
+        return pk_columns, unique_columns, foreign_columns
 
     def _process_complex_col_type(self, parsed_string: dict, column: dict) -> Column:
         parsed_string["dataLength"] = self._check_col_length(
             parsed_string["dataType"], column["type"]
         )
+        parsed_string["description"] = column.get("comment")
         if column["raw_data_type"] == "array":
             array_data_type_display = (
                 repr(column["type"])
@@ -125,20 +148,28 @@ class SqlColumnHandler:
             ]
         return Column(**parsed_string)
 
-    def get_columns(
-        self, schema: str, table: str, inspector: Inspector
-    ) -> Optional[List[Column]]:
+    def get_columns_and_constraints(
+        self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]]]:
         """
         Get columns types and constraints information
         """
         # Get inspector information:
-        pk_columns, unique_columns = self._get_columns_with_constraints(
-            schema, table, inspector
-        )
+        (
+            pk_columns,
+            unique_columns,
+            foreign_columns,
+        ) = self._get_columns_with_constraints(schema_name, table_name, inspector)
         table_columns = []
-        columns = inspector.get_columns(
-            table, schema, db_name=self.service_connection.database
-        )
+        table_constraints = []
+        if foreign_columns:
+            table_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.FOREIGN_KEY,
+                    columns=foreign_columns,
+                )
+            )
+        columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         for column in columns:
             try:
                 children = None
@@ -146,20 +177,23 @@ class SqlColumnHandler:
                     data_type_display,
                     arr_data_type,
                     parsed_string,
-                ) = self._process_col_type(column, schema)
+                ) = self._process_col_type(column, schema_name)
                 if parsed_string is None:
                     col_type = ColumnTypeParser.get_column_type(column["type"])
                     col_constraint = self._get_column_constraints(
                         column, pk_columns, unique_columns
                     )
                     if not col_constraint and len(pk_columns) > 1:
-                        self.table_constraints = [
+                        table_constraints.append(
                             TableConstraint(
                                 constraintType=ConstraintType.PRIMARY_KEY,
                                 columns=pk_columns,
                             )
-                        ]
+                        )
                     col_data_length = self._check_col_length(col_type, column["type"])
+                    precision = ColumnTypeParser.check_col_precision(
+                        col_type, column["type"]
+                    )
                     if col_type == "NULL" or col_type is None:
                         col_type = DataType.VARCHAR.name
                         data_type_display = col_type.lower()
@@ -169,10 +203,13 @@ class SqlColumnHandler:
                             )
                         )
                     dataTypeDisplay = self._get_display_datatype(
-                        data_type_display, col_type, col_data_length, arr_data_type
+                        data_type_display,
+                        col_type,
+                        col_data_length,
+                        arr_data_type,
+                        precision,
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
-
                     om_column = Column(
                         name=column["name"],
                         description=column.get("comment", None),
@@ -183,18 +220,24 @@ class SqlColumnHandler:
                         children=children,
                         arrayDataType=arr_data_type,
                     )
+                    if precision:
+                        om_column.precision = precision[0]
+                        om_column.scale = precision[1]
+
                 else:
                     col_obj = self._process_complex_col_type(
                         column=column, parsed_string=parsed_string
                     )
                     om_column = col_obj
+                om_column.tags = self.get_column_tag_labels(
+                    table_name=table_name, column=column
+                )
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"{err} : {column}")
                 continue
-            self.fetch_column_tags(column=column, col_obj=om_column)
             table_columns.append(om_column)
-        return table_columns
+        return table_columns, table_constraints
 
     @staticmethod
     def _check_col_length(datatype: str, col_raw_type: object):

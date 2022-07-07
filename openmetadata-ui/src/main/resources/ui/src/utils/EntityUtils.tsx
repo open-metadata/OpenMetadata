@@ -435,8 +435,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     {
                       'tw-w-52': (displayVal as string).length > 32,
                     }
-                  )}
-                  title={displayVal as string}>
+                  )}>
                   {displayVal}
                 </span>
                 {data.openInNewTab && (
@@ -444,7 +443,7 @@ export const getInfoElements = (data: ExtraInfo) => {
                     alt="external-link"
                     className="tw-align-middle"
                     icon="external-link"
-                    width="12px"
+                    width="16px"
                   />
                 )}
               </>
@@ -499,16 +498,25 @@ export const filteredColumnTestOption = (dataType: string) => {
         (test) => test !== ColumnTestType.ColumnValueLengthsToBeBetween
       );
 
-    case 'varchar':
+    case 'varchar': {
+      const excluded = [
+        ColumnTestType.ColumnValuesToBeBetween,
+        ColumnTestType.ColumnValuesSumToBeBetween,
+        ColumnTestType.ColumnValueMinToBeBetween,
+        ColumnTestType.ColumnValueMaxToBeBetween,
+      ];
+
       return Object.values(ColumnTestType).filter(
-        (test) => test !== ColumnTestType.ColumnValuesToBeBetween
+        (test) => !excluded.includes(test)
       );
+    }
 
     case 'timestamp':
     case 'date': {
       const excluded = [
         ColumnTestType.ColumnValuesToBeNotInSet,
         ColumnTestType.ColumnValueLengthsToBeBetween,
+        ColumnTestType.ColumnValuesSumToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(
@@ -520,6 +528,9 @@ export const filteredColumnTestOption = (dataType: string) => {
         ColumnTestType.ColumnValuesToBeNotInSet,
         ColumnTestType.ColumnValueLengthsToBeBetween,
         ColumnTestType.ColumnValuesToBeBetween,
+        ColumnTestType.ColumnValuesSumToBeBetween,
+        ColumnTestType.ColumnValueMinToBeBetween,
+        ColumnTestType.ColumnValueMaxToBeBetween,
       ];
 
       return Object.values(ColumnTestType).filter(

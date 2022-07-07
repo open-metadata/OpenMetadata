@@ -13,7 +13,7 @@ const rootDir = 'connTemp';
 const srcDir = 'schema/entity/services/connections';
 const destDir = 'src/jsons/connectionSchemas/connections';
 
-const playDir = `${rootDir}/${srcDir}/${rootDir}`;
+const playDir = `${rootDir}/${srcDir}`;
 
 const globalParserOptions = {
   continueOnError: true,
@@ -24,8 +24,11 @@ const globalParserOptions = {
 
 async function parseSchema(filePath, destPath) {
   try {
+    const fileDir = `${cwd}/${path.dirname(filePath)}`;
+    const fileName = path.basename(filePath);
+    process.chdir(fileDir);
     const parser = new $RefParser(globalParserOptions);
-    const schema = await parser.parse(filePath);
+    const schema = await parser.parse(fileName);
     const api = await parser.bundle(schema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
     if (!fs.existsSync(dirname)) {
@@ -38,54 +41,44 @@ async function parseSchema(filePath, destPath) {
     fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(api, null, 2));
   } catch (err) {
     console.log(err);
+  } finally {
+    process.chdir(cwd);
   }
 }
 
-function traverseDirectory(Directory) {
-  fs.readdirSync(Directory).forEach((File) => {
+async function traverseDirectory(Directory) {
+  const Files = fs.readdirSync(Directory);
+  for (const File of Files) {
     const Absolute = path.join(Directory, File);
     if (fs.statSync(Absolute).isDirectory()) {
-      return traverseDirectory(Absolute);
+      await traverseDirectory(Absolute);
     } else {
-      const name = Absolute.replace(srcDir, destDir);
-      return parseSchema(Absolute, name);
+      const name = Absolute.replace(playDir, destDir);
+      await parseSchema(Absolute, name);
     }
-  });
+  }
 }
 
 function copySourceFiles() {
   try {
     fse.copySync(schemaDir, `${rootDir}/schema`);
-    fse.copySync(schemaDir, `${playDir}/schema`);
   } catch (err) {
     console.error(err);
   }
 }
 
-function main() {
+async function main() {
   try {
     if (fs.existsSync(destDir)) {
       fs.rmSync(destDir, { recursive: true });
     }
     fs.mkdirSync(destDir, { recursive: true });
     copySourceFiles();
+
+    await traverseDirectory(`${playDir}`);
   } catch (err) {
     console.log(err);
   }
-
-  process.chdir(`${cwd}/${playDir}`);
-
-  fs.readdir(srcDir, (err, Files) => {
-    if (err) console.log(err);
-    else {
-      Files.forEach((File, index) => {
-        const Absolute = path.join(srcDir, File);
-        if (fs.statSync(Absolute).isDirectory()) {
-          traverseDirectory(Absolute);
-        }
-      });
-    }
-  });
 }
 
 main();

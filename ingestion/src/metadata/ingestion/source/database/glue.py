@@ -16,7 +16,7 @@ from typing import Iterable, List, Optional
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
-from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
@@ -24,14 +24,7 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.glueConnection import (
-    GlueConnection as GluePipelineConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.pipelineService import (
-    PipelineConnection,
-    PipelineService,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -71,22 +64,7 @@ class GlueSource(Source[Entity]):
             },
             metadata_config,
         )
-        self.task_id_mapping = {}
 
-        # Create a Glue Pipeline Connection based on the Database Connection details
-        self.pipeline_service = self.metadata.get_service_or_create(
-            entity=PipelineService,
-            config=WorkflowSource(
-                type="glue",
-                serviceName=self.service_connection.pipelineServiceName,
-                serviceConnection=PipelineConnection(
-                    config=GluePipelineConnection(
-                        awsConfig=self.service_connection.awsConfig
-                    ),
-                ),
-                sourceConfig={},
-            ),
-        )
         self.connection = get_connection(self.service_connection)
         self.glue = self.connection.client
 
@@ -109,7 +87,6 @@ class GlueSource(Source[Entity]):
     def next_record(self) -> Iterable[Entity]:
 
         yield from self.ingest_catalog()
-        yield from self.ingest_pipelines()
 
     def ingest_catalog(self) -> Iterable[Entity]:
         """
@@ -162,6 +139,7 @@ class GlueSource(Source[Entity]):
                 parsed_string["dataType"] = "UNION"
             parsed_string["name"] = column["Name"][:64]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+            parsed_string["description"] = column.get("Comment")
             yield Column(**parsed_string)
 
     def ingest_tables(
@@ -224,20 +202,10 @@ class GlueSource(Source[Entity]):
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table["Name"][:128],
-                    description=table["Description"]
-                    if hasattr(table, "Description")
-                    else "",
+                    description=table.get("Description", ""),
                     columns=table_columns,
                     tableType=table_type,
                 )
-
-                if (
-                    self.config.sourceConfig.config.generateSampleData
-                    or self.config.sourceConfig.config.enableDataProfiler
-                ):
-                    logger.warning(
-                        "Glue source does not provide querying capabilities. Please ingest sample data with Athena."
-                    )
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity,
@@ -308,28 +276,6 @@ class GlueSource(Source[Entity]):
                 )
             )
         return task_list
-
-    def ingest_pipelines(self) -> Iterable[OMetaDatabaseAndTable]:
-        try:
-            for workflow in self.glue.list_workflows()["Workflows"]:
-                jobs = self.glue.get_workflow(Name=workflow, IncludeGraph=True)[
-                    "Workflow"
-                ]
-                tasks = self.get_tasks(jobs)
-                pipeline_ev = Pipeline(
-                    id=uuid.uuid4(),
-                    name=jobs["Name"],
-                    displayName=jobs["Name"],
-                    description="",
-                    tasks=tasks,
-                    service=EntityReference(
-                        id=self.pipeline_service.id, type="pipelineService"
-                    ),
-                )
-                yield pipeline_ev
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.error(err)
 
     def close(self):
         pass

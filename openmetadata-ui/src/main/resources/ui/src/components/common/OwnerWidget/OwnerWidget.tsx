@@ -13,11 +13,13 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, lowerCase } from 'lodash';
 import React, { Fragment } from 'react';
+import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../../enums/common.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
+import { hasEditAccess } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
 import { Button } from '../../buttons/Button/Button';
@@ -36,6 +38,7 @@ interface OwnerWidgetProps {
   allowTeamOwner?: boolean;
   ownerName: string;
   entityType?: string;
+  manageSectionType?: string;
   statusOwner: Status;
   owner?: EntityReference;
   listOwners: {
@@ -56,10 +59,10 @@ interface OwnerWidgetProps {
 }
 
 const OwnerWidget = ({
+  manageSectionType,
   isJoinableActionAllowed,
   teamJoinable,
   isAuthDisabled,
-  hasEditAccess,
   ownerName,
   entityType,
   listVisible,
@@ -74,7 +77,7 @@ const OwnerWidget = ({
   handleOwnerSelection,
   handleSearchOwnerDropdown,
 }: OwnerWidgetProps) => {
-  const { userPermissions } = useAuth();
+  const { userPermissions, isAdminUser } = useAuth();
 
   const getOwnerGroup = () => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
@@ -98,6 +101,26 @@ const OwnerWidget = ({
       default:
         return <></>;
     }
+  };
+
+  const isOwnerEditable = () => {
+    if (!isAuthDisabled && !isAdminUser) {
+      if (ownerName) {
+        return hasEditAccess(owner?.type || '', owner?.id || '');
+      } else {
+        if (
+          Object.values(ADMIN_ONLY_ACCESSIBLE_SECTION).find(
+            (s) => s === lowerCase(manageSectionType)
+          )
+        ) {
+          return false;
+        }
+
+        return userPermissions[Operation.EditOwner];
+      }
+    }
+
+    return true;
   };
 
   const ownerDescription =
@@ -124,22 +147,12 @@ const OwnerWidget = ({
                     <p>You do not have permissions to update the owner.</p>
                   </Fragment>
                 }
-                isOwner={hasEditAccess}
-                permission={Operation.UpdateOwner}
+                isOwner={isOwnerEditable()}
                 position="left">
                 <Button
-                  className={classNames('tw-underline', {
-                    'tw-opacity-40':
-                      !userPermissions[Operation.UpdateOwner] &&
-                      !isAuthDisabled &&
-                      !hasEditAccess,
-                  })}
+                  className="tw-underline"
                   data-testid="owner-dropdown"
-                  disabled={
-                    !userPermissions[Operation.UpdateOwner] &&
-                    !isAuthDisabled &&
-                    !hasEditAccess
-                  }
+                  disabled={!isOwnerEditable()}
                   size="custom"
                   theme="primary"
                   variant="link"

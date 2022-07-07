@@ -34,7 +34,7 @@ module.exports = {
   output: {
     path: outputPath,
     filename: 'openmetadata.bundle.js',
-    chunkFilename: '[name].js',
+    chunkFilename: '[name].[contenthash].js',
     publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
   },
 
@@ -215,7 +215,4 @@ module.exports = {
       openAnalyzer: false,
     }),
   ],
-
-  // Source map
-  devtool: 'source-map',
 };

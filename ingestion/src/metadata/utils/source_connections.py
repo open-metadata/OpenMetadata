@@ -8,6 +8,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+
 """
 Hosts the singledispatch to build source URLs
 """
@@ -97,7 +99,11 @@ def get_connection_url_common(connection):
         url += "@"
 
     url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
+    if hasattr(connection, "database"):
+        url += f"/{connection.database}" if connection.database else ""
+
+    elif hasattr(connection, "databaseSchema"):
+        url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -184,8 +190,6 @@ def _(connection: TrinoConnection):
 @get_connection_url.register
 def _(connection: DatabricksConnection):
     url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    if connection.database:
-        url += f"/{connection.database}"
     return url
 
 
@@ -199,8 +203,8 @@ def _(connection: PrestoConnection):
         url += "@"
     url += f"{connection.hostPort}"
     url += f"/{connection.catalog}"
-    if connection.database:
-        url += f"?schema={quote_plus(connection.database)}"
+    if connection.databaseSchema:
+        url += f"?schema={quote_plus(connection.databaseSchema)}"
     return url
 
 
@@ -279,7 +283,7 @@ def _(connection: HiveConnection):
                 url += "@"
 
     url += connection.hostPort
-    url += f"/{connection.database}" if connection.database else ""
+    url += f"/{connection.databaseSchema}" if connection.databaseSchema else ""
 
     options = (
         connection.connectionOptions.dict()
@@ -287,8 +291,9 @@ def _(connection: HiveConnection):
         else connection.connectionOptions
     )
     if options:
-        if not connection.database:
+        if not connection.databaseSchema:
             url += "/"
+        url += "/"
         params = "&".join(
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
@@ -300,7 +305,9 @@ def _(connection: HiveConnection):
 
 @get_connection_url.register
 def _(connection: BigQueryConnection):
-    project_id = connection.projectId
+    from google import auth
+
+    _, project_id = auth.default()
     if not project_id and isinstance(connection.credentials.gcsConfig, GCSValues):
         project_id = connection.credentials.gcsConfig.projectId
     if project_id:
@@ -347,10 +354,10 @@ def _(connection: AthenaConnection):
     else:
         url += ":"
     url += f"@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"
-    if connection.database:
-        url += f"/{connection.database}"
+
     url += f"?s3_staging_dir={quote_plus(connection.s3StagingDir)}"
-    url += f"&work_group={connection.workgroup}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
     return url
 
 

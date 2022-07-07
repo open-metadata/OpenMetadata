@@ -15,13 +15,31 @@ AVG Metric definition
 # pylint: disable=duplicate-code
 
 from sqlalchemy import column, func
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.orm_profiler.metrics.core import StaticMetric, _label
+from metadata.orm_profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.orm_profiler.orm.functions.length import LenFn
-from metadata.orm_profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.orm_profiler.orm.registry import (
+    Dialects,
+    is_concatenable,
+    is_quantifiable,
+)
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
+
+
+class avg(GenericFunction):
+    name = "avg"
+    inherit_cache = CACHE
+
+
+@compiles(avg, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Handle case for empty table. If empty, clickhouse returns NaN"""
+    proc = compiler.process(element.clauses, **kw)
+    return "if(isNaN(avg(%s)), null, avg(%s))" % ((proc,) * 2)
 
 
 class Mean(StaticMetric):

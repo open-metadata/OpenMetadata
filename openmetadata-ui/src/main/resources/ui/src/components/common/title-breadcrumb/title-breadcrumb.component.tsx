@@ -14,7 +14,13 @@
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import React, { FunctionComponent } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
 
@@ -22,16 +28,48 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
   noLink = false,
+  widthDeductions,
 }: TitleBreadcrumbProps) => {
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+
+  const finalWidthOfBreadcrumb = useMemo(() => {
+    return (
+      screenWidth -
+      (widthDeductions ? widthDeductions : 0) - // Any extra deductions due to sibling elements of breadcrumb
+      (titleLinks.length - 1) * 25 - // Deduction for every arrow between each titleLink name
+      80 // Deduction due to margin of the container on both sides
+    );
+  }, [screenWidth, titleLinks, widthDeductions]);
+
+  const maxWidth = useMemo(() => {
+    return finalWidthOfBreadcrumb / titleLinks.length;
+  }, [finalWidthOfBreadcrumb, titleLinks.length]);
+
+  const changeWidth = useCallback(() => {
+    setScreenWidth(window.innerWidth);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('resize', changeWidth);
+
+    return () => {
+      window.removeEventListener('resize', changeWidth);
+    };
+  }, []);
+
   return (
     <nav className={className} data-testid="breadcrumb">
       <ol className="list-reset tw-py-2 tw-rounded tw-flex">
         {titleLinks.map((link, index) => {
           const classes =
-            'link-title' + (link.activeTitle ? ' tw-font-medium' : '');
+            'link-title tw-truncate' +
+            (link.activeTitle ? ' tw-font-medium' : '');
 
           return (
-            <li data-testid="breadcrumb-link" key={index}>
+            <li
+              className="tw-flex tw-items-center"
+              data-testid="breadcrumb-link"
+              key={index}>
               {link.imgSrc ? (
                 <img
                   alt=""
@@ -41,7 +79,13 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
               ) : null}
               {index < titleLinks.length - 1 && !noLink ? (
                 <>
-                  <Link className={classes} to={link.url}>
+                  <Link
+                    className={classes}
+                    style={{
+                      maxWidth,
+                      fontSize: '16px',
+                    }}
+                    to={link.url}>
                     {link.name}
                   </Link>
                   <span className="tw-px-2">
@@ -52,7 +96,12 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   </span>
                 </>
               ) : link.url ? (
-                <Link className={classes} to={link.url}>
+                <Link
+                  className={classes}
+                  style={{
+                    maxWidth,
+                  }}
+                  to={link.url}>
                   {link.name}
                 </Link>
               ) : (
@@ -62,7 +111,10 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       classes,
                       'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
                     )}
-                    data-testid="inactive-link">
+                    data-testid="inactive-link"
+                    style={{
+                      maxWidth,
+                    }}>
                     {link.name}
                   </span>
                   {noLink && index < titleLinks.length - 1 && (

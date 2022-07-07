@@ -58,4 +58,26 @@ describe('Test Ingestion modal component', () => {
 
     expect(mockConfirmation).toBeCalled();
   });
+
+  it('waiting', () => {
+    const { getByTestId } = render(
+      <ConfirmationModal
+        bodyClassName=""
+        bodyText="Are you sure?"
+        cancelButtonCss=""
+        cancelText="Cancel"
+        confirmButtonCss=""
+        confirmText="Save"
+        footerClassName=""
+        header="confirmation modal"
+        headerClassName=""
+        loadingState="waiting"
+        onCancel={mockCancel}
+        onConfirm={mockConfirmation}
+      />
+    );
+    const loader = getByTestId('loading-button');
+
+    expect(loader).toBeInTheDocument();
+  });
 });

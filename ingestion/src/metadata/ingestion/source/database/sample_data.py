@@ -21,6 +21,8 @@ from typing import Any, Dict, Iterable, List, Union
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -29,6 +31,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createColumnTest import CreateColumnTestRequest
 from metadata.generated.schema.api.tests.createTableTest import CreateTableTestRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.location import Location, LocationType
@@ -51,6 +54,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -65,11 +69,14 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.helpers import get_storage_service_or_create
+from metadata.utils.helpers import (
+    get_chart_entities_from_id,
+    get_standard_chart_type,
+    get_storage_service_or_create,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -330,6 +337,16 @@ class SampleDataSource(Source[Entity]):
         self.users = json.load(
             open(self.service_connection.sampleDataFolder + "/users/users.json", "r")
         )
+        self.model_service_json = json.load(
+            open(
+                self.service_connection.sampleDataFolder + "/models/service.json",
+                "r",
+            )
+        )
+        self.model_service = self.metadata.get_service_or_create(
+            entity=MlModelService,
+            config=WorkflowSource(**self.model_service_json),
+        )
         self.models = json.load(
             open(self.service_connection.sampleDataFolder + "/models/models.json", "r")
         )
@@ -479,15 +496,15 @@ class SampleDataSource(Source[Entity]):
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 
-    def ingest_charts(self) -> Iterable[Chart]:
+    def ingest_charts(self) -> Iterable[CreateChartRequest]:
         for chart in self.charts["charts"]:
             try:
-                chart_ev = Chart(
+                chart_ev = CreateChartRequest(
                     name=chart["name"],
                     displayName=chart["displayName"],
                     description=chart["description"],
-                    chart_type=chart["chartType"],
-                    url=chart["chartUrl"],
+                    chartType=get_standard_chart_type(chart["chartType"]).value,
+                    chartUrl=chart["chartUrl"],
                     service=EntityReference(
                         id=self.dashboard_service.id, type="dashboardService"
                     ),
@@ -497,22 +514,26 @@ class SampleDataSource(Source[Entity]):
             except ValidationError as err:
                 logger.error(err)
 
-    def ingest_dashboards(self) -> Iterable[Dashboard]:
+    def ingest_dashboards(self) -> Iterable[CreateDashboardRequest]:
         for dashboard in self.dashboards["dashboards"]:
-            dashboard_ev = Dashboard(
+            dashboard_ev = CreateDashboardRequest(
                 name=dashboard["name"],
                 displayName=dashboard["displayName"],
                 description=dashboard["description"],
-                url=dashboard["dashboardUrl"],
-                charts=dashboard["charts"],
+                dashboardUrl=dashboard["dashboardUrl"],
+                charts=get_chart_entities_from_id(
+                    dashboard["charts"],
+                    self.metadata,
+                    self.dashboard_service.name.__root__,
+                ),
                 service=EntityReference(
                     id=self.dashboard_service.id, type="dashboardService"
                 ),
             )
-            self.status.scanned("dashboard", dashboard_ev.name)
+            self.status.scanned("dashboard", dashboard_ev.name.__root__)
             yield dashboard_ev
 
-    def ingest_pipelines(self) -> Iterable[Dashboard]:
+    def ingest_pipelines(self) -> Iterable[Pipeline]:
         for pipeline in self.pipelines["pipelines"]:
             pipeline_ev = Pipeline(
                 id=uuid.uuid4(),
@@ -617,6 +638,10 @@ class SampleDataSource(Source[Entity]):
                         MlHyperParameter(name=param["name"], value=param["value"])
                         for param in model.get("mlHyperParameters", [])
                     ],
+                    service=EntityReference(
+                        id=self.model_service.id,
+                        type="mlmodelService",
+                    ),
                 )
                 yield model_ev
             except Exception as err:

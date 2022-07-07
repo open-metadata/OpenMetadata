@@ -28,13 +28,15 @@ config = """
         "sampleDataFolder": "ingestion/examples/sample_data"
       }
     },
-    "sourceConfig": {}
+    "sourceConfig": {
+      "config":{
+        "type": "DatabaseUsage"
+      }
+    }
   },
   "processor": {
     "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "config": {}
   },
   "stage": {
     "type": "table-usage",
@@ -64,39 +66,22 @@ class QueryParserTest(TestCase):
         Check the join count
         """
         expected_result = {
-            "shopify.dim_address": 100,
-            "shopify.shop": 150,
-            "shopify.dim_customer": 125,
-            "dim_customer": 38,
-            "shopify.dim_location": 75,
-            "dim_location.shop_id": 25,
-            "shop": 28,
-            "shop_id": 25,
-            "shopify.dim_staff": 75,
-            "shopify.fact_line_item": 100,
-            "shopify.fact_order": 155,
-            "shopify.product": 5,
-            "shopify.fact_sale": 260,
-            "dim_address": 12,
-            "api": 2,
-            "dim_location": 4,
-            "product": 16,
-            "dim_staff": 5,
-            "fact_line_item": 17,
-            "fact_order": 15,
-            "fact_sale": 27,
-            "fact_session": 31,
-            "raw_customer": 10,
-            "raw_order": 13,
-            "raw_product_catalog": 6,
+            "shopify.raw_product_catalog": 2,
+            "dim_customer": 2,
+            "fact_order": 2,
+            "shopify.fact_sale": 3,
+            "shopify.raw_customer": 10,
         }
         workflow = Workflow.create(json.loads(config))
         workflow.execute()
+        table_usage_map = {}
+
+        for key, value in workflow.stage.table_usage.items():
+            table_usage_map[key[0]] = value.count
+
         for table_name, expected_count in expected_result.items():
             try:
-                self.assertEqual(
-                    workflow.stage.table_usage[table_name].count, expected_count
-                )
+                self.assertEqual(table_usage_map[table_name], expected_count)
             except KeyError as err:
                 self.assertTrue(False)
         workflow.stop()

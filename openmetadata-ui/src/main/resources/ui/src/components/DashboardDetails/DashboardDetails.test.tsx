@@ -111,11 +111,13 @@ const DashboardDetailsProps = {
   postFeedHandler: jest.fn(),
   feedCount: 0,
   entityFieldThreadCount: [],
+  entityFieldTaskCount: [],
   createThread: jest.fn(),
   dashboardFQN: '',
   deletePostHandler: jest.fn(),
   paging: {} as Paging,
   fetchFeedHandler: jest.fn(),
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -160,14 +162,14 @@ const mockGlossaryList = [
   {
     name: 'Tag1',
     displayName: 'Tag1',
-    fqdn: 'Glossary.Tag1',
+    fullyQualifiedName: 'Glossary.Tag1',
     type: 'glossaryTerm',
     id: 'glossaryTagId1',
   },
   {
     name: 'Tag2',
     displayName: 'Tag2',
-    fqdn: 'Glossary.Tag2',
+    fullyQualifiedName: 'Glossary.Tag2',
     type: 'glossaryTerm',
     id: 'glossaryTagId2',
   },
@@ -250,7 +252,9 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../../utils/GlossaryUtils', () => ({
   fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
   getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map((term: FormattedGlossaryTermData) => term?.fqdn);
+    return terms.map(
+      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
+    );
   }),
 }));
 
@@ -281,7 +285,7 @@ describe('Test DashboardDetails component', () => {
     const description = await findByText(container, /Description Component/i);
     const tabs = await findByTestId(container, 'tabs');
     const detailsTab = await findByTestId(tabs, 'Details');
-    const activityFeedTab = await findByTestId(tabs, 'Activity Feed');
+    const activityFeedTab = await findByTestId(tabs, 'Activity Feed & Tasks');
     const lineageTab = await findByTestId(tabs, 'Lineage');
     const manageTab = await findByTestId(tabs, 'Manage');
 

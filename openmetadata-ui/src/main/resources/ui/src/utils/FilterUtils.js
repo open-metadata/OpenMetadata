@@ -20,11 +20,15 @@ import {
 const prepareModifiedKey = (key, restrictKeyModification = false) => {
   if (!restrictKeyModification) {
     if (key === 'service') {
-      return 'service type';
+      return 'serviceType';
     } else if (key === 'databaseschema') {
-      return 'database schema';
+      return 'databaseSchema.name';
+    } else if (key === 'database') {
+      return 'database.name';
     } else if (key === 'servicename') {
-      return 'service';
+      return 'service.name';
+    } else if (key === 'tier' || key === 'tags') {
+      return `${key}.tagFQN`;
     } else {
       return key;
     }

@@ -12,7 +12,7 @@
 import csv
 import json
 from datetime import datetime
-from typing import Iterable
+from typing import Dict, Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.sampleDataConnection import (
     SampleDataConnection,
@@ -27,23 +27,27 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException, Source
-from metadata.ingestion.models.table_queries import TableQuery
+from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
 from metadata.ingestion.source.database.sample_data import SampleDataSourceStatus
+from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class SampleUsageSource(Source[TableQuery]):
+class SampleUsageSource(UsageSource):
 
     service_type = DatabaseServiceType.BigQuery.value
 
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
         self.status = SampleDataSourceStatus()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
+        self.source_config = config.sourceConfig.config
         self.metadata_config = metadata_config
+        self.report = SQLSourceStatus()
         self.metadata = OpenMetadata(metadata_config)
+        self.analysis_date = datetime.utcnow()
 
         self.service_json = json.load(
             open(
@@ -70,29 +74,20 @@ class SampleUsageSource(Source[TableQuery]):
             )
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
-
-    def next_record(self) -> Iterable[TableQuery]:
-        for row in self.query_logs:
-            tq = TableQuery(
-                query=row["query"],
-                user_name="",
-                starttime="",
-                endtime="",
-                analysis_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                database="ecommerce_db",
-                aborted=False,
-                sql=row["query"],
-                service_name=self.config.serviceName,
-            )
-            yield tq
-
-    def close(self):
-        pass
-
-    def get_status(self):
-        return self.status
-
-    def test_connection(self) -> None:
-        pass
+    def _get_raw_extract_iter(self) -> Optional[Iterable[Dict[str, str]]]:
+        yield TableQueries(
+            queries=[
+                TableQuery(
+                    query=row["query"],
+                    userName="",
+                    startTime="",
+                    endTime="",
+                    analysisDate=self.analysis_date,
+                    aborted=False,
+                    databaseName="ecommerce_db",
+                    serviceName=self.config.serviceName,
+                    databaseSchema="shopify",
+                )
+                for row in self.query_logs
+            ]
+        )

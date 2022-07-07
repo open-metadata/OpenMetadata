@@ -90,9 +90,10 @@ import org.openmetadata.common.utils.CommonUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition";
+  static final String TABLE_PATCH_FIELDS = "owner,tags,tableConstraints,tablePartition,extension";
   // Table fields that can be updated in a PUT request
-  static final String TABLE_UPDATE_FIELDS = "owner,tags,tableConstraints,tablePartition,dataModel,profileSample";
+  static final String TABLE_UPDATE_FIELDS =
+      "owner,tags,tableConstraints,tablePartition,dataModel,profileSample,profileQuery," + "extension";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -125,6 +126,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setLocation(fields.contains("location") ? getLocation(table) : null);
     table.setTableQueries(fields.contains("tableQueries") ? getQueries(table) : null);
     table.setProfileSample(fields.contains("profileSample") ? table.getProfileSample() : null);
+    table.setProfileQuery(fields.contains("profileQuery") ? table.getProfileQuery() : null);
     table.setTableTests(fields.contains("tests") ? getTableTests(table) : null);
     getColumnTests(fields.contains("tests"), table);
     getCustomMetrics(fields.contains("customMetrics"), table);
@@ -133,7 +135,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) throws IOException {
-    EntityReference schemaRef = getContainer(table.getId(), TABLE);
+    EntityReference schemaRef = getContainer(table.getId());
     DatabaseSchema schema = Entity.getEntity(schemaRef, Fields.EMPTY_FIELDS, Include.ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -572,9 +574,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private EntityReference getLocation(Table table) throws IOException {
-    List<String> refs = findTo(table.getId(), TABLE, Relationship.HAS, LOCATION);
-    ensureSingleRelationship(TABLE, table.getId(), refs, "location", false);
-    return refs.isEmpty() ? null : Entity.getEntityReferenceById(LOCATION, UUID.fromString(refs.get(0)), Include.ALL);
+    return getToEntityRef(table.getId(), Relationship.HAS, LOCATION, false);
   }
 
   @Override
@@ -947,6 +947,7 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable);
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       recordChange("profileSample", origTable.getProfileSample(), updatedTable.getProfileSample());
+      recordChange("profileQuery", origTable.getProfileQuery(), updatedTable.getProfileQuery());
       updateConstraints(origTable, updatedTable);
       updateColumns("columns", origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
     }

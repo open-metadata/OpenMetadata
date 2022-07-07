@@ -18,6 +18,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
+from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
@@ -30,6 +31,7 @@ from metadata.orm_profiler.metrics.core import (
     StaticMetric,
     TMetric,
 )
+from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.row_count import RowCount
 from metadata.orm_profiler.orm.registry import NOT_COMPUTE
 from metadata.orm_profiler.profiler.runner import QueryRunner
@@ -70,6 +72,8 @@ class Profiler(Generic[TMetric]):
         use_cols: Optional[List[Column]] = None,
         profile_sample: Optional[float] = None,
         timeout_seconds: Optional[int] = TEN_MIN,
+        partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
         """
         :param metrics: Metrics to run. We are receiving the uninitialized classes
@@ -89,6 +93,8 @@ class Profiler(Generic[TMetric]):
         self._use_cols = use_cols
         self._profile_sample = profile_sample
         self._profile_date = profile_date
+        self._partition_details = partition_details
+        self._profile_sample_query = profile_sample_query
 
         self.validate_composed_metric()
 
@@ -101,13 +107,23 @@ class Profiler(Generic[TMetric]):
 
         # We will compute the sample from the property
         self._sampler = Sampler(
-            session=session, table=table, profile_sample=profile_sample
+            session=session,
+            table=table,
+            profile_sample=profile_sample,
+            partition_details=self._partition_details,
+            profile_sample_query=self._profile_sample_query,
         )
         self._sample: Optional[Union[DeclarativeMeta, AliasedClass]] = None
 
         # Prepare a timeout controlled query runner
         self.runner: QueryRunner = cls_timeout(timeout_seconds)(
-            QueryRunner(session=session, table=table, sample=self.sample)
+            QueryRunner(
+                session=session,
+                table=table,
+                sample=self.sample,
+                partition_details=self._partition_details,
+                profile_sample_query=self._profile_sample_query,
+            )
         )
 
     @property
@@ -226,7 +242,11 @@ class Profiler(Generic[TMetric]):
 
         try:
             row = self.runner.select_first_from_sample(
-                *[metric(col).fn() for metric in col_metrics]
+                *[
+                    metric(col).fn()
+                    for metric in col_metrics
+                    if not metric.is_window_metric()
+                ]
             )
             self._column_results[col.name].update(dict(row))
         except (TimeoutError, Exception) as err:
@@ -327,6 +347,39 @@ class Profiler(Generic[TMetric]):
                 current_col_results
             )
 
+    def run_window_metrics(self, col: Column):
+        """
+        Run windown metrics in isolation
+
+        Args:
+            col: column name
+        """
+
+        col_metrics = [
+            metric
+            for metric in self.get_col_metrics(self.static_metrics)
+            if metric.is_window_metric()
+        ]
+
+        if not col_metrics:
+            return None
+
+        for metric in col_metrics:
+            try:
+                row = self.runner.select_first_from_sample(metric(col).fn())
+                self._column_results[col.name].update(
+                    dict(row)
+                    if isinstance(row, Row)
+                    else {
+                        metric.name(): row
+                    }  # Snowflake does not return a Row object when table is empty throwing an error
+                )
+            except (Exception) as err:
+                logger.warning(
+                    f"Error trying to compute column profile for {col.name} - {err}"
+                )
+                self.session.rollback()
+
     def execute_column(self, col: Column) -> None:
         """
         Run the profiler on all the columns that
@@ -336,6 +389,7 @@ class Profiler(Generic[TMetric]):
         columns are of allowed types
         """
         self.run_static_metrics(col)
+        self.run_window_metrics(col)
         self.run_query_metrics(col)
         self.run_composed_metrics(col)
 
@@ -411,7 +465,10 @@ class Profiler(Generic[TMetric]):
                 profileDate=self.profile_date.strftime("%Y-%m-%d"),
                 columnCount=self._table_results.get("columnCount"),
                 rowCount=self._table_results.get(RowCount.name()),
+                columnNames=self._table_results.get(ColumnNames.name(), "").split(","),
                 columnProfile=computed_profiles,
+                profileQuery=self._profile_sample_query,
+                profileSample=self._profile_sample,
             )
 
             return profile

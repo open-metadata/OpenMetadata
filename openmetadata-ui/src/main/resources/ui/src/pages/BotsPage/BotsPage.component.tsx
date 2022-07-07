@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   getUserByName,
@@ -21,6 +21,7 @@ import {
   updateUserDetail,
 } from '../../axiosAPIs/userAPI';
 import BotsDetail from '../../components/BotsDetail/BotsDetail.component';
+import PageContainerV1 from '../../components/containers/PageContainerV1';
 import Loader from '../../components/Loader/Loader';
 import { UserDetails } from '../../components/Users/Users.interface';
 import { User } from '../../generated/entity/teams/user';
@@ -114,7 +115,9 @@ const BotsPage = () => {
   }, [botsName]);
 
   return (
-    <Fragment>{isLoading ? <Loader /> : getBotsDetailComponent()}</Fragment>
+    <PageContainerV1 className="tw-py-4">
+      {isLoading ? <Loader /> : getBotsDetailComponent()}
+    </PageContainerV1>
   );
 };
 

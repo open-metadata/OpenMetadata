@@ -125,12 +125,11 @@ HiveDialect.get_view_names = get_view_names
 
 class HiveSource(CommonDbSourceService):
     def prepare(self):
-        self.service_connection.database = "default"
         return super().prepare()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
-        config: HiveConnection = WorkflowSource.parse_obj(config_dict)
+        config = WorkflowSource.parse_obj(config_dict)
         connection: HiveConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(

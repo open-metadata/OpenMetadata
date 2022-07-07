@@ -10,8 +10,7 @@ source:
       hostPort: localhost:1433
   sourceConfig:
     config:
-      enableDataProfiler: false
-      sampleDataQuery: select top 50 * from [{}].[{}]
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

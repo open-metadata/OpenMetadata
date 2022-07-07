@@ -14,6 +14,7 @@
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
 import Description from './Description';
 
 const mockEntityFieldThreads = [
@@ -41,8 +42,25 @@ const mockDescriptionProp = {
   onEntityFieldSelect: jest.fn(),
 };
 
+jest.mock('../../../authentication/auth-provider/AuthProvider', () => {
+  return {
+    useAuthContext: jest.fn(() => ({
+      isAuthDisabled: false,
+    })),
+  };
+});
+jest.mock('../../../hooks/authHooks', () => {
+  return {
+    useAuth: jest.fn().mockReturnValue({
+      userPermissions: jest.fn().mockReturnValue(true),
+      isAdminUser: true,
+    }),
+  };
+});
+
 jest.mock('../../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn(),
+  isTaskSupported: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../../utils/EntityUtils', () => ({
@@ -192,6 +210,7 @@ describe('Test Description Component', () => {
         {...mockDescriptionProp}
         description=""
         entityFieldThreads={[]}
+        entityType={EntityType.TABLE}
       />,
       {
         wrapper: MemoryRouter,

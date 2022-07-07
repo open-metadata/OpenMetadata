@@ -171,7 +171,7 @@ const EditIngestionPage = () => {
       owner,
       pipelineType,
       service,
-      source,
+      sourceConfig,
     } = data;
     const updateData = {
       airflowConfig,
@@ -182,7 +182,7 @@ const EditIngestionPage = () => {
       owner,
       pipelineType,
       service,
-      sourceConfig: source.sourceConfig,
+      sourceConfig,
     };
 
     return new Promise<void>((resolve, reject) => {
@@ -274,45 +274,47 @@ const EditIngestionPage = () => {
       return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
     } else {
       return (
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          rightPanel={getServiceIngestionStepGuide(
-            activeIngestionStep,
-            true,
-            ingestionData?.name || '',
-            '',
-            ingestionType as PipelineType,
-            isDeployed(),
-            true,
-            isAirflowRunning
-          )}>
-          <div className="tw-form-container">
-            <AddIngestion
-              activeIngestionStep={activeIngestionStep}
-              data={ingestionData}
-              handleCancelClick={goToService}
-              handleViewServiceClick={goToService}
-              heading={`Edit ${capitalize(ingestionType)} Ingestion`}
-              ingestionAction={ingestionAction}
-              ingestionProgress={ingestionProgress}
-              isAirflowSetup={isAirflowRunning}
-              isIngestionCreated={isIngestionCreated}
-              isIngestionDeployed={isIngestionDeployed}
-              pipelineType={ingestionType as PipelineType}
-              serviceCategory={serviceCategory as ServiceCategory}
-              serviceData={serviceData as DataObj}
-              setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-              showDeployButton={showIngestionButton}
-              status={FormSubmitType.EDIT}
-              onAirflowStatusCheck={onAirflowStatusCheck}
-              onIngestionDeploy={onIngestionDeploy}
-              onSuccessSave={goToService}
-              onUpdateIngestion={onEditIngestionSave}
-            />
-          </div>
-        </PageLayout>
+        <div className="tw-self-center">
+          <PageLayout
+            classes="tw-max-w-full-hd tw-h-full tw-pt-4"
+            header={<TitleBreadcrumb titleLinks={slashedBreadcrumb} />}
+            layout={PageLayoutType['2ColRTL']}
+            rightPanel={getServiceIngestionStepGuide(
+              activeIngestionStep,
+              true,
+              ingestionData?.name || '',
+              '',
+              ingestionType as PipelineType,
+              isDeployed(),
+              true,
+              isAirflowRunning
+            )}>
+            <div className="tw-form-container">
+              <AddIngestion
+                activeIngestionStep={activeIngestionStep}
+                data={ingestionData}
+                handleCancelClick={goToService}
+                handleViewServiceClick={goToService}
+                heading={`Edit ${capitalize(ingestionType)} Ingestion`}
+                ingestionAction={ingestionAction}
+                ingestionProgress={ingestionProgress}
+                isAirflowSetup={isAirflowRunning}
+                isIngestionCreated={isIngestionCreated}
+                isIngestionDeployed={isIngestionDeployed}
+                pipelineType={ingestionType as PipelineType}
+                serviceCategory={serviceCategory as ServiceCategory}
+                serviceData={serviceData as DataObj}
+                setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+                showDeployButton={showIngestionButton}
+                status={FormSubmitType.EDIT}
+                onAirflowStatusCheck={onAirflowStatusCheck}
+                onIngestionDeploy={onIngestionDeploy}
+                onSuccessSave={goToService}
+                onUpdateIngestion={onEditIngestionSave}
+              />
+            </div>
+          </PageLayout>
+        </div>
       );
     }
   };

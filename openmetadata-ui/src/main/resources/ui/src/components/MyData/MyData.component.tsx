@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -22,26 +23,27 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
-import { filterList, observerOptions } from '../../constants/Mydata.constants';
-import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { getUserPath } from '../../constants/constants';
+import { observerOptions } from '../../constants/Mydata.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { getExploreLinkByFilter } from '../../utils/CommonUtils';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import PageLayout from '../containers/PageLayout';
-import DropDownList from '../dropdown/DropDownList';
-import EntityList from '../EntityList/EntityList';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import { EntityListWithAntd } from '../EntityList/EntityList';
 import Loader from '../Loader/Loader';
 import MyAssetStats from '../MyAssetStats/MyAssetStats.component';
 import Onboarding from '../onboarding/Onboarding';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
-import RecentSearchedTerms from '../RecentSearchedTerms/RecentSearchedTerms';
+import RecentSearchedTermsAntd from '../RecentSearchedTerms/RecentSearchedTermsAntd';
 import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
+  activityFeeds,
+  onRefreshFeeds,
   error,
   countDashboards,
   countPipelines,
@@ -51,63 +53,30 @@ const MyData: React.FC<MyDataProps> = ({
   countTeams,
   countUsers,
   ownedData,
+  pendingTaskCount,
+  countMlModal,
   followedData,
   feedData,
-  feedFilter,
   ownedDataCount,
   followedDataCount,
-  feedFilterHandler,
   isFeedLoading,
   postFeedHandler,
   deletePostHandler,
   fetchFeedHandler,
   paging,
+  updateThreadHandler,
 }: MyDataProps): React.ReactElement => {
-  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const isMounted = useRef(false);
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
-
-  const handleDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    feedFilterHandler((value as FeedFilter) || FeedFilter.ALL);
-    setFieldListVisible(false);
-  };
-  const getFilterDropDown = () => {
-    return (
-      <Fragment>
-        <div className="tw-relative tw-mt-5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="feeds"
-            size="custom"
-            tag="button"
-            theme="primary"
-            variant="link"
-            onClick={() => setFieldListVisible((visible) => !visible)}>
-            <span className="tw-font-medium">
-              {filterList.find((f) => f.value === feedFilter)?.name}
-            </span>
-            <DropDownIcon />
-          </Button>
-          {fieldListVisible && (
-            <DropDownList
-              dropDownList={filterList}
-              value={feedFilter}
-              onSelect={handleDropDown}
-            />
-          )}
-        </div>
-      </Fragment>
-    );
-  };
+  const [feedFilter, setFeedFilter] = useState(FeedFilter.ALL);
+  const [threadType, setThreadType] = useState<ThreadType>();
 
   const getLeftPanel = () => {
     return (
-      <div className="tw-mt-12">
+      <div className="tw-mt-4">
         <MyAssetStats
           countDashboards={countDashboards}
+          countMlModal={countMlModal}
           countPipelines={countPipelines}
           countServices={countServices}
           countTables={countTables}
@@ -115,33 +84,64 @@ const MyData: React.FC<MyDataProps> = ({
           countTopics={countTopics}
           countUsers={countUsers}
         />
-        <div className="tw-filter-seperator" />
+        <div className="tw-mb-5" />
         <RecentlyViewed />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <RecentSearchedTerms />
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mb-5" />
+        <RecentSearchedTermsAntd />
       </div>
     );
   };
 
   const getRightPanel = useCallback(() => {
+    const currentUserDetails = AppState.getCurrentUserDetails();
+
     return (
-      <div className="tw-mt-12">
+      <div className="tw-mt-4">
+        {/* Pending task count card */}
+        {pendingTaskCount ? (
+          <div className="tw-mb-5" data-testid="my-tasks-container ">
+            <Card
+              bodyStyle={{ padding: 0 }}
+              extra={
+                <>
+                  <Link
+                    data-testid="my-data"
+                    to={getUserPath(
+                      currentUserDetails?.name || '',
+                      'tasks?feedFilter=ASSIGNED_TO'
+                    )}>
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
+                      View All
+                    </span>
+                  </Link>
+                </>
+              }
+              style={leftPanelAntCardStyle}
+              title={
+                <div className="tw-flex tw-item-center ">
+                  <SVGIcons
+                    alt="Pending tasks"
+                    className="tw-mr-2.5"
+                    icon={Icons.TASK}
+                    title="Tasks"
+                    width="16px"
+                  />
+                  {pendingTaskCount} Pending tasks
+                </div>
+              }
+            />
+          </div>
+        ) : null}
         <div data-testid="my-data-container">
-          <EntityList
+          <EntityListWithAntd
             entityList={ownedData}
             headerText={
-              <div className="tw-flex tw-justify-between">
-                My Data
+              <>
                 {ownedData.length ? (
                   <Link
                     data-testid="my-data"
-                    to={getExploreLinkByFilter(
-                      Ownership.OWNER,
-                      AppState.userDetails,
-                      AppState.nonSecureUserDetails
-                    )}>
-                    <span className="link-text tw-font-normal tw-text-xs">
+                    to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="my-data-total-count">
                         ({ownedDataCount})
@@ -149,28 +149,27 @@ const MyData: React.FC<MyDataProps> = ({
                     </span>
                   </Link>
                 ) : null}
-              </div>
+              </>
             }
+            headerTextLabel="My Data"
             noDataPlaceholder={<>You have not owned anything yet.</>}
             testIDText="My data"
           />
         </div>
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mt-5" />
         <div data-testid="following-data-container">
-          <EntityList
+          <EntityListWithAntd
             entityList={followedData}
             headerText={
-              <div className="tw-flex tw-justify-between">
-                Following
+              <>
                 {followedData.length ? (
                   <Link
                     data-testid="following-data"
-                    to={getExploreLinkByFilter(
-                      Ownership.FOLLOWERS,
-                      AppState.userDetails,
-                      AppState.nonSecureUserDetails
+                    to={getUserPath(
+                      currentUserDetails?.name || '',
+                      'following'
                     )}>
-                    <span className="link-text tw-font-normal tw-text-xs">
+                    <span className="tw-text-info tw-font-normal tw-text-xs">
                       View All{' '}
                       <span data-testid="following-data-total-count">
                         ({followedDataCount})
@@ -178,16 +177,17 @@ const MyData: React.FC<MyDataProps> = ({
                     </span>
                   </Link>
                 ) : null}
-              </div>
+              </>
             }
+            headerTextLabel="Following"
             noDataPlaceholder={<>You have not followed anything yet.</>}
             testIDText="Following data"
           />
         </div>
-        <div className="tw-filter-seperator tw-mt-3" />
+        <div className="tw-mt-5" />
       </div>
     );
-  }, [ownedData, followedData]);
+  }, [ownedData, followedData, pendingTaskCount]);
 
   const getLoader = () => {
     return isFeedLoading ? <Loader /> : null;
@@ -204,7 +204,7 @@ const MyData: React.FC<MyDataProps> = ({
       !isLoading &&
       isMounted.current
     ) {
-      fetchFeedHandler(feedFilter, pagingObj.after);
+      fetchFeedHandler(feedFilter, pagingObj.after, threadType);
     }
   };
 
@@ -216,25 +216,39 @@ const MyData: React.FC<MyDataProps> = ({
     isMounted.current = true;
   }, []);
 
+  const handleFeedFilterChange = useCallback(
+    (feedType: FeedFilter, threadType?: ThreadType) => {
+      setFeedFilter(feedType);
+      setThreadType(threadType);
+      fetchFeedHandler(feedType, undefined, threadType);
+    },
+    [fetchFeedHandler]
+  );
+
+  const newFeedsLength = activityFeeds && activityFeeds.length;
+
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {feedData?.length > 0 || feedFilter !== FeedFilter.ALL ? (
-            <Fragment>
-              {getFilterDropDown()}
-              <ActivityFeedList
-                withSidePanel
-                className=""
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                postFeedHandler={postFeedHandler}
-              />
-            </Fragment>
+          {feedData?.length > 0 ||
+          feedFilter !== FeedFilter.ALL ||
+          threadType ? (
+            <ActivityFeedList
+              withSidePanel
+              className=""
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              postFeedHandler={postFeedHandler}
+              refreshFeedCount={newFeedsLength}
+              updateThreadHandler={updateThreadHandler}
+              onFeedFiltersUpdate={handleFeedFilterChange}
+              onRefreshFeeds={onRefreshFeeds}
+            />
           ) : (
-            <Onboarding />
+            !isFeedLoading && <Onboarding />
           )}
           <div
             data-testid="observer-element"

@@ -14,22 +14,30 @@
 import { isUndefined } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserPath } from '../../constants/constants';
+import { getUserPath, PAGE_SIZE_BASE } from '../../constants/constants';
 import { EntityReference, User } from '../../generated/entity/teams/user';
+import { Paging } from '../../generated/type/paging';
 import { getEntityName } from '../../utils/CommonUtils';
+import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../common/next-previous/NextPrevious';
 import PopOver from '../common/popover/PopOver';
 import Searchbar from '../common/searchbar/Searchbar';
 import Loader from '../Loader/Loader';
-import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import UserDataCard from '../UserDataCard/UserDataCard';
 
-type UserDetailsProps = {
+export type UserDetailsProps = {
   selectedUserList: User[];
   handleUserSearchTerm: (value: string) => void;
   userSearchTerm: string;
   isUsersLoading: boolean;
-  handleDeleteUser: (id: string) => void;
+  currentUserPage: number;
+  userPaging: Paging;
+  userPagingHandler: (
+    cursorValue: string | number,
+    activePage?: number
+  ) => void;
+  handleDeleteUser: () => void;
 };
 
 interface DeleteUserInfo {
@@ -41,6 +49,9 @@ const UserDetails = ({
   selectedUserList,
   userSearchTerm,
   isUsersLoading,
+  currentUserPage,
+  userPaging,
+  userPagingHandler,
   handleDeleteUser,
   handleUserSearchTerm,
 }: UserDetailsProps) => {
@@ -62,8 +73,8 @@ const UserDetails = ({
     history.push(getUserPath(name));
   };
 
-  const onConfirmDeleteUser = (id: string) => {
-    handleDeleteUser(id);
+  const onConfirmDeleteUser = () => {
+    handleDeleteUser();
     setDeletingUser(undefined);
   };
 
@@ -153,19 +164,25 @@ const UserDetails = ({
         </div>
       </div>
       {getUserCards()}
-
-      {!isUndefined(deletingUser) && (
-        <ConfirmationModal
-          bodyText={`Are you sure you want to delete ${deletingUser.name}?`}
-          cancelText="Cancel"
-          confirmText="Confirm"
-          header="Delete user"
-          onCancel={() => setDeletingUser(undefined)}
-          onConfirm={() => {
-            onConfirmDeleteUser(deletingUser.id);
-          }}
+      {userPaging.total > PAGE_SIZE_BASE && (
+        <NextPrevious
+          currentPage={currentUserPage}
+          isNumberBased={Boolean(userSearchTerm)}
+          pageSize={PAGE_SIZE_BASE}
+          paging={userPaging}
+          pagingHandler={userPagingHandler}
+          totalCount={userPaging.total}
         />
       )}
+
+      <DeleteWidgetModal
+        afterDeleteAction={onConfirmDeleteUser}
+        entityId={deletingUser?.id || ''}
+        entityName={deletingUser?.name || ''}
+        entityType="user"
+        visible={!isUndefined(deletingUser)}
+        onCancel={() => setDeletingUser(undefined)}
+      />
     </div>
   );
 };

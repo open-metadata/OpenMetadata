@@ -92,6 +92,7 @@ ingestion/src/metadata/generated/**
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
+.python-version
 
 # MLFlow
 mlruns/
@@ -102,3 +103,6 @@ mlruns/
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
 /openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+
+# SQLAlchemy tests
+file:cachedb

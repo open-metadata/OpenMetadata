@@ -34,13 +34,16 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.type.CustomField;
+import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.entity.tags.Tag;
+import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -59,6 +62,7 @@ import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -82,7 +86,7 @@ public final class EntityUtil {
       Comparator.comparing(TableConstraint::getConstraintType);
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
-  public static final Comparator<CustomField> compareCustomField = Comparator.comparing(CustomField::getName);
+  public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
 
   //
   // Matchers used for matching two items in a list
@@ -101,12 +105,12 @@ public final class EntityUtil {
 
   public static final BiPredicate<Column, Column> columnMatch =
       (column1, column2) ->
-          column1.getName().equals(column2.getName())
+          column1.getName().equalsIgnoreCase(column2.getName())
               && column1.getDataType() == column2.getDataType()
               && column1.getArrayDataType() == column2.getArrayDataType();
 
   public static final BiPredicate<Column, Column> columnNameMatch =
-      (column1, column2) -> column1.getName().equals(column2.getName());
+      (column1, column2) -> column1.getName().equalsIgnoreCase(column2.getName());
 
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
@@ -130,7 +134,7 @@ public final class EntityUtil {
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
-  public static final BiPredicate<CustomField, CustomField> customFieldMatch =
+  public static final BiPredicate<CustomProperty, CustomProperty> customFieldMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName());
 
   private EntityUtil() {}
@@ -184,6 +188,7 @@ public final class EntityUtil {
     return list;
   }
 
+  // TODO delete
   public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
     if (list == null) {
       return Collections.emptyList();
@@ -196,11 +201,11 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferences(@NonNull List<String> ids, @NonNull String entityType)
-      throws IOException {
-    List<EntityReference> refs = new ArrayList<>(ids.size());
-    for (String id : ids) {
-      refs.add(Entity.getEntityReferenceById(entityType, UUID.fromString(id), ALL));
+  public static List<EntityReference> populateEntityReferences(
+      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
+    List<EntityReference> refs = new ArrayList<>(records.size());
+    for (EntityRelationshipRecord id : records) {
+      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
     }
     refs.sort(compareEntityReference);
     return refs;
@@ -350,5 +355,28 @@ public final class EntityUtil {
         .withDisplayName(from.getDisplayName())
         .withFullyQualifiedName(from.getFullyQualifiedName())
         .withDeleted(from.getDeleted());
+  }
+
+  public static List<Rule> resolveRules(List<Object> rules) throws IOException {
+    List<Rule> resolvedRules = new ArrayList<>();
+    for (Object ruleObject : rules) {
+      // Cast to access control policy Rule.
+      resolvedRules.add(JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
+    }
+    return resolvedRules;
+  }
+
+  public static TagLabel getTagLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withDescription(term.getDescription())
+        .withSource(Source.GLOSSARY);
+  }
+
+  public static TagLabel getTagLabel(Tag tag) throws HttpResponseException {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withDescription(tag.getDescription())
+        .withSource(Source.TAG);
   }
 }

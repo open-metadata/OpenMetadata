@@ -11,14 +11,16 @@
 """Metabase source module"""
 
 import traceback
-import uuid
 from typing import Iterable, List, Optional
-from urllib.parse import quote
 
 import requests
 
+from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.dashboard import Dashboard as Model_Dashboard
+from metadata.generated.schema.entity.data.dashboard import (
+    Dashboard as LineageDashboard,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
@@ -26,23 +28,23 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
-from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
-    DashboardServiceMetadataPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException
-from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.dashboard_source import DashboardSourceService
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.utils import fqn
 from metadata.utils.connections import get_connection
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import (
+    get_chart_entities_from_id,
+    get_standard_chart_type,
+    replace_special_with,
+)
 from metadata.utils.logger import ingestion_logger
 
 HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
@@ -50,7 +52,7 @@ HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 logger = ingestion_logger()
 
 
-class MetabaseSource(DashboardSourceService):
+class MetabaseSource(DashboardServiceSource):
     """Metabase entity class
 
     Args:
@@ -76,13 +78,8 @@ class MetabaseSource(DashboardSourceService):
         metadata_config: OpenMetadataConnection,
     ):
         super().__init__(config, metadata_config)
-        params = dict()
-        params["username"] = self.service_connection.username
-        params["password"] = self.service_connection.password.get_secret_value()
         self.connection = get_connection(self.service_connection)
         self.metabase_session = self.connection.client["metabase_session"]
-        self.charts = []
-        self.metric_charts = []
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -124,38 +121,50 @@ class MetabaseSource(DashboardSourceService):
         resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
         return resp_dashboard.json()
 
-    def process_charts(self) -> Optional[Iterable[Chart]]:
-        return []
-
-    def get_dashboard_entity(self, dashboard_details: dict) -> Dashboard:
+    def yield_dashboard(
+        self, dashboard_details: dict
+    ) -> Iterable[CreateDashboardRequest]:
         """
         Method to Get Dashboard Entity
         """
-        yield from self.fetch_dashboard_charts(dashboard_details)
-        yield Dashboard(
-            id=uuid.uuid4(),
+        dashboard_url = (
+            f"/dashboard/{dashboard_details['id']}-"
+            f"{replace_special_with(raw=dashboard_details['name'].lower(), replacement='-')}"
+        )
+        yield CreateDashboardRequest(
             name=dashboard_details["name"],
-            url=self.service_connection.hostPort,
+            dashboardUrl=dashboard_url,
             displayName=dashboard_details["name"],
-            description=dashboard_details["description"]
-            if dashboard_details["description"] is not None
-            else "",
-            charts=self.charts,
-            service=EntityReference(id=self.service.id, type="dashboardService"),
+            description=dashboard_details.get("description", ""),
+            charts=[
+                EntityReference(id=chart.id.__root__, type="chart")
+                for chart in self.context.charts
+            ],
+            service=EntityReference(
+                id=self.context.dashboard_service.id.__root__, type="dashboardService"
+            ),
         )
 
-    def fetch_dashboard_charts(self, dashboard_details: dict) -> Iterable[Chart]:
+    def yield_dashboard_chart(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
         Args:
-            charts:
+            dashboard_details:
         Returns:
-            Iterable[Chart]
+            Iterable[CreateChartRequest]
         """
         charts = dashboard_details["ordered_cards"]
         for chart in charts:
             try:
                 chart_details = chart["card"]
+
+                chart_url = (
+                    f"/question/{chart_details['id']}-"
+                    f"{replace_special_with(raw=chart_details['name'].lower(), replacement='-')}"
+                )
+
                 if not ("name" in chart_details):
                     continue
                 if filter_by_chart(
@@ -165,37 +174,39 @@ class MetabaseSource(DashboardSourceService):
                         chart_details["name"], "Chart Pattern not allowed"
                     )
                     continue
-                yield Chart(
-                    id=uuid.uuid4(),
+                yield CreateChartRequest(
                     name=chart_details["name"],
                     displayName=chart_details["name"],
-                    description=chart_details["description"]
-                    if chart_details["description"] is not None
-                    else "",
-                    chart_type=str(chart_details["display"]),
-                    url=self.service_connection.hostPort,
+                    description=chart_details.get("description", ""),
+                    chartType=get_standard_chart_type(
+                        str(chart_details["display"])
+                    ).value,
+                    chartUrl=chart_url,
                     service=EntityReference(
-                        id=self.service.id, type="dashboardService"
+                        id=self.context.dashboard_service.id.__root__,
+                        type="dashboardService",
                     ),
                 )
-                self.charts.append(chart_details["name"])
                 self.status.scanned(chart_details["name"])
             except Exception as err:  # pylint: disable=broad-except
                 logger.error(repr(err))
                 logger.debug(traceback.format_exc())
                 continue
 
-    def get_lineage(self, dashboard_details: dict) -> AddLineageRequest:
+    def yield_dashboard_lineage_details(
+        self, dashboard_details: dict
+    ) -> Optional[Iterable[AddLineageRequest]]:
         """Get lineage method
 
         Args:
             dashboard_details
         """
+        if not self.source_config.dbServiceName:
+            return
         chart_list, dashboard_name = (
             dashboard_details["ordered_cards"],
             dashboard_details["name"],
         )
-        metadata = OpenMetadata(self.metadata_config)
         for chart in chart_list:
             try:
                 chart_details = chart["card"]
@@ -204,27 +215,43 @@ class MetabaseSource(DashboardSourceService):
                 resp_tables = self.req_get(f"/api/table/{chart_details['table_id']}")
                 if resp_tables.status_code == 200:
                     table = resp_tables.json()
-                    table_fqn = f"{self.service_connection.dbServiceName}.{table['schema']}.{table['name']}"
-                    dashboard_fqn = f"{self.service.name}.{quote(dashboard_name)}"
-                    table_entity = metadata.get_by_name(entity=Table, fqn=table_fqn)
-                    chart_entity = metadata.get_by_name(
-                        entity=Model_Dashboard, fqn=dashboard_fqn
+                    from_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.source_config.dbServiceName,
+                        database_name=table["db"]["details"]["db"],
+                        schema_name=table.get("schema"),
+                        table_name=table.get("display_name"),
                     )
-                    logger.debug("from entity %s", table_entity)
-                    if table_entity and chart_entity:
+                    from_entity = self.metadata.get_by_name(
+                        entity=Table,
+                        fqn=from_fqn,
+                    )
+                    to_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=LineageDashboard,
+                        service_name=self.config.serviceName,
+                        dashboard_name=dashboard_name,
+                    )
+                    to_entity = self.metadata.get_by_name(
+                        entity=LineageDashboard,
+                        fqn=to_fqn,
+                    )
+                    if from_entity and to_entity:
                         lineage = AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=table_entity.id.__root__, type="table"
+                                    id=from_entity.id.__root__, type="table"
                                 ),
                                 toEntity=EntityReference(
-                                    id=chart_entity.id.__root__, type="dashboard"
+                                    id=to_entity.id.__root__, type="dashboard"
                                 ),
                             )
                         )
                         yield lineage
             except Exception as err:  # pylint: disable=broad-except,unused-variable
-                logger.error(traceback.format_exc())
+                logger.debug(traceback.format_exc())
+                logger.error(err)
 
     def req_get(self, path):
         """Send get request method
@@ -235,31 +262,3 @@ class MetabaseSource(DashboardSourceService):
         return requests.get(
             self.service_connection.hostPort + path, headers=self.metabase_session
         )
-
-    def get_card_detail(self, card_list):
-        # TODO: Need to handle card lineage
-        metadata = OpenMetadata(self.metadata_config)
-        for card in card_list:
-            try:
-                card_details = card["card"]
-                if not card_details.get("id"):
-                    continue
-                card_detail_resp = self.req_get(f"/api/card/{card_details['id']}")
-                if card_detail_resp.status_code == 200:
-                    raw_query = (
-                        card_details.get("dataset_query", {})
-                        .get("native", {})
-                        .get("query", "")
-                    )
-            except Exception as e:
-                logger.error(repr(e))
-
-    def get_cards(self):
-        """Get cards method"""
-        resp_dashboards = self.req_get("/api/dashboard")
-        if resp_dashboards.status_code == 200:
-            for dashboard in resp_dashboards.json():
-                resp_dashboard = self.req_get(f"/api/dashboard/{dashboard['id']}")
-                dashboard_details = resp_dashboard.json()
-                card_list = dashboard_details["ordered_cards"]
-                self.get_card_detail(card_list)

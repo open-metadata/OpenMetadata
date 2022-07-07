@@ -11,18 +11,20 @@
  *  limitations under the License.
  */
 
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { capitalize, isEmpty, isNull, isUndefined } from 'lodash';
 import {
+  EntityFieldThreadCount,
   RecentlySearched,
   RecentlySearchedData,
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import { utc } from 'moment';
 import React, { FormEvent } from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
+import { getFeedCount } from '../axiosAPIs/feedsAPI';
 import { Button } from '../components/buttons/Button/Button';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
@@ -37,12 +39,16 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
+import { ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { getTitleCase } from './EntityUtils';
+import jsonData from '../jsons/en';
+import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { getExplorePathWithInitFilters } from './RouterUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import SVGIcons, { Icons } from './SvgUtils';
+import { TASK_ENTITIES } from './TasksUtils';
+import { showErrorToast } from './ToastUtils';
 
 export const arraySorterByKey = (
   key: string,
@@ -193,11 +199,13 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
         clsBG,
         className
       )}>
-      <span data-testid="filter-count">{count}</span>
+      <span data-testid="filter-count" title={count.toString()}>
+        {count}
+      </span>
     </span>
   );
 };
@@ -328,15 +336,13 @@ export const getOwnerIds = (
   if (filter === Ownership.OWNER) {
     if (!isEmpty(userDetails)) {
       return [
-        ...(userDetails.teams?.map((team) => team.id) as Array<string>),
+        ...(userDetails.teams?.map((team) => team.id) || []),
         userDetails.id,
       ];
     } else {
       if (!isEmpty(nonSecureUserDetails)) {
         return [
-          ...(nonSecureUserDetails.teams?.map(
-            (team) => team.id
-          ) as Array<string>),
+          ...(nonSecureUserDetails.teams?.map((team) => team.id) || []),
           nonSecureUserDetails.id,
         ];
       } else {
@@ -419,10 +425,6 @@ export const getServiceLogo = (
   }
 
   return null;
-};
-
-export const getCurrentDate = () => {
-  return `${utc(new Date()).format('YYYY-MM-DD')}`;
 };
 
 export const getSvgArrow = (isActive: boolean) => {
@@ -613,13 +615,13 @@ export const getEntityName = (entity?: EntityReference) => {
 
 export const getEntityDeleteMessage = (entity: string, dependents: string) => {
   if (dependents) {
-    return `Deleting this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
-    )} will permanently remove its metadata, as well as the metadata of ${dependents} from OpenMetadata.`;
+    )} will remove its metadata, as well as the metadata of ${dependents} from OpenMetadata permanently.`;
   } else {
-    return `Deleting this ${getTitleCase(
+    return `Permanently deleting this ${getTitleCase(
       entity
-    )} will permanently remove its metadata from OpenMetadata.`;
+    )} will remove its metadata from OpenMetadata permanently.`;
   }
 };
 
@@ -634,3 +636,60 @@ export const getExploreLinkByFilter = (
     `${filter}=${getOwnerIds(filter, userDetails, nonSecureUserDetails).join()}`
   );
 };
+
+export const replaceSpaceWith_ = (text: string) => {
+  return text.replace(/\s/g, '_');
+};
+
+export const getFeedCounts = (
+  entityType: string,
+  entityFQN: string,
+  conversationCallback: (
+    value: React.SetStateAction<EntityFieldThreadCount[]>
+  ) => void,
+  taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
+  entityCallback: (value: React.SetStateAction<number>) => void
+) => {
+  getFeedCount(
+    getEntityFeedLink(entityType, entityFQN),
+    ThreadType.Conversation
+  )
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        conversationCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+
+  getFeedCount(getEntityFeedLink(entityType, entityFQN), ThreadType.Task)
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        entityCallback(res.data.totalCount);
+        taskCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+};
+
+/**
+ *
+ * @param entityType type of the entity
+ * @returns true if entity type exists in TASK_ENTITIES otherwise false
+ */
+export const isTaskSupported = (entityType: EntityType) =>
+  TASK_ENTITIES.includes(entityType);

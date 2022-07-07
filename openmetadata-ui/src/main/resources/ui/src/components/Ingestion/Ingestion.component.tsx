@@ -43,12 +43,13 @@ import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import { IngestionProps, ModifiedConfig } from './ingestion.interface';
+import { IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
   serviceName,
   serviceCategory,
+  serviceDetails,
   ingestionList,
   isRequiredDetailsAvailable,
   deleteIngestion,
@@ -56,6 +57,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   deployIngestion,
   paging,
   pagingHandler,
+  handleEnableDisableIngestion,
   currrentPage,
 }: IngestionProps) => {
   const history = useHistory();
@@ -77,17 +79,28 @@ const Ingestion: React.FC<IngestionProps> = ({
     setSearchText(searchValue);
   };
 
-  const getIngestionPipelineTypeOption = (): PipelineType[] => {
-    if (ingestionList.length > 0) {
-      const ingestion = ingestionList[0]?.source?.serviceConnection
-        ?.config as ModifiedConfig;
-      const pipelineType = [];
-      ingestion?.supportsMetadataExtraction &&
+  const getSupportedPipelineTypes = () => {
+    let pipelineType = [];
+    const config = serviceDetails.connection?.config;
+    if (config) {
+      config.supportsMetadataExtraction &&
         pipelineType.push(PipelineType.Metadata);
-      ingestion?.supportsUsageExtraction &&
-        pipelineType.push(PipelineType.Usage);
-      ingestion?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+      config.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
+      config.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    } else {
+      pipelineType = [
+        PipelineType.Metadata,
+        PipelineType.Usage,
+        PipelineType.Profiler,
+      ];
+    }
 
+    return pipelineType;
+  };
+
+  const getIngestionPipelineTypeOption = (): PipelineType[] => {
+    const pipelineType = getSupportedPipelineTypes();
+    if (ingestionList.length > 0) {
       return pipelineType.reduce((prev, curr) => {
         if (
           curr !== PipelineType.Profiler &&
@@ -274,12 +287,14 @@ const Ingestion: React.FC<IngestionProps> = ({
       const status =
         i === lastFiveIngestions.length - 1 ? (
           <p
-            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}>
+            className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1 tw-px-1 tw-text-white tw-text-center`}
+            key={i}>
             {capitalize(r.state)}
           </p>
         ) : (
           <p
             className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r.state} tw-mr-1`}
+            key={i}
           />
         );
 
@@ -415,7 +430,7 @@ const Ingestion: React.FC<IngestionProps> = ({
                               alt="external-link"
                               className="tw-align-middle tw-ml-1"
                               icon={Icons.EXTERNAL_LINK}
-                              width="12px"
+                              width="16px"
                             />
                           </a>
                         </NonAdminAction>
@@ -457,7 +472,32 @@ const Ingestion: React.FC<IngestionProps> = ({
                         position="bottom"
                         title={TITLE_FOR_NON_ADMIN_ACTION}>
                         <div className="tw-flex">
-                          {getTriggerDeployButton(ingestion)}
+                          {ingestion.enabled ? (
+                            <Fragment>
+                              {getTriggerDeployButton(ingestion)}
+                              <button
+                                className="link-text tw-mr-2"
+                                data-testid="pause"
+                                disabled={!isRequiredDetailsAvailable}
+                                onClick={() =>
+                                  handleEnableDisableIngestion(
+                                    ingestion.id || ''
+                                  )
+                                }>
+                                Pause
+                              </button>
+                            </Fragment>
+                          ) : (
+                            <button
+                              className="link-text tw-mr-2"
+                              data-testid="unpause"
+                              disabled={!isRequiredDetailsAvailable}
+                              onClick={() =>
+                                handleEnableDisableIngestion(ingestion.id || '')
+                              }>
+                              Unpause
+                            </button>
+                          )}
                           <button
                             className="link-text tw-mr-2"
                             data-testid="edit"

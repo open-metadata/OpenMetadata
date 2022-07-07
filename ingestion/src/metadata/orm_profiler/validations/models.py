@@ -39,6 +39,11 @@ class TestDef(ConfigModel):
     profile_sample: Optional[float] = None
     table_tests: Optional[List[CreateTableTestRequest]] = None
     column_tests: Optional[List[CreateColumnTestRequest]] = None
+    partition_field: Optional[str] = None
+    partition_query_duration: Optional[int] = 1
+    partition_values: Optional[List] = None
+    profile_sample_query: Optional[str] = None
+    clear_sample_query_from_entity: bool = False
 
 
 class TestSuite(ConfigModel):

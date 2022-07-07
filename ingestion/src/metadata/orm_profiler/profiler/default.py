@@ -13,7 +13,7 @@
 Default simple profiler to use
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
@@ -29,7 +29,9 @@ def get_default_metrics(table: DeclarativeMeta) -> List[Metric]:
         # Table Metrics
         Metrics.ROW_COUNT.value,
         add_props(table=table)(Metrics.COLUMN_COUNT.value),
+        add_props(table=table)(Metrics.COLUMN_NAMES.value),
         # Column Metrics
+        Metrics.MEDIAN.value,
         Metrics.MEAN.value,
         Metrics.COUNT.value,
         Metrics.DISTINCT_COUNT.value,
@@ -63,6 +65,8 @@ class DefaultProfiler(Profiler):
         profile_date: datetime = datetime.now(),
         profile_sample: Optional[float] = None,
         timeout_seconds: Optional[int] = TEN_MIN,
+        partition_details: Optional[Dict] = None,
+        profile_sample_query: Optional[str] = None,
     ):
 
         _metrics = get_default_metrics(table)
@@ -75,4 +79,6 @@ class DefaultProfiler(Profiler):
             profile_date=profile_date,
             profile_sample=profile_sample,
             timeout_seconds=timeout_seconds,
+            partition_details=partition_details,
+            profile_sample_query=profile_sample_query,
         )

@@ -7,10 +7,10 @@ source:
       username: openmetadata_user
       password: openmetadata_password
       hostPort: localhost:3306
-      database: custom_database_name
+      databaseSchema: custom_database_name
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
 sink:
   type: metadata-rest
   config: {}

@@ -20,8 +20,8 @@
 }
 .ingestion-rounder {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border: 3px solid #d9ceee;
   background: white;
   border-radius: 50%;
@@ -38,7 +38,7 @@
 .ingestion-rounder.completed::after {
   content: '\2713';
   display: block;
-  margin-top: -5px;
+  margin-top: -4px;
   font-weight: 900;
   color: #7147e8;
 }
@@ -76,8 +76,8 @@
 }
 
 .add-ingestion-line {
-  width: 82%;
-  left: 55px;
+  width: 68%;
+  left: 90px;
 }
 
 .ingestion-deploy-line {

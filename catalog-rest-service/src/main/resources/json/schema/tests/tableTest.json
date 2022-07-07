@@ -21,6 +21,15 @@
             },
             {
               "$ref": "./table/tableColumnCountToEqual.json"
+            },
+            {
+              "$ref": "./table/tableColumnCountToBeBetween.json"
+            },
+            {
+              "$ref": "./table/tableColumnNameToExist.json"
+            },
+            {
+              "$ref": "./table/tableColumnToMatchSet.json"
             }
           ]
         },
@@ -28,7 +37,10 @@
           "enum": [
             "tableRowCountToEqual",
             "tableRowCountToBeBetween",
-            "tableColumnCountToEqual"
+            "tableColumnCountToEqual",
+            "tableColumnCountToBeBetween",
+            "tableColumnToMatchSet",
+            "tableColumnNameToExist"
           ]
         }
       },

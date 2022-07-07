@@ -16,6 +16,7 @@ import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
 import { AxiosError, AxiosResponse } from 'axios';
+import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
@@ -43,7 +44,11 @@ import {
 } from '../../axiosAPIs/userAPI';
 import Loader from '../../components/Loader/Loader';
 import { NO_AUTH } from '../../constants/auth.constants';
-import { oidcTokenKey, ROUTES } from '../../constants/constants';
+import {
+  oidcTokenKey,
+  REDIRECT_PATHNAME,
+  ROUTES,
+} from '../../constants/constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { AuthTypes } from '../../enums/signin.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -51,6 +56,7 @@ import jsonData from '../../jsons/en';
 import {
   getAuthConfig,
   getNameFromEmail,
+  getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
   isTourRoute,
@@ -75,6 +81,8 @@ interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
 }
+
+const cookieStorage = new CookieStorage();
 
 const userAPIQueryFields = 'profile,teams,roles';
 
@@ -112,13 +120,31 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
-      history.push(ROUTES.HOME);
+      const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
+      if (urlPathname) {
+        cookieStorage.removeItem(REDIRECT_PATHNAME);
+        history.push(urlPathname);
+      } else {
+        history.push(ROUTES.HOME);
+      }
     }
   };
 
   const setLoadingIndicator = (value: boolean) => {
     setLoading(value);
   };
+
+  function storeRedirectPath() {
+    const redirectPathExists = Boolean(
+      cookieStorage.getItem(REDIRECT_PATHNAME)
+    );
+    if (!redirectPathExists) {
+      cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
+        expires: getUrlPathnameExpiry(),
+        path: '/',
+      });
+    }
+  }
 
   const resetUserDetails = (forceLogout = false) => {
     appState.updateUserDetails({} as User);
@@ -173,8 +199,33 @@ export const AuthProvider = ({
   };
 
   const getUpdatedUser = (updatedData: User, existingData: User) => {
-    const { isAdmin, name, displayName, profile, email } = updatedData;
-    updateUser({ isAdmin, name, displayName, profile, email })
+    // PUT method for users api only excepts below fields
+    const {
+      isAdmin,
+      teams,
+      timezone,
+      name,
+      description,
+      displayName,
+      profile,
+      email,
+      isBot,
+      roles,
+    } = { ...existingData, ...updatedData };
+    const teamIds = teams?.map((team) => team.id);
+    const roleIds = roles?.map((role) => role.id);
+    updateUser({
+      isAdmin,
+      teams: teamIds,
+      timezone,
+      name,
+      description,
+      displayName,
+      profile,
+      email,
+      isBot,
+      roles: roleIds,
+    } as User)
       .then((res: AxiosResponse) => {
         if (res.data) {
           appState.updateUserDetails(res.data);
@@ -316,6 +367,8 @@ export const AuthProvider = ({
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
+            storeRedirectPath();
+            showErrorToast(error);
             resetUserDetails(true);
           } else if (status === ClientErrors.FORBIDDEN) {
             showErrorToast(jsonData['api-error-messages']['forbidden-error']);
@@ -348,6 +401,9 @@ export const AuthProvider = ({
             setAuthConfig(configJson);
             updateAuthInstance(configJson);
             if (!oidcUserToken) {
+              if (isProtectedRoute(location.pathname)) {
+                storeRedirectPath();
+              }
               setLoading(false);
             } else {
               getLoggedInUserDetails();
@@ -479,6 +535,10 @@ export const AuthProvider = ({
       }
     });
   }, [history]);
+
+  useEffect(() => {
+    appState.updateUrlPathname(location.pathname);
+  }, [location.pathname]);
 
   const isLoading =
     !isAuthDisabled &&

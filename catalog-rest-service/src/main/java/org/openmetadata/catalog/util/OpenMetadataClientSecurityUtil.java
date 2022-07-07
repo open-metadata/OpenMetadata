@@ -85,7 +85,7 @@ public final class OpenMetadataClientSecurityUtil {
         openMetadataServerConnection.setSecurityConfig(customOIDCSSOClientConfig);
         break;
       case OPENMETADATA:
-        OpenMetadataJWTClientConfig openMetadataJWTClientConfig = authConfig.getOpenMetadataJWTClientConfig();
+        OpenMetadataJWTClientConfig openMetadataJWTClientConfig = authConfig.getOpenmetadata();
         checkAuthConfig(openMetadataJWTClientConfig, authProvider);
         checkRequiredField(JWT_TOKEN, openMetadataJWTClientConfig.getJwtToken(), authProvider);
         openMetadataServerConnection.setSecurityConfig(openMetadataJWTClientConfig);

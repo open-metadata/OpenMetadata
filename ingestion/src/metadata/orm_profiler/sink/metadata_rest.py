@@ -71,10 +71,21 @@ class MetadataRestSink(Sink[Entity]):
             )
 
             if record.record_tests:
-                if record.record_tests.profile_sample:
+                if record.profile.profileQuery and record.profile.profileSample:
+                    self.metadata.update_profile_query(
+                        fqn=record.table.fullyQualifiedName.__root__,
+                        profileQuery=record.profile.profileQuery,
+                        profileSample=record.profile.profileSample,
+                    )
+                if record.profile.profileSample and not record.profile.profileQuery:
                     self.metadata.update_profile_sample(
                         fqn=record.table.fullyQualifiedName.__root__,
-                        profile_sample=record.record_tests.profile_sample,
+                        profile_sample=record.profile.profileSample,
+                    )
+                if record.profile.profileQuery and not record.profile.profileSample:
+                    self.metadata.update_profile_query(
+                        fqn=record.table.fullyQualifiedName.__root__,
+                        profileQuery=record.profile.profileQuery,
                     )
                 for table_test in record.record_tests.table_tests:
                     self.metadata.add_table_test(
@@ -83,6 +94,11 @@ class MetadataRestSink(Sink[Entity]):
 
                 for col_test in record.record_tests.column_tests:
                     self.metadata.add_column_test(table=record.table, col_test=col_test)
+
+            if record.sample_data:
+                self.metadata.ingest_table_sample_data(
+                    table=record.table, sample_data=record.sample_data
+                )
 
             logger.info(
                 f"Successfully ingested profiler & test data for {record.table.fullyQualifiedName.__root__}"

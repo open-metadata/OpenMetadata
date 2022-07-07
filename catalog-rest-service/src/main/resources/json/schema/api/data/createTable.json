@@ -48,6 +48,11 @@
       "maximum": 100,
       "default": null
     },
+    "profileQuery": {
+      "description": "Users' raw SQL query to fetch sample data and profile the table",
+      "type": "string",
+      "default": null
+    },
     "owner": {
       "description": "Owner of this entity",
       "$ref": "../../type/entityReference.json",

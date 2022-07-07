@@ -12,13 +12,12 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -28,7 +27,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
@@ -61,6 +59,7 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CreateColumnTest } from '../../generated/api/tests/createColumnTest';
@@ -74,6 +73,7 @@ import {
   TableType,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { TableTest, TableTestType } from '../../generated/tests/tableTest';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -89,6 +89,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
   getFields,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
@@ -98,7 +99,11 @@ import {
   getCurrentDatasetTab,
 } from '../../utils/DatasetDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -163,10 +168,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
   const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
 
@@ -240,9 +248,18 @@ const DatasetDetailsPage: FunctionComponent = () => {
       });
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.TABLE, tableFQN), after)
+    getAllFeeds(
+      getEntityFeedLink(EntityType.TABLE, tableFQN),
+      after,
+      threadType,
+      feedType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -261,6 +278,15 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       })
       .finally(() => setIsentityThreadLoading(false));
+  };
+
+  const handleFeedFetchFromFeedList = (
+    after?: string,
+    feedType?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
+    !after && setEntityThread([]);
+    getFeedData(after, feedType, threadType);
   };
 
   const fetchTableDetail = () => {
@@ -467,23 +493,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
   }, [activeTab]);
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.TABLE, tableFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-entity-feed-count-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-      });
+    getFeedCounts(
+      EntityType.TABLE,
+      tableFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
@@ -908,7 +924,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -938,6 +954,37 @@ const DatasetDetailsPage: FunctionComponent = () => {
         );
       });
   };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
+  };
+
+  const handleExtentionUpdate = (updatedTable: Table) => {
+    saveUpdatedTableData(updatedTable)
+      .then((res) => {
+        if (res.data) {
+          const { version, owner: ownerValue, tags } = res.data;
+          setCurrentVersion(version);
+          setTableDetails(res.data);
+          setOwner(ownerValue);
+          setTier(getTierTags(tags));
+        } else {
+          throw jsonData['api-error-messages']['update-entity-error'];
+        }
+      })
+      .catch((extensionErr: AxiosError) => {
+        showErrorToast(
+          extensionErr,
+          jsonData['api-error-messages']['update-entity-error']
+        );
+      });
+  };
+
   useEffect(() => {
     fetchTableDetail();
     setActiveTab(getCurrentDatasetTab(tab));
@@ -976,17 +1023,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
           entityName={name}
           entityThread={entityThread}
           feedCount={feedCount}
-          fetchFeedHandler={getFeedData}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           followTableHandler={followTable}
           followers={followers}
           handleAddColumnTestCase={handleAddColumnTestCase}
           handleAddTableTestCase={handleAddTableTestCase}
+          handleExtentionUpdate={handleExtentionUpdate}
           handleRemoveColumnTest={handleRemoveColumnTest}
           handleRemoveTableTest={handleRemoveTableTest}
           handleSelectedColumn={handleSelectedColumn}
@@ -1021,6 +1070,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           testMode={testMode}
           tier={tier as TagLabel}
           unfollowTableHandler={unfollowTable}
+          updateThreadHandler={updateThreadHandler}
           usageSummary={usageSummary}
           version={currentVersion}
           versionHandler={versionHandler}

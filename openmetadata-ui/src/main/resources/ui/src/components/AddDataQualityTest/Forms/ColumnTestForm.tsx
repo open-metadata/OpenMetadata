@@ -78,6 +78,11 @@ const ColumnTestForm = ({
   const [forbiddenValues, setForbiddenValues] = useState<(string | number)[]>(
     data?.testCase?.config?.forbiddenValues || ['']
   );
+
+  const [allowedValues, setAllowedValues] = useState<(string | number)[]>(
+    data?.testCase?.config?.allowedValues || ['']
+  );
+
   const [isShowError, setIsShowError] = useState({
     testName: false,
     columnName: false,
@@ -85,6 +90,7 @@ const ColumnTestForm = ({
     minOrMax: false,
     missingCountValue: false,
     values: false,
+    inSetValues: false,
     minMaxValue: false,
     allTestAdded: false,
     notSupported: false,
@@ -116,6 +122,23 @@ const ColumnTestForm = ({
     const newFormValues = [...forbiddenValues];
     newFormValues[i] = value;
     setForbiddenValues(newFormValues);
+    setIsShowError({ ...isShowError, values: false });
+  };
+
+  const addInSetValueFields = () => {
+    setAllowedValues([...allowedValues, '']);
+  };
+
+  const removeInSetValueFields = (i: number) => {
+    const newFormValues = [...allowedValues];
+    newFormValues.splice(i, 1);
+    setAllowedValues(newFormValues);
+  };
+
+  const handleInSetValueFieldsChange = (i: number, value: string) => {
+    const newFormValues = [...allowedValues];
+    newFormValues[i] = value;
+    setAllowedValues(newFormValues);
     setIsShowError({ ...isShowError, values: false });
   };
 
@@ -194,6 +217,12 @@ const ColumnTestForm = ({
     switch (columnTest) {
       case ColumnTestType.ColumnValueLengthsToBeBetween:
       case ColumnTestType.ColumnValuesToBeBetween:
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+      case ColumnTestType.ColumnValueMinToBeBetween:
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         errMsg.minOrMax = isEmpty(minValue) && isEmpty(maxValue);
         if (!isUndefined(minValue) && !isUndefined(maxValue)) {
           errMsg.minMaxValue = (+minValue as number) > (+maxValue as number);
@@ -213,6 +242,14 @@ const ColumnTestForm = ({
         break;
       }
 
+      case ColumnTestType.ColumnValuesToBeInSet: {
+        const actualValues = allowedValues.filter((v) => !isEmpty(v));
+        errMsg.inSetValues = actualValues.length < 1;
+
+        break;
+      }
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
       case ColumnTestType.ColumnValuesToMatchRegex:
         errMsg.regex = isEmpty(regex);
 
@@ -237,6 +274,40 @@ const ColumnTestForm = ({
           maxValue: !isEmpty(maxValue) ? maxValue : undefined,
         };
 
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+        return {
+          minValueForMaxInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMaxInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValueMinToBeBetween:
+        return {
+          minValueForMinInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMinInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+        return {
+          minValueForColSum: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForColSum: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
+      case ColumnTestType.ColumnValueMedianToBeBetween:
+        return {
+          minValueForMedianInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMedianInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+        return {
+          minValueForMeanInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForMeanInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+        return {
+          minValueForStdDevInCol: !isEmpty(minValue) ? minValue : undefined,
+          maxValueForStdDevInCol: !isEmpty(maxValue) ? maxValue : undefined,
+        };
+
       case ColumnTestType.ColumnValuesMissingCountToBeEqual: {
         const filterMatchValue = missingValueMatch.filter(
           (value) => !isEmpty(value)
@@ -254,9 +325,19 @@ const ColumnTestForm = ({
           forbiddenValues: forbiddenValues.filter((v) => !isEmpty(v)),
         };
 
+      case ColumnTestType.ColumnValuesToBeInSet:
+        return {
+          allowedValues: allowedValues.filter((v) => !isEmpty(v)),
+        };
+
       case ColumnTestType.ColumnValuesToMatchRegex:
         return {
           regex: regex,
+        };
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
+        return {
+          forbiddenRegex: regex,
         };
 
       case ColumnTestType.ColumnValuesToBeNotNull:
@@ -307,12 +388,14 @@ const ColumnTestForm = ({
         isAcceptedTypeIsString.current =
           columnDataType === 'varchar' || columnDataType === 'boolean';
         setForbiddenValues(['']);
+        setAllowedValues(['']);
         setColumnTest(value as ColumnTestType);
         errorMsg.columnName = false;
         errorMsg.regex = false;
         errorMsg.minOrMax = false;
         errorMsg.missingCountValue = false;
         errorMsg.values = false;
+        errorMsg.inSetValues = false;
         errorMsg.minMaxValue = false;
         errorMsg.testName = false;
 
@@ -342,6 +425,7 @@ const ColumnTestForm = ({
         isAcceptedTypeIsString.current =
           columnDataType === 'varchar' || columnDataType === 'boolean';
         setForbiddenValues(['']);
+        setAllowedValues(['']);
         setColumnName(value);
         handleTestTypeOptionChange(value);
         errorMsg.allTestAdded =
@@ -474,7 +558,7 @@ const ColumnTestForm = ({
                   alt="delete"
                   icon="icon-delete"
                   title="Delete"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             </div>
@@ -544,7 +628,60 @@ const ColumnTestForm = ({
                 alt="delete"
                 icon="icon-delete"
                 title="Delete"
-                width="12px"
+                width="16px"
+              />
+            </button>
+          </div>
+        ))}
+
+        {isShowError.values && errorMsg('Value is required.')}
+      </div>
+    );
+  };
+
+  const getColumnValuesToBeInSetField = () => {
+    return (
+      <div data-testid="in-set-field">
+        <div className="tw-flex tw-items-center tw-mt-6">
+          <p className="w-form-label tw-mr-3">{requiredField('Values')}</p>
+          <Button
+            className="tw-h-5 tw-px-2"
+            size="x-small"
+            theme="primary"
+            variant="contained"
+            onClick={addInSetValueFields}>
+            <FontAwesomeIcon icon="plus" />
+          </Button>
+        </div>
+
+        {allowedValues.map((value, i) => (
+          <div className="tw-flex tw-items-center" key={i}>
+            <div className="tw-w-11/12">
+              <Field>
+                <input
+                  className="tw-form-inputs tw-form-inputs-padding"
+                  id={`option-key-${i}`}
+                  name="key"
+                  placeholder="Values to be in the set"
+                  type={isAcceptedTypeIsString.current ? 'text' : 'number'}
+                  value={value}
+                  onChange={(e) =>
+                    handleInSetValueFieldsChange(i, e.target.value)
+                  }
+                />
+              </Field>
+            </div>
+            <button
+              className="focus:tw-outline-none tw-mt-3 tw-w-1/12"
+              onClick={(e) => {
+                removeInSetValueFields(i);
+                e.preventDefault();
+              }}>
+              <SVGIcons
+                alt="delete"
+                icon="icon-delete"
+                title="Delete"
+                width="16px"
               />
             </button>
           </div>
@@ -559,6 +696,12 @@ const ColumnTestForm = ({
     switch (columnTest) {
       case ColumnTestType.ColumnValueLengthsToBeBetween:
       case ColumnTestType.ColumnValuesToBeBetween:
+      case ColumnTestType.ColumnValueMaxToBeBetween:
+      case ColumnTestType.ColumnValueMinToBeBetween:
+      case ColumnTestType.ColumnValuesSumToBeBetween:
+      case ColumnTestType.ColumnValueMeanToBeBetween:
+      case ColumnTestType.ColumnValueStdDevToBeBetween:
+      case ColumnTestType.ColumnValueMedianToBeBetween:
         return getMinMaxField();
 
       case ColumnTestType.ColumnValuesMissingCountToBeEqual:
@@ -567,6 +710,10 @@ const ColumnTestForm = ({
       case ColumnTestType.ColumnValuesToBeNotInSet:
         return getColumnValuesToBeNotInSetField();
 
+      case ColumnTestType.ColumnValuesToBeInSet:
+        return getColumnValuesToBeInSetField();
+
+      case ColumnTestType.ColumnValuesToNotMatchRegex:
       case ColumnTestType.ColumnValuesToMatchRegex:
         return getColumnValuesToMatchRegexFields();
 

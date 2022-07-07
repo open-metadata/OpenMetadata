@@ -29,7 +29,6 @@ import {
   mockFeedData,
   mockSearchData as exploreSearchData,
 } from '../../constants/mockTourData.constants';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import {
   Table,
@@ -49,6 +48,7 @@ const exploreCount = {
   dashboard: 0,
   pipeline: 0,
   dbtModel: 0,
+  mlModel: 0,
 };
 
 const TourPage = () => {
@@ -126,6 +126,7 @@ const TourPage = () => {
         return (
           <MyData
             countDashboards={10}
+            countMlModal={2}
             countPipelines={8}
             countServices={4}
             countTables={21}
@@ -134,10 +135,6 @@ const TourPage = () => {
             countUsers={100}
             error=""
             feedData={myDataSearchResult as MyDataProps['feedData']}
-            feedFilter={FeedFilter.ALL}
-            feedFilterHandler={() => {
-              setMyDataSearchResult(mockFeedData);
-            }}
             fetchData={() => {
               setMyDataSearchResult(mockFeedData);
             }}
@@ -148,7 +145,9 @@ const TourPage = () => {
             ownedData={[]}
             ownedDataCount={1}
             paging={{} as Paging}
+            pendingTaskCount={0}
             postFeedHandler={handleOnClick}
+            updateThreadHandler={handleOnClick}
             userDetails={AppState.userDetails}
           />
         );
@@ -156,6 +155,7 @@ const TourPage = () => {
       case CurrentTourPageType.EXPLORE_PAGE:
         return (
           <Explore
+            isFilterSelected
             error=""
             fetchCount={handleCountChange}
             fetchData={() => setExploreSearchResult(exploreSearchData)}
@@ -171,6 +171,7 @@ const TourPage = () => {
             tabCounts={explorePageCounts}
             updateDashboardCount={handleCountChange}
             updateDbtModelCount={handleCountChange}
+            updateMlModelCount={handleCountChange}
             updatePipelineCount={handleCountChange}
             updateTableCount={handleCountChange}
             updateTopicCount={handleCountChange}
@@ -192,6 +193,7 @@ const TourPage = () => {
             deletePostHandler={handleCountChange}
             description={mockDatasetData.description}
             descriptionUpdateHandler={handleCountChange}
+            entityFieldTaskCount={[]}
             entityFieldThreadCount={[]}
             entityLineage={mockDatasetData.entityLineage}
             entityLineageHandler={handleCountChange}
@@ -203,6 +205,7 @@ const TourPage = () => {
             followers={mockDatasetData.followers}
             handleAddColumnTestCase={handleCountChange}
             handleAddTableTestCase={handleCountChange}
+            handleExtentionUpdate={handleCountChange}
             handleRemoveColumnTest={handleCountChange}
             handleRemoveTableTest={handleCountChange}
             handleSelectedColumn={handleCountChange}
@@ -239,6 +242,7 @@ const TourPage = () => {
             testMode="table"
             tier={'' as unknown as TagLabel}
             unfollowTableHandler={handleCountChange}
+            updateThreadHandler={handleOnClick}
             usageSummary={
               mockDatasetData.usageSummary as unknown as TypeUsedToReturnUsageDetailsOfAnEntity
             }
@@ -260,6 +264,7 @@ const TourPage = () => {
         handleOnClick={handleOnClick}
         handleSearchBoxOpen={handleCountChange}
         handleSearchChange={(value) => setSearchValue(value)}
+        hasNotification={false}
         isFeatureModalOpen={false}
         isSearchBoxOpen={false}
         pathname={location.pathname}

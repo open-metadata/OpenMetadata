@@ -11,25 +11,34 @@
  *  limitations under the License.
  */
 
-import { JSONSchema7 } from 'json-schema';
 import { cloneDeep } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/services.const';
+import { PipelineServiceType } from '../generated/entity/services/pipelineService';
+import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
+import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
+import glueConnection from '../jsons/connectionSchemas/connections/pipeline/glueConnection.json';
 
-export const getPipelineConfig = () => {
-  const schema = {
-    $schema: 'http://json-schema.org/draft-07/schema#',
-    title: 'PipelineConnection',
-    description: 'Pipeline Connection Config',
-    type: 'object',
-    properties: {
-      pipelineUrl: {
-        description: 'Pipeline Service Management/UI URL.',
-        type: 'string',
-        format: 'uri',
-      },
-    },
-    additionalProperties: false,
-  } as JSONSchema7;
-  const uiSchema = {};
+export const getPipelineConfig = (type: PipelineServiceType) => {
+  let schema = {};
+  const uiSchema = { ...COMMON_UI_SCHEMA };
+  switch (type) {
+    case PipelineServiceType.Airbyte: {
+      schema = airbyteConnection;
+
+      break;
+    }
+
+    case PipelineServiceType.Airflow: {
+      schema = airflowConnection;
+
+      break;
+    }
+    case PipelineServiceType.Glue: {
+      schema = glueConnection;
+
+      break;
+    }
+  }
 
   return cloneDeep({ schema, uiSchema });
 };

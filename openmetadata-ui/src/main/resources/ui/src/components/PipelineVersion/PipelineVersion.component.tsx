@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/feed.constants';
 import { OwnerType } from '../../enums/user.enum';
 import { ChangeDescription } from '../../generated/entity/data/pipeline';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -27,6 +28,7 @@ import {
   getDiffValue,
   getTagsDiff,
 } from '../../utils/EntityVersionUtils';
+import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
 import SVGIcons from '../../utils/SvgUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -68,7 +70,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
 
   const getPipelineDescription = () => {
     const descriptionDiff = getDiffByFieldName(
-      'description',
+      EntityField.DESCRIPTION,
       changeDescription
     );
     const oldDescription =
@@ -180,13 +182,12 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         '[]'
     );
     const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabel & { added: boolean; removed: boolean }> =
-      [];
+    const uniqueTags: Array<TagLabelWithStatus> = [];
 
     [
       ...(getTagsDiff(oldTags, newTags) ?? []),
       ...(currentVersionData.tags ?? []),
-    ].forEach((elem: TagLabel & { added: boolean; removed: boolean }) => {
+    ].forEach((elem: TagLabelWithStatus) => {
       if (!flag[elem.tagFQN as string]) {
         flag[elem.tagFQN as string] = true;
         uniqueTags.push(elem);
@@ -271,7 +272,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>
@@ -296,7 +297,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                                     alt="edit"
                                     icon="icon-edit"
                                     title="Edit"
-                                    width="10px"
+                                    width="16px"
                                   />
                                 </button>
                               </div>

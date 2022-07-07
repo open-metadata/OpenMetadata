@@ -12,7 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { Table } from 'Models';
 import { CreateColumnTest } from '../generated/api/tests/createColumnTest';
 import { CreateTableTest } from '../generated/api/tests/createTableTest';
@@ -62,12 +62,17 @@ export const getTableDetailsByFQN: Function = (
 
 export const getAllTables = (
   arrQueryFields?: string,
-  limit?: number
+  limit?: number,
+  database?: string
 ): Promise<AxiosResponse> => {
   const searchParams = new URLSearchParams();
 
   if (!isNil(limit)) {
     searchParams.set('limit', `${limit}`);
+  }
+
+  if (!isUndefined(database)) {
+    searchParams.set('database', database);
   }
 
   const url = getURLWithQueryFields(

@@ -37,8 +37,8 @@ def run_ingest(config_path: str) -> None:
     config_dict = load_config_file(config_file)
 
     try:
-        logger.debug(f"Using config: {config_dict}")
         workflow = Workflow.create(config_dict)
+        logger.debug(f"Using config: {workflow.config}")
     except ValidationError as e:
         click.echo(e, err=True)
         logger.debug(traceback.format_exc())

@@ -22,12 +22,14 @@ const Avatar = ({
   textClass = '',
   className = '',
   type = 'square',
+  height,
 }: {
   name: string;
   width?: string;
   textClass?: string;
   className?: string;
   type?: ImageShape;
+  height?: string;
 }) => {
   const { color, character } = getRandomColor(name);
 
@@ -37,8 +39,9 @@ const Avatar = ({
         'tw-flex tw-flex-shrink-0 tw-justify-center tw-items-center tw-align-middle',
         className
       )}
+      data-testid="avatar"
       style={{
-        height: `${width}px`,
+        height: `${height || width}px`,
         width: `${width}px`,
         borderRadius: type === 'circle' ? '50%' : '4px',
         background: color,
@@ -46,9 +49,7 @@ const Avatar = ({
         fontSize: `${Number(width) / 2}px`,
         fontWeight: 'normal',
       }}>
-      <p className={classNames('tw-self-center tw-capitalize', textClass)}>
-        {character}
-      </p>
+      <span className={classNames(textClass)}>{character}</span>
     </div>
   );
 };

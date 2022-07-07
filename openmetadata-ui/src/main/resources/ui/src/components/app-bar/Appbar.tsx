@@ -27,6 +27,7 @@ import {
   getUserPath,
   navLinkSettings,
   ROUTES,
+  SOCKET_EVENTS,
   TERM_ADMIN,
   TERM_USER,
 } from '../../constants/constants';
@@ -39,12 +40,14 @@ import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   addToRecentSearched,
+  getEntityName,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
+import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 
 const cookieStorage = new CookieStorage();
 
@@ -64,10 +67,12 @@ const Appbar: React.FC = (): JSX.Element => {
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-
   const [version, setVersion] = useState<string>('');
+
+  const { socket } = useWebSocketConnector();
+  const [hasNotification, setHasNotification] = useState(false);
 
   const handleFeatureModal = (value: boolean) => {
     setIsFeatureModalOpen(value);
@@ -141,6 +146,20 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUsersRoles = (userRoleArr: string[], name: string) => {
+    return (
+      <div>
+        <div className="tw-text-grey-muted tw-text-xs">{name}</div>
+        {userRoleArr.map((userRole, i) => (
+          <p className="tw-font-medium" key={i}>
+            {userRole}
+          </p>
+        ))}
+        <hr className="tw-my-1.5" />
+      </div>
+    );
+  };
+
   const getUserName = () => {
     const currentUser = isAuthDisabled
       ? appState.nonSecureUserDetails
@@ -149,6 +168,21 @@ const Appbar: React.FC = (): JSX.Element => {
     return currentUser?.displayName || currentUser?.name || TERM_USER;
   };
 
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setHasNotification(true);
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+      setHasNotification(false);
+    };
+  }, [socket]);
+
   const getUserData = () => {
     const currentUser = isAuthDisabled
       ? appState.nonSecureUserDetails
@@ -156,9 +190,9 @@ const Appbar: React.FC = (): JSX.Element => {
 
     const name = currentUser?.displayName || currentUser?.name || TERM_USER;
 
-    const roles = currentUser?.roles?.map((r) => r.displayName) || [];
+    const roles = currentUser?.roles?.map((r) => getEntityName(r)) || [];
     const inheritedRoles =
-      currentUser?.inheritedRoles?.map((r) => r.displayName) || [];
+      currentUser?.inheritedRoles?.map((r) => getEntityName(r)) || [];
 
     currentUser?.isAdmin && roles.unshift(TERM_ADMIN);
 
@@ -171,31 +205,13 @@ const Appbar: React.FC = (): JSX.Element => {
           <span className="tw-font-medium tw-cursor-pointer">{name}</span>
         </Link>
         <hr className="tw-my-1.5" />
-        {roles.length > 0 ? (
-          <div>
-            <div className="tw-font-medium tw-text-xs">Roles</div>
-            {roles.map((r, i) => (
-              <p className="tw-text-grey-muted" key={i}>
-                {r}
-              </p>
-            ))}
-            <hr className="tw-my-1.5" />
-          </div>
-        ) : null}
-        {inheritedRoles.length > 0 ? (
-          <div>
-            <div className="tw-font-medium tw-text-xs">Inherited Roles</div>
-            {inheritedRoles.map((inheritedRole, i) => (
-              <p className="tw-text-grey-muted" key={i}>
-                {inheritedRole}
-              </p>
-            ))}
-            <hr className="tw-my-1.5" />
-          </div>
-        ) : null}
+        {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
+        {inheritedRoles.length > 0
+          ? getUsersRoles(inheritedRoles, 'Inherited Roles')
+          : null}
         {teams.length > 0 ? (
           <div>
-            <span className="tw-font-medium tw-text-xs">Teams</span>
+            <span className="tw-text-grey-muted tw-text-xs">Teams</span>
             {teams.map((t, i) => (
               <p key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>
@@ -229,15 +245,16 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchHandler = (value: string) => {
     setIsOpen(false);
     addToRecentSearched(value);
-    history.push(
-      getExplorePathWithSearch(
+    history.push({
+      pathname: getExplorePathWithSearch(
         value,
         // this is for if user is searching from another page
         location.pathname.startsWith(ROUTES.EXPLORE)
           ? appState.explorePageTab
           : 'tables'
-      )
-    );
+      ),
+      search: location.search,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -296,6 +313,7 @@ const Appbar: React.FC = (): JSX.Element => {
           handleOnClick={handleOnclick}
           handleSearchBoxOpen={setIsOpen}
           handleSearchChange={handleSearchChange}
+          hasNotification={hasNotification}
           isFeatureModalOpen={isFeatureModalOpen}
           isSearchBoxOpen={isOpen}
           pathname={location.pathname}

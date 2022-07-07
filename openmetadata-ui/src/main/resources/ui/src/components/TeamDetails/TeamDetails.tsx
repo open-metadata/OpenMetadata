@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isUndefined, orderBy } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, orderBy } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -24,7 +24,9 @@ import {
   getUserPath,
   PAGE_SIZE_MEDIUM,
   TITLE_FOR_NON_ADMIN_ACTION,
+  TITLE_FOR_NON_OWNER_ACTION,
 } from '../../constants/constants';
+import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../enums/common.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Team } from '../../generated/entity/teams/team';
@@ -133,7 +135,7 @@ const TeamDetails = ({
       isHidden: !(
         hasAccess ||
         isOwner() ||
-        userPermissions[Operation.UpdateOwner]
+        userPermissions[Operation.EditOwner]
       ),
       position: 4,
     },
@@ -315,8 +317,9 @@ const TeamDetails = ({
           {currentTeamUsers.length > 0 && isActionAllowed() && (
             <div>
               <NonAdminAction
+                isOwner={isActionAllowed()}
                 position="bottom"
-                title={TITLE_FOR_NON_ADMIN_ACTION}>
+                title={TITLE_FOR_NON_OWNER_ACTION}>
                 <Button
                   className="tw-h-8 tw-px-2"
                   data-testid="add-user"
@@ -344,7 +347,7 @@ const TeamDetails = ({
                     ? `as ${teamUsersSearchText}.`
                     : `added yet.`}
                 </p>
-                {isActionAllowed(userPermissions[Operation.UpdateTeam]) ? (
+                {isActionAllowed(userPermissions[Operation.TeamEditUsers]) ? (
                   <>
                     <p>Would like to start adding some?</p>
                     <Button
@@ -362,7 +365,7 @@ const TeamDetails = ({
             ) : (
               <Fragment>
                 <div
-                  className="tw-grid xxl:tw-grid-cols-4 lg:tw-grid-cols-3 md:tw-grid-cols-2 tw-gap-4"
+                  className="tw-grid lg:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
                   data-testid="user-data-container">
                   {sortedUser.map((user, index) => {
                     const User = {
@@ -377,6 +380,7 @@ const TeamDetails = ({
                       <UserCard
                         isActionVisible
                         isIconVisible
+                        isOwner={isActionAllowed()}
                         item={User}
                         key={index}
                         onRemove={deleteUserHandler}
@@ -564,7 +568,7 @@ const TeamDetails = ({
                       alt="edit"
                       icon="icon-edit"
                       title="Edit"
-                      width="12px"
+                      width="16px"
                     />
                   </button>
                 </NonAdminAction>
@@ -580,7 +584,7 @@ const TeamDetails = ({
     <div
       className="tw-h-full tw-flex tw-flex-col tw-flex-grow"
       data-testid="team-details-container">
-      {teams.length && currentTeam ? (
+      {teams.length && !isEmpty(currentTeam) ? (
         <Fragment>
           <div
             className="tw-flex tw-justify-between tw-items-center"
@@ -602,9 +606,7 @@ const TeamDetails = ({
               blurWithBodyBG
               description={currentTeam?.description || ''}
               entityName={currentTeam?.displayName ?? currentTeam?.name}
-              hasEditAccess={isActionAllowed(
-                userPermissions[Operation.UpdateDescription]
-              )}
+              hasEditAccess={isOwner()}
               isEdit={isDescriptionEditable}
               onCancel={() => descriptionHandler(false)}
               onDescriptionEdit={() => descriptionHandler(true)}
@@ -615,7 +617,6 @@ const TeamDetails = ({
           <div className="tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={currentTab}
-              className="tw-px-6"
               setActiveTab={(tab) => setCurrentTab(tab)}
               tabs={tabs}
             />
@@ -642,7 +643,7 @@ const TeamDetails = ({
                     entityType="team"
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
-                    manageSectionType="Team"
+                    manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.TEAM}
                     onSave={handleManageSave}
                   />
                 </div>

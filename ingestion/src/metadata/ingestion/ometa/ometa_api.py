@@ -18,9 +18,11 @@ working with OpenMetadata entities.
 import urllib
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+
 try:
     from typing import get_args
-except ImportError as err:
+except ImportError:
     from typing_compat import get_args
 
 from pydantic import BaseModel
@@ -46,6 +48,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.tags.tagCategory import Tag, TagCategory
@@ -128,6 +131,7 @@ class OpenMetadata(
     OMetaServiceMixin,
     ESMixin,
     OMetaServerMixin,
+    OMetaDashboardMixin,
     Generic[T, C],
 ):
     """
@@ -168,7 +172,7 @@ class OpenMetadata(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            auth_token=lambda: self._auth_provider.get_access_token(),
+            auth_token=self._auth_provider.get_access_token,
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
@@ -323,6 +327,14 @@ class OpenMetadata(
             ),
         ):
             return "/services/storageServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[MlModelService, self.get_create_entity_type(MlModelService)]
+            ),
+        ):
+            return "/services/mlmodelServices"
 
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
@@ -480,7 +492,7 @@ class OpenMetadata(
             return entity(**resp)
         except APIError as err:
             if err.status_code == 404:
-                logger.info(
+                logger.debug(
                     "GET %s for %s. HTTP %s - %s",
                     entity.__name__,
                     path,
@@ -528,7 +540,7 @@ class OpenMetadata(
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: str = None,
-        limit: int = 1000,
+        limit: int = 100,
         params: Optional[Dict[str, str]] = None,
     ) -> EntityList[T]:
         """

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Glossary;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.glossary.GlossaryResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -99,7 +100,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private List<EntityReference> getReviewers(Glossary entity) throws IOException {
-    List<String> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
+    List<EntityRelationshipRecord> ids = findFrom(entity.getId(), Entity.GLOSSARY, Relationship.REVIEWS, Entity.USER);
     return EntityUtil.populateEntityReferences(ids, Entity.USER);
   }
 

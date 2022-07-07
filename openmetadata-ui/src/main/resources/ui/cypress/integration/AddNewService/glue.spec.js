@@ -32,15 +32,12 @@ describe('Glue Ingestion', () => {
       cy.get('#root_storageServiceName')
         .scrollIntoView()
         .type(Cypress.env('glueStorageServiceName'));
-      cy.get('#root_pipelineServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('gluePipelineServiceName'));
     };
 
     const addIngestionInput = () => {
       // no filters
     };
 
-    testServiceCreationAndIngestion('Glue', connectionInput, addIngestionInput);
+    testServiceCreationAndIngestion('Glue', connectionInput, addIngestionInput, 'database', false);
   });
 });

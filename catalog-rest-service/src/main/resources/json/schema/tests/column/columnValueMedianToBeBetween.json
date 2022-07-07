@@ -1,0 +1,21 @@
+{
+    "$id": "https://open-metadata.org/schema/tests/column/columnValueMedianToBeBetween.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "columnValueMedianToBeBetween",
+    "description": "This schema defines the test ColumnValueMedianToBeBetween. Test the median value in a col is within a range.",
+    "type": "object",
+    "javaType": "org.openmetadata.catalog.tests.column.ColumnValueMedianToBeBetween",
+    "properties": {
+      "minValueForMedianInCol": {
+        "description": "Expected median value for the column to be greater or equal than",
+        "type": "integer"
+      },
+      "maxValueForMedianInCol": {
+        "description": "Expected median value for the column to be greater or equal than",
+        "type": "integer"
+      }
+    },
+    "anyOf": [{ "required": ["minValueForMedianInCol"] }, { "required": ["maxValueForMedianInCol"] }],
+    "additionalProperties": false
+  }
+  

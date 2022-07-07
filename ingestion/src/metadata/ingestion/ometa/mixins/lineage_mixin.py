@@ -19,6 +19,7 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import get_entity_type, ometa_logger
 

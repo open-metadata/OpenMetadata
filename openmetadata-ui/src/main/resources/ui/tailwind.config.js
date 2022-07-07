@@ -34,6 +34,7 @@ const info = '#1890FF';
 const infoBG = '#1890FF40';
 const warning = '#FFC34E';
 const warningBG = '#FFC34E40';
+const feedBorder = '#D1E9FF';
 
 // status colors
 
@@ -46,19 +47,25 @@ const statusQueued = '#777777';
 const bodyBG = '#F8F9FA';
 const bodyHoverBG = '#F5F6F8';
 const tagBG = '#EEEAF8';
-const badgeBG = '#E3E5E8';
+const badgeBG = '#D5D8DC';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 const backdropBG = '#302E36';
+const lightBG = '#F4F0FD';
+const taskStatusBG = '#E5F3F1';
 
 // Borders and Separators
 const mainBorder = '#DCE3EC';
 const mainSeparator = '#DCE3EC';
+const grayBorder = '#DDE3EA';
+const liteGrayBorder = '#f1f4f7';
+const liteGrayBorder60 = '#f1f4f760';
 
 // Text color - Gray variants
 const textBody = '#37352f';
 const textMuted = '#6B7280';
 const textDark = '#000000';
 const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
+const taskStatus = '#008376';
 
 module.exports = {
   purge: [
@@ -72,9 +79,9 @@ module.exports = {
     screens: {
       sm: '576px',
       md: '768px',
-      lg: '992px',
-      xl: '1200px',
-      xxl: '1440px',
+      lg: '1280px',
+      xl: '1440px',
+      xxl: '2560px',
     },
     extend: {
       borderColor: {
@@ -84,10 +91,12 @@ module.exports = {
         hover: textBody,
         focus: primary,
         search: '#D5D6D9',
+        feed: feedBorder,
       },
       boxShadow: {
         modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
         form: '2px 4px 10px rgba(0, 0, 0, 0.04)',
+        box: '1px 1px 3px 0px rgba(0, 0, 0, 0.12)',
       },
       colors: {
         'grey-body': textBody,
@@ -101,6 +110,7 @@ module.exports = {
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
         'primary-hover-lite': primaryHoverLite,
+        'primary-lite': lightBG,
         secondary: secondary,
         'secondary-lite': secondaryBG,
         'body-main': bodyBG,
@@ -137,6 +147,13 @@ module.exports = {
         'retryLimitReached-lite': warningBG,
         // Webhook statuses end
         separator: mainSeparator,
+        'border-lite': liteGrayBorder,
+        'border-lite-60': liteGrayBorder60,
+        'border-gray': grayBorder,
+        'feed-background': '#F8FBFF',
+        'feed-hover': '#EBF2F9',
+        'task-status-bg': taskStatusBG,
+        'task-status-fg': taskStatus,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -153,19 +170,22 @@ module.exports = {
       height: {
         100: '25rem',
         '70vh': '70vh',
+        '80vh': '80vh',
       },
       width: {
         120: '30rem',
         'screen-sm': '576px',
         'screen-md': '768px',
-        'screen-lg': '992px',
-        'screen-xl': '1200px',
-        'screen-xxl': '1440px',
+        'screen-lg': '1280px',
+        'screen-xl': '1440px',
+        'screen-xxl': '2560px',
         'full-hd': '1080px',
         600: '600px',
+        700: '700px',
       },
       minWidth: {
-        badgeCount: '30px',
+        badgeCount: '46px',
+        64: '16rem',
       },
       maxWidth: {
         'full-hd': '1080px',

@@ -12,9 +12,10 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isEmpty, isUndefined, toLower } from 'lodash';
 import { FormErrorData, LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -34,12 +35,15 @@ import ErrorPlaceHolder from '../../components/common/error-with-placeholder/Err
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
-import PageLayout from '../../components/containers/PageLayout';
+import PageLayout, {
+  leftPanelAntCardStyle,
+} from '../../components/containers/PageLayout';
 import Loader from '../../components/Loader/Loader';
 import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
+import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -146,8 +150,10 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
+      } else if (nameWithSpace.test(data.name)) {
         errData['name'] = 'Name with space is not allowed';
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = 'Name with delimiters are not allowed';
       } else if (
         !isUndefined(
           categories.find((item) => toLower(item.name) === toLower(data.name))
@@ -305,8 +311,10 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (/\s/g.test(data.name)) {
+      } else if (nameWithSpace.test(data.name)) {
         errData['name'] = 'Name with space is not allowed';
+      } else if (delimiterRegex.test(data.name)) {
+        errData['name'] = 'Name with delimiters are not allowed';
       } else if (
         !isUndefined(
           currentCategory?.children?.find(
@@ -397,52 +405,64 @@ const TagsPage = () => {
 
   const fetchLeftPanel = () => {
     return (
-      <>
-        <div className="tw-flex tw-justify-between tw-items-center tw-mb-3 tw-border-b">
-          <h6 className="tw-heading tw-text-base">Tag Categories</h6>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className={classNames('tw-h-7 tw-px-2 tw-mb-4', {
-                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-              })}
-              data-testid="add-category"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => {
-                setIsAddingCategory((prevState) => !prevState);
-                setErrorDataCategory(undefined);
-              }}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
-          </NonAdminAction>
-        </div>
-        {categories &&
-          categories.map((category: TagCategory) => (
-            <div
-              className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
-                category.name,
-                currentCategory?.name
-              )}`}
-              data-testid="side-panel-category"
-              key={category.name}
-              onClick={() => {
-                fetchCurrentCategory(category.name);
-              }}>
-              <p className="tw-text-center tw-self-center tag-category label-category">
-                {category.displayName ?? category.name}
-              </p>
+      <Card
+        data-testid="data-summary-container"
+        style={leftPanelAntCardStyle}
+        title={
+          <div className="tw-flex tw-justify-between tw-items-center">
+            <span
+              className="tw-heading tw-text-base tw-my-0"
+              style={{ fontSize: '14px' }}>
+              Tag Categories
+            </span>
+            <NonAdminAction
+              position="bottom"
+              title={TITLE_FOR_NON_ADMIN_ACTION}>
+              <Button
+                className={classNames('tw-h-7 tw-px-2 tw-my-2', {
+                  'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                })}
+                data-testid="add-category"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={() => {
+                  setIsAddingCategory((prevState) => !prevState);
+                  setErrorDataCategory(undefined);
+                }}>
+                <FontAwesomeIcon icon="plus" />
+              </Button>
+            </NonAdminAction>
+          </div>
+        }>
+        <>
+          {categories &&
+            categories.map((category: TagCategory) => (
+              <div
+                className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${getActiveCatClass(
+                  category.name,
+                  currentCategory?.name
+                )}`}
+                data-testid="side-panel-category"
+                key={category.name}
+                onClick={() => {
+                  fetchCurrentCategory(category.name);
+                }}>
+                <p className="tw-text-center tw-self-center tag-category label-category">
+                  {category.displayName ?? category.name}
+                </p>
 
-              {getCountBadge(
-                currentCategory?.name === category.name
-                  ? currentCategory.children?.length
-                  : category.children?.length || 0,
-                'tw-self-center',
-                currentCategory?.name === category.name
-              )}
-            </div>
-          ))}
-      </>
+                {getCountBadge(
+                  currentCategory?.name === category.name
+                    ? currentCategory.children?.length
+                    : category.children?.length || 0,
+                  'tw-self-center',
+                  currentCategory?.name === category.name
+                )}
+              </div>
+            ))}
+        </>
+      </Card>
     );
   };
 
@@ -458,7 +478,10 @@ const TagsPage = () => {
             {isLoading ? (
               <Loader />
             ) : (
-              <div className="full-height" data-testid="tags-container">
+              <div
+                className="full-height"
+                data-testid="tags-container"
+                style={{ padding: '14px' }}>
                 {currentCategory && (
                   <div
                     className="tw-flex tw-justify-between tw-items-center"
@@ -500,7 +523,7 @@ const TagsPage = () => {
                           data-testid="delete-tag-category-button"
                           size="small"
                           theme="primary"
-                          variant="contained"
+                          variant="outlined"
                           onClick={() => {
                             deleteTagHandler();
                           }}>
@@ -573,7 +596,7 @@ const TagsPage = () => {
                                       )}
                                     </div>
                                     <NonAdminAction
-                                      permission={Operation.UpdateDescription}
+                                      permission={Operation.EditDescription}
                                       position="left"
                                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                                       <button
@@ -587,7 +610,7 @@ const TagsPage = () => {
                                           data-testid="editTagDescription"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="16px"
                                         />
                                       </button>
                                     </NonAdminAction>
@@ -650,7 +673,7 @@ const TagsPage = () => {
                                             alt="delete"
                                             icon="icon-delete"
                                             title="Delete"
-                                            width="12px"
+                                            width="16px"
                                           />
                                         )}
                                       </button>
@@ -695,10 +718,12 @@ const TagsPage = () => {
                       description: '',
                       categoryType: TagCategoryType.Descriptive,
                     }}
+                    isSaveButtonDisabled={!isEmpty(errorDataCategory)}
                     onCancel={() => setIsAddingCategory(false)}
-                    onChange={(data) =>
-                      onNewCategoryChange(data as TagCategory)
-                    }
+                    onChange={(data) => {
+                      setErrorDataCategory({});
+                      onNewCategoryChange(data as TagCategory);
+                    }}
                     onSave={(data) => createCategory(data as TagCategory)}
                   />
                 )}
@@ -714,8 +739,12 @@ const TagsPage = () => {
                       description: '',
                       categoryType: '',
                     }}
+                    isSaveButtonDisabled={!isEmpty(errorDataTag)}
                     onCancel={() => setIsAddingTag(false)}
-                    onChange={(data) => onNewTagChange(data as TagCategory)}
+                    onChange={(data) => {
+                      setErrorDataTag({});
+                      onNewTagChange(data as TagCategory);
+                    }}
                     onSave={(data) => createPrimaryTag(data as TagCategory)}
                   />
                 )}

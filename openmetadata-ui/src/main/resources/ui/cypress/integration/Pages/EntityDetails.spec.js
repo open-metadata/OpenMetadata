@@ -32,11 +32,13 @@ describe('Entity Details Page', () => {
     // click on the 1st result and go to manage tab in entity details page
     cy.wait(500);
     cy.get('[data-testid="table-link"]').first().should('be.visible').click();
-    cy.get('[data-testid="Manage"]').should('be.visible').click();
+    cy.get('[data-testid="Manage"]').click();
 
     // check for delete section and delete button is available or not
     cy.get('[data-testid="danger-zone"]').scrollIntoView().should('be.visible');
-    cy.get('[data-testid="delete-button"]')
+    cy.get('[data-testid="hard-delete"] > .tw-flex')
+      .scrollIntoView()
+      .find('[data-testid="delete-button"]')
       .should('be.visible')
       .click()
       .as('deleteBtn');

@@ -21,10 +21,10 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { User } from '../../generated/entity/teams/user';
 import { formatDataResponse } from '../../utils/APIUtils';
-import MyDataPage from './MyData.component';
+import MyData from './MyData.component';
+import { MyDataProps } from './MyData.interface';
 
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
@@ -249,7 +249,7 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
-jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
+jest.mock('../recently-viewed/RecentlyViewed', () => {
   return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
 });
 
@@ -265,9 +265,9 @@ jest.mock('../MyAssetStats/MyAssetStats.component', () => {
   return jest.fn().mockReturnValue(<p>MyAssetStats</p>);
 });
 
-jest.mock('../EntityList/EntityList', () => {
-  return jest.fn().mockReturnValue(<p>EntityList</p>);
-});
+jest.mock('../EntityList/EntityList', () => ({
+  EntityListWithAntd: jest.fn().mockReturnValue(<p>EntityList.component</p>),
+}));
 
 jest.mock('../RecentSearchedTerms/RecentSearchedTerms', () => {
   return jest.fn().mockReturnValue(<p>RecentSearchedTerms</p>);
@@ -308,25 +308,29 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getTotalEntityCountByService: jest.fn().mockReturnValue(2),
 }));
 
-const feedFilterHandler = jest.fn();
+jest.mock('../RecentSearchedTerms/RecentSearchedTermsAntd', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<div>RecentSearchedTermsAntd.component</div>);
+});
 
 const fetchData = jest.fn();
 const postFeed = jest.fn();
 
-const mockProp = {
+const mockProp: MyDataProps = {
   countDashboards: 8,
   countPipelines: 1,
   countServices: 0,
   countTables: 10,
   countTopics: 5,
   countTeams: 7,
+  pendingTaskCount: 0,
   countUsers: 100,
+  countMlModal: 2,
   followedDataCount: 5,
   ownedDataCount: 5,
   error: '',
   feedData: formatDataResponse(mockData.data.hits.hits),
-  feedFilter: FeedFilter.ALL,
-  feedFilterHandler: feedFilterHandler,
   fetchData: fetchData,
   fetchFeedHandler: mockFetchFeedHandler,
   followedData: formatDataResponse(mockData.data.hits.hits),
@@ -335,6 +339,7 @@ const mockProp = {
   paging: mockPaging,
   postFeedHandler: postFeed,
   userDetails: mockUserDetails as unknown as User,
+  updateThreadHandler: jest.fn(),
 };
 
 const mockObserve = jest.fn();
@@ -347,7 +352,7 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
-    const { container } = render(<MyDataPage {...mockProp} />, {
+    const { container } = render(<MyData {...mockProp} />, {
       wrapper: MemoryRouter,
     });
     const pageLayout = await findByTestId(container, 'PageLayout');
@@ -367,7 +372,7 @@ describe('Test MyData page', () => {
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {
-    const { container } = render(<MyDataPage {...mockProp} />, {
+    const { container } = render(<MyData {...mockProp} />, {
       wrapper: MemoryRouter,
     });
 

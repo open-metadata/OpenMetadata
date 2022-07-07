@@ -51,6 +51,15 @@ def _(element, compiler, **kw):
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
 
 
+@compiles(StdDevFn, Dialects.ClickHouse)
+def _(element, compiler, **kw):
+    """Returns stdv for clickhouse database and handle empty tables.
+    If table is empty, clickhouse returns NaN.
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return "if(isNaN(stddevPop(%s)), null, stddevPop(%s))" % ((proc,) * 2)
+
+
 class StdDev(StaticMetric):
     """
     STD Metric

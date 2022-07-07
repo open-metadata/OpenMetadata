@@ -12,15 +12,23 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread, FormatedTableData } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import { FormatedTableData } from 'Models';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
 import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -30,17 +38,24 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
+import { SOCKET_EVENTS } from '../../constants/constants';
 import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { FeedFilter, Ownership } from '../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { formatDataResponse } from '../../utils/APIUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { getMyDataFilters } from '../../utils/MyDataUtils';
 import { getAllServices } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -54,6 +69,7 @@ const MyDataPage = () => {
   const [countTopics, setCountTopics] = useState<number>();
   const [countDashboards, setCountDashboards] = useState<number>();
   const [countPipelines, setCountPipelines] = useState<number>();
+  const [countMlModal, setCountMlModal] = useState<number>();
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
@@ -61,17 +77,16 @@ const MyDataPage = () => {
   const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
+  const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
-  const [feedFilter, setFeedFilter] = useState<FeedFilter>(FeedFilter.ALL);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
 
-  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
-  const feedFilterHandler = (filter: FeedFilter) => {
-    setFeedFilter(filter);
-  };
+  const [paging, setPaging] = useState<Paging>({} as Paging);
+  const { socket } = useWebSocketConnector();
 
   const setTableCount = (count = 0) => {
     setCountTables(count);
@@ -91,6 +106,11 @@ const MyDataPage = () => {
   const setTeamCount = (count = 0) => {
     setCountTeams(count);
   };
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
 
   const fetchEntityCount = () => {
     // limit=0 will fetch empty data list with total count
@@ -159,6 +179,23 @@ const MyDataPage = () => {
           jsonData['api-error-messages']['unexpected-server-response']
         );
         setCountDashboards(0);
+      });
+
+    // limit=0 will fetch empty data list with total count
+    getAllMlModal('', '', 0)
+      .then((res) => {
+        if (res.data) {
+          setCountMlModal(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setCountMlModal(0);
       });
   };
 
@@ -274,14 +311,21 @@ const MyDataPage = () => {
       });
   };
 
-  const getFeedData = (filterType: FeedFilter, after?: string) => {
+  const getFeedData = (
+    filterType?: FeedFilter,
+    after?: string,
+    type?: ThreadType
+  ) => {
     setIsFeedLoading(true);
-    const currentUserId = AppState.userDetails?.id;
-    getFeedsWithFilter(currentUserId, filterType, after)
+    getFeedsWithFilter(
+      currentUser?.id,
+      filterType ?? FeedFilter.ALL,
+      after,
+      type
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
-
         setEntityThread((prevData) => [...prevData, ...data]);
       })
       .catch((err: AxiosError) => {
@@ -295,12 +339,18 @@ const MyDataPage = () => {
       });
   };
 
-  const postFeedHandler = (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
+  const handleFeedFetchFromFeedList = useCallback(
+    (filterType?: FeedFilter, after?: string, type?: ThreadType) => {
+      !after && setEntityThread([]);
+      getFeedData(filterType, after, type);
+    },
+    [getFeedData, setEntityThread]
+  );
 
+  const postFeedHandler = (value: string, id: string) => {
     const data = {
       message: value,
-      from: currentUser,
+      from: currentUser?.name,
     };
     postFeedById(id, data)
       .then((res: AxiosResponse) => {
@@ -332,7 +382,7 @@ const MyDataPage = () => {
                 if (thread.id === data.id) {
                   return {
                     ...thread,
-                    posts: data.posts.slice(-3),
+                    posts: data.posts && data.posts.slice(-3),
                     postsCount: data.postsCount,
                   };
                 } else {
@@ -350,6 +400,15 @@ const MyDataPage = () => {
         const message = error?.message;
         showErrorToast(message ?? onErrorText);
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   const fetchOMDMode = () => {
@@ -370,15 +429,31 @@ const MyDataPage = () => {
       });
   };
 
+  // Fetch tasks list to show count for Pending tasks
+  const fetchMyTaskData = useCallback(() => {
+    if (!currentUser || !currentUser.id) {
+      return;
+    }
+
+    getFeedsWithFilter(
+      currentUser.id,
+      FeedFilter.ASSIGNED_TO,
+      undefined,
+      ThreadType.Task
+    ).then((res: AxiosResponse) => {
+      res.data && setPendingTaskCount(res.data.paging.total);
+    });
+  }, [currentUser]);
+
   useEffect(() => {
     fetchOMDMode();
     fetchData(true);
+    fetchMyTaskData();
   }, []);
 
   useEffect(() => {
-    getFeedData(feedFilter);
-    setEntityThread([]);
-  }, [feedFilter]);
+    getFeedData();
+  }, []);
 
   useEffect(() => {
     if (
@@ -390,6 +465,36 @@ const MyDataPage = () => {
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ACTIVITY_FEED, (newActivity) => {
+        if (newActivity) {
+          setActivityFeeds((prevActivities) => [
+            JSON.parse(newActivity),
+            ...prevActivities,
+          ]);
+        }
+      });
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setPendingTaskCount((prevCount) =>
+            prevCount ? prevCount + 1 : prevCount
+          );
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.ACTIVITY_FEED);
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+    };
+  }, [socket]);
+
+  const onRefreshFeeds = () => {
+    getFeedData();
+    setActivityFeeds([]);
+  };
+
   return (
     <PageContainerV1>
       {!isUndefined(countServices) &&
@@ -398,10 +503,13 @@ const MyDataPage = () => {
       !isUndefined(countDashboards) &&
       !isUndefined(countPipelines) &&
       !isUndefined(countTeams) &&
+      !isUndefined(countMlModal) &&
       !isUndefined(countUsers) ? (
         <Fragment>
           <MyData
+            activityFeeds={activityFeeds}
             countDashboards={countDashboards}
+            countMlModal={countMlModal}
             countPipelines={countPipelines}
             countServices={countServices}
             countTables={countTables}
@@ -411,16 +519,17 @@ const MyDataPage = () => {
             deletePostHandler={deletePostHandler}
             error={error}
             feedData={entityThread || []}
-            feedFilter={feedFilter}
-            feedFilterHandler={feedFilterHandler}
-            fetchFeedHandler={getFeedData}
+            fetchFeedHandler={handleFeedFetchFromFeedList}
             followedData={followedData || []}
             followedDataCount={followedDataCount}
             isFeedLoading={isFeedLoading}
             ownedData={ownedData || []}
             ownedDataCount={ownedDataCount}
             paging={paging}
+            pendingTaskCount={pendingTaskCount}
             postFeedHandler={postFeedHandler}
+            updateThreadHandler={updateThreadHandler}
+            onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
         </Fragment>

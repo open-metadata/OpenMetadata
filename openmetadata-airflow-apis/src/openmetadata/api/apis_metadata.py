@@ -10,7 +10,7 @@
 #  limitations under the License.
 from typing import Any, Dict, Optional
 
-# TODO LOG (just link v1), ENABLE DAG, DISABLE DAG (play pause)
+# TODO LOG (just link v1)
 APIS_METADATA = [
     {
         "name": "deploy_dag",
@@ -96,6 +96,34 @@ APIS_METADATA = [
         "name": "rest_status",
         "description": "Get the status of Airflow REST status",
         "http_method": "GET",
+    },
+    {
+        "name": "enable_dag",
+        "description": "Mark the DAG as enabled to run on the next schedule.",
+        "http_method": "POST",
+        "arguments": [],
+        "post_arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
+    },
+    {
+        "name": "disable_dag",
+        "description": "Mark the DAG as disabled. It will not run on the next schedule.",
+        "http_method": "POST",
+        "arguments": [],
+        "post_arguments": [
+            {
+                "name": "dag_id",
+                "description": "The id of the dag",
+                "form_input_type": "text",
+                "required": True,
+            },
+        ],
     },
 ]
 

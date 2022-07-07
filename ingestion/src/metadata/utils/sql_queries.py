@@ -135,13 +135,24 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = """
             """
 
 SNOWFLAKE_SQL_STATEMENT = """
-        select query_type,query_text,user_name,database_name,
-        schema_name,start_time,end_time
-        from table(information_schema.query_history(
-        end_time_range_start=>to_timestamp_ltz('{start_date}'),
-        end_time_range_end=>to_timestamp_ltz('{end_date}'),RESULT_LIMIT=>{result_limit}))
+        SELECT 
+          query_type,
+          query_text,
+          user_name,
+          database_name,
+          schema_name,
+          start_time,
+          end_time
+        FROM table(
+          information_schema.query_history(
+            end_time_range_start => to_timestamp_ltz('{start_time}'),
+            end_time_range_end => to_timestamp_ltz('{end_time}'),
+            RESULT_LIMIT => {result_limit}
+            )
+        )
         WHERE QUERY_TYPE NOT IN ('ROLLBACK','CREATE_USER','CREATE_ROLE','CREATE_NETWORK_POLICY','ALTER_ROLE','ALTER_NETWORK_POLICY','ALTER_ACCOUNT','DROP_SEQUENCE','DROP_USER','DROP_ROLE','DROP_NETWORK_POLICY','REVOKE','UNLOAD','USE','DELETE','DROP','TRUNCATE_TABLE','ALTER_SESSION','COPY','UPDATE','COMMIT','SHOW','ALTER','DESCRIBE','CREATE_TABLE','PUT_FILES','GET_FILES');
         """
+SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
 NEO4J_AMUNDSEN_TABLE_QUERY = textwrap.dedent(
     """
@@ -285,6 +296,7 @@ MSSQL_SQL_USAGE_STATEMENT = """
       CROSS APPLY sys.Dm_exec_sql_text(p.plan_handle) AS t
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
+      WHERE s.last_execution_time between '{start_time}' and '{end_time}'
       ORDER BY s.last_execution_time DESC;
 """
 
@@ -306,10 +318,41 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
 """
 
 
-FETCH_SNOWFLAKE_ALL_TAGS = (
-    "select * from table(information_schema.TAG_REFERENCES_ALL_COLUMNS('{}', 'table'));"
-)
+SNOWFLAKE_FETCH_ALL_TAGS = """
+    select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
+    from snowflake.account_usage.tag_references
+    where OBJECT_DATABASE = '{database_name}'
+      and OBJECT_SCHEMA = '{schema_name}'
+"""
 
-FETCH_SNOWFLAKE_METADATA = """
-select TABLE_NAME,TABLE_TYPE,COMMENT from information_schema.tables where TABLE_SCHEMA = '{}' 
+
+SNOWFLAKE_GET_TABLE_NAMES = """
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+"""
+
+SNOWFLAKE_GET_VIEW_NAMES = """
+select TABLE_NAME from information_schema.tables where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+"""
+
+SNOWFLAKE_GET_COMMENTS = """
+    select COMMENT
+    from information_schema.TABLES 
+    WHERE TABLE_SCHEMA = '{schema_name}'
+      AND TABLE_NAME = '{table_name}'
+"""
+
+BIGQUERY_USAGE_STATEMENT = """
+ SELECT
+   project_id as database_name,
+   user_email as user_name,
+   statement_type as query_type,
+   start_time,
+   end_time,
+   query as query_text,
+   null as schema_name
+FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
+  AND job_type = "QUERY"
+  AND state = "DONE"
+  AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
 """

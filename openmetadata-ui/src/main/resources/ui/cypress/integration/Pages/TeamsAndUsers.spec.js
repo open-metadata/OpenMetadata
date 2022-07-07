@@ -126,6 +126,8 @@ describe('TeamsAndUsers page', () => {
         expect(text).equal(updatedName);
       });
 
+    cy.wait(500);
+
     cy.get('[data-testid="edit-description"] > [data-testid="image"]')
       .should('be.visible')
       .click();
@@ -151,6 +153,7 @@ describe('TeamsAndUsers page', () => {
     cy.get(
       '.tw-modal-body > [data-testid="search-bar-container"] > .tw-flex > [data-testid="searchbar"]'
     )
+      .scrollIntoView()
       .should('be.visible')
       .type(searchString);
 
@@ -204,7 +207,10 @@ describe('TeamsAndUsers page', () => {
       .invoke('text')
       .then((name) => {
         cy.get('[data-testid="dropdown-item"] > .tw-z-10').click();
-        cy.get('[data-testid="searchbar"]').should('be.visible').type(name);
+        cy.get('[data-testid="searchbar"]')
+          .scrollIntoView()
+          .should('be.visible')
+          .type(name);
         cy.get('.tw-grid > [data-testid="user-card-container"]')
           .should('be.visible')
           .contains(name)
@@ -257,9 +263,6 @@ describe('TeamsAndUsers page', () => {
   });
 
   it('Assets tab should work properly', () => {
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=*&sort_field=last_updated_timestamp&sort_order=desc&index=*'
-    ).as('searchApi');
     cy.get('[data-testid="Assets"]').should('be.visible').click();
     cy.get('[data-testid="Assets"]').should('have.class', 'active');
     cy.get('[data-testid="Assets"] > .tw-py-px > [data-testid="filter-count"]')
@@ -271,11 +274,7 @@ describe('TeamsAndUsers page', () => {
     cy.contains('Your team does not have any').should('be.visible');
     cy.get('a > .button-comp').should('be.visible').contains('Explore');
     searchEntity(SEARCH_ENTITY_TABLE.table_1.term);
-    cy.intercept(
-      '/api/v1/search/query?q=*&from=0&size=10&sort_order=desc&index=*'
-    ).as('searchApi');
 
-    cy.wait('@searchApi');
     cy.get('[data-testid="table-link"]')
       .first()
       .contains(SEARCH_ENTITY_TABLE.table_1.term)
@@ -285,7 +284,7 @@ describe('TeamsAndUsers page', () => {
 
     cy.get('[data-testid="Manage"]').should('be.visible').click();
     cy.get('[data-testid="owner-dropdown"]').should('be.visible').click();
-    
+
     cy.get('[data-testid="dropdown-tab"]').eq(0).should('exist').click();
 
     cy.get('[data-testid="list-item"] > .tw-truncate')
@@ -402,27 +401,32 @@ describe('TeamsAndUsers page', () => {
       .should('be.visible')
       .type(NEW_USER.description);
 
-    cy.get(
-      ':nth-child(5) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[aria-label="Select teams"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="Cloud_Infra"]').should('be.visible').click();
-    cy.get('[data-testid="close-dropdown"]').click();
+    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
 
-    cy.get(
-      ':nth-child(6) > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-    )
+    cy.get('[data-testid="roles-dropdown"]')
+      .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[data-testid="Data Consumer"]').should('be.visible').click();
+    cy.get('[data-testid="Data Consumer"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="close-dropdown"]').click();
 
-    cy.get('[data-testid="save-user"]').should('be.visible').click();
+    cy.get('[data-testid="save-user"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
+      .click()
       .type(NEW_USER.display_name);
 
     cy.wait(500);
@@ -448,6 +452,7 @@ describe('TeamsAndUsers page', () => {
       'activeCategory'
     );
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(NEW_USER.display_name);
 
@@ -462,15 +467,22 @@ describe('TeamsAndUsers page', () => {
       .should('not.be.visible')
       .click();
 
-    cy.get('.tw-modal-container').should('be.visible');
-    cy.contains('Are you sure you want to delete').should('be.visible');
-    cy.get('[data-testid="save-button"]').should('be.visible').click();
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.contains(`Delete ${NEW_USER.display_name}`).should('be.visible');
+    cy.get('[data-testid="confirm-button"]')
+      .should('be.visible')
+      .as('confirmBtn');
+    cy.get('@confirmBtn').should('be.disabled');
+    cy.get('[data-testid="confirmation-text-input"]')
+      .should('be.visible')
+      .type(DELETE_TERM);
+    cy.get('@confirmBtn').should('not.be.disabled').click();
 
+    cy.reload();
     cy.get('[data-testid="searchbar"]')
+      .scrollIntoView()
       .should('be.visible')
       .type(NEW_USER.display_name);
-
-    cy.wait(500);
 
     cy.get('[data-testid="no-data-image"]').should('be.visible');
     cy.contains('No user available').should('be.visible');

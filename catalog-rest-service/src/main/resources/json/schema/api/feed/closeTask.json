@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/closeTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CloseTaskRequest",
+  "description": "Close Task request",
+  "type": "object",
+  "properties": {
+    "comment": {
+      "description": "The closing comment explaining why the task is being closed.",
+      "type": "string"
+    }
+  },
+  "required": ["comment"],
+  "additionalProperties": false
+}

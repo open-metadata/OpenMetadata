@@ -29,9 +29,19 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineType,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
+    DatabaseServiceQueryUsagePipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
@@ -54,7 +64,7 @@ class OMetaServiceTest(TestCase):
 
     data = {
         "type": "mysql",
-        "serviceName": "local_mysql",
+        "serviceName": "test-workflow-mysql",
         "serviceConnection": {
             "config": {
                 "type": "Mysql",
@@ -63,7 +73,7 @@ class OMetaServiceTest(TestCase):
                 "hostPort": "localhost:3306",
             }
         },
-        "sourceConfig": {"config": {"enableDataProfiler": False}},
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
     # TODO update to "snowflake-usage" after https://github.com/open-metadata/OpenMetadata/issues/4469
@@ -92,10 +102,14 @@ class OMetaServiceTest(TestCase):
 
         Mock a db service to build the IngestionPipeline
         """
-        service: DatabaseService = cls.metadata.get_service_or_create(
+        cls.service: DatabaseService = cls.metadata.get_service_or_create(
             entity=DatabaseService, config=cls.workflow_source
         )
-        cls.service_entity_id = service.id
+
+        cls.usage_service: DatabaseService = cls.metadata.get_service_or_create(
+            entity=DatabaseService,
+            config=cls.usage_workflow_source,
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -104,7 +118,7 @@ class OMetaServiceTest(TestCase):
         """
         cls.metadata.delete(
             entity=DatabaseService,
-            entity_id=cls.service_entity_id,
+            entity_id=cls.service.id,
             recursive=True,
             hard_delete=True,
         )
@@ -120,14 +134,15 @@ class OMetaServiceTest(TestCase):
             name="test_ingestion_workflow",
             pipelineType=PipelineType.metadata,
             fullyQualifiedName="local_mysql.test_ingestion_workflow",
-            source=self.workflow_source,
+            sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-04-10",
+                startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.service_entity_id,
+                id=self.service.id,
                 type="databaseService",
+                name=self.service.name.__root__,
             ),
         )
 
@@ -147,14 +162,15 @@ class OMetaServiceTest(TestCase):
             name="test_usage_workflow",
             pipelineType=PipelineType.usage,
             fullyQualifiedName="local_snowflake.test_usage_workflow",
-            source=self.usage_workflow_source,
+            sourceConfig=SourceConfig(config=DatabaseServiceQueryUsagePipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-04-10",
+                startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.service_entity_id,
+                id=self.usage_service.id,
                 type="databaseService",
+                name=self.usage_service.name.__root__,
             ),
         )
 
@@ -176,14 +192,15 @@ class OMetaServiceTest(TestCase):
             name="test_profiler_workflow",
             pipelineType=PipelineType.profiler,
             fullyQualifiedName="local_mysql.test_profiler_workflow",
-            source=self.workflow_source,
+            sourceConfig=SourceConfig(config=DatabaseServiceProfilerPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-04-10",
+                startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.service_entity_id,
+                id=self.service.id,
                 type="databaseService",
+                name=self.service.name.__root__,
             ),
         )
 

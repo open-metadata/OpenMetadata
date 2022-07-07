@@ -11,10 +11,10 @@
 
 import logging
 import traceback
+from logging.config import DictConfigurator
 from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
-from sql_metadata import Parser
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -33,7 +33,6 @@ from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequ
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
@@ -50,35 +49,32 @@ from metadata.ingestion.models.ometa_policy import OMetaPolicy
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.models.table_metadata import Chart, Dashboard, DeleteTable
+from metadata.ingestion.models.table_metadata import DeleteTable
 from metadata.ingestion.models.table_tests import OMetaTableTest
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
+from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import (
     _create_lineage_by_table_name,
-    ingest_lineage_by_query,
+    get_lineage_by_query,
 )
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
 
 logger = ingestion_logger()
 
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
-
-om_chart_type_dict = {
-    "line": ChartType.Line,
-    "table": ChartType.Table,
-    "dist_bar": ChartType.Bar,
-    "bar": ChartType.Bar,
-    "big_number": ChartType.Line,
-    "histogram": ChartType.Histogram,
-    "big_number_total": ChartType.Line,
-    "dual_line": ChartType.Line,
-    "line_multi": ChartType.Line,
-    "treemap": ChartType.Area,
-    "box_plot": ChartType.Bar,
-}
 
 
 class MetadataRestSinkConfig(ConfigModel):
@@ -117,9 +113,9 @@ class MetadataRestSink(Sink[Entity]):
             self.write_tables(record)
         elif isinstance(record, Topic):
             self.write_topics(record)
-        elif isinstance(record, Chart):
+        elif isinstance(record, CreateChartRequest):
             self.write_charts(record)
-        elif isinstance(record, Dashboard):
+        elif isinstance(record, CreateDashboardRequest):
             self.write_dashboards(record)
         elif isinstance(record, Location):
             self.write_locations(record)
@@ -143,10 +139,61 @@ class MetadataRestSink(Sink[Entity]):
             self.write_table_tests(record)
         elif isinstance(record, OMetaPipelineStatus):
             self.write_pipeline_status(record)
+        elif isinstance(record, DataModelLink):
+            self.write_datamodel(record)
+        elif isinstance(record, DashboardUsage):
+            self.write_dashboard_usage(record)
         else:
-            logging.info(
-                f"Ignoring the record due to unknown Record type {type(record)}"
-            )
+            logging.debug(f"Processing Create request {type(record)}")
+            self.write_create_request(record)
+
+    def write_create_request(self, entity_request) -> None:
+        """
+        Send to OM the request creation received as is.
+        :param entity_request: Create Entity request
+        """
+        log = f"{type(entity_request).__name__} [{entity_request.name.__root__}]"
+        try:
+            created = self.metadata.create_or_update(entity_request)
+            if created:
+                self.status.records_written(
+                    f"{type(created).__name__}: {created.fullyQualifiedName.__root__}"
+                )
+                logger.info(f"Successfully ingested {log}")
+            else:
+                self.status.failure(log)
+                logger.error(f"Failed to ingest {log}")
+
+        except APIError as err:
+            logger.error(f"Failed to ingest {log}")
+            logger.error(err)
+            self.status.failure(log)
+
+    def write_datamodel(self, datamodel_link: DataModelLink) -> None:
+        """
+        Send to OM the DataModel based on a table ID
+        :param datamodel_link: Table ID + Data Model
+        """
+
+        table = self.metadata.get_by_name(entity=Table, fqn=datamodel_link.fqn)
+
+        self.metadata.ingest_table_data_model(
+            table=table, data_model=datamodel_link.datamodel
+        )
+
+    def write_dashboard_usage(self, dashboard_usage: DashboardUsage) -> None:
+        """
+        Send a UsageRequest update to a dashboard entity
+        :param dashboard_usage: dashboard entity and usage request
+        """
+
+        self.metadata.publish_dashboard_usage(
+            dashboard=dashboard_usage.dashboard,
+            dashboard_usage_request=dashboard_usage.usage,
+        )
+        logger.info(
+            f"Successfully ingested usage for {dashboard_usage.dashboard.fullyQualifiedName.__root__}"
+        )
 
     def write_tables(self, db_schema_and_table: OMetaDatabaseAndTable):
         try:
@@ -238,12 +285,16 @@ class MetadataRestSink(Sink[Entity]):
                     table_queries=db_schema_and_table.table.tableQueries,
                 )
 
-            if db_schema_and_table.table.viewDefinition is not None:
-                lineage_status = ingest_lineage_by_query(
+            if (
+                db_schema_and_table.table.viewDefinition is not None
+                and db_schema_and_table.table.viewDefinition.__root__
+            ):
+                lineage_status = get_lineage_by_query(
                     self.metadata,
                     query=db_schema_and_table.table.viewDefinition.__root__,
                     service_name=db.service.name,
-                    database=db_schema_and_table.database.name.__root__,
+                    database_name=db_schema_and_table.database.name.__root__,
+                    schema_name=db_schema_and_table.database_schema.name.__root__,
                 )
                 if not lineage_status:
                     self.create_lineage_via_es(db_schema_and_table, db_schema, db)
@@ -272,6 +323,8 @@ class MetadataRestSink(Sink[Entity]):
         try:
             topic_request = CreateTopicRequest(
                 name=topic.name,
+                displayName=topic.displayName,
+                description=topic.description,
                 service=topic.service,
                 partitions=topic.partitions,
                 replicationFactor=topic.replicationFactor,
@@ -295,27 +348,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Topic: {topic.name}")
 
-    def write_charts(self, chart: Chart):
+    def write_charts(self, chart: CreateChartRequest):
         try:
-            om_chart_type = ChartType.Other
-            if (
-                chart.chart_type is not None
-                and chart.chart_type in om_chart_type_dict.keys()
-            ):
-                om_chart_type = om_chart_type_dict[chart.chart_type]
-
-            chart_request = CreateChartRequest(
-                name=chart.name,
-                displayName=chart.displayName,
-                description=chart.description,
-                chartType=om_chart_type,
-                chartUrl=chart.url,
-                service=chart.service,
-            )
-            created_chart = self.metadata.create_or_update(chart_request)
-            self.charts_dict[chart.name] = EntityReference(
-                id=created_chart.id, type="chart"
-            )
+            created_chart = self.metadata.create_or_update(chart)
             logger.info(f"Successfully ingested chart {created_chart.displayName}")
             self.status.records_written(f"Chart: {created_chart.displayName}")
         except (APIError, ValidationError) as err:
@@ -323,19 +358,9 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(err)
             self.status.failure(f"Chart: {chart.displayName}")
 
-    def write_dashboards(self, dashboard: Dashboard):
+    def write_dashboards(self, dashboard: CreateDashboardRequest):
         try:
-            charts = self._get_chart_references(dashboard)
-
-            dashboard_request = CreateDashboardRequest(
-                name=dashboard.name,
-                displayName=dashboard.displayName,
-                description=dashboard.description,
-                dashboardUrl=dashboard.url,
-                charts=charts,
-                service=dashboard.service,
-            )
-            created_dashboard = self.metadata.create_or_update(dashboard_request)
+            created_dashboard = self.metadata.create_or_update(dashboard)
             logger.info(
                 f"Successfully ingested dashboard {created_dashboard.displayName}"
             )
@@ -344,13 +369,6 @@ class MetadataRestSink(Sink[Entity]):
             logger.error(f"Failed to ingest dashboard {dashboard.name}")
             logger.error(err)
             self.status.failure(f"Dashboard {dashboard.name}")
-
-    def _get_chart_references(self, dashboard: Dashboard) -> []:
-        chart_references = []
-        for chart_id in dashboard.charts:
-            if chart_id in self.charts_dict.keys():
-                chart_references.append(self.charts_dict[chart_id])
-        return chart_references
 
     def write_locations(self, location: Location):
         try:
@@ -458,7 +476,6 @@ class MetadataRestSink(Sink[Entity]):
 
     def write_lineage(self, add_lineage: AddLineageRequest):
         try:
-            logger.info(add_lineage)
             created_lineage = self.metadata.add_lineage(add_lineage)
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")
@@ -596,19 +613,21 @@ class MetadataRestSink(Sink[Entity]):
 
     def create_lineage_via_es(self, db_schema_and_table, db_schema, db):
         try:
-            parser = Parser(db_schema_and_table.table.viewDefinition.__root__)
+            parser = LineageRunner(db_schema_and_table.table.viewDefinition.__root__)
             to_table_name = db_schema_and_table.table.name.__root__
 
-            for from_table_name in parser.tables:
-                if "." not in from_table_name:
-                    from_table_name = f"{db_schema.name.__root__}.{from_table_name}"
+            for from_table_name in parser.source_tables:
+
                 _create_lineage_by_table_name(
-                    self.metadata,
-                    from_table_name,
-                    f"{db_schema.name.__root__}.{to_table_name}",
-                    db.service.name,
-                    db_schema_and_table.database.name.__root__,
+                    metadata=self.metadata,
+                    from_table=str(from_table_name),
+                    to_table=f"{db_schema.name.__root__}.{to_table_name}",
+                    service_name=db.service.name,
+                    database_name=db_schema_and_table.database.name.__root__,
+                    schema_name=db_schema_and_table.table.viewDefinition.__root__,
+                    query=db_schema_and_table.table.viewDefinition.__root__,
                 )
+
         except Exception as e:
             logger.error("Failed to create view lineage")
             logger.debug(f"Query : {db_schema_and_table.table.viewDefinition.__root__}")

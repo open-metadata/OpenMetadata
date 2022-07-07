@@ -13,17 +13,20 @@
 
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -63,7 +66,6 @@ import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/Modal
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-import Tags from '../tags/tags';
 import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
@@ -108,6 +110,8 @@ const DashboardDetails = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  updateThreadHandler,
+  entityFieldTaskCount,
 }: DashboardDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -126,6 +130,9 @@ const DashboardDetails = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
 
   const onEntityFieldSelect = (value: string) => {
     setSelectedField(value);
@@ -163,7 +170,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -194,7 +201,6 @@ const DashboardDetails = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: true,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
       position: 4,
     },
@@ -323,15 +329,22 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editChartTags) {
-      const prevTags = editChartTags.chart.tags?.filter((tag) =>
+  const handleChartTagSelection = (
+    selectedTags?: Array<EntityTags>,
+    chart?: {
+      chart: ChartType;
+      index: number;
+    }
+  ) => {
+    const chartTag = isUndefined(editChartTags) ? chart : editChartTags;
+    if (selectedTags && chartTag) {
+      const prevTags = chartTag.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
       );
       const newTags = selectedTags
         .filter(
           (selectedTag) =>
-            !editChartTags.chart.tags?.some(
+            !chartTag.chart.tags?.some(
               (tag) => tag.tagFQN === selectedTag.tagFQN
             )
         )
@@ -343,19 +356,13 @@ const DashboardDetails = ({
         }));
 
       const updatedChart = {
-        ...editChartTags.chart,
+        ...chartTag.chart,
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
-      const jsonPatch = compare(charts[editChartTags.index], updatedChart);
-      chartTagUpdateHandler(
-        editChartTags.index,
-        editChartTags.chart.id,
-        jsonPatch
-      );
-      setEditChartTags(undefined);
-    } else {
-      setEditChartTags(undefined);
+      const jsonPatch = compare(charts[chartTag.index], updatedChart);
+      chartTagUpdateHandler(chartTag.index, chartTag.chart.id, jsonPatch);
     }
+    setEditChartTags(undefined);
   };
 
   const fetchTagsAndGlossaryTerms = () => {
@@ -402,8 +409,11 @@ const DashboardDetails = ({
       });
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -443,6 +453,13 @@ const DashboardDetails = ({
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
 
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
+
   return (
     <PageContainer>
       <div className="tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col">
@@ -450,7 +467,7 @@ const DashboardDetails = ({
           isTagEditable
           deleted={deleted}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={dashboardFQN}
@@ -487,8 +504,12 @@ const DashboardDetails = ({
                     <div className="tw-col-span-full tw--ml-5">
                       <Description
                         description={description}
+                        entityFieldTasks={getEntityFieldThreadCounts(
+                          EntityField.DESCRIPTION,
+                          entityFieldTaskCount
+                        )}
                         entityFieldThreads={getEntityFieldThreadCounts(
-                          'description',
+                          EntityField.DESCRIPTION,
                           entityFieldThreadCount
                         )}
                         entityFqn={dashboardFQN}
@@ -530,13 +551,15 @@ const DashboardDetails = ({
                                 to={{ pathname: chart.chartUrl }}>
                                 <span className="tw-flex">
                                   <span className="tw-mr-1">
-                                    {chart.displayName}
+                                    {getEntityName(
+                                      chart as unknown as EntityReference
+                                    )}
                                   </span>
                                   <SVGIcons
                                     alt="external-link"
                                     className="tw-align-middle"
                                     icon="external-link"
-                                    width="12px"
+                                    width="16px"
                                   />
                                 </span>
                               </Link>
@@ -566,7 +589,7 @@ const DashboardDetails = ({
                                         Boolean(owner)
                                       )}
                                       isOwner={hasEditAccess()}
-                                      permission={Operation.UpdateDescription}
+                                      permission={Operation.EditDescription}
                                       position="top">
                                       <button
                                         className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
@@ -577,7 +600,7 @@ const DashboardDetails = ({
                                           alt="edit"
                                           icon="icon-edit"
                                           title="Edit"
-                                          width="10px"
+                                          width="16px"
                                         />
                                       </button>
                                     </NonAdminAction>
@@ -610,10 +633,11 @@ const DashboardDetails = ({
                                     Boolean(owner)
                                   )}
                                   isOwner={hasEditAccess()}
-                                  permission={Operation.UpdateTags}
+                                  permission={Operation.EditTags}
                                   position="left"
                                   trigger="click">
                                   <TagsContainer
+                                    showAddTagButton
                                     editable={editChartTags?.index === index}
                                     isLoading={
                                       isTagLoading &&
@@ -627,29 +651,12 @@ const DashboardDetails = ({
                                       handleChartTagSelection();
                                     }}
                                     onSelectionChange={(tags) => {
-                                      handleChartTagSelection(tags);
-                                    }}>
-                                    {chart.tags?.length ? (
-                                      <button
-                                        className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        data-testid="edit-tags">
-                                        <SVGIcons
-                                          alt="edit"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="10px"
-                                        />
-                                      </button>
-                                    ) : (
-                                      <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                        <Tags
-                                          startWith="+ "
-                                          tag="Add tag"
-                                          type="outlined"
-                                        />
-                                      </span>
-                                    )}
-                                  </TagsContainer>
+                                      handleChartTagSelection(tags, {
+                                        chart,
+                                        index,
+                                      });
+                                    }}
+                                  />
                                 </NonAdminAction>
                               )}
                             </td>
@@ -673,6 +680,8 @@ const DashboardDetails = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -693,10 +702,11 @@ const DashboardDetails = ({
                   />
                 </div>
               )}
-              {activeTab === 4 && !deleted && (
+              {activeTab === 4 && (
                 <div>
                   <ManageTabComponent
                     allowDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     deletEntityMessage={getDeleteEntityMessage()}
@@ -704,6 +714,8 @@ const DashboardDetails = ({
                     entityName={dashboardDetails.name}
                     entityType={EntityType.DASHBOARD}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.DASHBOARD}
                     onSave={onSettingsUpdate}
                   />
@@ -735,6 +747,8 @@ const DashboardDetails = ({
           open={Boolean(threadLink)}
           postFeedHandler={postFeedHandler}
           threadLink={threadLink}
+          threadType={threadType}
+          updateThreadHandler={updateThreadHandler}
           onCancel={onThreadPanelClose}
         />
       ) : null}

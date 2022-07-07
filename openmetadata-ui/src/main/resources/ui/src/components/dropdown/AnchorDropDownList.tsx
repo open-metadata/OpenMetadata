@@ -33,7 +33,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
         aria-labelledby="menu-button"
         aria-orientation="vertical"
         className="tw-origin-top-right tw-absolute tw-z-9998
-              tw-right-0 tw-mt-2 tw-w-36 tw-rounded-md tw-shadow-lg
+              tw-right-0 tw-mt-2 tw-min-w-max tw-rounded-md tw-shadow-lg
               tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
         role="menu">
         <div className="py-1" role="none">
@@ -73,7 +73,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                                 alt="external-link"
                                 className="tw-align-middle"
                                 icon="external-link"
-                                width="12px"
+                                width="16px"
                               />
                             </span>
                           ) : (
@@ -89,7 +89,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                                 alt="external-link"
                                 className="tw-align-middle"
                                 icon="external-link"
-                                width="12px"
+                                width="16px"
                               />
                             </span>
                           ) : (

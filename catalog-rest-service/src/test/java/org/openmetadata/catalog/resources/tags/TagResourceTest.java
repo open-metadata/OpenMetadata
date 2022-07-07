@@ -54,7 +54,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResource.CategoryList;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -100,11 +99,7 @@ public class TagResourceTest extends CatalogApplicationTest {
   }
 
   private TagLabel getTagLabel(String tagName) throws HttpResponseException {
-    Tag tag = TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS);
-    return new TagLabel()
-        .withTagFQN(tag.getFullyQualifiedName())
-        .withDescription(tag.getDescription())
-        .withSource(Source.TAG);
+    return EntityUtil.getTagLabel(TagResourceTest.getTag(tagName, ADMIN_AUTH_HEADERS));
   }
 
   @Test
@@ -385,12 +380,8 @@ public class TagResourceTest extends CatalogApplicationTest {
   @Test
   void put_primaryTag_200() throws HttpResponseException {
     // Update the tag name from User.Address to User.AddressUpdated
-    CreateTag create = new CreateTag().withName("AddressUpdated").withDescription("updatedDescription");
+    CreateTag create = new CreateTag().withName("Address").withDescription("updateDescription");
     updatePrimaryTag(USER_TAG_CATEGORY.getName(), ADDRESS_TAG.getName(), create, ADMIN_AUTH_HEADERS);
-
-    // Revert the tag name from User.AddressUpdated back to User.Address
-    create.withName(ADDRESS_TAG.getName());
-    updatePrimaryTag(USER_TAG_CATEGORY.getName(), "AddressUpdated", create, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -532,7 +523,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("tags/" + category + "/" + primaryTag + "/" + secondaryTag);
 
     // Ensure PUT returns the updated secondary tag
-    Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.OK, authHeaders);
+    Tag returnedTag = TestUtils.put(target, update, Tag.class, Status.CREATED, authHeaders);
     validate(parentHref, returnedTag, update.getName(), update.getDescription(), updatedBy);
 
     // Ensure GET returns the updated primary tag

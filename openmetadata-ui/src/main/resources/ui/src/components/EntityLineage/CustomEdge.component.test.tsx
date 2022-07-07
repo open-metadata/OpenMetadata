@@ -18,7 +18,7 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { ArrowHeadType, EdgeProps, Position } from 'react-flow-renderer';
+import { EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomEdge } from './CustomEdge.component';
 
@@ -35,8 +35,7 @@ const mockCustomEdgeProp = {
   sourcePosition: Position.Left,
   targetPosition: Position.Right,
   style: {},
-  arrowHeadType: ArrowHeadType.ArrowClosed,
-  markerEndId: '',
+  markerEnd: '',
   data: {
     source: 'node1',
     target: 'node2',

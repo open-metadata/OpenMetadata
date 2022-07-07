@@ -19,11 +19,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -36,17 +35,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
-  }
-
-  public List<EntityReference> getEntityReferences(List<UUID> ids) {
-    if (ids == null) {
-      return null;
-    }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id));
-    }
-    return entityReferences;
   }
 
   @Override
@@ -109,7 +97,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(Team team) throws IOException {
-    List<String> userIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
+    List<EntityRelationshipRecord> userIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
   }
 
@@ -120,7 +108,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getDefaultRoles(Team team) throws IOException {
-    List<String> defaultRoleIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
+    List<EntityRelationshipRecord> defaultRoleIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
   }
 

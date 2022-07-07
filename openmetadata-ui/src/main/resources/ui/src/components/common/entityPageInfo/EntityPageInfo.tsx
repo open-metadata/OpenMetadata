@@ -23,6 +23,7 @@ import { SettledStatus } from '../../../enums/axios.enum';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
+import { useAfterMount } from '../../../hooks/useAfterMount';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
 import {
@@ -96,6 +97,9 @@ const EntityPageInfo = ({
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
+    document.getElementById('version-and-follow-section')?.offsetWidth
+  );
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -184,7 +188,7 @@ const EntityPageInfo = ({
   const getVersionButton = (version: string) => {
     return (
       <div
-        className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+        className="tw-flex tw-h-6 tw-ml-2"
         data-testid="version"
         onClick={versionHandler}>
         <span
@@ -196,7 +200,7 @@ const EntityPageInfo = ({
           )}>
           <button
             className={classNames(
-              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center',
+              'tw-text-xs tw-border-r tw-font-medium tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-self-center tw-h-full tw-flex tw-items-center',
               !isUndefined(isVersionSelected)
                 ? 'tw-border-white'
                 : 'tw-border-primary'
@@ -210,7 +214,7 @@ const EntityPageInfo = ({
           </button>
 
           <span
-            className="tw-text-xs tw-border-l-0 tw-font-medium tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
+            className="tw-text-xs tw-border-l-0 tw-font-medium tw-p-2 tw-rounded-r tw-cursor-pointer hover:tw-underline tw-flex tw-self-center"
             data-testid="version-value">
             {parseFloat(version).toFixed(1)}
           </span>
@@ -263,16 +267,58 @@ const EntityPageInfo = ({
       });
   };
 
+  const getThreadElements = () => {
+    if (!isUndefined(entityFieldThreads)) {
+      return !isUndefined(tagThread) ? (
+        <p
+          className="link-text tw-m-0 tw-ml-1 tw-w-8 tw-flex-none"
+          data-testid="tag-thread"
+          onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
+          <span className="tw-flex">
+            <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+            <span className="tw-ml-1" data-testid="tag-thread-count">
+              {tagThread.count}
+            </span>
+          </span>
+        </p>
+      ) : (
+        <p
+          className="link-text tw-self-start tw-w-8 tw-m-0 tw-ml-1  tw-flex-none"
+          data-testid="start-tag-thread"
+          onClick={() =>
+            onThreadLinkSelect?.(
+              getEntityFeedLink(entityType, entityFqn, 'tags')
+            )
+          }>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+        </p>
+      );
+    } else {
+      return null;
+    }
+  };
+
   useEffect(() => {
     setEntityFollowers(followersList);
   }, [followersList]);
+
+  useAfterMount(() => {
+    setVersionFollowButtonWidth(
+      document.getElementById('version-and-follow-section')?.offsetWidth
+    );
+  });
 
   return (
     <div data-testid="entity-page-info">
       <div className="tw-flex tw-flex-col">
         <div className="tw-flex tw-flex-initial tw-justify-between tw-items-start">
           <div className="tw-flex tw-items-center">
-            <TitleBreadcrumb titleLinks={titleLinks} />
+            <TitleBreadcrumb
+              titleLinks={titleLinks}
+              widthDeductions={
+                (versionFollowButtonWidth ? versionFollowButtonWidth : 0) + 30
+              }
+            />
             {deleted && (
               <>
                 <div
@@ -287,7 +333,9 @@ const EntityPageInfo = ({
               </>
             )}
           </div>
-          <div className="tw-flex tw-py-1">
+          <div
+            className="tw-flex tw-py-1 tw-mt-1"
+            id="version-and-follow-section">
             {!isUndefined(version) ? (
               <>
                 {!isUndefined(isVersionSelected) ? (
@@ -308,7 +356,7 @@ const EntityPageInfo = ({
               </>
             ) : null}
             {!isUndefined(isFollowing) ? (
-              <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
+              <div className="tw-flex tw-h-6 tw-ml-2">
                 <span
                   className={classNames(
                     'tw-flex tw-border tw-border-primary tw-rounded',
@@ -402,7 +450,7 @@ const EntityPageInfo = ({
             <NonAdminAction
               html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess}
-              permission={Operation.UpdateTags}
+              permission={Operation.EditTags}
               position="bottom"
               trigger="click">
               <div
@@ -430,12 +478,14 @@ const EntityPageInfo = ({
                     handleTagSelection(tags);
                   }}>
                   {tags.length || tier ? (
-                    <button className=" tw-ml-1 focus:tw-outline-none">
+                    <button
+                      className=" tw-ml-1 focus:tw-outline-none"
+                      data-testid="edit-button">
                       <SVGIcons
                         alt="edit"
                         icon="icon-edit"
                         title="Edit"
-                        width="12px"
+                        width="16px"
                       />
                     </button>
                   ) : (
@@ -451,34 +501,7 @@ const EntityPageInfo = ({
                 </TagsContainer>
               </div>
             </NonAdminAction>
-            {!isUndefined(tagThread) ? (
-              <p
-                className="link-text tw-ml-1 tw-w-8 tw-flex-none"
-                data-testid="tag-thread"
-                onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
-                <span className="tw-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
-                  <span className="tw-ml-1" data-testid="tag-thread-count">
-                    {tagThread.count}
-                  </span>
-                </span>
-              </p>
-            ) : (
-              <p
-                className="link-text tw-self-start tw-w-8 tw-ml-1  tw-flex-none"
-                data-testid="start-tag-thread"
-                onClick={() =>
-                  onThreadLinkSelect?.(
-                    getEntityFeedLink(entityType, entityFqn, 'tags')
-                  )
-                }>
-                <SVGIcons
-                  alt="comments"
-                  icon={Icons.COMMENT_PLUS}
-                  width="20px"
-                />
-              </p>
-            )}
+            {getThreadElements()}
           </Fragment>
         )}
       </div>

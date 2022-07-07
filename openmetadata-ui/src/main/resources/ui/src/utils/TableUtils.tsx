@@ -19,10 +19,12 @@ import React, { Fragment } from 'react';
 import PopOver from '../components/common/popover/PopOver';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getCustomEntityPath,
   getDashboardDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getEditWebhookPath,
+  getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
   getTableDetailsPath,
@@ -37,7 +39,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
-import SVGIcons from './SvgUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -128,21 +130,28 @@ export const getConstraintIcon = (constraint = '', className = '') => {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = 'Primary key';
-        icon = 'key';
+        icon = Icons.KEY;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = 'Unique';
-        icon = 'unique';
+        icon = Icons.UNIQUE;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = 'Not null';
-        icon = 'not-null';
+        icon = Icons.NOT_NULL;
+      }
+
+      break;
+    case ConstraintTypes.FOREIGN_KEY:
+      {
+        title = 'Foreign key';
+        icon = Icons.FOREGIN_KEY;
       }
 
       break;
@@ -152,12 +161,12 @@ export const getConstraintIcon = (constraint = '', className = '') => {
 
   return (
     <PopOver
-      className={classNames('tw-absolute tw-left-2', className)}
+      className={classNames('tw-absolute tw-left-1', className)}
       position="bottom"
       size="small"
       title={title}
       trigger="mouseenter">
-      <SVGIcons alt={title} icon={icon} width="12px" />
+      <SVGIcons alt={title} icon={icon} width="16px" />
     </PopOver>
   );
 };
@@ -200,6 +209,13 @@ export const getEntityLink = (
     case EntityType.WEBHOOK:
       return getEditWebhookPath(fullyQualifiedName);
 
+    case EntityType.TYPE:
+      return getCustomEntityPath(fullyQualifiedName);
+
+    case EntityType.MLMODEL:
+    case SearchIndex.MLMODEL:
+      return getMlModelPath(fullyQualifiedName);
+
     case SearchIndex.TABLE:
     case EntityType.TABLE:
     default:
@@ -219,6 +235,11 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
       icon = 'dashboard-grey';
+
+      break;
+    case SearchIndex.MLMODEL:
+    case EntityType.MLMODEL:
+      icon = 'mlmodel-grey';
 
       break;
     case SearchIndex.PIPELINE:
@@ -275,6 +296,7 @@ export const getDataTypeString = (dataType: string): string => {
     case DataType.Bigint:
     case DataType.Numeric:
     case DataType.Tinyint:
+    case DataType.Decimal:
       return PrimaryTableDataTypes.NUMERIC;
     case DataType.Boolean:
     case DataType.Enum:
@@ -318,10 +340,10 @@ export const getTableTestsValue = (tableTestCase: TableTest[]) => {
                       icon="check-square"
                     />
                   </div>
-                  <p>{`${passingTests.length} tests`}</p>
+                  <>{`${passingTests.length} tests`}</>
                 </div>
               ) : (
-                <p>{`${tableTestLength} tests`}</p>
+                <>{`${tableTestLength} tests`}</>
               )}
             </Fragment>
           )}

@@ -11,24 +11,27 @@
       "description": "This schema defines all possible operations on metadata of data entities.",
       "type": "string",
       "enum": [
-        "SuggestDescription",
-        "SuggestTags",
-        "UpdateDescription",
-        "UpdateOwner",
-        "UpdateTags",
-        "UpdateLineage",
-        "DecryptTokens",
-        "UpdateTeam"
-      ],
-      "javaEnums": [
-        { "name": "SuggestDescription" },
-        { "name": "SuggestTags" },
-        { "name": "UpdateDescription" },
-        { "name": "UpdateOwner" },
-        { "name": "UpdateTags" },
-        { "name": "UpdateLineage" },
-        { "name": "DecryptTokens" },
-        { "name": "UpdateTeam" }
+        "Create",
+        "Delete",
+        "ViewAll",
+        "ViewUsage",
+        "ViewTests",
+        "TableViewQueries",
+        "TableViewDataProfile",
+        "TableViewSampleData",
+        "EditAll",
+        "EditDescription",
+        "EditTags",
+        "EditOwner",
+        "EditTier",
+        "EditCustomFields",
+        "EditLineage",
+        "EditReviewers",
+        "EditTests",
+        "TableEditQueries",
+        "TableEditDataProfile",
+        "TableEditSampleData",
+        "TeamEditUsers"
       ]
     }
   },
@@ -72,6 +75,8 @@
       "default": false
     }
   },
-  "required": ["name"],
+  "required": [
+    "name"
+  ],
   "additionalProperties": false
 }

@@ -11,42 +11,30 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityFieldThreads } from 'Models';
-import React, { Fragment } from 'react';
-import { Table } from '../../../generated/entity/data/table';
+import React, { FC, Fragment } from 'react';
+import { useHistory } from 'react-router-dom';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { EntityField } from '../../../constants/feed.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
-import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
+import { useAuth } from '../../../hooks/authHooks';
+import { isTaskSupported } from '../../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import {
+  getRequestDescriptionPath,
+  getUpdateDescriptionPath,
+} from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import NonAdminAction from '../non-admin-action/NonAdminAction';
-import PopOver from '../popover/PopOver';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import { DescriptionProps } from './Description.interface';
 
-interface Props {
-  entityName?: string;
-  owner?: Table['owner'];
-  hasEditAccess?: boolean;
-  blurWithBodyBG?: boolean;
-  removeBlur?: boolean;
-  description?: string;
-  isEdit?: boolean;
-  isReadOnly?: boolean;
-  entityType?: string;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
-  onDescriptionEdit?: () => void;
-  onCancel?: () => void;
-  onDescriptionUpdate?: (value: string) => void;
-  onSuggest?: (value: string) => void;
-  onEntityFieldSelect?: (value: string) => void;
-}
-
-const Description = ({
-  owner,
+const Description: FC<DescriptionProps> = ({
   hasEditAccess,
   onDescriptionEdit,
   description = '',
@@ -62,15 +50,158 @@ const Description = ({
   onEntityFieldSelect,
   entityType,
   entityFqn,
-}: Props) => {
-  const descriptionThread = entityFieldThreads?.[0];
+  entityFieldTasks,
+}) => {
+  const history = useHistory();
+
+  const { isAdminUser, userPermissions } = useAuth();
+  const { isAuthDisabled } = useAuthContext();
+
+  const thread = entityFieldThreads?.[0];
+  const tasks = entityFieldTasks?.[0];
+
+  const handleRequestDescription = () => {
+    history.push(
+      getRequestDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  const handleUpdateDescription = () => {
+    history.push(
+      getUpdateDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  const checkPermission = () => {
+    return (
+      isAdminUser ||
+      Boolean(hasEditAccess) ||
+      userPermissions[Operation.EditDescription] ||
+      isAuthDisabled
+    );
+  };
+
+  const handleUpdate = () => {
+    onDescriptionEdit && onDescriptionEdit();
+  };
+
+  const RequestDescriptionEl = () => {
+    const hasDescription = Boolean(description.trim());
+
+    return onEntityFieldSelect ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="request-description"
+        onClick={
+          hasDescription ? handleUpdateDescription : handleRequestDescription
+        }>
+        <Popover
+          destroyTooltipOnHide
+          content={
+            hasDescription
+              ? 'Request update description'
+              : 'Request description'
+          }
+          overlayClassName="ant-popover-request-description"
+          trigger="hover"
+          zIndex={9999}>
+          <SVGIcons
+            alt="request-description"
+            icon={Icons.REQUEST}
+            width="16px"
+          />
+        </Popover>
+      </button>
+    ) : null;
+  };
+
+  const DescriptionThreadEl = ({
+    descriptionThread,
+  }: {
+    descriptionThread?: EntityFieldThreads;
+  }) => {
+    return !isUndefined(descriptionThread) ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="description-thread"
+        onClick={() => onThreadLinkSelect?.(descriptionThread.entityLink)}>
+        <span className="tw-flex">
+          <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
+          <span className="tw-ml-1" data-testid="description-thread-count">
+            {' '}
+            {descriptionThread.count}
+          </span>
+        </span>
+      </button>
+    ) : (
+      <Fragment>
+        {description?.trim() && onThreadLinkSelect ? (
+          <button
+            className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+            data-testid="start-description-thread"
+            onClick={() =>
+              onThreadLinkSelect?.(
+                getEntityFeedLink(
+                  entityType,
+                  entityFqn,
+                  EntityField.DESCRIPTION
+                )
+              )
+            }>
+            <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
+          </button>
+        ) : null}
+      </Fragment>
+    );
+  };
+
+  const getDescriptionTaskElement = () => {
+    return !isUndefined(tasks) ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-2 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="description-task"
+        onClick={() => onThreadLinkSelect?.(tasks.entityLink, ThreadType.Task)}>
+        <span className="tw-flex">
+          <SVGIcons alt="tasks" icon={Icons.TASK_ICON} width="16px" />{' '}
+          <span className="tw-ml-1" data-testid="description-tasks-count">
+            {' '}
+            {tasks.count}
+          </span>
+        </span>
+      </button>
+    ) : null;
+  };
+
+  const DescriptionActions = () => {
+    return !isReadOnly ? (
+      <div className={classNames('tw-w-5 tw-min-w-max tw-flex tw--mt-0.5')}>
+        {checkPermission() && (
+          <button
+            className="tw-w-7 tw-h-8 tw-flex-none focus:tw-outline-none"
+            data-testid="edit-description"
+            onClick={handleUpdate}>
+            <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="16px" />
+          </button>
+        )}
+        {isTaskSupported(entityType as EntityType) ? (
+          <Fragment>
+            {' '}
+            <RequestDescriptionEl />
+            {getDescriptionTaskElement()}
+          </Fragment>
+        ) : null}
+
+        <DescriptionThreadEl descriptionThread={thread} />
+      </div>
+    ) : null;
+  };
 
   return (
     <div className="schema-description tw-relative">
       <div className="tw-px-3 tw-py-1 tw-flex">
         <div className="tw-relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-2.5"
+            className="description tw-h-full tw-overflow-y-scroll tw-min-h-12 tw-relative tw-py-1"
             data-testid="description"
             id="center">
             {description?.trim() ? (
@@ -78,7 +209,7 @@ const Description = ({
                 blurClasses={
                   blurWithBodyBG ? 'see-more-blur-body' : 'see-more-blur-white'
                 }
-                className="tw-p-2"
+                className="tw-pl-2"
                 enableSeeMoreVariant={!removeBlur}
                 markdown={description}
                 maxHtClass="tw-max-h-36"
@@ -98,87 +229,7 @@ const Description = ({
             />
           )}
         </div>
-        {!isReadOnly ? (
-          <div
-            className={classNames(
-              'tw-w-5 tw-min-w-max tw-flex',
-              description?.trim() ? 'tw-pt-4' : 'tw-pt-2.5'
-            )}>
-            <NonAdminAction
-              html={getHtmlForNonAdminAction(Boolean(owner))}
-              isOwner={hasEditAccess}
-              permission={Operation.UpdateDescription}
-              position="right">
-              <button
-                className="focus:tw-outline-none"
-                data-testid="edit-description"
-                onClick={onDescriptionEdit}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </button>
-            </NonAdminAction>
-            {isUndefined(descriptionThread) &&
-            onEntityFieldSelect &&
-            !description?.trim() ? (
-              <button
-                className="focus:tw-outline-none tw-ml-2 tw--mt-6"
-                data-testid="request-description"
-                onClick={() => onEntityFieldSelect?.('description')}>
-                <PopOver
-                  position="top"
-                  title="Request description"
-                  trigger="mouseenter">
-                  <SVGIcons
-                    alt="request-description"
-                    className="tw-mt-2"
-                    icon={Icons.REQUEST}
-                  />
-                </PopOver>
-              </button>
-            ) : null}
-            {!isUndefined(descriptionThread) ? (
-              <p
-                className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
-                data-testid="description-thread"
-                onClick={() =>
-                  onThreadLinkSelect?.(descriptionThread.entityLink)
-                }>
-                <span className="tw-flex">
-                  <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                  <span
-                    className="tw-ml-1"
-                    data-testid="description-thread-count">
-                    {' '}
-                    {descriptionThread.count}
-                  </span>
-                </span>
-              </p>
-            ) : (
-              <Fragment>
-                {description?.trim() && onThreadLinkSelect ? (
-                  <p
-                    className="link-text tw-flex-none tw-ml-2"
-                    data-testid="start-description-thread"
-                    onClick={() =>
-                      onThreadLinkSelect?.(
-                        getEntityFeedLink(entityType, entityFqn, 'description')
-                      )
-                    }>
-                    <SVGIcons
-                      alt="comments"
-                      icon={Icons.COMMENT_PLUS}
-                      width="20px"
-                    />
-                  </p>
-                ) : null}
-              </Fragment>
-            )}
-          </div>
-        ) : null}
+        <DescriptionActions />
       </div>
     </div>
   );

@@ -52,18 +52,19 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MLFLOW,
   MSSQL,
   MYSQL,
   ORACLE,
   PIPELINE_DEFAULT,
   POSTGRES,
   POWERBI,
-  PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
   REDSHIFT,
   SALESFORCE,
+  SCIKIT,
   serviceTypes,
   SINGLESTORE,
   SNOWFLAKE,
@@ -76,6 +77,7 @@ import {
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
+import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { PipelineType as IngestionPipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -184,8 +186,11 @@ export const serviceTypeLogo = (type: string) => {
     case PipelineServiceType.Airflow:
       return AIRFLOW;
 
-    case PipelineServiceType.Prefect:
-      return PREFECT;
+    case MlModelServiceType.Mlflow:
+      return MLFLOW;
+
+    case MlModelServiceType.Sklearn:
+      return SCIKIT;
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {
@@ -337,23 +342,6 @@ export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
   });
 
   return entityCounts;
-};
-
-export const getIsIngestionEnable = (serviceCategory: ServiceCategory) => {
-  switch (serviceCategory) {
-    case ServiceCategory.DATABASE_SERVICES:
-    case ServiceCategory.MESSAGING_SERVICES:
-    case ServiceCategory.DASHBOARD_SERVICES:
-      return true;
-
-    case ServiceCategory.PIPELINE_SERVICES:
-    default:
-      return false;
-  }
-};
-
-export const isIngestionSupported = (serviceCategory: ServiceCategory) => {
-  return getIsIngestionEnable(serviceCategory);
 };
 
 export const getKeyValuePair = (obj: DynamicObj) => {
@@ -558,14 +546,8 @@ export const getIngestionName = (
   }
 };
 
-export const shouldTestConnection = (
-  serviceType: string,
-  serviceCategory: ServiceCategory
-) => {
-  return (
-    serviceType !== DatabaseServiceType.SampleData &&
-    serviceCategory !== ServiceCategory.PIPELINE_SERVICES
-  );
+export const shouldTestConnection = (serviceType: string) => {
+  return serviceType !== DatabaseServiceType.SampleData;
 };
 
 export const getTestConnectionType = (serviceCat: ServiceCategory) => {
@@ -574,6 +556,8 @@ export const getTestConnectionType = (serviceCat: ServiceCategory) => {
       return ConnectionType.Messaging;
     case ServiceCategory.DASHBOARD_SERVICES:
       return ConnectionType.Dashboard;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return ConnectionType.Pipeline;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return ConnectionType.Database;

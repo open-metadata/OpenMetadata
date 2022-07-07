@@ -12,12 +12,11 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityThread } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
@@ -30,25 +29,41 @@ import {
   onErrorText,
   onUpdatedConversastionError,
 } from '../../constants/feed.constants';
+import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
-  const { username } = useParams<{ [key: string]: string }>();
+  const { username, tab } = useParams<{ [key: string]: string }>();
+  const { search } = useLocation();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
+  const searchParams = new URLSearchParams(location.search);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [currentLoggedInUser, setCurrentLoggedInUser] = useState<User>();
   const [isError, setIsError] = useState(false);
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [paging, setPaging] = useState<Paging>({} as Paging);
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(
+    (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
+  );
+  const threadType = useMemo(() => {
+    return getUserCurrentTab(tab) === 2
+      ? ThreadType.Task
+      : ThreadType.Conversation;
+  }, [tab]);
 
   const fetchUserData = () => {
     setUserData({} as User);
@@ -85,9 +100,18 @@ const UserPage = () => {
     );
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    threadType: ThreadType,
+    after?: string,
+    feedFilter?: FeedFilter
+  ) => {
     setIsFeedLoading(true);
-    getFeedsWithFilter(userData.id, FeedFilter.OWNER, after)
+    getFeedsWithFilter(
+      userData.id,
+      feedFilter || FeedFilter.ALL,
+      after,
+      threadType
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
@@ -104,6 +128,14 @@ const UserPage = () => {
         setIsFeedLoading(false);
       });
   };
+
+  const handleFeedFetchFromFeedList = useCallback(
+    (threadType: ThreadType, after?: string, feedFilter?: FeedFilter) => {
+      !after && setEntityThread([]);
+      getFeedData(threadType, after, feedFilter);
+    },
+    [getFeedData, setEntityThread]
+  );
 
   const postFeedHandler = (value: string, id: string) => {
     const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
@@ -142,7 +174,7 @@ const UserPage = () => {
                 if (thread.id === data.id) {
                   return {
                     ...thread,
-                    posts: data.posts.slice(-3),
+                    posts: data.posts && data.posts.slice(-3),
                     postsCount: data.postsCount,
                   };
                 } else {
@@ -160,6 +192,15 @@ const UserPage = () => {
         const message = error?.message;
         showErrorToast(message ?? onErrorText);
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   const updateUserDetails = (data: UserDetails) => {
@@ -188,15 +229,21 @@ const UserPage = () => {
         <Users
           deletePostHandler={deletePostHandler}
           feedData={entityThread || []}
-          fetchFeedHandler={getFeedData}
+          feedFilter={feedFilter}
+          fetchFeedHandler={handleFeedFetchFromFeedList}
           isAdminUser={Boolean(isAdminUser)}
           isAuthDisabled={Boolean(isAuthDisabled)}
           isFeedLoading={isFeedLoading}
           isLoggedinUser={isLoggedinUser(username)}
           paging={paging}
           postFeedHandler={postFeedHandler}
+          setFeedFilter={setFeedFilter}
+          tab={tab}
+          threadType={threadType}
+          updateThreadHandler={updateThreadHandler}
           updateUserDetails={updateUserDetails}
           userData={userData}
+          username={username}
         />
       );
     } else {
@@ -211,9 +258,23 @@ const UserPage = () => {
 
   useEffect(() => {
     if (userData.id) {
-      getFeedData();
+      const threadType =
+        tab === 'tasks' ? ThreadType.Task : ThreadType.Conversation;
+
+      const newFeedFilter =
+        (searchParams.get('feedFilter') as FeedFilter) ??
+        (threadType === ThreadType.Conversation
+          ? FeedFilter.OWNER
+          : FeedFilter.ALL);
+      setFeedFilter(newFeedFilter);
+      setEntityThread([]);
+      getFeedData(threadType, undefined, newFeedFilter);
     }
-  }, [userData]);
+  }, [userData, tab, search]);
+
+  useEffect(() => {
+    setEntityThread([]);
+  }, [tab]);
 
   useEffect(() => {
     setCurrentLoggedInUser(AppState.getCurrentUserDetails());

@@ -57,6 +57,7 @@ export interface AddIngestionProps {
 export interface ConfigureIngestionProps {
   ingestionName: string;
   description?: string;
+  databaseServiceName: string;
   serviceCategory: ServiceCategory;
   databaseFilterPattern: FilterPattern;
   dashboardFilterPattern: FilterPattern;
@@ -64,10 +65,12 @@ export interface ConfigureIngestionProps {
   tableFilterPattern: FilterPattern;
   topicFilterPattern: FilterPattern;
   chartFilterPattern: FilterPattern;
+  pipelineFilterPattern: FilterPattern;
   fqnFilterPattern: FilterPattern;
+  includeLineage: boolean;
   includeView: boolean;
+  includeTags: boolean;
   markDeletedTables?: boolean;
-  enableDataProfiler: boolean;
   enableDebugLog: boolean;
   ingestSampleData: boolean;
   pipelineType: PipelineType;
@@ -77,17 +80,20 @@ export interface ConfigureIngestionProps {
   showTableFilter: boolean;
   showTopicFilter: boolean;
   showChartFilter: boolean;
+  showPipelineFilter: boolean;
   showFqnFilter: boolean;
   queryLogDuration: number;
   stageFileLocation: string;
   resultLimit: number;
   handleIngestionName: (value: string) => void;
+  handleDatasetServiceName: (value: string) => void;
   handleDescription?: (value: string) => void;
+  handleIncludeLineage: () => void;
   handleIncludeView: () => void;
+  handleIncludeTags: () => void;
   handleMarkDeletedTables?: () => void;
-  handleEnableDataProfiler: () => void;
-  handleIngestSampleData: () => void;
   handleEnableDebugLog: () => void;
+  handleIngestSampleData: () => void;
   getIncludeValue: (value: string[], type: FilterPatternEnum) => void;
   getExcludeValue: (value: string[], type: FilterPatternEnum) => void;
   handleShowFilter: (value: boolean, type: FilterPatternEnum) => void;

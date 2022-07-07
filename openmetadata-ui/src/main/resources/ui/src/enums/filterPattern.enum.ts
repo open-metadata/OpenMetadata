@@ -19,4 +19,5 @@ export enum FilterPatternEnum {
   DASHBOARD = 'dashboard',
   TOPIC = 'topic',
   FQN = 'fqn',
+  PIPELINE = 'pipeline',
 }

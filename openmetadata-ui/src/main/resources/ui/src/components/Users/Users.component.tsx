@@ -12,62 +12,59 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData } from 'Models';
 import React, {
   Fragment,
   RefObject,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import Select from 'react-select';
 import AppState from '../../AppState';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
-import { TERM_ADMIN } from '../../constants/constants';
+import { getUserPath, TERM_ADMIN } from '../../constants/constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { Ownership } from '../../enums/mydata.enum';
+import {
+  getUserCurrentTab,
+  profileInfo,
+  USER_PROFILE_TABS,
+} from '../../constants/usersprofile.constants';
+import { FeedFilter } from '../../enums/mydata.enum';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { Role } from '../../generated/entity/teams/role';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import jsonData from '../../jsons/en';
-import {
-  getEntityName,
-  getExploreLinkByFilter,
-  getNonDeletedTeams,
-} from '../../utils/CommonUtils';
+import UserCard from '../../pages/teams/UserCard';
+import { getEntityName, getNonDeletedTeams } from '../../utils/CommonUtils';
 import { filterEntityAssets } from '../../utils/EntityUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from '../../utils/ProfilerUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
+import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
-import PageLayout from '../containers/PageLayout';
-import EntityList from '../EntityList/EntityList';
+import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
+import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
-
-const tabs = [
-  {
-    name: 'Activity Feed',
-    icon: {
-      alt: 'activity_feed',
-      name: 'activity_feed',
-      title: 'Activity Feed',
-      selectedName: 'activity-feed-color',
-    },
-    isProtected: false,
-    position: 1,
-  },
-];
+import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
@@ -81,8 +78,14 @@ const Users = ({
   isAdminUser,
   isLoggedinUser,
   isAuthDisabled,
+  updateThreadHandler,
+  username,
+  tab,
+  feedFilter,
+  setFeedFilter,
+  threadType,
 }: Props) => {
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
@@ -93,6 +96,21 @@ const Users = ({
   const [selectedTeams, setSelectedTeams] = useState<Array<Option>>([]);
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const history = useHistory();
+  const [showFilterList, setShowFilterList] = useState(false);
+
+  const location = useLocation();
+
+  const handleFilterDropdownChange = useCallback(
+    (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
+      if (value) {
+        fetchFeedHandler(threadType, undefined, value as FeedFilter);
+        setFeedFilter(value as FeedFilter);
+      }
+      setShowFilterList(false);
+    },
+    [threadType]
+  );
 
   const fetchTeams = () => {
     getTeams(['users'])
@@ -115,8 +133,17 @@ const Users = ({
     setDisplayName(e.target.value);
   };
 
-  const activeTabHandler = (tab: number) => {
-    setActiveTab(tab);
+  const activeTabHandler = (tabNum: number) => {
+    setFeedFilter(tabNum === 1 ? FeedFilter.ALL : FeedFilter.OWNER);
+    setActiveTab(tabNum);
+    // To reset search params appends from other page for proper navigation
+    location.search = '';
+    if (profileInfo[tabNum - 1].path !== tab) {
+      history.push({
+        pathname: getUserPath(username, profileInfo[tabNum - 1].path),
+        search: location.search,
+      });
+    }
   };
 
   const handleDisplayNameChange = () => {
@@ -189,14 +216,18 @@ const Users = ({
     }
   };
 
+  useEffect(() => {
+    setActiveTab(getUserCurrentTab(tab));
+  }, [tab]);
+
   const getDisplayNameComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw-mt-4 tw-w-full">
+        <div className="tw-mt-4 tw-w-full tw-px-3">
           {isDisplayNameEdit ? (
-            <div className="tw-flex tw-items-center tw-gap-1">
+            <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
               <input
-                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+                className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-full"
                 data-testid="displayName"
                 id="displayName"
                 name="displayName"
@@ -228,7 +259,7 @@ const Users = ({
             </div>
           ) : (
             <Fragment>
-              <span className="tw-text-base tw-font-medium tw-mr-2">
+              <span className="tw-text-base tw-font-medium tw-mr-2 tw-overflow-auto">
                 {userData.displayName || 'Add display name'}
               </span>
               <button
@@ -239,7 +270,7 @@ const Users = ({
                   alt="edit"
                   icon="icon-edit"
                   title="Edit"
-                  width="12px"
+                  width="16px"
                 />
               </button>
             </Fragment>
@@ -248,7 +279,7 @@ const Users = ({
       );
     } else {
       return (
-        <p className="tw-mt-2">
+        <p className="tw-mt-2 tw-px-3">
           {getEntityName(userData as unknown as EntityReference)}
         </p>
       );
@@ -258,11 +289,11 @@ const Users = ({
   const getDescriptionComponent = () => {
     if (isAdminUser || isLoggedinUser || isAuthDisabled) {
       return (
-        <div className="tw--ml-5">
+        <div className="tw--ml-5 tw-flex tw-items-center tw-justify-between tw-px-3">
           <Description
             description={userData.description || ''}
             entityName={getEntityName(userData as unknown as EntityReference)}
-            hasEditAccess={isAdminUser}
+            hasEditAccess={isAdminUser || isLoggedinUser}
             isEdit={isDescriptionEdit}
             onCancel={() => setIsDescriptionEdit(false)}
             onDescriptionEdit={() => setIsDescriptionEdit(true)}
@@ -272,7 +303,7 @@ const Users = ({
       );
     } else {
       return (
-        <div className="tw--ml-2">
+        <div className="tw--ml-2 tw-px-3">
           <p className="tw-mt-2">
             {userData.description || (
               <span className="tw-no-description tw-p-2">No description </span>
@@ -295,45 +326,64 @@ const Users = ({
             <span>{getEntityName(team)}</span>
           </div>
         ))}
+        {isEmpty(userData.teams) && (
+          <span className="tw-no-description ">No teams found</span>
+        )}
       </Fragment>
     );
 
     if (!isAdminUser && !isAuthDisabled) {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Teams</h6>
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{teamsElement}</div>
-        </Fragment>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="teams-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Teams</h6>
+            </div>
+          }>
+          <div className="tw-mb-4">{teamsElement}</div>
+        </Card>
       );
     } else {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Teams</h6>
-            {!isTeamsEdit && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
-                data-testid="edit-teams"
-                onClick={() => setIsTeamsEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </button>
-            )}
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
+        <Card
+          className="ant-card-feed tw-relative"
+          key="teams-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Teams</h6>
+              {!isTeamsEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  data-testid="edit-teams"
+                  onClick={() => setIsTeamsEdit(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+          }>
+          <div className="tw-mb-4">
             {isTeamsEdit ? (
-              <Fragment>
+              <div className="tw-flex tw-justify-between tw-items-center tw-gap-2">
                 <Select
                   isClearable
                   isMulti
                   aria-label="Select teams"
-                  className="tw-ml-1"
+                  className="tw-w-full"
                   isSearchable={false}
                   options={teams?.map((team) => ({
                     label: getEntityName(team as unknown as EntityReference),
@@ -344,9 +394,7 @@ const Users = ({
                   value={selectedTeams}
                   onChange={handleOnTeamsChange}
                 />
-                <div
-                  className="tw-flex tw-justify-end tw-mt-2"
-                  data-testid="buttons">
+                <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                     data-testid="cancel-teams"
@@ -372,12 +420,12 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </Fragment>
+              </div>
             ) : (
               teamsElement
             )}
           </div>
-        </Fragment>
+        </Card>
       );
     }
   };
@@ -408,45 +456,66 @@ const Users = ({
             <span>{getEntityName(role)}</span>
           </div>
         ))}
+        {!userData.isAdmin && isEmpty(userData.roles) && (
+          <span className="tw-no-description ">No roles assigned</span>
+        )}
       </Fragment>
     );
 
     if (!isAdminUser && !isAuthDisabled) {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Roles</h6>
+        <Card
+          className="ant-card-feed tw-relative"
+          key="roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Roles</h6>
+            </div>
+          }>
+          <div className="tw-flex tw-items-center tw-justify-between tw-mb-4">
+            {rolesElement}
           </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">{rolesElement}</div>
-        </Fragment>
+        </Card>
       );
     } else {
       return (
-        <Fragment>
-          <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3">Roles</h6>
-            {!isRolesEdit && (
-              <button
-                className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
-                data-testid="edit-roles"
-                onClick={() => setIsRolesEdit(true)}>
-                <SVGIcons
-                  alt="edit"
-                  icon="icon-edit"
-                  title="Edit"
-                  width="12px"
-                />
-              </button>
-            )}
-          </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
+        <Card
+          className="ant-card-feed tw-relative"
+          key="roles-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '20px',
+          }}
+          title={
+            <div className="tw-flex tw-items-center tw-justify-between">
+              <h6 className="tw-heading tw-mb-0">Roles</h6>
+              {!isRolesEdit && (
+                <button
+                  className="tw-ml-2 focus:tw-outline-none tw-self-baseline"
+                  data-testid="edit-roles"
+                  onClick={() => setIsRolesEdit(true)}>
+                  <SVGIcons
+                    alt="edit"
+                    icon="icon-edit"
+                    title="Edit"
+                    width="16px"
+                  />
+                </button>
+              )}
+            </div>
+          }>
+          <div className="tw-mb-4">
             {isRolesEdit ? (
-              <Fragment>
+              <div className="tw-flex tw-items-center tw-justify-between tw-gap-2">
                 <Select
                   isClearable
                   isMulti
                   aria-label="Select roles"
-                  className="tw-ml-1"
+                  className="tw-w-full"
                   id="select-role"
                   isSearchable={false}
                   options={userRolesOption}
@@ -455,9 +524,7 @@ const Users = ({
                   value={selectedRoles}
                   onChange={handleOnRolesChange}
                 />
-                <div
-                  className="tw-flex tw-justify-end tw-mt-2"
-                  data-testid="buttons">
+                <div className="tw-flex tw-justify-end" data-testid="buttons">
                   <Button
                     className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
                     data-testid="cancel-roles"
@@ -483,66 +550,103 @@ const Users = ({
                     />
                   </Button>
                 </div>
-              </Fragment>
+              </div>
             ) : (
               rolesElement
             )}
           </div>
-        </Fragment>
+        </Card>
       );
     }
   };
 
   const getInheritedRolesComponent = () => {
-    if (userData.inheritedRoles?.length) {
-      return (
-        <Fragment>
+    return (
+      <Card
+        className="ant-card-feed tw-relative"
+        key="inherited-roles-card-component"
+        style={{
+          ...leftPanelAntCardStyle,
+          marginTop: '20px',
+        }}
+        title={
           <div className="tw-flex">
-            <h6 className="tw-heading tw-mb-3" data-testid="inherited-roles">
+            <h6 className="tw-heading tw-mb-0" data-testid="inherited-roles">
               Inherited Roles
             </h6>
           </div>
-          <div className="tw-pb-4 tw-mb-4 tw-border-b">
-            {userData.inheritedRoles?.map((inheritedRole, i) => (
-              <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
-                <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                <span>{getEntityName(inheritedRole)}</span>
-              </div>
-            ))}
-          </div>
+        }>
+        <Fragment>
+          {isEmpty(userData.inheritedRoles) ? (
+            <div className="tw-mb-4">
+              <span className="tw-no-description">
+                No inherited roles found
+              </span>
+            </div>
+          ) : (
+            <div className="tw-flex tw-justify-between tw-flex-col">
+              {userData.inheritedRoles?.map((inheritedRole, i) => (
+                <div
+                  className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
+                  key={i}>
+                  <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
+                  <span>{getEntityName(inheritedRole)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </Fragment>
-      );
-    } else {
-      return null;
-    }
+      </Card>
+    );
   };
+
+  const image = useMemo(
+    () =>
+      getImageWithResolutionAndFallback(
+        ImageQuality['6x'],
+        userData.profile?.images
+      ),
+    [userData.profile?.images]
+  );
 
   const fetchLeftPanel = () => {
     return (
-      <div className="tw-pt-4" data-testid="left-panel">
-        <div className="tw-pb-4 tw-mb-4 tw-border-b tw-flex tw-flex-col">
-          {userData.profile?.images?.image ? (
-            <div className="tw-h-28 tw-w-28">
-              <img
-                alt="profile"
-                className="tw-w-full"
-                referrerPolicy="no-referrer"
-                src={userData.profile?.images?.image}
-              />
-            </div>
-          ) : (
-            <ProfilePicture
-              displayName={userData?.displayName || userData.name}
-              id={userData?.id || ''}
-              name={userData?.name || ''}
-              textClass="tw-text-5xl"
-              width="112"
-            />
-          )}
-          {getDisplayNameComponent()}
-          <p className="tw-mt-2">{userData.email}</p>
-          {getDescriptionComponent()}
-        </div>
+      <div className="user-profile-antd-card" data-testid="left-panel">
+        <Card
+          className="ant-card-feed tw-relative"
+          key="left-panel-card"
+          style={{
+            ...leftPanelAntCardStyle,
+            marginTop: '12px',
+          }}>
+          <div className="tw-flex tw-flex-col">
+            {image ? (
+              <div>
+                <img
+                  alt="profile"
+                  className="tw-w-full"
+                  height="150px"
+                  referrerPolicy="no-referrer"
+                  src={image}
+                />
+              </div>
+            ) : (
+              <div style={{ width: 'inherit' }}>
+                <ProfilePicture
+                  displayName={userData?.displayName || userData.name}
+                  height="150"
+                  id={userData?.id || ''}
+                  name={userData?.name || ''}
+                  textClass="tw-text-5xl"
+                  width=""
+                />
+              </div>
+            )}
+            {getDisplayNameComponent()}
+            <p className="tw-mt-2 tw-mx-3">{userData.email}</p>
+            {getDescriptionComponent()}
+          </div>
+        </Card>
         {getTeamsComponent()}
         {getRolesComponent()}
         {getInheritedRolesComponent()}
@@ -557,13 +661,41 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
+        <div className="tw-relative tw--mt-4 tw-px-1.5">
+          <Button
+            className="hover:tw-no-underline focus:tw-no-underline"
+            data-testid="feeds"
+            size="custom"
+            tag="button"
+            variant="link"
+            onClick={() => setShowFilterList((visible) => !visible)}>
+            <span className="tw-font-medium tw-text-grey">
+              {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
+                (f) => f.value === feedFilter
+              )?.name || capitalize(feedFilter)}
+            </span>
+            <DropDownIcon />
+          </Button>
+          {showFilterList && (
+            <DropDownList
+              dropDownList={
+                activeTab === 1 ? userPageFilterList : filterListTasks
+              }
+              value={feedFilter}
+              onSelect={handleFilterDropdownChange}
+            />
+          )}
+        </div>
         <div className="tw-mt-3.5">
           <ActivityFeedList
+            hideFeedFilter
+            hideThreadFilter
             withSidePanel
             className=""
             deletePostHandler={deletePostHandler}
             feedList={feedData}
             postFeedHandler={postFeedHandler}
+            updateThreadHandler={updateThreadHandler}
           />
         </div>
         <div
@@ -607,7 +739,9 @@ const Users = ({
     isLoading: boolean
   ) => {
     if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+      const threadType =
+        activeTab === 2 ? ThreadType.Task : ThreadType.Conversation;
+      fetchFeedHandler(threadType, pagingObj.after);
     }
   };
 
@@ -628,81 +762,53 @@ const Users = ({
     prepareSelectedTeams();
   }, [userData]);
 
-  const getRightPanel = useCallback(() => {
-    const ownData = filterEntityAssets(userData?.owns || []);
+  const getEntityData = useCallback(
+    (entityData: EntityReference[], tabNumber: number) => {
+      const updatedEntityData = filterEntityAssets(entityData || []);
 
-    return (
-      <div className="tw-mt-4" data-testid="right-pannel">
-        <EntityList
-          entityList={ownData as unknown as FormatedTableData[]}
-          headerText={
-            <div className="tw-flex tw-justify-between tw-items-center">
-              My Data
-              {ownData.length ? (
-                <Link
-                  className="tw-ml-1"
-                  data-testid="my-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.OWNER,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({ownData.length})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not owned anything yet.</>}
-          testIDText="My data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
-        <EntityList
-          entityList={userData?.follows as unknown as FormatedTableData[]}
-          headerText={
-            <div className="tw-flex tw-justify-between">
-              Following
-              {userData?.follows?.length ? (
-                <Link
-                  className="tw-ml-1"
-                  data-testid="following-data"
-                  to={getExploreLinkByFilter(
-                    Ownership.FOLLOWERS,
-                    AppState.userDetails,
-                    AppState.nonSecureUserDetails
-                  )}>
-                  <span className="link-text tw-font-normal tw-text-xs">
-                    View All <span>({userData?.follows?.length})</span>
-                  </span>
-                </Link>
-              ) : null}
-            </div>
-          }
-          noDataPlaceholder={<>You have not followed anything yet.</>}
-          testIDText="Following data"
-        />
-        <div className="tw-filter-seperator tw-mt-3" />
-      </div>
-    );
-  }, [userData?.owns, userData?.follows]);
+      return (
+        <div
+          className="tw-grid xxl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
+          data-testid="dataset-card">
+          {isEmpty(updatedEntityData) ? (
+            tabNumber === 3 ? (
+              <div className="tw-mx-2">You have not owned anything yet.</div>
+            ) : (
+              <div className="tw-mx-2">You have not followed anything yet.</div>
+            )
+          ) : null}
+          {updatedEntityData.map((dataset, index) => {
+            const Dataset = {
+              displayName: dataset.displayName || dataset.name || '',
+              type: dataset.type,
+              fqn: dataset.fullyQualifiedName || '',
+              id: dataset.id,
+              name: dataset.name,
+            };
+
+            return (
+              <UserCard isDataset isIconVisible item={Dataset} key={index} />
+            );
+          })}
+        </div>
+      );
+    },
+    []
+  );
 
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-6"
-      leftPanel={fetchLeftPanel()}
-      rightPanel={getRightPanel()}>
-      {userData?.isBot && isAdminUser && (
-        <div className="tw-mb-10">
-          <TabsPane
-            activeTab={activeTab}
-            className="tw-flex-initial"
-            setActiveTab={activeTabHandler}
-            tabs={tabs}
-          />
-        </div>
-      )}
-      <div>{activeTab === 1 && getFeedTabData()}</div>
+    <PageLayout classes="tw-h-full tw-px-6" leftPanel={fetchLeftPanel()}>
+      <div className="tw-mb-10">
+        <TabsPane
+          activeTab={activeTab}
+          className="tw-flex-initial"
+          setActiveTab={activeTabHandler}
+          tabs={USER_PROFILE_TABS}
+        />
+      </div>
+      <div>{(activeTab === 1 || activeTab === 2) && getFeedTabData()}</div>
+      <div>{activeTab === 3 && getEntityData(userData.owns || [], 3)}</div>
+      <div>{activeTab === 4 && getEntityData(userData.follows || [], 4)}</div>
     </PageLayout>
   );
 };

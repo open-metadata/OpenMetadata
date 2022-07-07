@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import {
   EntityFieldThreadCount,
   EntityTags,
-  EntityThread,
   LeafNodes,
   LineagePos,
   LoadingNodeState,
@@ -34,12 +33,12 @@ import {
 } from '../../axiosAPIs/dashboardAPI';
 import {
   getAllFeeds,
-  getFeedCount,
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
+import { getServiceByFQN } from '../../axiosAPIs/serviceAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
@@ -54,10 +53,12 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { FeedFilter } from '../../enums/mydata.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
@@ -68,6 +69,7 @@ import {
   getCurrentUserId,
   getEntityMissingError,
   getEntityName,
+  getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
   dashboardDetailsTabs,
@@ -75,9 +77,12 @@ import {
   getCurrentDashboardTab,
 } from '../../utils/DashboardDetailsUtils';
 import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, getUpdatedThread } from '../../utils/FeedUtils';
+import {
+  deletePost,
+  getUpdatedThread,
+  updateThreadData,
+} from '../../utils/FeedUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { getErrorText } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -122,11 +127,14 @@ const DashboardDetailsPage = () => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isError, setIsError] = useState(false);
 
-  const [entityThread, setEntityThread] = useState<EntityThread[]>([]);
+  const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isentityThreadLoading, setIsentityThreadLoading] =
     useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
   const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
+    EntityFieldThreadCount[]
+  >([]);
+  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
     EntityFieldThreadCount[]
   >([]);
   const [paging, setPaging] = useState<Paging>({} as Paging);
@@ -147,28 +155,28 @@ const DashboardDetailsPage = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN))
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          setFeedCount(res.data.totalCount);
-          setEntityFieldThreadCount(res.data.counts);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        const errMsg = getErrorText(
-          err,
-          jsonData['api-error-messages']['fetch-entity-feed-count-error']
-        );
-
-        showErrorToast(errMsg);
-      });
+    getFeedCounts(
+      EntityType.DASHBOARD,
+      dashboardFQN,
+      setEntityFieldThreadCount,
+      setEntityFieldTaskCount,
+      setFeedCount
+    );
   };
 
-  const getFeedData = (after?: string) => {
+  const getFeedData = (
+    after?: string,
+    feedFilter?: FeedFilter,
+    threadType?: ThreadType
+  ) => {
     setIsentityThreadLoading(true);
-    getAllFeeds(getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN), after)
+    !after && setEntityThread([]);
+    getAllFeeds(
+      getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
+      after,
+      threadType,
+      feedFilter
+    )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         if (data) {
@@ -291,6 +299,27 @@ const DashboardDetailsPage = () => {
       });
   };
 
+  const fetchServiceDetails = (type: string, fqn: string) => {
+    return new Promise<string>((resolve, reject) => {
+      getServiceByFQN(type + 's', fqn, ['owner'])
+        .then((resService: AxiosResponse) => {
+          if (resService?.data) {
+            const hostPort = resService.data.connection?.config?.hostPort || '';
+            resolve(hostPort);
+          } else {
+            throw null;
+          }
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-dashboard-details-error']
+          );
+          reject(err);
+        });
+    });
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, defaultFields)
@@ -306,12 +335,13 @@ const DashboardDetailsPage = () => {
             tags,
             owner,
             displayName,
+            name,
             charts: ChartIds,
             dashboardUrl,
             serviceType,
             version,
           } = res.data;
-          setDisplayName(displayName);
+          setDisplayName(displayName || name);
           setDashboardDetails(res.data);
           setCurrentVersion(version);
           setDashboardId(id);
@@ -348,14 +378,30 @@ const DashboardDetailsPage = () => {
             timestamp: 0,
           });
 
-          setDashboardUrl(dashboardUrl);
-          fetchCharts(ChartIds)
-            .then((chart) => setCharts(chart))
-            .catch((error: AxiosError) => {
-              showErrorToast(
-                error,
-                jsonData['api-error-messages']['fetch-chart-error']
-              );
+          fetchServiceDetails(service.type, service.name)
+            .then((hostPort: string) => {
+              setDashboardUrl(hostPort + dashboardUrl);
+              fetchCharts(ChartIds)
+                .then((chart) => {
+                  const updatedCharts = (chart as ChartType[]).map(
+                    (chartItem) => ({
+                      ...chartItem,
+                      chartUrl: hostPort + chartItem.chartUrl,
+                    })
+                  );
+                  setCharts(updatedCharts);
+                })
+                .catch((error: AxiosError) => {
+                  showErrorToast(
+                    error,
+                    jsonData['api-error-messages']['fetch-chart-error']
+                  );
+                });
+
+              setLoading(false);
+            })
+            .catch((err: AxiosError) => {
+              throw err;
             });
         } else {
           setIsError(true);
@@ -372,8 +418,6 @@ const DashboardDetailsPage = () => {
             jsonData['api-error-messages']['fetch-dashboard-details-error']
           );
         }
-      })
-      .finally(() => {
         setLoading(false);
       });
   };
@@ -664,7 +708,7 @@ const DashboardDetailsPage = () => {
                   if (thread.id === data.id) {
                     return {
                       ...thread,
-                      posts: data.posts.slice(-3),
+                      posts: data.posts && data.posts.slice(-3),
                       postsCount: data.postsCount,
                     };
                   } else {
@@ -691,6 +735,15 @@ const DashboardDetailsPage = () => {
           jsonData['api-error-messages']['delete-message-error']
         );
       });
+  };
+
+  const updateThreadHandler = (
+    threadId: string,
+    postId: string,
+    isThread: boolean,
+    data: Operation[]
+  ) => {
+    updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
   useEffect(() => {
@@ -734,6 +787,7 @@ const DashboardDetailsPage = () => {
           deleted={deleted}
           description={description}
           descriptionUpdateHandler={descriptionUpdateHandler}
+          entityFieldTaskCount={entityFieldTaskCount}
           entityFieldThreadCount={entityFieldThreadCount}
           entityLineage={entityLineage}
           entityLineageHandler={entityLineageHandler}
@@ -759,6 +813,7 @@ const DashboardDetailsPage = () => {
           tagUpdateHandler={onTagUpdate}
           tier={tier as TagLabel}
           unfollowDashboardHandler={unfollowDashboard}
+          updateThreadHandler={updateThreadHandler}
           version={currentVersion as string}
           versionHandler={versionHandler}
         />

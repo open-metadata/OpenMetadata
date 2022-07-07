@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     TableJoins,
     TableProfile,
 )
-from metadata.ingestion.models.table_queries import TableUsageRequest
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import ometa_logger
 
@@ -113,10 +113,9 @@ class OMetaTableMixin:
                 f"{self.get_suffix(Table)}/{table.id.__root__}/tableQuery",
                 data=query.json(),
             )
-        return None
 
     def publish_table_usage(
-        self, table: Table, table_usage_request: TableUsageRequest
+        self, table: Table, table_usage_request: UsageRequest
     ) -> None:
         """
         POST usage details for a Table
@@ -138,6 +137,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_join_request: Join data to add
         """
+
         logger.info("table join request %s", table_join_request.json())
         resp = self.client.put(
             f"{self.get_suffix(Table)}/{table.id.__root__}/joins",
@@ -209,6 +209,33 @@ class OMetaTableMixin:
                 databaseSchema=table.databaseSchema,
                 tags=table.tags,
                 viewDefinition=table.viewDefinition,
+            )
+            return self.create_or_update(updated)
+
+        return None
+
+    def update_profile_query(self, fqn: str, **kwargs) -> Optional[Table]:
+        """
+        Update the profileQuery property of a Table, given
+        its FQN.
+
+        :param fqn: Table FQN
+        :param profile_sample: new profile sample to set
+        :return: Updated table
+        """
+        table = self.get_by_name(entity=Table, fqn=fqn)
+        if table:
+            updated = CreateTableRequest(
+                name=table.name,
+                description=table.description,
+                tableType=table.tableType,
+                columns=table.columns,
+                tableConstraints=table.tableConstraints,
+                owner=table.owner,
+                databaseSchema=table.databaseSchema,
+                tags=table.tags,
+                viewDefinition=table.viewDefinition,
+                **kwargs,
             )
             return self.create_or_update(updated)
 

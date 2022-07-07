@@ -24,7 +24,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -44,15 +46,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -60,6 +66,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/services/databaseServices")
 @Api(value = "Database service collection", tags = "Services -> Database service collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -67,6 +74,7 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
+  private final Fernet fernet;
 
   static final String FIELDS = "pipelines,owner";
 
@@ -80,6 +88,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
 
   public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
     super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
+    this.fernet = Fernet.getInstance();
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -138,7 +147,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     } else {
       dbServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
     }
-    return addHref(uriInfo, dbServices);
+    return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
   }
 
   @GET
@@ -172,7 +181,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    DatabaseService databaseService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
@@ -206,7 +216,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    DatabaseService databaseService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @GET
@@ -234,7 +245,7 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
                 json -> {
                   try {
                     DatabaseService databaseService = JsonUtils.readValue((String) json, DatabaseService.class);
-                    return JsonUtils.pojoToJson(databaseService);
+                    return JsonUtils.pojoToJson(decryptOrNullify(securityContext, databaseService));
                   } catch (IOException e) {
                     return json;
                   }
@@ -271,7 +282,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getVersion(id, version);
+    DatabaseService databaseService = dao.getVersion(id, version);
+    return decryptOrNullify(securityContext, databaseService);
   }
 
   @POST
@@ -292,7 +304,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService create)
       throws IOException {
     DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, service, ADMIN | BOT);
+    Response response = create(uriInfo, securityContext, service, ADMIN | BOT);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @PUT
@@ -313,7 +327,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDatabaseService update)
       throws IOException {
     DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    Response response = createOrUpdate(uriInfo, securityContext, service, ADMIN | BOT | OWNER);
+    decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
+    return response;
   }
 
   @DELETE
@@ -349,5 +365,23 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
+  }
+
+  private ResultList<DatabaseService> decryptOrNullify(
+      SecurityContext securityContext, ResultList<DatabaseService> databaseServices) {
+    Optional.ofNullable(databaseServices.getData())
+        .orElse(Collections.emptyList())
+        .forEach(databaseService -> decryptOrNullify(securityContext, databaseService));
+    return databaseServices;
+  }
+
+  private DatabaseService decryptOrNullify(SecurityContext securityContext, DatabaseService databaseService) {
+    try {
+      SecurityUtil.authorizeAdmin(authorizer, securityContext, ADMIN | BOT);
+    } catch (AuthorizationException e) {
+      return databaseService.withConnection(null);
+    }
+    fernet.encryptOrDecryptDatabaseConnection(databaseService.getConnection(), databaseService.getServiceType(), false);
+    return databaseService;
   }
 }

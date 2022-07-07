@@ -55,42 +55,34 @@ class PostgresSource(CommonDbSourceService):
 
         return cls(config, metadata_config)
 
-    def get_databases(self) -> Iterable[Inspector]:
-        if self.service_connection.database:
-            yield from super().get_databases()
+    def get_database_names(self) -> Iterable[str]:
+        configured_db = self.config.serviceConnection.__root__.config.database
+        if configured_db:
+            self.set_inspector(database_name=configured_db)
+            yield configured_db
         else:
-            query = "select datname from pg_catalog.pg_database;"
-            results = self.connection.execute(query)
+            results = self.connection.execute(
+                "select datname from pg_catalog.pg_database"
+            )
             for res in results:
                 row = list(res)
+                new_database = row[0]
+
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern, database_name=new_database
+                ):
+                    self.status.filter(new_database, "Database pattern not allowed")
+                    continue
+
                 try:
-                    if filter_by_database(
-                        self.source_config.databaseFilterPattern, database_name=row[0]
-                    ):
-                        self.status.filter(row[0], "Database pattern not allowed")
-                        continue
-                    logger.info(f"Ingesting from database: {row[0]}")
-                    self.service_connection.database = row[0]
-                    self.engine = get_connection(
-                        self.config.serviceConnection.__root__.config
-                    )
-                    self.engine.connect()
-                    yield inspect(self.engine)
+                    self.set_inspector(database_name=new_database)
+                    yield new_database
                 except Exception as err:
-                    logger.error(f"Failed to Connect: {row[0]} due to error {err}")
+                    logger.error(
+                        f"Error trying to connect to database {new_database} - {err}"
+                    )
 
-    def get_database_entity(self, database: str) -> Database:
-        if database:
-            self.service_connection.database = database
-        return Database(
-            name=self.service_connection.database,
-            service=EntityReference(id=self.service.id, type="database"),
-        )
-
-    def get_status(self) -> SourceStatus:
-        return self.status
-
-    def is_partition(self, table_name: str, schema: str, inspector) -> bool:
+    def is_partition(self, table_name: str, schema_name: str, inspector) -> bool:
         cur = self.pgconn.cursor()
         cur.execute(
             """
@@ -100,7 +92,7 @@ class PostgresSource(CommonDbSourceService):
                 WHERE  c.relname = %s
                   AND  n.nspname = %s
             """,
-            (table_name, schema),
+            (table_name, schema_name),
         )
         obj = cur.fetchone()
         is_partition = obj[0] if obj else False

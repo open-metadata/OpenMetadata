@@ -12,9 +12,13 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { EntityThread, Post } from 'Models';
 import React, { FC, Fragment, useEffect, useState } from 'react';
 import { getFeedById } from '../../../axiosAPIs/feedsAPI';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import jsonData from '../../../jsons/en';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -27,14 +31,16 @@ const ActivityThread: FC<ActivityThreadProp> = ({
   selectedThread,
   postFeed,
   onConfirmation,
+  updateThreadHandler,
 }) => {
-  const [threadData, setThreadData] = useState<EntityThread>(selectedThread);
+  const [threadData, setThreadData] = useState<Thread>(selectedThread);
   const repliesLength = threadData?.posts?.length ?? 0;
   const mainThread = {
     message: threadData.message,
     from: threadData.createdBy,
     postTs: threadData.threadTs,
     id: threadData.id,
+    reactions: threadData.reactions,
   };
 
   useEffect(() => {
@@ -54,8 +60,11 @@ const ActivityThread: FC<ActivityThreadProp> = ({
           <div data-testid="main-message">
             <ActivityFeedCard
               isEntityFeed
+              isThread
               className="tw-mb-3"
               feed={mainThread as Post}
+              feedType={threadData.type || ThreadType.Conversation}
+              updateThreadHandler={updateThreadHandler}
             />
           </div>
         ) : null}
@@ -74,19 +83,21 @@ const ActivityThread: FC<ActivityThreadProp> = ({
                 isEntityFeed
                 className="tw-mb-3"
                 feed={reply}
+                feedType={threadData.type || ThreadType.Conversation}
                 key={key}
                 threadId={threadData.id}
+                updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}
               />
             ))}
           </div>
         ) : null}
-        <ActivityFeedEditor
-          buttonClass="tw-mr-4"
-          className="tw-ml-5 tw-mr-2 tw-my-6"
-          onSave={postFeed}
-        />
       </div>
+      <ActivityFeedEditor
+        buttonClass="tw-mr-4"
+        className="tw-ml-5 tw-mr-2 tw-my-6"
+        onSave={postFeed}
+      />
     </Fragment>
   );
 };

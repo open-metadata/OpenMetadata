@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import {
   Bucket,
   FilterObject,
@@ -34,7 +35,6 @@ import {
   ExploreSearchData,
   UrlParams,
 } from '../../components/Explore/explore.interface';
-import Loader from '../../components/Loader/Loader';
 import { getExplorePathWithSearch, PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
@@ -44,7 +44,6 @@ import {
   getQueryParam,
   getSearchFilter,
   INITIAL_FROM,
-  INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
   ZERO_SIZE,
@@ -66,8 +65,6 @@ const ExplorePage: FunctionComponent = () => {
     () => getQueryParam(getSearchFilter(location.search)),
     [location.search]
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
   const { searchQuery, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
@@ -76,12 +73,11 @@ const ExplorePage: FunctionComponent = () => {
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [dbtModelCount, setDbtModelCount] = useState<number>(0);
+  const [mlModelCount, setMlModelCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [showDeleted, setShowDeleted] = useState(false);
   const [initialSortField] = useState<string>(
-    searchQuery
-      ? tabsInfo[getCurrentTab(tab) - 1].sortField
-      : INITIAL_SORT_FIELD
+    tabsInfo[getCurrentTab(tab) - 1].sortField
   );
 
   const handleSearchText = (text: string) => {
@@ -106,6 +102,10 @@ const ExplorePage: FunctionComponent = () => {
 
   const handleDbtModelCount = (count: number) => {
     setDbtModelCount(count);
+  };
+
+  const handleMlModelCount = (count: number) => {
+    setMlModelCount(count);
   };
 
   const handlePathChange = (path: string) => {
@@ -133,6 +133,7 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
+      SearchIndex.MLMODEL,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -144,7 +145,8 @@ const ExplorePage: FunctionComponent = () => {
         emptyValue,
         emptyValue,
         entity,
-        showDeleted
+        showDeleted,
+        true
       )
     );
 
@@ -155,6 +157,7 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
+          mlmodel,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -188,6 +191,14 @@ const ExplorePage: FunctionComponent = () => {
                 )
               : 0
           );
+          setMlModelCount(
+            mlmodel.status === 'fulfilled'
+              ? getTotalEntityCountByType(
+                  mlmodel.value.data.aggregations?.['sterms#EntityType']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
         }
       )
       .catch((err: AxiosError) => {
@@ -195,9 +206,6 @@ const ExplorePage: FunctionComponent = () => {
           err,
           jsonData['api-error-messages']['fetch-entity-count-error']
         );
-      })
-      .finally(() => {
-        setIsLoading(false);
       });
   };
 
@@ -236,12 +244,10 @@ const ExplorePage: FunctionComponent = () => {
             resAggDatabaseSchema,
             resAggServiceName,
           });
-          setIsLoadingForData(false);
         }
       )
       .catch((err: AxiosError) => {
         setError(err.response?.data?.responseMessage);
-        setIsLoadingForData(false);
       });
   };
 
@@ -255,7 +261,6 @@ const ExplorePage: FunctionComponent = () => {
 
   useEffect(() => {
     setSearchResult(undefined);
-    setIsLoadingForData(true);
     fetchData([
       {
         queryString: searchText,
@@ -298,41 +303,40 @@ const ExplorePage: FunctionComponent = () => {
 
   return (
     <Fragment>
-      {isLoading || isLoadingForData ? (
-        <Loader />
-      ) : (
-        <PageContainerV1>
-          <Explore
-            error={error}
-            fetchCount={fetchCounts}
-            fetchData={fetchData}
-            handleFilterChange={handleFilterChange}
-            handlePathChange={handlePathChange}
-            handleSearchText={handleSearchText}
-            initialFilter={initialFilter}
-            searchFilter={searchFilter}
-            searchQuery={searchQuery}
-            searchResult={searchResult}
-            searchText={searchText}
-            showDeleted={showDeleted}
-            sortValue={initialSortField}
-            tab={tab}
-            tabCounts={{
-              table: tableCount,
-              topic: topicCount,
-              dashboard: dashboardCount,
-              pipeline: pipelineCount,
-              dbtModel: dbtModelCount,
-            }}
-            updateDashboardCount={handleDashboardCount}
-            updateDbtModelCount={handleDbtModelCount}
-            updatePipelineCount={handlePipelineCount}
-            updateTableCount={handleTableCount}
-            updateTopicCount={handleTopicCount}
-            onShowDeleted={(checked) => setShowDeleted(checked)}
-          />
-        </PageContainerV1>
-      )}
+      <PageContainerV1>
+        <Explore
+          error={error}
+          fetchCount={fetchCounts}
+          fetchData={fetchData}
+          handleFilterChange={handleFilterChange}
+          handlePathChange={handlePathChange}
+          handleSearchText={handleSearchText}
+          initialFilter={initialFilter}
+          isFilterSelected={!isEmpty(searchFilter) || !isEmpty(initialFilter)}
+          searchFilter={searchFilter}
+          searchQuery={searchQuery}
+          searchResult={searchResult}
+          searchText={searchText}
+          showDeleted={showDeleted}
+          sortValue={initialSortField}
+          tab={tab}
+          tabCounts={{
+            table: tableCount,
+            topic: topicCount,
+            dashboard: dashboardCount,
+            pipeline: pipelineCount,
+            dbtModel: dbtModelCount,
+            mlModel: mlModelCount,
+          }}
+          updateDashboardCount={handleDashboardCount}
+          updateDbtModelCount={handleDbtModelCount}
+          updateMlModelCount={handleMlModelCount}
+          updatePipelineCount={handlePipelineCount}
+          updateTableCount={handleTableCount}
+          updateTopicCount={handleTopicCount}
+          onShowDeleted={(checked) => setShowDeleted(checked)}
+        />
+      </PageContainerV1>
     </Fragment>
   );
 };

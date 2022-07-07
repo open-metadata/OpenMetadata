@@ -28,7 +28,7 @@ describe('Snowflake Ingestion', () => {
       cy.get('[data-testid="schema-filter-pattern-checkbox"]').check();
       cy.get('[data-testid="filter-pattern-includes-schema"]')
         .should('be.visible')
-        .type('test_schema');
+        .type('public');
     };
 
     testServiceCreationAndIngestion(
@@ -36,6 +36,5 @@ describe('Snowflake Ingestion', () => {
       connectionInput,
       addIngestionInput
     );
-
   });
 });

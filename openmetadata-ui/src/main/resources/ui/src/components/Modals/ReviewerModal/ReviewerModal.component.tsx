@@ -75,7 +75,7 @@ const ReviewerModal = ({
     getSuggestions(searchText, SearchIndex.USER)
       .then((res: AxiosResponse) => {
         const data = formatUsersResponse(
-          res.data.suggest['table-suggest'][0].options
+          res.data.suggest['metadata-suggest'][0].options
         );
         setOptions(data);
       })

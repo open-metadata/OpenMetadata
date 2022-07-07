@@ -11,25 +11,44 @@
  *  limitations under the License.
  */
 
-import { EntityThread } from 'Models';
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
 export interface ActivityThreadPanelProp
   extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
+  threadType?: ThreadType;
   open?: boolean;
   postFeedHandler: (value: string, id: string) => void;
-  onCancel: () => void;
   createThread: (data: CreateThread) => void;
+  updateThreadHandler: ThreadUpdatedFunc;
+  onCancel?: () => void;
   deletePostHandler?: (threadId: string, postId: string) => void;
+}
+
+export interface ActivityThreadPanelBodyProp
+  extends HTMLAttributes<HTMLDivElement>,
+    Pick<
+      ActivityThreadPanelProp,
+      | 'threadLink'
+      | 'updateThreadHandler'
+      | 'postFeedHandler'
+      | 'onCancel'
+      | 'createThread'
+      | 'deletePostHandler'
+    > {
+  threadType: ThreadType;
+  showHeader?: boolean;
+  onTabChange?: (key: string) => void;
 }
 
 export interface ActivityThreadListProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
-  threads: EntityThread[];
+    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
+  threads: Thread[];
   selectedThreadId: string;
   postFeed: (value: string) => void;
   onThreadIdSelect: (value: string) => void;
@@ -38,8 +57,8 @@ export interface ActivityThreadListProp
 }
 export interface ActivityThreadProp
   extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityThreadPanelProp, 'deletePostHandler'> {
-  selectedThread: EntityThread;
+    Pick<ActivityThreadPanelProp, 'deletePostHandler' | 'updateThreadHandler'> {
+  selectedThread: Thread;
   postFeed: (value: string) => void;
   onConfirmation?: (data: ConfirmState) => void;
 }

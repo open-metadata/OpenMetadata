@@ -20,6 +20,8 @@ import IconGoogle from '../assets/img/icon-google.png';
 import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconCommentPlus from '../assets/svg/add-chat.svg';
+import IconAddReaction from '../assets/svg/add-reaction-emoji.svg';
+import IconAlertBell from '../assets/svg/alert-bell.svg';
 import IconAnnouncementWhite from '../assets/svg/announcements-white.svg';
 import IconAnnouncement from '../assets/svg/announcements.svg';
 import IconAPI from '../assets/svg/api.svg';
@@ -30,6 +32,7 @@ import IconSuccess from '../assets/svg/check.svg';
 import IconCheckboxPrimary from '../assets/svg/checkbox-primary.svg';
 import IconCircleCheckbox from '../assets/svg/circle-checkbox.svg';
 import IconComments from '../assets/svg/comment.svg';
+import IconTaskClose from '../assets/svg/complete.svg';
 import IconConfigColor from '../assets/svg/config-color.svg';
 import IconConfig from '../assets/svg/config.svg';
 import IconControlMinus from '../assets/svg/control-minus.svg';
@@ -42,12 +45,15 @@ import IconDBTModelGrey from '../assets/svg/dbt-model-grey.svg';
 import IconDBTModelLightGrey from '../assets/svg/dbt-model-light-grey.svg';
 import IconDBTModelPrimeryColor from '../assets/svg/dbt-model-primery.svg';
 import IconDBTModel from '../assets/svg/dbt-model.svg';
+import IconDeleteGradiant from '../assets/svg/delete-gradiant.svg';
+import IconFeedDelete from '../assets/svg/delete-white.svg';
 import IconDeploy from '../assets/svg/deploy-icon.svg';
 import IconDeployIngestion from '../assets/svg/deploy-ingestion.svg';
 import IconDocPrimary from '../assets/svg/doc-primary.svg';
 import IconDocWhite from '../assets/svg/doc-white.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconEditBlack from '../assets/svg/edit-black.svg';
+import IconEditOutlinePrimary from '../assets/svg/edit-outline-primery.svg';
 import IconEditPrimary from '../assets/svg/edit-primary.svg';
 import IconError from '../assets/svg/error.svg';
 import IconExternalLinkGrey from '../assets/svg/external-link-grey.svg';
@@ -55,8 +61,11 @@ import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFitView from '../assets/svg/fitview.svg';
+import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
+import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
+import IconCommentGrey from '../assets/svg/ic-comment-grey.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
 import IconEditLineageColor from '../assets/svg/ic-edit-lineage-colored.svg';
@@ -66,6 +75,7 @@ import IconExclamationCircle from '../assets/svg/ic-exclamation-circle.svg';
 import IconExplore from '../assets/svg/ic-explore.svg';
 import IconFeed from '../assets/svg/ic-feed.svg';
 import IconFilter from '../assets/svg/ic-filter.svg';
+import IconFolder from '../assets/svg/ic-folder.svg';
 import IconGrowthArrow from '../assets/svg/ic-growth-arrow.svg';
 import IconHome from '../assets/svg/ic-home.svg';
 import IconIncreaseArrow from '../assets/svg/ic-increase-arrow.svg';
@@ -73,6 +83,7 @@ import IconIssues from '../assets/svg/ic-issues.svg';
 import IconLineage from '../assets/svg/ic-lineage.svg';
 import IconLossArrow from '../assets/svg/ic-loss-arrow.svg';
 import IconManage from '../assets/svg/ic-manage.svg';
+import IconMentions from '../assets/svg/ic-mentions.svg';
 import IconMenu from '../assets/svg/ic-menu.svg';
 import IconMyData from '../assets/svg/ic-mydata.svg';
 import IconQuality from '../assets/svg/ic-quality.svg';
@@ -82,8 +93,10 @@ import IconSchema from '../assets/svg/ic-schema.svg';
 import IconSearch from '../assets/svg/ic-search.svg';
 import IconSettings from '../assets/svg/ic-settings.svg';
 import IconSQLBuilder from '../assets/svg/ic-sql-builder.svg';
+import IconStar from '../assets/svg/ic-star.svg';
 import IconStore from '../assets/svg/ic-store.svg';
 import IconSync from '../assets/svg/ic-sync.svg';
+import IconTask from '../assets/svg/ic-task.svg';
 import IconTeams from '../assets/svg/ic-teams.svg';
 import IconThumbsUp from '../assets/svg/ic-thumbs-up.svg';
 import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
@@ -99,6 +112,7 @@ import IconNotNull from '../assets/svg/icon-notnull.svg';
 import IconTour from '../assets/svg/icon-tour.svg';
 import IconUnique from '../assets/svg/icon-unique.svg';
 import IconUp from '../assets/svg/icon-up.svg';
+import IconTaskOpen from '../assets/svg/in-progress.svg';
 import IconInfo from '../assets/svg/info.svg';
 import IconIngestion from '../assets/svg/ingestion.svg';
 import IconLineageColor from '../assets/svg/lineage-color.svg';
@@ -106,15 +120,19 @@ import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconManageColor from '../assets/svg/manage-color.svg';
 import IconMinus from '../assets/svg/minus.svg';
+import IconMlModal from '../assets/svg/mlmodal.svg';
 import IconPaperPlanePrimary from '../assets/svg/paper-plane-primary.svg';
 import IconPaperPlane from '../assets/svg/paper-plane.svg';
 import IconPendingBadge from '../assets/svg/pending-badge.svg';
 import IconPipelineGrey from '../assets/svg/pipeline-grey.svg';
 import IconPipeline from '../assets/svg/pipeline.svg';
+import IconPlusPrimery from '../assets/svg/plus-primery.svg';
 import IconPlus from '../assets/svg/plus.svg';
 import IconProfilerColor from '../assets/svg/profiler-color.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconReaction from '../assets/svg/Reaction.svg';
+import IconReplyFeed from '../assets/svg/Reply.svg';
 import IconRequest from '../assets/svg/request-icon.svg';
 import IconSampleDataColor from '../assets/svg/sample-data-colored.svg';
 import IconSampleData from '../assets/svg/sample-data.svg';
@@ -129,6 +147,7 @@ import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTagGrey from '../assets/svg/tag-grey.svg';
 import IconTag from '../assets/svg/tag.svg';
+import IconTaskColor from '../assets/svg/Task-ic.svg';
 import IconTeamsGrey from '../assets/svg/teams-grey.svg';
 import IconTerns from '../assets/svg/terms.svg';
 import IconTier from '../assets/svg/tier.svg';
@@ -163,6 +182,7 @@ export const Icons = {
   EDIT: 'icon-edit',
   EDIT_BLACK: 'icon-edit-black',
   EDIT_PRIMARY: 'icon-edit-primary',
+  EDIT_OUTLINE_PRIMARY: 'icon-edit-outline-primary',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
   REPORTS: 'icon-reports',
@@ -178,6 +198,7 @@ export const Icons = {
   VELLIPSIS: 'icon-v-ellipsis',
   COPY: 'copy',
   DELETE: 'icon-delete',
+  DELETE_GRADIANT: 'delete-gradient',
   REPLY: 'icon-reply',
   SEARCH: 'icon-search',
   INFO: 'icon-info',
@@ -229,6 +250,7 @@ export const Icons = {
   EXTERNAL_LINK_GREY: 'external-link-grey',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
+  MLMODAL: 'mlmodel-grey',
   PIPELINE_GREY: 'pipeline-grey',
   DBTMODEL_GREY: 'dbtmodel-grey',
   DBTMODEL_LIGHT_GREY: 'dbtmodel-light-grey',
@@ -240,6 +262,7 @@ export const Icons = {
   ICON_DEPLOY: 'icon-deploy',
   TOUR: 'tour',
   ICON_PLUS: 'icon-plus',
+  ICON_PLUS_PRIMERY: 'icon-plus-primary',
   ICON_MINUS: 'icon-minus',
   TAG: 'icon-tag',
   TAG_GREY: 'icon-tag-grey',
@@ -283,6 +306,21 @@ export const Icons = {
   BOT_PROFILE: 'bot-profile',
   CREATE_INGESTION: 'create-ingestion',
   DEPLOY_INGESTION: 'deploy-ingestion',
+  ADD_REACTION: 'add-reaction',
+  ADD_REPLY: 'add-reply',
+  REACTION: 'reaction',
+  FEED_DELETE: 'feed-delete',
+  ALERT_BELL: 'alert-bell',
+  TASK: 'ic-task',
+  ALL_APPLICATION: 'all-application',
+  FOLDER: 'ic-folder',
+  STAR: 'ic-star',
+  MENTIONS: 'ic-mentions',
+  COMMENT_GREY: 'ic-comment-grey',
+  TASK_ICON: 'task-icon',
+  TASK_CLOSED: 'task-closed',
+  TASK_OPEN: 'task-open',
+  FOREGIN_KEY: 'foreign-key',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -391,6 +429,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DELETE:
       IconComponent = IconDelete;
+
+      break;
+    case Icons.DELETE_GRADIANT:
+      IconComponent = IconDeleteGradiant;
 
       break;
     case Icons.COPY:
@@ -553,6 +595,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTopic;
 
       break;
+    case Icons.MLMODAL:
+      IconComponent = IconMlModal;
+
+      break;
     case Icons.DASHBOARD:
       IconComponent = IconDashboard;
 
@@ -625,6 +671,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconPlus;
 
       break;
+    case Icons.ICON_PLUS_PRIMERY:
+      IconComponent = IconPlusPrimery;
+
+      break;
     case Icons.ICON_MINUS:
       IconComponent = IconMinus;
 
@@ -692,6 +742,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EDIT_PRIMARY:
       IconComponent = IconEditPrimary;
+
+      break;
+    case Icons.EDIT_OUTLINE_PRIMARY:
+      IconComponent = IconEditOutlinePrimary;
 
       break;
 
@@ -823,6 +877,70 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconDeployIngestion;
 
       break;
+    case Icons.ADD_REACTION:
+      IconComponent = IconAddReaction;
+
+      break;
+    case Icons.ADD_REPLY:
+      IconComponent = IconReplyFeed;
+
+      break;
+
+    case Icons.REACTION:
+      IconComponent = IconReaction;
+
+      break;
+    case Icons.FEED_DELETE:
+      IconComponent = IconFeedDelete;
+
+      break;
+
+    case Icons.ALERT_BELL:
+      IconComponent = IconAlertBell;
+
+      break;
+    case Icons.TASK_ICON:
+      IconComponent = IconTaskColor;
+
+      break;
+
+    case Icons.TASK:
+      IconComponent = IconTask;
+
+      break;
+    case Icons.ALL_APPLICATION:
+      IconComponent = IconAllApplication;
+
+      break;
+    case Icons.FOLDER:
+      IconComponent = IconFolder;
+
+      break;
+    case Icons.STAR:
+      IconComponent = IconStar;
+
+      break;
+    case Icons.MENTIONS:
+      IconComponent = IconMentions;
+
+      break;
+    case Icons.COMMENT_GREY:
+      IconComponent = IconCommentGrey;
+
+      break;
+    case Icons.TASK_CLOSED:
+      IconComponent = IconTaskClose;
+
+      break;
+    case Icons.TASK_OPEN:
+      IconComponent = IconTaskOpen;
+
+      break;
+    case Icons.FOREGIN_KEY:
+      IconComponent = IconForeignKey;
+
+      break;
+
     default:
       IconComponent = null;
 

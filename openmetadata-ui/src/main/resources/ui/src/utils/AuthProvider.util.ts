@@ -168,7 +168,8 @@ export const getNameFromEmail = (email: string) => {
   if (email?.match(validEmailRegEx)) {
     return email.split('@')[0];
   } else {
-    return '';
+    // if the string does not conform to email format return the string
+    return email;
   }
 };
 
@@ -182,4 +183,8 @@ export const isProtectedRoute = (pathname: string) => {
 
 export const isTourRoute = (pathname: string) => {
   return pathname === ROUTES.TOUR;
+};
+
+export const getUrlPathnameExpiry = () => {
+  return new Date(Date.now() + 60 * 60 * 1000);
 };

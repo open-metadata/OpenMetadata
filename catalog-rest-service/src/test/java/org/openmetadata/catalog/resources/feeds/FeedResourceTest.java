@@ -20,18 +20,22 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.noPermission;
+import static org.openmetadata.catalog.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.catalog.security.SecurityUtil.authHeaders;
 import static org.openmetadata.catalog.security.SecurityUtil.getPrincipalName;
+import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.catalog.util.TestUtils.ADMIN_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.catalog.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.catalog.util.TestUtils.assertListNotNull;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
@@ -41,12 +45,18 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.HttpResponseException;
@@ -62,9 +72,11 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.feed.CloseTask;
 import org.openmetadata.catalog.api.feed.CreatePost;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.api.feed.EntityLinkThreadCount;
+import org.openmetadata.catalog.api.feed.ResolveTask;
 import org.openmetadata.catalog.api.feed.ThreadCount;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.data.Table;
@@ -79,9 +91,18 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
+import org.openmetadata.catalog.type.CreateTaskDetails;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
+import org.openmetadata.catalog.type.Reaction;
+import org.openmetadata.catalog.type.ReactionType;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TaskDetails;
+import org.openmetadata.catalog.type.TaskStatus;
+import org.openmetadata.catalog.type.TaskType;
+import org.openmetadata.catalog.type.ThreadType;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 @Slf4j
@@ -101,18 +122,24 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static String TEAM_LINK;
   public static Thread THREAD;
   public static Map<String, String> AUTH_HEADERS;
+  public static TableResourceTest TABLE_RESOURCE_TEST;
+  public static Comparator<Reaction> REACTION_COMPARATOR =
+      (o1, o2) ->
+          o1.getReactionType().equals(o2.getReactionType()) && o1.getUser().getId().equals(o2.getUser().getId())
+              ? 0
+              : 1;
 
   @BeforeAll
   public static void setup(TestInfo test) throws IOException, URISyntaxException {
-    TableResourceTest tableResourceTest = new TableResourceTest();
-    tableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
+    TABLE_RESOURCE_TEST = new TableResourceTest();
+    TABLE_RESOURCE_TEST.setup(test); // Initialize TableResourceTest for using helper methods
 
     UserResourceTest userResourceTest = new UserResourceTest();
     USER2 = userResourceTest.createEntity(userResourceTest.createRequest(test, 2), TEST_AUTH_HEADERS);
 
-    CreateTable createTable = tableResourceTest.createRequest(test);
+    CreateTable createTable = TABLE_RESOURCE_TEST.createRequest(test);
     createTable.withOwner(TableResourceTest.USER_OWNER1);
-    TABLE = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
+    TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
@@ -124,9 +151,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
-    CreateTable createTable2 = tableResourceTest.createRequest(test);
+    CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
     createTable2.withName("table2").withOwner(TEAM2_REF);
-    TABLE2 = tableResourceTest.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
+    TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E::table::%s>", TABLE.getFullyQualifiedName());
@@ -282,6 +309,268 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(tableColumnDescriptionThreadCount, getThreadCount(TABLE_COLUMN_LINK, userAuthHeaders));
   }
 
+  @Test
+  void post_validTaskAndList_200() throws IOException {
+    int totalTaskCount = listTasks(null, null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    int assignedByCount =
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    int assignedToCount =
+        listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, null, ADMIN_AUTH_HEADERS)
+            .getPaging()
+            .getTotal();
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old description")
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+    CreateThread create =
+        create().withMessage("Request Description for column").withTaskDetails(taskDetails).withType(ThreadType.Task);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int task1Id = task.getId();
+    assertEquals(1, task.getAssignees().size());
+    assertEquals(USER2.getEntityReference().getId(), task.getAssignees().get(0).getId());
+    assertEquals("new description", task.getSuggestion());
+    assertEquals(totalTaskCount + 1, tasks.getPaging().getTotal());
+    assertEquals(totalTaskCount + 1, tasks.getData().size());
+
+    Thread taskThread = getTask(task.getId(), userAuthHeaders);
+    TaskDetails task2 = taskThread.getTask();
+    assertEquals(task.getId(), task2.getId());
+    assertEquals(task.getAssignees(), task2.getAssignees());
+    assertEquals(task.getSuggestion(), task2.getSuggestion());
+    assertEquals(TaskStatus.Open, task2.getStatus());
+
+    // Now User2 creates a task for user on TABLE2
+    userAuthHeaders = authHeaders(USER2.getEmail());
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE2.getFullyQualifiedName());
+    taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old value")
+            .withAssignees(List.of(USER.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description2");
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    create =
+        new CreateThread()
+            .withAbout(about)
+            .withFrom(USER2.getName())
+            .withType(ThreadType.Task)
+            .withMessage("Request Description for " + TABLE2.getName())
+            .withTaskDetails(taskDetails);
+    createAndCheck(create, userAuthHeaders);
+    tasks = listTasks(null, null, null, null, null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int task2Id = task.getId();
+    assertEquals(1, task.getAssignees().size());
+    assertEquals(USER.getId(), task.getAssignees().get(0).getId());
+    assertEquals("new description2", task.getSuggestion());
+    assertEquals("old value", task.getOldValue());
+    assertEquals(totalTaskCount + 2, tasks.getPaging().getTotal());
+    assertEquals(totalTaskCount + 2, tasks.getData().size());
+
+    // try to list tasks with filters
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_BY.toString(), null, null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertEquals(task1Id, task.getId());
+    assertEquals("new description", task.getSuggestion());
+    assertEquals(assignedByCount + 1, tasks.getPaging().getTotal());
+    assertEquals(assignedByCount + 1, tasks.getData().size());
+
+    tasks = listTasks(null, USER.getId().toString(), FilterType.ASSIGNED_TO.toString(), null, null, userAuthHeaders);
+    task = tasks.getData().get(0).getTask();
+    assertEquals(task2Id, task.getId());
+    assertEquals(USER.getFullyQualifiedName(), task.getAssignees().get(0).getFullyQualifiedName());
+    assertEquals("new description2", task.getSuggestion());
+    assertEquals(assignedToCount + 1, tasks.getPaging().getTotal());
+    assertEquals(assignedToCount + 1, tasks.getData().size());
+
+    ThreadCount count = listTasksCount(null, TaskStatus.Open, userAuthHeaders);
+    int totalOpenTaskCount = count.getTotalCount();
+    count = listTasksCount(null, TaskStatus.Closed, userAuthHeaders);
+    int totalClosedTaskCount = count.getTotalCount();
+
+    // close a task and test the task status filter
+    ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
+    resolveTask(task2Id, resolveTask, userAuthHeaders);
+
+    tasks = listTasks(null, null, null, TaskStatus.Open, null, userAuthHeaders);
+    assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2Id)));
+    assertEquals(totalOpenTaskCount - 1, tasks.getPaging().getTotal());
+
+    tasks = listTasks(null, null, null, TaskStatus.Closed, null, userAuthHeaders);
+    assertEquals(task2Id, tasks.getData().get(0).getTask().getId());
+    assertEquals(totalClosedTaskCount + 1, tasks.getPaging().getTotal());
+    assertEquals(totalClosedTaskCount + 1, tasks.getData().size());
+  }
+
+  @Test
+  void put_resolveTask_description_200() throws IOException {
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old description")
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    CreateThread create =
+        create()
+            .withMessage("Request Description for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
+    resolveTask(taskId, resolveTask, userAuthHeaders);
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    assertEquals(
+        "accepted description",
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertEquals("accepted description", task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    String diff = getPlaintextDiff("old description", "accepted description");
+    String expectedMessage = String.format("Resolved the Task with Description - %s", diff);
+    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+  }
+
+  @Test
+  void put_closeTask_200() throws IOException {
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue("old description")
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestDescription)
+            .withSuggestion("new description");
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::description>";
+    CreateThread create =
+        create()
+            .withMessage("Request Description for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    Thread threadTask = createAndCheck(create, userAuthHeaders);
+    TaskDetails task = threadTask.getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    String oldDescription =
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription();
+
+    closeTask(taskId, "closing comment", userAuthHeaders);
+
+    // closing the task should not affect description of the table
+    tables = TABLE_RESOURCE_TEST.listEntities(null, userAuthHeaders);
+    table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    assertEquals(
+        oldDescription,
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getDescription());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertNull(task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    assertEquals("Closed the Task with comment - closing comment", taskThread.getPosts().get(0).getMessage());
+  }
+
+  @Test
+  void put_resolveTask_tags_200() throws IOException {
+    String newValue = "[" + JsonUtils.pojoToJson(USER_ADDRESS_TAG_LABEL) + "]";
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withOldValue(null)
+            .withAssignees(List.of(USER2.getEntityReference()))
+            .withType(TaskType.RequestTag)
+            .withSuggestion(newValue);
+
+    String about = create().getAbout();
+    about = about.substring(0, about.length() - 1) + "::columns::c1::tags>";
+    CreateThread create =
+        create()
+            .withMessage("Request Tags for column")
+            .withTaskDetails(taskDetails)
+            .withType(ThreadType.Task)
+            .withAbout(about);
+
+    Map<String, String> userAuthHeaders = authHeaders(USER.getEmail());
+    createAndCheck(create, userAuthHeaders);
+
+    ThreadList tasks = listTasks(null, null, null, null, null, userAuthHeaders);
+    TaskDetails task = tasks.getData().get(0).getTask();
+    assertNotNull(task.getId());
+    int taskId = task.getId();
+
+    ResolveTask resolveTask = new ResolveTask().withNewValue(newValue);
+    resolveTask(taskId, resolveTask, userAuthHeaders);
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", "tags");
+    ResultList<Table> tables = TABLE_RESOURCE_TEST.listEntities(params, userAuthHeaders);
+    Optional<Table> table =
+        tables.getData().stream()
+            .filter(t -> t.getFullyQualifiedName().equals(TABLE.getFullyQualifiedName()))
+            .findFirst();
+    assertTrue(table.isPresent());
+    List<TagLabel> tags =
+        table.get().getColumns().stream().filter(c -> c.getName().equals("c1")).findFirst().get().getTags();
+    assertEquals(USER_ADDRESS_TAG_LABEL.getTagFQN(), tags.get(0).getTagFQN());
+
+    Thread taskThread = getTask(taskId, userAuthHeaders);
+    task = taskThread.getTask();
+    assertEquals(taskId, task.getId());
+    assertEquals(newValue, task.getNewValue());
+    assertEquals(TaskStatus.Closed, task.getStatus());
+    assertEquals(1, taskThread.getPostsCount());
+    assertEquals(1, taskThread.getPosts().size());
+    String diff = getPlaintextDiff("", USER_ADDRESS_TAG_LABEL.getTagFQN());
+    String expectedMessage = String.format("Resolved the Task with Tag(s) - %s", diff);
+    assertEquals(expectedMessage, taskThread.getPosts().get(0).getMessage());
+  }
+
   private static Stream<Arguments> provideStringsForListThreads() {
     return Stream.of(
         Arguments.of(String.format("<#E::%s::%s>", Entity.USER, USER.getName())),
@@ -313,7 +602,9 @@ public class FeedResourceTest extends CatalogApplicationTest {
     }
 
     // Get the first page
-    ThreadList threads = listThreads(entityLink, null, userAuthHeaders, limit, null, null);
+    ThreadList threads =
+        listThreads(
+            entityLink, null, userAuthHeaders, null, null, null, ThreadType.Conversation.toString(), limit, null, null);
     assertEquals(limit, threads.getData().size());
     assertEquals(totalThreadCount, threads.getPaging().getTotal());
     assertNotNull(threads.getPaging().getAfter());
@@ -324,7 +615,18 @@ public class FeedResourceTest extends CatalogApplicationTest {
 
     // From the second page till last page, after and before cursors should not be null
     while (afterCursor != null && pageCount < totalPages - 1) {
-      threads = listThreads(entityLink, null, userAuthHeaders, limit, null, afterCursor);
+      threads =
+          listThreads(
+              entityLink,
+              null,
+              userAuthHeaders,
+              null,
+              null,
+              null,
+              ThreadType.Conversation.toString(),
+              limit,
+              null,
+              afterCursor);
       assertNotNull(threads.getPaging().getAfter());
       assertNotNull(threads.getPaging().getBefore());
       pageCount++;
@@ -336,12 +638,34 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(totalPages - 1, pageCount);
 
     // Get the last page
-    threads = listThreads(entityLink, null, userAuthHeaders, limit, null, afterCursor);
+    threads =
+        listThreads(
+            entityLink,
+            null,
+            userAuthHeaders,
+            null,
+            null,
+            null,
+            ThreadType.Conversation.toString(),
+            limit,
+            null,
+            afterCursor);
     assertEquals(lastPageCount, threads.getData().size());
     assertNull(threads.getPaging().getAfter());
 
     // beforeCursor should point to the first page
-    threads = listThreads(entityLink, null, userAuthHeaders, limit, beforeCursor, null);
+    threads =
+        listThreads(
+            entityLink,
+            null,
+            userAuthHeaders,
+            null,
+            null,
+            null,
+            ThreadType.Conversation.toString(),
+            limit,
+            beforeCursor,
+            null);
     assertEquals(limit, threads.getData().size());
     // since threads are always returned to the order of updated timestamp
     // the first message should read "Thread 10"
@@ -407,6 +731,23 @@ public class FeedResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void patch_thread_reactions_200() throws IOException {
+    // create a thread
+    CreateThread create = create().withMessage("message");
+    Thread thread = createAndCheck(create, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(thread);
+
+    // add reactions
+    Reaction reaction = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
+    Thread updated = thread.withReactions(List.of(reaction));
+
+    Thread patched = patchThreadAndCheck(updated, originalJson, TEST_AUTH_HEADERS);
+    assertNotEquals(patched.getUpdatedAt(), thread.getUpdatedAt());
+    assertEquals(TEST_USER_NAME, patched.getUpdatedBy());
+  }
+
+  @Test
   void patch_thread_not_allowed_fields() throws IOException {
     // create a thread
     CreateThread create = create().withMessage("message");
@@ -466,11 +807,13 @@ public class FeedResourceTest extends CatalogApplicationTest {
   void list_threadsWithOwnerFilter() throws HttpResponseException {
     // THREAD is created with TABLE entity in BeforeAll
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    String ownerId = TABLE.getOwner().getId().toString();
+    int user1ThreadCount =
+        listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS).getPaging().getTotal();
     int user2ThreadCount =
         listThreadsWithFilter(USER2.getId().toString(), FilterType.OWNER.toString(), AUTH_HEADERS)
             .getPaging()
             .getTotal();
-    String ownerId = TABLE.getOwner().getId().toString();
 
     // create another thread on an entity with a different owner
     String ownerId2 = TABLE2.getOwner().getId().toString();
@@ -483,7 +826,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertNotEquals(ownerId, ownerId2);
 
     ThreadList threads = listThreadsWithFilter(ownerId, FilterType.OWNER.toString(), AUTH_HEADERS);
-    assertEquals(totalThreadCount, threads.getPaging().getTotal());
+    assertEquals(user1ThreadCount, threads.getPaging().getTotal());
 
     // This should return 0 since the table is owned by a team
     // and for the filter we are passing team id instead of user id
@@ -552,7 +895,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(initialThreadCount + 3, threads.getPaging().getTotal());
     assertEquals(initialThreadCount + 3, threads.getData().size());
     assertEquals(
-        String.format("Started to follow **table** `%s`", TABLE2.getFullyQualifiedName()),
+        String.format("Followed **table** `%s`", TABLE2.getFullyQualifiedName()),
         threads.getData().get(0).getMessage());
     assertEquals("Message 2", threads.getData().get(1).getMessage());
 
@@ -631,6 +974,42 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertResponse(() -> deletePost(threadId, postId, AUTH_HEADERS), FORBIDDEN, noPermission(USER.getName()));
   }
 
+  @Test
+  void patch_post_reactions_200() throws IOException {
+    // Create a thread and add a post
+    Thread thread = createAndCheck(create(), AUTH_HEADERS);
+    CreatePost createPost = createPost("reply 1");
+    thread = addPostAndCheck(thread, createPost, AUTH_HEADERS);
+    assertEquals(1, thread.getPosts().size());
+
+    // patch the post
+    Post post = thread.getPosts().get(0);
+    String originalJson = JsonUtils.pojoToJson(post);
+    Reaction reaction1 = new Reaction().withReactionType(ReactionType.ROCKET).withUser(USER2.getEntityReference());
+    Reaction reaction2 = new Reaction().withReactionType(ReactionType.HOORAY).withUser(USER2.getEntityReference());
+    post.withReactions(List.of(reaction1, reaction2));
+    Post updatedPost = patchPostAndCheck(thread.getId(), post, originalJson, TEST_AUTH_HEADERS);
+    assertTrue(containsAll(updatedPost.getReactions(), List.of(reaction1, reaction2), REACTION_COMPARATOR));
+    ThreadList threads = listThreads(null, 5, AUTH_HEADERS);
+    thread = threads.getData().get(0);
+    assertEquals(TEST_USER_NAME, thread.getUpdatedBy());
+  }
+
+  @Test
+  void patch_post_404() {
+    // Test with an invalid thread id
+    assertResponse(
+        () -> patchPost(NON_EXISTENT_ENTITY, NON_EXISTENT_ENTITY, "{}", new Post(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Thread", NON_EXISTENT_ENTITY));
+
+    // Test with an invalid post id
+    assertResponse(
+        () -> patchPost(THREAD.getId(), NON_EXISTENT_ENTITY, "{}", new Post(), AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound("Post", NON_EXISTENT_ENTITY));
+  }
+
   public static Thread createAndCheck(CreateThread create, Map<String, String> authHeaders)
       throws HttpResponseException {
     // Validate returned thread from POST
@@ -701,20 +1080,66 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.get(target, Thread.class, authHeaders);
   }
 
+  public static Thread getTask(int id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id);
+    return TestUtils.get(target, Thread.class, authHeaders);
+  }
+
+  public static void resolveTask(int id, ResolveTask resolveTask, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id + "/resolve");
+    TestUtils.put(target, resolveTask, Status.OK, authHeaders);
+  }
+
+  public static void closeTask(int id, String comment, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("feed/tasks/" + id + "/close");
+    TestUtils.put(target, new CloseTask().withComment(comment), Status.OK, authHeaders);
+  }
+
+  public static ThreadList listTasks(
+      String entityLink,
+      String userId,
+      String filterType,
+      TaskStatus taskStatus,
+      Integer limitPosts,
+      Map<String, String> authHeaders)
+      throws HttpResponseException {
+    return listThreads(
+        entityLink,
+        limitPosts,
+        authHeaders,
+        userId,
+        filterType,
+        taskStatus,
+        ThreadType.Task.toString(),
+        null,
+        null,
+        null);
+  }
+
   public static ThreadList listThreads(String entityLink, Integer limitPosts, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return listThreads(entityLink, limitPosts, authHeaders, null, null, null);
+    return listThreads(
+        entityLink, limitPosts, authHeaders, null, null, null, ThreadType.Conversation.toString(), null, null, null);
   }
 
   public static ThreadList listThreads(
       String entityLink,
       Integer limitPosts,
       Map<String, String> authHeaders,
+      String userId,
+      String filterType,
+      TaskStatus taskStatus,
+      String threadType,
       Integer limitParam,
       String before,
       String after)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    target = filterType != null ? target.queryParam("filterType", filterType) : target;
+    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
+    target = threadType != null ? target.queryParam("type", threadType) : target;
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = limitPosts != null ? target.queryParam("limitPosts", limitPosts) : target;
     target = limitParam != null ? target.queryParam("limit", limitParam) : target;
@@ -732,6 +1157,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static ThreadList listThreadsWithFilter(String userId, String filterType, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("feed");
+    target = target.queryParam("type", ThreadType.Conversation);
     target = userId != null ? target.queryParam("userId", userId) : target;
     target = filterType != null ? target.queryParam("filterType", filterType) : target;
     return TestUtils.get(target, ThreadList.class, authHeaders);
@@ -746,6 +1172,16 @@ public class FeedResourceTest extends CatalogApplicationTest {
       throws HttpResponseException {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    target = target.queryParam("type", ThreadType.Conversation);
+    return TestUtils.get(target, ThreadCount.class, authHeaders);
+  }
+
+  public static ThreadCount listTasksCount(String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed/count");
+    target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    target = target.queryParam("type", ThreadType.Task);
+    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
@@ -775,10 +1211,62 @@ public class FeedResourceTest extends CatalogApplicationTest {
     return TestUtils.patch(getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
   }
 
+  protected final Post patchPostAndCheck(
+      UUID threadId, Post updated, String originalJson, Map<String, String> authHeaders) throws IOException {
+    // Validate information returned in patch response has the updates
+    Post returned = patchPost(threadId, updated.getId(), originalJson, updated, authHeaders);
+    compareEntities(updated, returned);
+
+    // GET the entity and Validate information returned
+    Thread thread = getThread(threadId, authHeaders);
+    Post post = thread.getPosts().stream().filter(p -> p.getId().equals(updated.getId())).findAny().get();
+    compareEntities(updated, post);
+    return returned;
+  }
+
+  public final Post patchPost(
+      UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
+      throws JsonProcessingException, HttpResponseException {
+    String updatedPostJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
+    return TestUtils.patch(
+        getResource(String.format("feed/%s/posts/%s", threadId, id)), patch, Post.class, authHeaders);
+  }
+
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
     assertListNotNull(patched.getId(), patched.getHref(), patched.getAbout());
     assertEquals(expected.getMessage(), patched.getMessage());
     assertEquals(expected.getResolved(), patched.getResolved());
     assertEquals(getPrincipalName(authHeaders), patched.getUpdatedBy());
+  }
+
+  public void compareEntities(Post expected, Post patched) {
+    assertListNotNull(patched.getId(), patched.getMessage(), patched.getFrom());
+    assertEquals(expected.getMessage(), patched.getMessage());
+    assertEquals(expected.getFrom(), patched.getFrom());
+    assertEquals(expected.getPostTs(), patched.getPostTs());
+    assertEquals(expected.getReactions().size(), patched.getReactions().size());
+    assertTrue(containsAll(expected.getReactions(), patched.getReactions(), REACTION_COMPARATOR));
+  }
+
+  private static <T> BiPredicate<T, T> match(Comparator<T> f) {
+    return (a, b) -> f.compare(a, b) == 0;
+  }
+
+  private static <T, U> Predicate<U> bind(BiPredicate<T, U> f, T t) {
+    return u -> f.test(t, u);
+  }
+
+  private static <T> boolean contains(List<T> list, T item, Comparator<? super T> comparator) {
+    return list.stream().anyMatch(bind(match(comparator), item));
+  }
+
+  private static <T> boolean containsAll(List<T> list, List<T> items, Comparator<? super T> comparator) {
+    for (T item : items) {
+      if (list.stream().noneMatch(bind(match(comparator), item))) {
+        return false;
+      }
+    }
+    return true;
   }
 }

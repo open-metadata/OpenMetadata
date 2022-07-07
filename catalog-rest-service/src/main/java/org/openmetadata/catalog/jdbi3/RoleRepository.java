@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Role;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.RoleResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
@@ -48,18 +49,18 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) throws IOException {
-    List<String> result = findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
+    List<EntityRelationshipRecord> result = findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
     return EntityUtil.populateEntityReferences(result, Entity.POLICY);
   }
 
   private List<EntityReference> getUsers(@NonNull Role role) throws IOException {
-    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
-    return EntityUtil.populateEntityReferences(ids, Entity.USER);
+    List<EntityRelationshipRecord> records = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
+    return EntityUtil.populateEntityReferences(records, Entity.USER);
   }
 
   private List<EntityReference> getTeams(@NonNull Role role) throws IOException {
-    List<String> ids = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
-    return EntityUtil.populateEntityReferences(ids, Entity.TEAM);
+    List<EntityRelationshipRecord> records = findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
+    return EntityUtil.populateEntityReferences(records, Entity.TEAM);
   }
 
   @Override

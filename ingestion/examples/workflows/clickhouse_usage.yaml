@@ -7,14 +7,13 @@ source:
       username: default
       password: ''
       hostPort: localhost:8123
-      database: default
+      databaseSchema: default
   sourceConfig:
     config:
       queryLogDuration: '1'
 processor:
   type: query-parser
-  config:
-    filter: ''
+  config: {}
 stage:
   type: table-usage
   config:

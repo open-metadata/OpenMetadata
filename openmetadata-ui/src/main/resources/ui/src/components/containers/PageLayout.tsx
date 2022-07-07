@@ -24,6 +24,14 @@ interface PageLayoutProp {
   classes?: string;
 }
 
+export const leftPanelAntCardStyle = {
+  border: '1px rgb(221, 227, 234) solid',
+  borderRadius: '4px',
+  boxShadow: '1px 1px 8px rgb(0 0 0 / 6%)',
+  marginRight: '4px',
+  marginLeft: '4px',
+};
+
 const PageLayout: FC<PageLayoutProp> = ({
   leftPanel,
   header,
@@ -36,7 +44,7 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       leftPanel && (
         <div>
-          <div className="tw-pr-4 tw-py-1" id="left-panel">
+          <div className="tw-py-1" id="left-panel">
             {leftPanel}
           </div>
           <div />
@@ -49,7 +57,7 @@ const PageLayout: FC<PageLayoutProp> = ({
     return (
       rightPanel && (
         <div>
-          <div className="tw-px-2 tw-py-1" id="right-panel">
+          <div className="tw-py-1" id="right-panel">
             {rightPanel}
           </div>
           <div />
@@ -81,19 +89,7 @@ const PageLayout: FC<PageLayoutProp> = ({
             }
           )}>
           {getLeftPanel()}
-          <div
-            className={classNames(
-              'tw-py-1',
-              {
-                'tw-pl-2': leftPanel,
-              },
-              {
-                'tw-pr-4': rightPanel,
-              }
-            )}
-            id="center">
-            {children}
-          </div>
+          <div id="center">{children}</div>
           {getRightPanel()}
         </div>
       </Fragment>

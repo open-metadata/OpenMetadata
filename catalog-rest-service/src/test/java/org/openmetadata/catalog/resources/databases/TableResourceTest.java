@@ -379,6 +379,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     origColumns.remove(3);
     origColumns.add(3, column3.withDataType(INT));
     assertColumns(origColumns, updatedTable.getColumns());
+
+    // Change the case of the column name and it should't update
+    updateColumn2 = getColumn("COLUMN2", INT, null).withOrdinalPosition(2).withDescription("");
+    columns = new ArrayList<>();
+    columns.add(updateColumn1);
+    columns.add(updateColumn2);
+    columns.add(updateColumn4);
+    columns.add(updateColumn3);
+    create.setColumns(columns);
+    create.setTableConstraints(List.of(constraint));
+    prevVersion = updatedTable.getVersion();
+    updatedTable = updateEntity(create, OK, ADMIN_AUTH_HEADERS);
+    TestUtils.validateUpdate(prevVersion, updatedTable.getVersion(), NO_CHANGE);
   }
 
   public static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
@@ -1055,6 +1068,17 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     change.getFieldsAdded().add(new FieldChange().withName("profileSample").withNewValue(80.0));
 
     updateAndCheckEntity(request.withProfileSample(80.0), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_profileQuery_200(TestInfo test) throws IOException {
+    CreateTable request = createRequest(test);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(table.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("profileQuery").withNewValue("SELECT * FROM dual"));
+
+    updateAndCheckEntity(
+        request.withProfileQuery("SELECT * FROM dual"), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

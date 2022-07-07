@@ -14,10 +14,17 @@
 import classNames from 'classnames';
 import { isEqual, isNil, isUndefined } from 'lodash';
 import { ColumnJoins, EntityTags, ExtraInfo } from 'Models';
-import React, { RefObject, useEffect, useState } from 'react';
+import React, {
+  Fragment,
+  RefObject,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import AppState from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath, ROUTES } from '../../constants/constants';
+import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -28,6 +35,7 @@ import {
   TableJoins,
   TypeUsedToReturnUsageDetailsOfAnEntity,
 } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { LabelType, State } from '../../generated/type/tagLabel';
@@ -67,6 +75,7 @@ import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
 import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import TableQueries from '../TableQueries/TableQueries';
+import { CustomPropertyTable } from './CustomPropertyTable/CustomPropertyTable';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -129,6 +138,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   deletePostHandler,
   paging,
   fetchFeedHandler,
+  handleExtentionUpdate,
+  updateThreadHandler,
+  entityFieldTaskCount,
 }: DatasetDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -143,6 +155,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   });
 
   const [threadLink, setThreadLink] = useState<string>('');
+  const [threadType, setThreadType] = useState<ThreadType>(
+    ThreadType.Conversation
+  );
   const [selectedField, setSelectedField] = useState<string>('');
 
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -200,7 +215,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -279,6 +294,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 8,
     },
     {
+      name: 'Custom Properties',
+      icon: {
+        alt: 'custom_properties',
+        name: 'custom_properties-light-grey',
+        title: 'custom_properties',
+        selectedName: 'custom_properties-primery',
+      },
+      isProtected: false,
+      position: 9,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -287,9 +313,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         selectedName: 'icon-managecolor',
       },
       isProtected: false,
-      isHidden: deleted,
       protectedState: !owner || hasEditAccess(),
-      position: 9,
+      position: 10,
     },
   ];
 
@@ -507,8 +532,11 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     };
   };
 
-  const onThreadLinkSelect = (link: string) => {
+  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
+    if (threadType) {
+      setThreadType(threadType);
+    }
   };
 
   const onThreadPanelClose = () => {
@@ -543,6 +571,13 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
   }, [paging, isentityThreadLoading, isInView]);
+
+  const handleFeedFilterChange = useCallback(
+    (feedType, threadType) => {
+      fetchFeedHandler(paging.after, feedType, threadType);
+    },
+    [paging]
+  );
 
   return (
     <PageContainer>
@@ -588,8 +623,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   <div className="tw-col-span-3 tw--ml-5">
                     <Description
                       description={description}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.DESCRIPTION,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'description',
+                        EntityField.DESCRIPTION,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -620,8 +659,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                         FQN_SEPARATOR_CHAR
                       )}
                       columns={columns}
+                      entityFieldTasks={getEntityFieldThreadCounts(
+                        EntityField.COLUMNS,
+                        entityFieldTaskCount
+                      )}
                       entityFieldThreads={getEntityFieldThreadCounts(
-                        'columns',
+                        EntityField.COLUMNS,
                         entityFieldThreadCount
                       )}
                       entityFqn={datasetFQN}
@@ -651,6 +694,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                     entityName={entityName}
                     feedList={entityThread}
                     postFeedHandler={postFeedHandler}
+                    updateThreadHandler={updateThreadHandler}
+                    onFeedFiltersUpdate={handleFeedFilterChange}
                   />
                   <div />
                 </div>
@@ -667,12 +712,22 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div
                   className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list"
                   id="tablequeries">
-                  <div />
-                  <TableQueries
-                    isLoading={isQueriesLoading}
-                    queries={tableQueries}
-                  />
-                  <div />
+                  {!isUndefined(tableQueries) && tableQueries.length > 0 ? (
+                    <Fragment>
+                      <div />
+                      <TableQueries
+                        isLoading={isQueriesLoading}
+                        queries={tableQueries}
+                      />
+                      <div />
+                    </Fragment>
+                  ) : (
+                    <div
+                      className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8 tw-col-span-3"
+                      data-testid="no-queries">
+                      <span>No queries data available.</span>
+                    </div>
+                  )}
                 </div>
               )}
               {activeTab === 5 && (
@@ -742,16 +797,25 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                   />
                 </div>
               )}
-              {activeTab === 9 && !deleted && (
+              {activeTab === 9 && (
+                <CustomPropertyTable
+                  handleExtentionUpdate={handleExtentionUpdate}
+                  tableDetails={tableDetails}
+                />
+              )}
+              {activeTab === 10 && (
                 <div>
                   <ManageTab
                     allowDelete
+                    allowSoftDelete={!deleted}
                     currentTier={tier?.tagFQN}
                     currentUser={owner}
                     entityId={tableDetails.id}
                     entityName={tableDetails.name}
                     entityType={EntityType.TABLE}
                     hasEditAccess={hasEditAccess()}
+                    hideOwner={deleted}
+                    hideTier={deleted}
                     manageSectionType={EntityType.TABLE}
                     onSave={onSettingsUpdate}
                   />
@@ -772,6 +836,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               open={Boolean(threadLink)}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
+              threadType={threadType}
+              updateThreadHandler={updateThreadHandler}
               onCancel={onThreadPanelClose}
             />
           ) : null}

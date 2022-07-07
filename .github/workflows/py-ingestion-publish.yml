@@ -13,9 +13,6 @@ name: Publish openmetadata-ingestion
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag being built"
 
 jobs:
   publish-test:
@@ -62,4 +59,4 @@ jobs:
           cd ingestion; \
             python setup.py install sdist bdist_wheel; \
             twine check dist/*; \
-            twine upload -r dist/*
+            twine upload dist/*
