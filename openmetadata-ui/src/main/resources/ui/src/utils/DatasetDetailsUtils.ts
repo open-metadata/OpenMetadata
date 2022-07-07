@@ -23,7 +23,7 @@ export const datasetTableTabs = [
     path: 'schema',
   },
   {
-    name: 'Activity Feed & Task',
+    name: 'Activity Feed & Tasks',
     path: 'activity_feed',
     field: TabSpecificField.ACTIVITY_FEED,
   },

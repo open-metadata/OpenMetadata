@@ -199,12 +199,12 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px tw-px-1 tw-mx-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
+        'tw-py-px tw-px-1 tw-border tw-rounded tw-text-xs tw-min-w-badgeCount tw-text-center',
         clsBG,
         className
       )}>
       <span data-testid="filter-count" title={count.toString()}>
-        {count > 999 ? `999+` : count}
+        {count}
       </span>
     </span>
   );
