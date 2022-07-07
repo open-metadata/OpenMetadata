@@ -12,7 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, debounce, includes, isEqual } from 'lodash';
 import { EntityTags, FormattedUsersData } from 'Models';
@@ -29,16 +28,9 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/type/entityReference';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
-import jsonData from '../../jsons/en';
 import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
 import { getOwnerList } from '../../utils/ManageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import {
-  getTagCategories,
-  getTaglist,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
@@ -67,8 +59,6 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
   const { isAuthDisabled } = useAuthContext();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
@@ -198,20 +188,6 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
     }));
   };
 
-  const fetchTags = () => {
-    setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
   const onDescriptionUpdate = (updatedHTML: string) => {
     if (glossary.description !== updatedHTML) {
       const updatedTableDetails = {
@@ -270,7 +246,6 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
 
   const handleTagContainerClick = () => {
     if (!isTagEditable) {
-      fetchTags();
       setIsTagEditable(true);
     }
   };
@@ -431,11 +406,10 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
               containerClass="tw-flex tw-items-center tw-gap-2"
               dropDownHorzPosRight={false}
               editable={isTagEditable}
-              isLoading={isTagLoading}
+              isGlossaryTermAllowed={false}
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();

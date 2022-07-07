@@ -14,7 +14,7 @@
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { EntityTags, ExtraInfo, TagOption } from 'Models';
+import { EntityTags, ExtraInfo } from 'Models';
 import React, { RefObject, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -22,7 +22,6 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTeamAndUserDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
 import { observerOptions } from '../../constants/Mydata.constants';
-import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -44,13 +43,8 @@ import {
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { getDefaultValue } from '../../utils/FeedElementUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Description from '../common/description/Description';
@@ -124,9 +118,6 @@ const DashboardDetails = ({
     chart: ChartType;
     index: number;
   }>();
-  const [tagList, setTagList] = useState<Array<TagOption>>([]);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [selectedField, setSelectedField] = useState<string>('');
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -365,50 +356,6 @@ const DashboardDetails = ({
     setEditChartTags(undefined);
   };
 
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setTagList(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setTagList([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
     if (threadType) {
@@ -613,10 +560,6 @@ const DashboardDetails = ({
                               data-testid="tags-wrapper"
                               onClick={() => {
                                 if (!editChartTags) {
-                                  // Fetch tags and terms only once
-                                  if (tagList.length === 0 || tagFetchFailed) {
-                                    fetchTagsAndGlossaryTerms();
-                                  }
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
@@ -639,13 +582,8 @@ const DashboardDetails = ({
                                   <TagsContainer
                                     showAddTagButton
                                     editable={editChartTags?.index === index}
-                                    isLoading={
-                                      isTagLoading &&
-                                      editChartTags?.index === index
-                                    }
                                     selectedTags={chart.tags as EntityTags[]}
                                     size="small"
-                                    tagList={tagList}
                                     type="label"
                                     onCancel={() => {
                                       handleChartTagSelection();

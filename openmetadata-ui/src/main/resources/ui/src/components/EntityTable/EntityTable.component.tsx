@@ -24,7 +24,6 @@ import { useAuthContext } from '../../authentication/auth-provider/AuthProvider'
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { getTableDetailsPath } from '../../constants/constants';
 import { EntityField } from '../../constants/feed.constants';
-import { SettledStatus } from '../../enums/axios.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
@@ -46,17 +45,12 @@ import {
 } from '../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../utils/EntityUtils';
 import { getFieldThreadElement } from '../../utils/FeedElementUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import {
   getConstraintIcon,
   getDataTypeString,
   makeData,
 } from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
@@ -161,54 +155,6 @@ const EntityTable = ({
     column: Column;
     index: number;
   }>();
-
-  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getTagCategories(), fetchGlossaryTerms()])
-      .then((values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          tagsAndTerms = getTaglist(values[0].value.data).map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setAllTags(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setAllTags([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
 
   const handleEditColumn = (column: Column, index: number): void => {
     setEditColumn({ column, index });
@@ -645,10 +591,6 @@ const EntityTable = ({
                               onClick={() => {
                                 if (!editColumnTag) {
                                   handleEditColumnTag(row.original, row.id);
-                                  // Fetch tags and terms only once
-                                  if (allTags.length === 0 || tagFetchFailed) {
-                                    fetchTagsAndGlossaryTerms();
-                                  }
                                 }
                               }}>
                               <NonAdminAction
@@ -660,13 +602,8 @@ const EntityTable = ({
                                 <TagsContainer
                                   showAddTagButton
                                   editable={editColumnTag?.index === row.id}
-                                  isLoading={
-                                    isTagLoading &&
-                                    editColumnTag?.index === row.id
-                                  }
                                   selectedTags={cell.value || []}
                                   size="small"
-                                  tagList={allTags}
                                   type="label"
                                   onCancel={() => {
                                     handleTagSelection();

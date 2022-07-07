@@ -12,7 +12,6 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, includes, isEmpty, isEqual, isUndefined } from 'lodash';
 import {
@@ -32,15 +31,8 @@ import {
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import { LabelType, Source, State } from '../../generated/type/tagLabel';
-import jsonData from '../../jsons/en';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import {
-  getTagCategories,
-  getTaglist,
-  getTagOptionsFromFQN,
-} from '../../utils/TagsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Card from '../common/Card/Card';
 import DescriptionV1 from '../common/description/DescriptionV1';
@@ -76,8 +68,6 @@ const GlossaryTermsV1 = ({
   currentPage,
 }: Props) => {
   const [isTagEditable, setIsTagEditable] = useState<boolean>(false);
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -216,20 +206,6 @@ const GlossaryTermsV1 = ({
     }));
   };
 
-  const fetchTags = () => {
-    setIsTagLoading(true);
-    getTagCategories()
-      .then((res) => {
-        setTagList(getTaglist(res.data));
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, jsonData['api-error-messages']['fetch-tags-error']);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     onTagUpdate?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsTagEditable(false);
@@ -307,7 +283,6 @@ const GlossaryTermsV1 = ({
 
   const handleTagContainerClick = () => {
     if (!isTagEditable) {
-      fetchTags();
       setIsTagEditable(true);
     }
   };
@@ -658,11 +633,10 @@ const GlossaryTermsV1 = ({
               containerClass="tw-flex tw-items-center tw-gap-2"
               dropDownHorzPosRight={false}
               editable={isTagEditable}
-              isLoading={isTagLoading}
+              isGlossaryTermAllowed={false}
               selectedTags={getSelectedTags()}
               showTags={false}
               size="small"
-              tagList={getTagOptionsFromFQN(tagList)}
               type="label"
               onCancel={() => {
                 handleTagSelection();

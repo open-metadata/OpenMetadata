@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import { ReactNode } from 'react';
 import { TagProps } from '../tags/tags.interface';
 
@@ -20,13 +20,13 @@ export type TagsContainerProps = {
   editable?: boolean;
   dropDownHorzPosRight?: boolean;
   selectedTags: Array<EntityTags>;
-  tagList: Array<TagOption | string>;
   type?: TagProps['type'];
   showTags?: boolean;
   showAddTagButton?: boolean;
   className?: string;
   containerClass?: string;
   buttonContainerClass?: string;
+  isGlossaryTermAllowed?: boolean;
   onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   onCancel: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
 };

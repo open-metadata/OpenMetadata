@@ -12,28 +12,25 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Select } from 'antd';
+import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { isEmpty, isEqual } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
-import AsyncSelect from 'react-select/async';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getTagSuggestions } from '../../axiosAPIs/miscAPI';
+import { SearchIndex } from '../../enums/search.enum';
 import { Source } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
-
-interface Option {
-  label: string;
-  value: string;
-}
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
   editable,
   selectedTags,
-  tagList,
   onCancel,
   onSelectionChange,
   className,
@@ -41,38 +38,32 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   buttonContainerClass,
   showTags = true,
   showAddTagButton = false,
+  isGlossaryTermAllowed = true,
 }: TagsContainerProps) => {
+  const { Option } = Select;
   const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
-
-  const getTagList = (inputValue: string) => {
-    const newTags = (tagList as TagOption[])
-      .filter((tag) => {
-        return !tags.some((selectedTag) => selectedTag.tagFQN === tag.fqn);
-      })
-      .filter((tag) => !tag.fqn?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
-      .map((tag) => {
-        return {
-          label: tag.fqn,
-          value: tag.fqn,
-        };
-      })
-      .filter((i) => i.label.toLowerCase().includes(inputValue.toLowerCase()));
-
-    return newTags;
-  };
+  const [options, setOptions] = useState<Array<EntityTags>>([]);
 
   const handleTagSelection = (selectedTag: unknown) => {
     if (!isEmpty(selectedTag)) {
-      setTags(() => {
-        const updatedTags = (selectedTag as Option[]).map((t) => {
-          return {
-            tagFQN: t.value,
-            source: (tagList as TagOption[]).find((tag) => tag.fqn === t.value)
-              ?.source,
-          };
-        });
+      setTags((prevTags) => {
+        const isTagSelected = prevTags.find((tag) =>
+          isEqual(tag.tagFQN, selectedTag)
+        );
 
-        return updatedTags;
+        if (!isTagSelected) {
+          const selectedTagEntity = options.find((tag) =>
+            isEqual(tag._source.fullyQualifiedName, selectedTag)
+          )._source;
+
+          const source = isEqual(selectedTagEntity.entityType, 'tag')
+            ? 'Tag'
+            : 'Glossary';
+
+          return [...prevTags, { tagFQN: selectedTag, source: source }];
+        } else {
+          return prevTags.filter((tag) => !isEqual(tag.tagFQN, selectedTag));
+        }
       });
     } else {
       setTags([]);
@@ -116,20 +107,24 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     );
   };
 
-  const loadOptions = (inputValue: string) =>
-    new Promise<Option[]>((resolve) => {
-      setTimeout(() => {
-        resolve(getTagList(inputValue));
-      }, 1000);
-    });
+  const fetchOptions = (query: string) => {
+    const index = !isGlossaryTermAllowed ? SearchIndex.TAG : undefined;
+    getTagSuggestions(query, index)
+      .then((res: AxiosResponse) => {
+        const suggestOptions =
+          res.data.suggest['metadata-suggest'][0].options ?? [];
 
-  const getDefaultTags = () => {
-    return tags.map((tag) => {
-      return {
-        label: tag.tagFQN,
-        value: tag.tagFQN,
-      };
-    });
+        setOptions(suggestOptions);
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
+  };
+
+  const handleSearch = (newValue: string) => {
+    if (newValue) {
+      fetchOptions(newValue);
+    } else {
+      setOptions([]);
+    }
   };
 
   useEffect(() => {
@@ -157,15 +152,37 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           </Fragment>
         )}
         {editable ? (
-          <AsyncSelect
-            cacheOptions
-            defaultOptions
-            isMulti
-            className={classNames('tw-min-w-64', className)}
-            defaultValue={getDefaultTags}
-            loadOptions={loadOptions}
-            onChange={handleTagSelection}
-          />
+          <>
+            <Select
+              allowClear
+              autoFocus
+              showSearch
+              bordered={false}
+              className={classNames(
+                'tw-bg-white tw-border tw-border-gray-400 tw-rounded tw-w-64',
+                className
+              )}
+              data-testid="tag-select"
+              defaultActiveFirstOption={false}
+              dropdownClassName="ant-suggestion-dropdown"
+              filterOption={false}
+              mode="multiple"
+              notFoundContent={null}
+              placeholder="Search to Select"
+              showArrow={false}
+              value={tags.map((t) => t.tagFQN)}
+              onDeselect={handleTagSelection}
+              onSearch={handleSearch}
+              onSelect={handleTagSelection}>
+              {options.map((option) => (
+                <Option
+                  data-testid="tag-option"
+                  key={option._source.fullyQualifiedName}>
+                  {option._source.fullyQualifiedName}
+                </Option>
+              ))}
+            </Select>
+          </>
         ) : (
           children
         )}
