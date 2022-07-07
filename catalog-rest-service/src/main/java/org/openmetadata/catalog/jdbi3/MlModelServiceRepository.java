@@ -13,98 +13,28 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import static org.openmetadata.catalog.Entity.FIELD_OWNER;
-
-import java.io.IOException;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.services.CreateMlModelService;
 import org.openmetadata.catalog.entity.services.MlModelService;
-import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
 import org.openmetadata.catalog.resources.services.mlmodel.MlModelServiceResource;
-import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.type.MlModelConnection;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 
-public class MlModelServiceRepository extends EntityRepository<MlModelService> {
+public class MlModelServiceRepository extends ServiceRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
-  public MlModelServiceRepository(CollectionDAO dao) {
+  public MlModelServiceRepository(CollectionDAO dao, SecretsManager secretsManager) {
     super(
         MlModelServiceResource.COLLECTION_PATH,
         Entity.MLMODEL_SERVICE,
-        MlModelService.class,
-        dao.mlModelServiceDAO(),
         dao,
-        "",
+        dao.mlModelServiceDAO(),
+        secretsManager,
+        MlModelConnection.class,
         UPDATE_FIELDS);
-    this.allowEdits = true;
   }
 
   @Override
-  public MlModelService setFields(MlModelService entity, Fields fields) throws IOException {
-    entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : null);
-    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : null);
-    return entity;
-  }
-
-  @Override
-  public void prepare(MlModelService entity) throws IOException {
-    setFullyQualifiedName(entity);
-    // Check if owner is valid and set the relationship
-    entity.setOwner(Entity.getEntityReference(entity.getOwner()));
-    // Validate mlModel service connection. Make sure we can load the class generated from the JSON Schemas
-    validateMlModelConnection(entity.getConnection(), entity.getServiceType());
-  }
-
-  @Override
-  public void storeEntity(MlModelService service, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = service.getOwner();
-
-    // Don't store owner, href and tags as JSON. Build it on the fly based on relationships
-    service.withOwner(null).withHref(null);
-
-    store(service.getId(), service, update);
-
-    // Restore the relationships
-    service.withOwner(owner);
-  }
-
-  @Override
-  public void storeRelationships(MlModelService entity) {
-    // Add owner relationship
-    storeOwner(entity, entity.getOwner());
-  }
-
-  @Override
-  public EntityUpdater getUpdater(MlModelService original, MlModelService updated, Operation operation) {
-    return new MlModelServiceUpdater(original, updated, operation);
-  }
-
-  private void validateMlModelConnection(
-      MlModelConnection mlModelConnection, CreateMlModelService.MlModelServiceType mlModelServiceType) {
-    try {
-      Object connectionConfig = mlModelConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.mlModel." + mlModelServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      JsonUtils.convertValue(connectionConfig, clazz);
-    } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(
-          mlModelServiceType.value(),
-          String.format("Failed to construct connection instance of %s", mlModelServiceType.value()));
-    }
-  }
-
-  public class MlModelServiceUpdater extends EntityUpdater {
-    public MlModelServiceUpdater(MlModelService original, MlModelService updated, Operation operation) {
-      super(original, updated, operation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      recordChange("connection", original.getConnection(), updated.getConnection(), true);
-    }
+  protected String getServiceType(MlModelService mlModelService) {
+    return mlModelService.getServiceType().value();
   }
 }

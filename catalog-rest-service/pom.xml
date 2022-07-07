@@ -21,6 +21,17 @@
     <org.testcontainers.version>1.17.2</org.testcontainers.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-bom</artifactId>
+        <version>2.17.190</version>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.antlr</groupId>
@@ -228,6 +239,13 @@
       <groupId>io.github.java-diff-utils</groupId>
       <artifactId>java-diff-utils</artifactId>
       <version>4.11</version>
+    </dependency>
+
+    <!-- Dependencies for secret store manager providers -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>secretsmanager</artifactId>
+      <version>2.17.136</version>
     </dependency>
 
     <!--test dependencies-->
