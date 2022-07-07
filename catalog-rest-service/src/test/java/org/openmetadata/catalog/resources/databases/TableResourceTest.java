@@ -1601,7 +1601,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL).withDescription(null));
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
     columns.add(getColumn("\"c.3\"", FLOAT, GLOSSARY1_TERM1_LABEL));
-    columns.add(getColumn("c4", INT, USER_ADDRESS_TAG_LABEL));
 
     Table table = createEntity(createRequest(test).withColumns(columns), ADMIN_AUTH_HEADERS);
 
@@ -1614,6 +1613,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Column c1 has new description
     change.getFieldsAdded().add(new FieldChange().withName(build("columns", "c1", "description")).withNewValue("new0"));
     //  Column c1 got new tags
+
+    change
+        .getFieldsAdded()
+        .add(new FieldChange().withName(build("columns", "c1", "tags")).withNewValue(List.of(GLOSSARY1_TERM1_LABEL)));
 
     columns
         .get(1)
