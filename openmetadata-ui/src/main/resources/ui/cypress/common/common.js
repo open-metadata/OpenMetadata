@@ -231,9 +231,11 @@ export const addNewTagToEntity = (entity, term) => {
     .scrollIntoView()
     .click();
 
-  cy.get('[class*="-control"]').should('be.visible').type(term);
-  cy.wait(500);
-  cy.get('[id*="-option-0"]').should('be.visible').click();
+  cy.get('[data-testid="tag-select"]')
+      .should('be.visible')
+      .type(term);
+    cy.wait(500);
+    cy.get(`[title*=${term}]`).should('be.visible').click();
   cy.get(
     '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
   ).contains(term);
@@ -248,12 +250,12 @@ export const addNewTagToEntity = (entity, term) => {
     .should('be.visible')
     .click();
 
-  cy.get('[class*="-control"]')
-    .scrollIntoView()
-    .should('be.visible')
-    .type(term);
-  cy.wait(500);
-  cy.get('[id*="-option-0"]').should('be.visible').click();
+  cy.get('[data-testid="tag-select"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .type(term);
+    cy.wait(500);
+    cy.get(`[title*=${term}]`).should('be.visible').click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')

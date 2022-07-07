@@ -180,12 +180,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+    cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
-      .type('personal');
+      .type('PersonalData.Personal');
     cy.wait(500);
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
+    cy.get('[title="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
       .scrollIntoView()
@@ -259,12 +259,12 @@ describe('Glossary page should work properly', () => {
       .scrollIntoView()
       .should('be.visible')
       .click();
-    cy.get('[class*="-control"]')
+   cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
-      .type('personal');
+      .type('PersonalData.Personal');
     cy.wait(500);
-    cy.get('[id*="-option-0"]').scrollIntoView().should('be.visible').click();
+    cy.get('[title="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-term"]')
       .scrollIntoView()
