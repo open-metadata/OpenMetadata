@@ -73,7 +73,7 @@ class DBTMixin:
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
-                    database = mnode["database"] if mnode["database"] else "defaut"
+                    database = mnode["database"] if mnode["database"] else "default"
                     schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
