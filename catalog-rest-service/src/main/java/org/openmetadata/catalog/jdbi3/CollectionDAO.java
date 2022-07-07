@@ -697,8 +697,8 @@ public interface CollectionDAO {
         "SELECT json FROM thread_entity WHERE updatedAt > :before AND resolved = :resolved "
             + "AND (:type IS NULL OR type = :type) "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkBefore(
@@ -716,8 +716,8 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
+            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "ORDER BY updatedAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLinkAfter(
@@ -735,8 +735,8 @@ public interface CollectionDAO {
             + "AND (:status IS NULL OR taskStatus = :status) "
             + "AND (:type IS NULL OR type = :type) "
             + "AND id in (SELECT fromFQN FROM field_relationship WHERE "
-            + "(toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
-            + "(toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)")
+            + "(:fqnPrefix IS NULL OR toFQN LIKE CONCAT(:fqnPrefix, '.%') OR toFQN=:fqnPrefix) AND fromType='THREAD' AND "
+            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation)")
     int listCountThreadsByEntityLink(
         @Bind("fqnPrefix") String fqnPrefix,
         @Bind("toType") String toType,
@@ -753,8 +753,8 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQN=te.id "
-            + "WHERE (fr.toFQN LIKE CONCAT(:fqnPrefix, '.%') OR fr.toFQN=:fqnPrefix) AND "
-            + "(fr.toType like concat(:toType, '.%') OR fr.toType=:toType)AND fr.fromType = :fromType "
+            + "WHERE (:fqnPrefix IS NULL OR fr.toFQN LIKE CONCAT(:fqnPrefix, '.%') OR fr.toFQN=:fqnPrefix) AND "
+            + "(:toType IS NULL OR fr.toType like concat(:toType, '.%') OR fr.toType=:toType) AND fr.fromType = :fromType "
             + "AND fr.relation = :relation AND te.resolved= :isResolved AND (:status IS NULL OR te.taskStatus = :status) "
             + "AND (:type IS NULL OR te.type = :type) "
             + "GROUP BY entityLink")

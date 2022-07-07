@@ -498,14 +498,7 @@ public class FeedRepository {
       // Get thread count of all entities
       result =
           dao.feedDAO()
-              .listCountByEntityLink(
-                  StringUtils.EMPTY,
-                  Entity.THREAD,
-                  StringUtils.EMPTY,
-                  IS_ABOUT.ordinal(),
-                  type,
-                  taskStatus,
-                  isResolved);
+              .listCountByEntityLink(null, Entity.THREAD, null, IS_ABOUT.ordinal(), type, taskStatus, isResolved);
     } else {
       EntityLink entityLink = EntityLink.parse(link);
       EntityReference reference = EntityUtil.validateEntityLink(entityLink);

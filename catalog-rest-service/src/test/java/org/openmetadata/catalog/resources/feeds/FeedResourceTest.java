@@ -393,10 +393,10 @@ public class FeedResourceTest extends CatalogApplicationTest {
     assertEquals(assignedToCount + 1, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + 1, tasks.getData().size());
 
-    tasks = listTasks(null, null, null, TaskStatus.Open, null, userAuthHeaders);
-    int totalOpenTaskCount = tasks.getPaging().getTotal();
-    tasks = listTasks(null, null, null, TaskStatus.Closed, null, userAuthHeaders);
-    int totalClosedTaskCount = tasks.getPaging().getTotal();
+    ThreadCount count = listTasksCount(null, TaskStatus.Open, userAuthHeaders);
+    int totalOpenTaskCount = count.getTotalCount();
+    count = listTasksCount(null, TaskStatus.Closed, userAuthHeaders);
+    int totalClosedTaskCount = count.getTotalCount();
 
     // close a task and test the task status filter
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
@@ -1173,6 +1173,15 @@ public class FeedResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("feed/count");
     target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
     target = target.queryParam("type", ThreadType.Conversation);
+    return TestUtils.get(target, ThreadCount.class, authHeaders);
+  }
+
+  public static ThreadCount listTasksCount(String entityLink, TaskStatus taskStatus, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("feed/count");
+    target = entityLink != null ? target.queryParam("entityLink", entityLink) : target;
+    target = target.queryParam("type", ThreadType.Task);
+    target = taskStatus != null ? target.queryParam("taskStatus", taskStatus) : target;
     return TestUtils.get(target, ThreadCount.class, authHeaders);
   }
 
