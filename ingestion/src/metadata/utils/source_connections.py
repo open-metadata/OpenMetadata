@@ -94,8 +94,6 @@ class OracleConnectionError(Exception):
     service name and database schema is passed in config
     """
 
-    pass
-
 
 def get_connection_url_common(connection):
     url = f"{connection.scheme.value}://"
