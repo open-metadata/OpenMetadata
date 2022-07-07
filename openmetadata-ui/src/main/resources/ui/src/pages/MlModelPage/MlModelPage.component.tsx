@@ -15,8 +15,11 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
+import { LeafNodes, LineagePos, LoadingNodeState } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getMlModelByFQN,
@@ -24,15 +27,25 @@ import {
   removeFollower,
 } from '../../axiosAPIs/mlModelAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
 import { getMlModelPath } from '../../constants/constants';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import {
+  EntityLineage,
+  EntityReference,
+} from '../../generated/type/entityLineage';
 import jsonData from '../../jsons/en';
 import {
   getCurrentUserId,
   getEntityMissingError,
 } from '../../utils/CommonUtils';
+import { getEntityLineage } from '../../utils/EntityUtils';
 import {
   defaultFields,
   getCurrentMlModelTab,
@@ -48,6 +61,110 @@ const MlModelPage = () => {
   const [activeTab, setActiveTab] = useState<number>(getCurrentMlModelTab(tab));
   const USERId = getCurrentUserId();
 
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
+  const getLineageData = () => {
+    setIsLineageLoading(true);
+    getLineageByFQN(mlModelDetail.fullyQualifiedName, EntityType.MLMODEL)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setEntityLineage(res.data);
+        } else {
+          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
+    getLineageByFQN(node.fullyQualifiedName, node.type)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setLeafNode(res.data, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
+        setTimeout(() => {
+          setNodeLoading((prev) => ({ ...prev, state: false }));
+        }, 500);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
+      });
+  };
+
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
+    });
+  };
+
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (mlModelTabs[currentTabIndex].path !== tab) {
@@ -55,6 +172,25 @@ const MlModelPage = () => {
       history.push({
         pathname: getMlModelPath(mlModelFqn, mlModelTabs[currentTabIndex].path),
       });
+    }
+  };
+
+  const fetchTabSpecificData = (tabField = '') => {
+    switch (tabField) {
+      case TabSpecificField.LINEAGE: {
+        if (!isEmpty(mlModelDetail) && !mlModelDetail.deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
+      }
+
+      default:
+        break;
     }
   };
 
@@ -227,6 +363,16 @@ const MlModelPage = () => {
           activeTab={activeTab}
           descriptionUpdateHandler={descriptionUpdateHandler}
           followMlModelHandler={followMlModel}
+          lineageTabData={{
+            loadNodeHandler,
+            addLineageHandler,
+            removeLineageHandler,
+            entityLineageHandler,
+            isLineageLoading,
+            entityLineage,
+            lineageLeafNodes: leafNodes,
+            isNodeLoading,
+          }}
           mlModelDetail={mlModelDetail}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
@@ -243,6 +389,10 @@ const MlModelPage = () => {
       );
     }
   };
+
+  useEffect(() => {
+    fetchTabSpecificData(mlModelTabs[activeTab - 1].field);
+  }, [activeTab, mlModelDetail]);
 
   useEffect(() => {
     fetchMlModelDetails(mlModelFqn);

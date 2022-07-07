@@ -13,9 +13,15 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { EntityFieldThreadCount, EntityTags } from 'Models';
+import {
+  EntityFieldThreadCount,
+  EntityTags,
+  LeafNodes,
+  LineagePos,
+  LoadingNodeState,
+} from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -24,6 +30,8 @@ import {
   postFeedById,
   postThread,
 } from '../../axiosAPIs/feedsAPI';
+import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
+import { addLineage, deleteLineageEdge } from '../../axiosAPIs/miscAPI';
 import {
   addFollower,
   getTopicByFqn,
@@ -32,6 +40,10 @@ import {
 } from '../../axiosAPIs/topicsAPI';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import {
+  Edge,
+  EdgeData,
+} from '../../components/EntityLineage/EntityLineage.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
 import {
@@ -45,6 +57,7 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -56,7 +69,7 @@ import {
   getEntityName,
   getFeedCounts,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
 import {
   deletePost,
   getUpdatedThread,
@@ -114,6 +127,109 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [sampleData, setSampleData] = useState<TopicSampleData>();
   const [isSampleDataLoading, setIsSampleDataLoading] =
     useState<boolean>(false);
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
+  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
+  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
+    id: undefined,
+    state: false,
+  });
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+
+  const getLineageData = () => {
+    setIsLineageLoading(true);
+    getLineageByFQN(topicFQN, EntityType.TOPIC)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setEntityLineage(res.data);
+        } else {
+          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-error']
+        );
+      })
+      .finally(() => {
+        setIsLineageLoading(false);
+      });
+  };
+
+  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
+    if (pos === 'to' && val.downstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
+      }));
+    }
+    if (pos === 'from' && val.upstreamEdges?.length === 0) {
+      setLeafNodes((prev) => ({
+        ...prev,
+        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
+      }));
+    }
+  };
+
+  const entityLineageHandler = (lineage: EntityLineage) => {
+    setEntityLineage(lineage);
+  };
+
+  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
+    setNodeLoading({ id: node.id, state: true });
+    getLineageByFQN(node.fullyQualifiedName, node.type)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setLeafNode(res.data, pos);
+          setEntityLineage(getEntityLineage(entityLineage, res.data, pos));
+        } else {
+          showErrorToast(
+            jsonData['api-error-messages']['fetch-lineage-node-error']
+          );
+        }
+        setTimeout(() => {
+          setNodeLoading((prev) => ({ ...prev, state: false }));
+        }, 500);
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['fetch-lineage-node-error']
+        );
+      });
+  };
+
+  const addLineageHandler = (edge: Edge): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      addLineage(edge)
+        .then(() => {
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['add-lineage-error']
+          );
+          reject();
+        });
+    });
+  };
+
+  const removeLineageHandler = (data: EdgeData) => {
+    deleteLineageEdge(
+      data.fromEntity,
+      data.fromId,
+      data.toEntity,
+      data.toId
+    ).catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['delete-lineage-error']
+      );
+    });
+  };
 
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
@@ -213,6 +329,18 @@ const TopicDetailsPage: FunctionComponent = () => {
 
           break;
         }
+      }
+
+      case TabSpecificField.LINEAGE: {
+        if (!deleted) {
+          if (isEmpty(entityLineage)) {
+            getLineageData();
+          }
+
+          break;
+        }
+
+        break;
       }
 
       default:
@@ -583,6 +711,16 @@ const TopicDetailsPage: FunctionComponent = () => {
           followers={followers}
           isSampleDataLoading={isSampleDataLoading}
           isentityThreadLoading={isentityThreadLoading}
+          lineageTabData={{
+            loadNodeHandler,
+            addLineageHandler,
+            removeLineageHandler,
+            entityLineageHandler,
+            isLineageLoading,
+            entityLineage,
+            lineageLeafNodes: leafNodes,
+            isNodeLoading,
+          }}
           maximumMessageSize={maximumMessageSize}
           owner={owner as EntityReference}
           paging={paging}

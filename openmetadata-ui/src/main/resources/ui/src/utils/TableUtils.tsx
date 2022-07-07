@@ -230,6 +230,11 @@ export const getEntityIcon = (indexType: string) => {
       icon = 'dashboard-grey';
 
       break;
+    case SearchIndex.MLMODEL:
+    case EntityType.MLMODEL:
+      icon = 'mlmodel-grey';
+
+      break;
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
       icon = 'pipeline-grey';
