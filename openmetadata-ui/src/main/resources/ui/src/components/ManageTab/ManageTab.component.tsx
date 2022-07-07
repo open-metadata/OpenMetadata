@@ -165,7 +165,7 @@ const ManageTab: FunctionComponent<ManageProps> = ({
       searchFormattedUsersAndTeams(searchQuery, from)
         .then((res) => {
           const { users, teams } = res;
-          setListOwners(getOwnerList(users, teams, true));
+          setListOwners(getOwnerList(users, teams));
         })
         .catch(() => {
           setListOwners([]);
