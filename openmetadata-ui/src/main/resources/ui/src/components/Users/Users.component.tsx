@@ -12,9 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Switch } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { capitalize, isEmpty, isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -84,6 +84,7 @@ const Users = ({
   feedFilter,
   setFeedFilter,
   threadType,
+  onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -100,6 +101,8 @@ const Users = ({
   const [showFilterList, setShowFilterList] = useState(false);
 
   const location = useLocation();
+
+  const isTaskType = isEqual(threadType, ThreadType.Task);
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
@@ -661,30 +664,38 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="tw-relative tw--mt-4 tw-px-1.5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="feeds"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setShowFilterList((visible) => !visible)}>
-            <span className="tw-font-medium tw-text-grey">
-              {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
-                (f) => f.value === feedFilter
-              )?.name || capitalize(feedFilter)}
-            </span>
-            <DropDownIcon />
-          </Button>
-          {showFilterList && (
-            <DropDownList
-              dropDownList={
-                activeTab === 1 ? userPageFilterList : filterListTasks
-              }
-              value={feedFilter}
-              onSelect={handleFilterDropdownChange}
-            />
-          )}
+        <div className="tw--mt-4 tw-px-1.5 tw-flex tw-justify-between">
+          <div className="tw-relative">
+            <Button
+              className="hover:tw-no-underline focus:tw-no-underline"
+              data-testid="feeds"
+              size="custom"
+              tag="button"
+              variant="link"
+              onClick={() => setShowFilterList((visible) => !visible)}>
+              <span className="tw-font-medium tw-text-grey">
+                {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
+                  (f) => f.value === feedFilter
+                )?.name || capitalize(feedFilter)}
+              </span>
+              <DropDownIcon />
+            </Button>
+            {showFilterList && (
+              <DropDownList
+                dropDownList={
+                  activeTab === 1 ? userPageFilterList : filterListTasks
+                }
+                value={feedFilter}
+                onSelect={handleFilterDropdownChange}
+              />
+            )}
+          </div>
+          {isTaskType ? (
+            <div className="tw-flex tw-justify-end">
+              <Switch onChange={onSwitchChange} />
+              <span className="tw-ml-1">Closed Tasks</span>
+            </div>
+          ) : null}
         </div>
         <div className="tw-mt-3.5">
           <ActivityFeedList

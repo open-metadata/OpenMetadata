@@ -197,6 +197,7 @@ const mockProp = {
   updateThreadHandler: jest.fn(),
   setFeedFilter: jest.fn(),
   threadType: 'Task' as ThreadType.Task,
+  onSwitchChange: jest.fn(),
 };
 
 describe('Test User Component', () => {

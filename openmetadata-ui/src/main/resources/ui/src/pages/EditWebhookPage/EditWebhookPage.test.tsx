@@ -134,10 +134,44 @@ describe('Test DatasetDetails page', () => {
       expect(addWebhookComponent).toBeInTheDocument();
     });
 
+    it('Show error message on empty response of getWebhookByName api', async () => {
+      (getWebhookByName as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          response: { data: '' },
+        })
+      );
+      const { container } = render(<EditWebhookPage />, {
+        wrapper: MemoryRouter,
+      });
+      const addWebhookComponent = await findByText(
+        container,
+        /AddWebhookComponent/i
+      );
+
+      expect(addWebhookComponent).toBeInTheDocument();
+    });
+
     it('Show error message on failing of deleteWebhook api', async () => {
       (deleteWebhook as jest.Mock).mockImplementationOnce(() =>
         Promise.reject({
           response: { data: { message: 'Error!' } },
+        })
+      );
+      const { container } = render(<EditWebhookPage />, {
+        wrapper: MemoryRouter,
+      });
+      const addWebhookComponent = await findByText(
+        container,
+        /AddWebhookComponent/i
+      );
+
+      expect(addWebhookComponent).toBeInTheDocument();
+    });
+
+    it('Show error message on on empty response of deleteWebhook api', async () => {
+      (deleteWebhook as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          response: { data: '' },
         })
       );
       const { container } = render(<EditWebhookPage />, {
