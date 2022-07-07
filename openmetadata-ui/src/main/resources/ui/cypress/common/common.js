@@ -235,7 +235,7 @@ export const addNewTagToEntity = (entity, term) => {
       .should('be.visible')
       .type(term);
     cy.wait(500);
-    cy.get(`[title*=${term}]`).should('be.visible').click();
+    cy.get(`[data-testid*="tag-option-${term}"]`).should('be.visible').click();
   cy.get(
     '[data-testid="tags-wrapper"] > [data-testid="tag-container"]'
   ).contains(term);
@@ -255,7 +255,7 @@ export const addNewTagToEntity = (entity, term) => {
       .should('be.visible')
       .type(term);
     cy.wait(500);
-    cy.get(`[title*=${term}]`).should('be.visible').click();
+    cy.get(`[data-testid*="tag-option-${term}"]`).should('be.visible').click();
   cy.get('[data-testid="saveAssociatedTag"]')
     .scrollIntoView()
     .should('be.visible')
@@ -265,3 +265,4 @@ export const addNewTagToEntity = (entity, term) => {
     .contains(term)
     .should('exist');
 };
+

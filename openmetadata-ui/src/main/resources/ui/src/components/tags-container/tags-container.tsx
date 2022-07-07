@@ -176,7 +176,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               onSelect={handleTagSelection}>
               {options.map((option) => (
                 <Option
-                  data-testid="tag-option"
+                  data-testid={`tag-option-${option._source.fullyQualifiedName}`}
                   key={option._source.fullyQualifiedName}>
                   {option._source.fullyQualifiedName}
                 </Option>
