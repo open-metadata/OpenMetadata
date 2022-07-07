@@ -17,14 +17,20 @@ import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/feed.constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CreateThread } from '../generated/api/feed/createThread';
-import { Post, TaskDetails, ThreadType } from '../generated/entity/feed/thread';
+import {
+  Post,
+  TaskDetails,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../generated/entity/feed/thread';
 import APIClient from './index';
 
 export const getAllFeeds: Function = (
   entityLink?: string,
   after?: string,
   type?: ThreadType,
-  filterType?: FeedFilter
+  filterType?: FeedFilter,
+  taskStatus?: ThreadTaskStatus
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed`, {
     params: {
@@ -32,6 +38,7 @@ export const getAllFeeds: Function = (
       after,
       type,
       filterType: filterType !== FeedFilter.ALL ? filterType : undefined,
+      taskStatus,
     },
   });
 };
@@ -40,7 +47,8 @@ export const getFeedsWithFilter: Function = (
   userId?: string,
   filterType?: FeedFilter,
   after?: string,
-  type?: ThreadType
+  type?: ThreadType,
+  taskStatus?: ThreadTaskStatus
 ): Promise<AxiosResponse> => {
   let config = {};
 
@@ -51,6 +59,7 @@ export const getFeedsWithFilter: Function = (
         filterType,
         after,
         type,
+        taskStatus,
       },
     };
   } else {
@@ -58,6 +67,7 @@ export const getFeedsWithFilter: Function = (
       params: {
         after,
         type,
+        taskStatus,
       },
     };
   }
@@ -67,12 +77,14 @@ export const getFeedsWithFilter: Function = (
 
 export const getFeedCount: Function = (
   entityLink?: string,
-  type?: ThreadType
+  type?: ThreadType,
+  taskStatus?: ThreadTaskStatus
 ): Promise<AxiosResponse> => {
   return APIClient.get(`/feed/count`, {
     params: {
       entityLink: entityLink,
       type,
+      taskStatus,
     },
   });
 };
