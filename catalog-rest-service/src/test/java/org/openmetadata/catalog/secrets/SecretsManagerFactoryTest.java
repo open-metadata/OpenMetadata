@@ -20,18 +20,18 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testDefaultIsCreatedIfNullConfig() {
-    assertTrue(SecretsManagerFactory.createSecretManagerStore(config) instanceof LocalSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof LocalSecretsManager);
   }
 
   @Test
   void testDefaultIsCreatedIfMissingSecretManager() {
-    assertTrue(SecretsManagerFactory.createSecretManagerStore(config) instanceof LocalSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof LocalSecretsManager);
   }
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
     config.setSecretsManager("LocalSecretsManager");
-    assertTrue(SecretsManagerFactory.createSecretManagerStore(config) instanceof LocalSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof LocalSecretsManager);
   }
 
   @Test
@@ -40,14 +40,14 @@ public class SecretsManagerFactoryTest {
     config.getParameters().put("region", "eu-west-1");
     config.getParameters().put("accessKeyId", "123456");
     config.getParameters().put("secretAccessKey", "654321");
-    assertTrue(SecretsManagerFactory.createSecretManagerStore(config) instanceof AWSSecretsManager);
+    assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof AWSSecretsManager);
   }
 
   @Test
   void testExceptionIfNotExists() {
     config.setSecretsManager("WrongSecretsManager");
     IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> SecretsManagerFactory.createSecretManagerStore(config));
+        assertThrows(IllegalArgumentException.class, () -> SecretsManagerFactory.createSecretsManager(config));
     assertEquals("Unknown secret manager store: WrongSecretsManager", exception.getMessage());
   }
 }

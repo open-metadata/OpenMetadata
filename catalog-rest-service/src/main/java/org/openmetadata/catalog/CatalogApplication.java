@@ -100,7 +100,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
 
     final SecretsManager secretsManager =
-        SecretsManagerFactory.createSecretManagerStore(catalogConfig.getSecretsManagerConfiguration());
+        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
 
     SqlLogger sqlLogger =
         new SqlLogger() {

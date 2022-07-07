@@ -2,7 +2,7 @@ package org.openmetadata.catalog.secrets;
 
 public class SecretsManagerFactory {
 
-  public static SecretsManager createSecretManagerStore(SecretsManagerConfiguration config) {
+  public static SecretsManager createSecretsManager(SecretsManagerConfiguration config) {
     String secretManager =
         config != null && config.getSecretsManager() != null
             ? config.getSecretsManager()
