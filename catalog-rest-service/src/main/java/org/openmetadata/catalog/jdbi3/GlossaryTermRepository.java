@@ -61,7 +61,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTerm setFields(GlossaryTerm entity, Fields fields) throws IOException {
     entity.setGlossary(getGlossary(entity));
-    System.out.println("XXX entity glossary " + entity.getGlossary());
     entity.setParent(getParent(entity));
     entity.setChildren(fields.contains("children") ? getChildren(entity) : null);
     entity.setRelatedTerms(fields.contains("relatedTerms") ? getRelatedTerms(entity) : null);
@@ -193,6 +192,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public GlossaryTermUpdater getUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
     return new GlossaryTermUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void postDelete(GlossaryTerm entity) {
+    // Cleanup all the tag labels using this glossary term
+    daoCollection.tagUsageDAO().deleteTagLabels(Source.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
   /** Handles entity updated from PUT and POST operation. */

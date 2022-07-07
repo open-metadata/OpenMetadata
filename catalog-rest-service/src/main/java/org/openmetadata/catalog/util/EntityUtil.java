@@ -34,6 +34,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpResponseException;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
@@ -41,6 +42,7 @@ import org.openmetadata.catalog.api.data.TermReference;
 import org.openmetadata.catalog.entity.data.GlossaryTerm;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
+import org.openmetadata.catalog.entity.tags.Tag;
 import org.openmetadata.catalog.entity.type.CustomProperty;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -60,6 +62,7 @@ import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.TagLabel.Source;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -361,5 +364,19 @@ public final class EntityUtil {
       resolvedRules.add(JsonUtils.readValue(JsonUtils.getJsonStructure(ruleObject).toString(), Rule.class));
     }
     return resolvedRules;
+  }
+
+  public static TagLabel getTagLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withDescription(term.getDescription())
+        .withSource(Source.GLOSSARY);
+  }
+
+  public static TagLabel getTagLabel(Tag tag) throws HttpResponseException {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withDescription(tag.getDescription())
+        .withSource(Source.TAG);
   }
 }

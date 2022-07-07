@@ -111,6 +111,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  protected void postDelete(Tag entity) {
+    // Cleanup all the tag labels using this tag
+    daoCollection.tagUsageDAO().deleteTagLabels(Source.TAG.ordinal(), entity.getFullyQualifiedName());
+  }
+
+  @Override
   public Tag setFields(Tag tag, Fields fields) throws IOException {
     populateChildrenTags(tag, fields);
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);

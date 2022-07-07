@@ -14,7 +14,7 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isEmpty, isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -54,10 +54,7 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import {
-  filterList,
-  filterListTasks,
-} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
+import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -67,6 +64,7 @@ import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
+import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
@@ -136,8 +134,8 @@ const Users = ({
   };
 
   const activeTabHandler = (tabNum: number) => {
+    setFeedFilter(tabNum === 1 ? FeedFilter.ALL : FeedFilter.OWNER);
     setActiveTab(tabNum);
-    setFeedFilter(FeedFilter.ALL);
     // To reset search params appends from other page for proper navigation
     location.search = '';
     if (profileInfo[tabNum - 1].path !== tab) {
@@ -672,17 +670,17 @@ const Users = ({
             variant="link"
             onClick={() => setShowFilterList((visible) => !visible)}>
             <span className="tw-font-medium tw-text-grey">
-              {
-                (activeTab === 1 ? filterList : filterListTasks).find(
-                  (f) => f.value === feedFilter
-                )?.name
-              }
+              {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
+                (f) => f.value === feedFilter
+              )?.name || capitalize(feedFilter)}
             </span>
             <DropDownIcon />
           </Button>
           {showFilterList && (
             <DropDownList
-              dropDownList={activeTab === 1 ? filterList : filterListTasks}
+              dropDownList={
+                activeTab === 1 ? userPageFilterList : filterListTasks
+              }
               value={feedFilter}
               onSelect={handleFilterDropdownChange}
             />
