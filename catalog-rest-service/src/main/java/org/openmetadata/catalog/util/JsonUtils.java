@@ -183,32 +183,44 @@ public final class JsonUtils {
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
-      if (otherOperations.get(0).getString("path").matches(".*tags/\\d$")) {
-        otherOperations.sort(
-            Comparator.comparing(
-                jsonObject -> {
-                  String path = jsonObject.getString("path");
-                  String tagIndex = path.substring(path.lastIndexOf("/") + 1);
-                  return Integer.parseInt(tagIndex);
-                }));
-      } else {
-        otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      ArrayList<String> paths = new ArrayList<>();
+      for (JsonObject jsonObject : otherOperations) {
+        paths.add(jsonObject.getString("path"));
+      }
+      for (String path : paths) {
+        if (path.matches(".*\\d.*")) {
+          otherOperations.sort(
+              Comparator.comparing(
+                  jsonObject -> {
+                    String tagIndex = path.replaceAll("\\D", "");
+                    return Integer.parseInt(tagIndex);
+                  }));
+        } else {
+          otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+        }
       }
     }
     if (!removeOperations.isEmpty()) {
-      if (removeOperations.get(0).getString("path").matches(".*tags/\\d$")) {
-        removeOperations.sort(
-            Comparator.comparing(
-                jsonObject -> {
-                  String path = jsonObject.getString("path");
-                  String tagIndex = path.substring(path.lastIndexOf("/") + 1);
-                  return Integer.parseInt(tagIndex);
-                }));
-      } else {
-        removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      ArrayList<String> paths = new ArrayList<>();
+      for (JsonObject jsonObject : removeOperations) {
+        paths.add(jsonObject.getString("path"));
       }
-      // reverse sort only the remove operations
-      Collections.reverse(removeOperations);
+      for (String path : paths) {
+        if (path.matches(".*\\d.*")) {
+          removeOperations.sort(
+              Comparator.comparing(
+                  jsonObject -> {
+                    String tagIndex = path.replaceAll("\\D", "");
+                    return Integer.parseInt(tagIndex);
+                  }));
+          // reverse sort only the remove operations
+          Collections.reverse(removeOperations);
+        } else {
+          removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+          // reverse sort only the remove operations
+          Collections.reverse(removeOperations);
+        }
+      }
     }
 
     // Build new sorted patch
