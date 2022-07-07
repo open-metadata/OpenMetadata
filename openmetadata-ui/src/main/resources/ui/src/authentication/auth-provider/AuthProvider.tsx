@@ -25,6 +25,7 @@ import React, {
   ComponentType,
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -92,11 +93,11 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const location = useLocation();
   const history = useHistory();
-
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout>();
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
-
+  const [silentSignInRetries, setSilentSignInRetries] = useState<number>(0);
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
@@ -134,6 +135,9 @@ export const AuthProvider = ({
     setLoading(value);
   };
 
+  /**
+   * Stores redirect URL for successful login
+   */
   function storeRedirectPath() {
     const redirectPathExists = Boolean(
       cookieStorage.getItem(REDIRECT_PATHNAME)
@@ -242,6 +246,98 @@ export const AuthProvider = ({
       });
   };
 
+  /**
+   * Renew Id Token handler for all the SSOs.
+   * This method will be called when the id token is about to expire.
+   */
+  const renewIdToken = (): Promise<string> => {
+    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
+
+    return new Promise((resolve, reject) => {
+      if (onRenewIdTokenHandlerPromise) {
+        onRenewIdTokenHandlerPromise
+          .then(() => {
+            resolve(localStorage.getItem(oidcTokenKey) || '');
+          })
+          .catch((error) => {
+            if (error.message !== 'Frame window timed out') {
+              reject(error);
+            } else {
+              resolve(localStorage.getItem(oidcTokenKey) || '');
+            }
+          });
+      } else {
+        reject('RenewIdTokenHandler is undefined');
+      }
+    });
+  };
+
+  /**
+   * This method will try to signIn silently when token is about to expire
+   * It will try for max 3 times if it's not succeed then it will proceed for logout
+   */
+  const trySilentSignIn = async () => {
+    if (silentSignInRetries > 3) {
+      // eslint-disable-next-line no-console
+      console.error('SilentSignIn reaches max limit');
+
+      return;
+    }
+    try {
+      // Try to renew token
+      await renewIdToken();
+      // Reset silentSignInRetried upon a successful signIn
+      setSilentSignInRetries(0);
+    } catch (error: any) {
+      if (silentSignInRetries < 3) {
+        setSilentSignInRetries((count) => count + 1);
+        trySilentSignIn();
+      }
+    }
+  };
+
+  /**
+   * It will set an timer for 50 secs before Token will expire
+   * If time if less then 50 secs then it will try to SilentSignIn
+   * It will also ensure that we have time left for token expiry
+   * This method will be call upon sucessful signiIn
+   */
+  const startTokenExpiryTimer = () => {
+    const token: string | void = localStorage.getItem(oidcTokenKey) || '';
+    // If token is not present do nothing
+    if (token) {
+      try {
+        // Extract expiry
+        const { exp } = jwtDecode<JwtPayload>(token);
+        if (exp && exp * 1000 > Date.now()) {
+          // Check if token isn't expired yet
+          const diff = exp * 1000 - Date.now(); /* Convert to MS */
+
+          // If token is about to expire then start silentSignIn
+          // else just set timer to try for silentSignIn before token expires
+          diff > 50000
+            ? setTimeoutId(() => setTimeout(trySilentSignIn, diff))
+            : trySilentSignIn;
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error parsing id token.', error);
+      }
+    }
+  };
+
+  /**
+   * Performs cleanup around timers
+   * Clean silentSignIn activities if going on
+   */
+  const cleanup = useCallback(() => {
+    clearTimeout(timeoutId as NodeJS.Timeout);
+  }, [timeoutId]);
+
+  useEffect(() => {
+    return cleanup;
+  }, []);
+
   const handleFailedLogin = () => {
     setIsSigningIn(false);
     setIsUserAuthenticated(false);
@@ -250,6 +346,10 @@ export const AuthProvider = ({
 
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
+    // Start expiry timer on successful login
+    // eslint-disable-next-line no-console
+    console.info('Login successful');
+    startTokenExpiryTimer();
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -300,60 +400,14 @@ export const AuthProvider = ({
   };
 
   /**
-   * Renew Id Token handler for all the SSOs.
-   * This method will be called when the id token is about to expire.
-   */
-  const renewIdToken = (): Promise<string> => {
-    const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-
-    return new Promise((resolve, reject) => {
-      if (onRenewIdTokenHandlerPromise) {
-        onRenewIdTokenHandlerPromise
-          .then(() => {
-            resolve(localStorage.getItem(oidcTokenKey) || '');
-          })
-          .catch((error) => {
-            reject(error);
-          });
-      } else {
-        reject('RenewIdTokenHandler is undefined');
-      }
-    });
-  };
-
-  /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
    */
   const initializeAxiosInterceptors = () => {
     // Axios Request interceptor to add Bearer tokens in Header
     axiosClient.interceptors.request.use(async function (config) {
-      let token: string | void = localStorage.getItem(oidcTokenKey) || '';
+      const token: string | void = localStorage.getItem(oidcTokenKey) || '';
       if (token) {
-        // Before adding token to the Header, check its expiry
-        // If the token will expire within the next time or has already expired
-        // renew the token using silent renewal for a smooth UX
-        try {
-          const { exp } = jwtDecode<JwtPayload>(token);
-          if (exp) {
-            // Renew token 50 seconds before expiry
-            if (Date.now() >= (exp - 50) * 1000) {
-              // Token expired, renew it before sending request
-              token = await renewIdToken().catch((error) => {
-                showErrorToast(error);
-              });
-            }
-          } else {
-            // Renew token since expiry is not set
-            token = await renewIdToken().catch((error) => {
-              showErrorToast(error);
-            });
-          }
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error parsing id token.', error);
-        }
-
         config.headers['Authorization'] = `Bearer ${token}`;
       }
 

@@ -46,7 +46,6 @@ export const getUserManagerConfig = (
 
   return {
     authority,
-    automaticSilentRenew: true,
     // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: clientId,
     // eslint-disable-next-line @typescript-eslint/camelcase
