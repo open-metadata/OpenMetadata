@@ -20,7 +20,7 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
 
   protected final SecretsManager secretsManager;
 
-  public ServiceRepository(
+  protected ServiceRepository(
       String collectionPath,
       String service,
       CollectionDAO dao,
@@ -33,7 +33,7 @@ public abstract class ServiceRepository<T extends ServiceEntityInterface, S exte
     this.serviceConnectionClass = serviceConnectionClass;
   }
 
-  public ServiceRepository(
+  protected ServiceRepository(
       String collectionPath,
       String service,
       CollectionDAO dao,
