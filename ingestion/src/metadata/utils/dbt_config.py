@@ -61,12 +61,8 @@ def _(config: DbtLocalConfig):
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
-        dbt_catalog = requests.request(
-            "GET", config.dbtCatalogHttpPath, headers={}, data={}
-        )
-        dbt_manifest = requests.request(
-            "GET", config.dbtManifestHttpPath, headers={}, data={}
-        )
+        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        dbt_manifest = requests.get(config.dbtManifestHttpPath)
         return json.loads(dbt_catalog.text), json.loads(dbt_manifest.text)
     except Exception as exc:
         logger.error(traceback.format_exc())
