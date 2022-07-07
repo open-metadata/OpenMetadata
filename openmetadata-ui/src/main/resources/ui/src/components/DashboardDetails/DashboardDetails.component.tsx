@@ -582,7 +582,9 @@ const DashboardDetails = ({
                                   <TagsContainer
                                     showAddTagButton
                                     editable={editChartTags?.index === index}
-                                    selectedTags={chart.tags as EntityTags[]}
+                                    selectedTags={
+                                      (chart.tags as EntityTags[]) || []
+                                    }
                                     size="small"
                                     type="label"
                                     onCancel={() => {

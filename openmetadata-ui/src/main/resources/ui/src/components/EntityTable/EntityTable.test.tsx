@@ -18,15 +18,11 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import { flatten } from 'lodash';
-import { FormattedGlossaryTermData, TagOption } from 'Models';
+import { TagOption } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Table } from '../../generated/entity/data/table';
-import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { ModifiedTableColumn } from '../../interface/dataQuality.interface';
-import { fetchGlossaryTerms } from '../../utils/GlossaryUtils';
-import { getTagCategories } from '../../utils/TagsUtils';
 import EntityTable from './EntityTable.component';
 
 const mockTableheader = [
@@ -157,58 +153,6 @@ const mockEntityTableProp = {
   onThreadLinkSelect,
 };
 
-const mockTagList = [
-  {
-    id: 'tagCatId1',
-    name: 'TagCat1',
-    description: '',
-    categoryType: 'Classification',
-    children: [
-      {
-        id: 'tagId1',
-        name: 'Tag1',
-        fullyQualifiedName: 'TagCat1.Tag1',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-  {
-    id: 'tagCatId2',
-    name: 'TagCat2',
-    description: '',
-    categoryType: 'Classification',
-    children: [
-      {
-        id: 'tagId2',
-        name: 'Tag2',
-        fullyQualifiedName: 'TagCat2.Tag2',
-        description: '',
-        deprecated: false,
-        deleted: false,
-      },
-    ],
-  },
-];
-
-const mockGlossaryList = [
-  {
-    name: 'Tag1',
-    displayName: 'Tag1',
-    fullyQualifiedName: 'Glossary.Tag1',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId1',
-  },
-  {
-    name: 'Tag2',
-    displayName: 'Tag2',
-    fullyQualifiedName: 'Glossary.Tag2',
-    type: 'glossaryTerm',
-    id: 'glossaryTagId2',
-  },
-];
-
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {
   return {
     useAuthContext: jest.fn(() => ({
@@ -245,10 +189,10 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest.fn().mockReturnValue(<p>EditorModal</p>),
 }));
 jest.mock('../tags-container/tags-container', () => {
-  return jest.fn().mockImplementation(({ tagList }) => {
+  return jest.fn().mockImplementation(({ selectedTags }) => {
     return (
       <>
-        {tagList.map((tag: TagOption, idx: number) => (
+        {selectedTags.map((tag: TagOption, idx: number) => (
           <p key={idx}>{tag.fqn}</p>
         ))}
       </>
@@ -261,30 +205,6 @@ jest.mock('../tags-viewer/tags-viewer', () => {
 jest.mock('../tags/tags', () => {
   return jest.fn().mockReturnValue(<p>Tag</p>);
 });
-
-jest.mock('../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(() => Promise.resolve(mockGlossaryList)),
-  getGlossaryTermlist: jest.fn((terms) => {
-    return terms.map(
-      (term: FormattedGlossaryTermData) => term?.fullyQualifiedName
-    );
-  }),
-}));
-
-jest.mock('../../utils/TagsUtils', () => ({
-  getTagCategories: jest.fn(() => Promise.resolve({ data: mockTagList })),
-  getTaglist: jest.fn((categories) => {
-    const children = categories.map((category: TagCategory) => {
-      return category.children || [];
-    });
-    const allChildren = flatten(children);
-    const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
-      return tag?.fullyQualifiedName || '';
-    });
-
-    return tagList;
-  }),
-}));
 
 describe('Test EntityTable Component', () => {
   it('Check if it has all child elements', async () => {
@@ -419,98 +339,5 @@ describe('Test EntityTable Component', () => {
     expect(threadCount).toHaveTextContent(
       String(mockEntityFieldThreads[0].count)
     );
-  });
-
-  it('Check if tags and glossary-terms are present', async () => {
-    const { getAllByTestId, findAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(tagWrapper);
-
-    const tag1 = await findAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(mockEntityTableProp.tableColumns.length);
-    expect(glossaryTerm1).toHaveLength(mockEntityTableProp.tableColumns.length);
-  });
-
-  it('Check if only tags are present', async () => {
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, findAllByText, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = await findAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(mockEntityTableProp.tableColumns.length);
-    expect(glossaryTerm1).toHaveLength(0);
-  });
-
-  it('Check if only glossary terms are present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, findAllByText, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = await findAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(0);
-    expect(glossaryTerm1).toHaveLength(mockEntityTableProp.tableColumns.length);
-  });
-
-  it('Check that tags and glossary terms are not present', async () => {
-    (getTagCategories as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    (fetchGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    const { getAllByTestId, queryAllByText } = render(
-      <EntityTable {...mockEntityTableProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const tagWrapper = getAllByTestId('tags-wrapper')[0];
-    fireEvent.click(
-      tagWrapper,
-      new MouseEvent('click', { bubbles: true, cancelable: true })
-    );
-
-    const tag1 = queryAllByText('TagCat1.Tag1');
-    const glossaryTerm1 = queryAllByText('Glossary.Tag1');
-
-    expect(tag1).toHaveLength(0);
-    expect(glossaryTerm1).toHaveLength(0);
   });
 });
