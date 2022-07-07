@@ -136,6 +136,7 @@ public class Fernet {
       DatabaseConnection databaseConnection,
       CreateDatabaseService.DatabaseServiceType databaseServiceType,
       Boolean encrypt) {
+    if (!isKeyDefined()) return;
     try {
       Object connectionConfig = databaseConnection.getConfig();
       String clazzName =
@@ -166,6 +167,7 @@ public class Fernet {
       DashboardConnection dashboardConnection,
       CreateDashboardService.DashboardServiceType dashboardServiceType,
       Boolean encrypt) {
+    if (!isKeyDefined()) return;
     try {
       Object connectionConfig = dashboardConnection.getConfig();
       String clazzName =
@@ -196,6 +198,7 @@ public class Fernet {
       PipelineConnection pipelineConnection,
       CreatePipelineService.PipelineServiceType pipelineServiceType,
       Boolean encrypt) {
+    if (!isKeyDefined()) return;
     try {
       Object connectionConfig = pipelineConnection.getConfig();
       String clazzName =
