@@ -18,6 +18,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Type, Union
 
 from pydantic import ValidationError
 from sqlalchemy import Column, inspect
+from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.util import AliasedClass
@@ -241,7 +242,11 @@ class Profiler(Generic[TMetric]):
 
         try:
             row = self.runner.select_first_from_sample(
-                *[metric(col).fn() for metric in col_metrics]
+                *[
+                    metric(col).fn()
+                    for metric in col_metrics
+                    if not metric.is_window_metric()
+                ]
             )
             self._column_results[col.name].update(dict(row))
         except (TimeoutError, Exception) as err:
@@ -342,6 +347,39 @@ class Profiler(Generic[TMetric]):
                 current_col_results
             )
 
+    def run_window_metrics(self, col: Column):
+        """
+        Run windown metrics in isolation
+
+        Args:
+            col: column name
+        """
+
+        col_metrics = [
+            metric
+            for metric in self.get_col_metrics(self.static_metrics)
+            if metric.is_window_metric()
+        ]
+
+        if not col_metrics:
+            return None
+
+        for metric in col_metrics:
+            try:
+                row = self.runner.select_first_from_sample(metric(col).fn())
+                self._column_results[col.name].update(
+                    dict(row)
+                    if isinstance(row, Row)
+                    else {
+                        metric.name(): row
+                    }  # Snowflake does not return a Row object when table is empty throwing an error
+                )
+            except (Exception) as err:
+                logger.warning(
+                    f"Error trying to compute column profile for {col.name} - {err}"
+                )
+                self.session.rollback()
+
     def execute_column(self, col: Column) -> None:
         """
         Run the profiler on all the columns that
@@ -351,6 +389,7 @@ class Profiler(Generic[TMetric]):
         columns are of allowed types
         """
         self.run_static_metrics(col)
+        self.run_window_metrics(col)
         self.run_query_metrics(col)
         self.run_composed_metrics(col)
 

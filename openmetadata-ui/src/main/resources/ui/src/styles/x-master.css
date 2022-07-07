@@ -1004,14 +1004,6 @@ code {
   background-color: transparent;
 }
 
-@media only screen and (min-width: 2000px) {
-  .centered-layout {
-    margin-left: auto;
-    margin-right: auto;
-    width: auto;
-  }
-}
-
 .ant-card-body {
   padding: 14px;
 }
