@@ -183,9 +183,9 @@ describe('Glossary page should work properly', () => {
     cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
-      .type('PersonalData.Personal');
+      .type('personal');
     cy.wait(500);
-    cy.get('[title="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
+    cy.get('[data-testid*="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-details"]')
       .scrollIntoView()
@@ -262,9 +262,9 @@ describe('Glossary page should work properly', () => {
    cy.get('[data-testid="tag-select"]')
       .scrollIntoView()
       .should('be.visible')
-      .type('PersonalData.Personal');
+      .type('personal');
     cy.wait(500);
-    cy.get('[title="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
+    cy.get('[data-testid*="PersonalData.Personal"]').scrollIntoView().should('be.visible').click();
     cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
     cy.get('[data-testid="glossary-term"]')
       .scrollIntoView()
