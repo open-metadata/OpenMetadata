@@ -10,12 +10,19 @@
 #  limitations under the License.
 
 import logging
+import re
 import sys
-from typing import Iterable
+from textwrap import dedent
+from typing import Any, Dict, Iterable, List
 
 import click
-from sqlalchemy import inspect
+from sqlalchemy import inspect, sql, util
+from sqlalchemy.engine import reflection
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.sql import sqltypes
+from trino.sqlalchemy import datatype
+from trino.sqlalchemy.dialect import TrinoDialect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -33,6 +40,59 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+def parse_row_data_type(row: datatype.ROW) -> str:
+    pass
+
+
+def _get_columns(
+    self, connection: Connection, table_name: str, schema: str = None, **kw
+) -> List[Dict[str, Any]]:
+    schema = schema or self._get_default_schema_name(connection)
+    query = dedent(
+        """
+        SELECT
+            "column_name",
+            "data_type",
+            "column_default",
+            UPPER("is_nullable") AS "is_nullable"
+        FROM "information_schema"."columns"
+        WHERE "table_schema" = :schema
+            AND "table_name" = :table
+        ORDER BY "ordinal_position" ASC
+    """
+    ).strip()
+    res = connection.execute(sql.text(query), schema=schema, table=table_name)
+    columns = []
+
+    for record in res:
+        col_type = datatype.parse_sqltype(record.data_type)
+        column = dict(
+            name=record.column_name,
+            type=col_type,
+            nullable=record.is_nullable == "YES",
+            default=record.column_default,
+        )
+        type_str = record.data_type.strip().lower()
+        match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", record.data_type)
+        if not match:
+            util.warn(f"Could not parse type name '{type_str}'")
+            return sqltypes.NULLTYPE
+        type_name = match.group("type")
+        type_opts = match.group("options")
+        if type_opts:
+            for i in datatype.aware_split(type_opts) or []:
+                attr_name, attr_type_str = datatype.aware_split(
+                    i.strip(), delimiter=" ", maxsplit=1
+                )
+        if type_name == "row":
+            column["raw_data_type"] = record.data_type
+        columns.append(column)
+    return columns
+
+
+TrinoDialect._get_columns = _get_columns  # pylint: disable=protected-access
 
 
 class TrinoSource(CommonDbSourceService):
