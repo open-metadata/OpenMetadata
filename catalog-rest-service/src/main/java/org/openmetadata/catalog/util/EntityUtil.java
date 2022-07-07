@@ -333,7 +333,7 @@ public final class EntityUtil {
   }
 
   public static Double nextMajorVersion(Double version) {
-    return Math.round((version + 1.0) * 10.0) / 10.0;
+    return Math.floor(version + 1.0);
   }
 
   public static void addSoftDeleteFilter(List<EventFilter> filters) {
