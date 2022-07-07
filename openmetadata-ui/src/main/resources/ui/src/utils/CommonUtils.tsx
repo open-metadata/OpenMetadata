@@ -204,7 +204,7 @@ export const getCountBadge = (
         className
       )}>
       <span data-testid="filter-count" title={count.toString()}>
-        {count > 999 ? `999+` : count}
+        {count}
       </span>
     </span>
   );

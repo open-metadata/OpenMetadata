@@ -163,7 +163,7 @@ const PipelineDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Task',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
