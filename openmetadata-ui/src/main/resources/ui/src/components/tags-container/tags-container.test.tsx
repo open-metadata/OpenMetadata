@@ -34,8 +34,8 @@ jest.mock('../../utils/UserDataUtils', () => {
   };
 });
 
-jest.mock('react-select/async', () => {
-  return jest.fn().mockReturnValue(<div>AsyncSelect</div>);
+jest.mock('antd', () => {
+  return { Select: jest.fn().mockReturnValue(<div>Select</div>) };
 });
 
 jest.mock('../tags/tags', () => {
@@ -54,10 +54,10 @@ describe('Test TagsContainer Component', () => {
       />
     );
     const TagContainer = getByTestId(container, 'tag-container');
-    const AsyncSelect = getByText(container, 'AsyncSelect');
+    const Select = getByText(container, 'Select');
 
     expect(TagContainer).toBeInTheDocument();
-    expect(AsyncSelect).toBeInTheDocument();
+    expect(Select).toBeInTheDocument();
   });
 
   it('Should have two buttons', () => {
