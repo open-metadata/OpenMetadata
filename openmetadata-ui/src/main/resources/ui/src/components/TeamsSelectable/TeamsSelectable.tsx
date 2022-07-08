@@ -17,7 +17,8 @@ import AsyncSelect from 'react-select/async';
 import { getSuggestedTeams } from '../../axiosAPIs/miscAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
 import { PAGE_SIZE } from '../../constants/constants';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import { Team } from '../../generated/entity/teams/team';
+import { EntityReference } from '../../generated/type/entityReference';
 import { formatTeamsResponse } from '../../utils/APIUtils';
 import { getEntityName } from '../../utils/CommonUtils';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
@@ -41,22 +42,26 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
     return new Promise<SelectableOption[]>((resolve) => {
       if (text) {
         getSuggestedTeams(text).then((res) => {
-          const teams: UserTeams[] = formatTeamsResponse(
+          const teams: Team[] = formatTeamsResponse(
             res.data.suggest['metadata-suggest'][0].options
           );
-          const options = teams.map((team) => ({
-            label: getEntityName(team),
-            value: team.id,
-          }));
+          const options = teams
+            .filter((team) => team.isJoinable)
+            .map((team) => ({
+              label: getEntityName(team as EntityReference),
+              value: team.id,
+            }));
           resolve(options);
         });
       } else {
         getTeams('', PAGE_SIZE).then((res) => {
-          const teams: UserTeams[] = res.data.data || [];
-          const options = teams.map((team) => ({
-            label: getEntityName(team),
-            value: team.id,
-          }));
+          const teams: Team[] = res.data.data || [];
+          const options = teams
+            .filter((team) => team.isJoinable)
+            .map((team) => ({
+              label: getEntityName(team as EntityReference),
+              value: team.id,
+            }));
           resolve(options);
         });
       }

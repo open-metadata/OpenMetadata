@@ -12,7 +12,6 @@
  */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -45,7 +44,6 @@ const Signup = () => {
     email: appState.newUser.email || '',
   });
   const [countTeams, setCountTeams] = useState<number>(0);
-  const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
 
@@ -110,7 +108,6 @@ const Signup = () => {
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (countTeams) {
-      setTeamError(!selectedTeams.length);
       if (details.name && details.displayName && selectedTeams.length > 0) {
         createNewUser({
           ...details,
@@ -133,19 +130,6 @@ const Signup = () => {
     }
   };
 
-  const errorMsg = (value: string) => {
-    return (
-      <div
-        className="tw-notification tw-bg-error tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-        data-testid="toast">
-        <div className="tw-font-semibold tw-flex-shrink-0">
-          <SVGIcons alt="info" icon="error" title="Info" width="16px" />
-        </div>
-        <div className="tw-font-semibold tw-px-1">{value}</div>
-      </div>
-    );
-  };
-
   useEffect(() => {
     getTeams('', 0)
       .then((res) => {
@@ -163,11 +147,6 @@ const Signup = () => {
         setTeamCount(0);
       });
   }, []);
-  useEffect(() => {
-    if (selectedTeams.length) {
-      setTeamError(false);
-    }
-  }, [selectedTeams]);
 
   return (
     <>
@@ -250,17 +229,11 @@ const Signup = () => {
                     />
                   </div>
                   <div className="tw-mb-4">
-                    <label
-                      className={classNames(
-                        'tw-block tw-text-body tw-text-grey-body tw-mb-2',
-                        {
-                          'required-field': countTeams,
-                        }
-                      )}>
+                    <label className="tw-block tw-text-body tw-text-grey-body tw-mb-2">
                       Select teams
                     </label>
                     <TeamsSelectable onSelectionChange={setSelectedTeams} />
-                    {teamError && errorMsg('Atleast one team is required')}
+
                     {countTeams === 0 ? (
                       <div
                         className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
