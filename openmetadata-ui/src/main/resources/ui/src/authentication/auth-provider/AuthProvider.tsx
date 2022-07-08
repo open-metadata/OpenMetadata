@@ -282,9 +282,11 @@ export const AuthProvider = ({
       ? renewIdToken()
           .then(() => {
             setSilentSignInRetries(0);
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
             startTokenExpiryTimer();
           })
           .catch((err) => {
+            // eslint-disable-next-line no-console
             console.error('Error while attempting for silent signIn. ', err);
             setSilentSignInRetries((prev) => prev + 1);
             if (silentSignInRetries < 2) {
