@@ -73,6 +73,7 @@ export const formatTeamsResponse = (hits) => {
       displayName: d._source.displayName,
       type: d._source.entityType,
       id: d._source.id,
+      isJoinable: d._source.isJoinable,
     };
   });
 };
