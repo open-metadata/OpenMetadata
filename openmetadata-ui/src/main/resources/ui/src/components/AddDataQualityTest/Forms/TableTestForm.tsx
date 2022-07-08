@@ -74,6 +74,9 @@ const TableTestForm = ({
   const [columnNameSet, setcolumnNameSet] = useState<string | undefined>(
     data?.testCase?.config?.columnNames
   );
+  const [sqlExpression, setSqlExpression] = useState<string | undefined>(
+    data?.testCase?.config?.sqlExpression
+  );
   const [columnNameSetOrdered, setcolumnNameSetOrdered] = useState<boolean>(
     data?.testCase?.config?.ordered !== undefined
       ? data?.testCase?.config?.ordered
@@ -88,6 +91,7 @@ const TableTestForm = ({
     columnName: false,
     columnNameSet: false,
     columnNameSetOrdered: false,
+    sqlExpression: false,
   });
   const [testTypeOptions, setTestTypeOptions] = useState<string[]>();
 
@@ -136,6 +140,11 @@ const TableTestForm = ({
 
         break;
 
+      case TableTestType.TableCustomSQLQuery:
+        errMsg.sqlExpression = isEmpty(sqlExpression);
+
+        break;
+
       default:
         errMsg.values = isEmpty(value);
     }
@@ -178,6 +187,11 @@ const TableTestForm = ({
       case TableTestType.TableRowCountToEqual:
         return {
           value: isEmpty(value) ? undefined : value,
+        };
+
+      case TableTestType.TableCustomSQLQuery:
+        return {
+          sqlExpression: isEmpty(sqlExpression) ? undefined : sqlExpression,
         };
 
       default:
@@ -251,6 +265,12 @@ const TableTestForm = ({
 
         break;
 
+      case 'sql-expression':
+        setSqlExpression(value as unknown as string);
+        errorMsg.sqlExpression = false;
+
+        break;
+
       default:
         break;
     }
@@ -279,6 +299,26 @@ const TableTestForm = ({
     );
   };
 
+  const getSQLTextField = () => {
+    return (
+      <Field>
+        <label className="tw-block tw-form-label" htmlFor="value">
+          {requiredField('SQL Expression:')}
+        </label>
+        <input
+          className="tw-form-inputs tw-form-inputs-padding"
+          data-testid="sql-expression"
+          id="sql-expression"
+          name="sql-expression"
+          placeholder="SELECT * FROM dual"
+          type="text"
+          value={sqlExpression}
+          onChange={handleValidation}
+        />
+      </Field>
+    );
+  };
+
   const getValueColTextField = () => {
     return (
       <Field>
@@ -288,7 +328,7 @@ const TableTestForm = ({
         <input
           className="tw-form-inputs tw-form-inputs-padding"
           data-testid="column-name"
-          id="columnn-ame"
+          id="column-name"
           name="column-name"
           placeholder="col1"
           type="text"
@@ -380,6 +420,8 @@ const TableTestForm = ({
         return getValueColTextField();
       case TableTestType.TableColumnToMatchSet:
         return getValueColSetTextField();
+      case TableTestType.TableCustomSQLQuery:
+        return getSQLTextField();
       default:
         return getValueField();
     }
