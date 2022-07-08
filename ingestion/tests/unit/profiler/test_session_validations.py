@@ -148,7 +148,7 @@ class MetricsTest(TestCase):
         assert res_ok == TestCaseResult(
             executionTime=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Success,
-            result="Found 2 value(s) matching regex pattern vs 2 value(s) in the table.",
+            result="Found 2 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
 
         res_ko = validate(
@@ -162,7 +162,7 @@ class MetricsTest(TestCase):
         assert res_ko == TestCaseResult(
             executionTime=EXECUTION_DATE.timestamp(),
             testCaseStatus=TestCaseStatus.Failed,
-            result="Found 1 value(s) matching regex pattern vs 2 value(s) in the table.",
+            result="Found 1 value(s) matching regex pattern vs 2 value(s) in the column.",
         )
 
         res_aborted = validate(
