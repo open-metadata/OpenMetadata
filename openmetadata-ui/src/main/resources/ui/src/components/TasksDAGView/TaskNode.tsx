@@ -22,7 +22,7 @@ const handleStyles = {
   top: 10,
 };
 
-const renderHandle = (position: Position) => {
+const renderHandle = (position: Position, isConnectable: boolean) => {
   const styles = { ...handleStyles } as CSSProperties;
   let type: HandleType;
   if (position === Position.Left) {
@@ -32,32 +32,37 @@ const renderHandle = (position: Position) => {
   }
 
   return (
-    <Handle isConnectable position={position} style={styles} type={type} />
+    <Handle
+      isConnectable={isConnectable}
+      position={position}
+      style={styles}
+      type={type}
+    />
   );
 };
 
-const getHandle = (nodeType: string) => {
+const getHandle = (nodeType: string, isConnectable: boolean) => {
   if (nodeType === 'output') {
-    return renderHandle(Position.Left);
+    return renderHandle(Position.Left, isConnectable);
   } else if (nodeType === 'input') {
-    return renderHandle(Position.Right);
+    return renderHandle(Position.Right, isConnectable);
   } else {
     return (
       <Fragment>
-        {renderHandle(Position.Left)}
-        {renderHandle(Position.Right)}
+        {renderHandle(Position.Left, isConnectable)}
+        {renderHandle(Position.Right, isConnectable)}
       </Fragment>
     );
   }
 };
 
 const TaskNode = (props: NodeProps) => {
-  const { data, type } = props;
+  const { data, type, isConnectable } = props;
   const { label } = data;
 
   return (
     <div className="task-node tw-relative nowheel tw-px-2 tw-bg-primary-lite tw-border tw-border-primary-hover tw-rounded-md">
-      {getHandle(type)}
+      {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
       <div className="tw-px-2 tw-py-3" data-testid="node-label">
         {label}
