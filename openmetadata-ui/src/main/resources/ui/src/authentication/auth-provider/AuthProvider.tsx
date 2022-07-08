@@ -97,7 +97,6 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const oidcUserToken = localStorage.getItem(oidcTokenKey);
-  const [silentSignInRetries, setSilentSignInRetries] = useState<number>(0);
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(
     Boolean(oidcUserToken)
   );
@@ -106,6 +105,8 @@ export const AuthProvider = ({
   const [authConfig, setAuthConfig] =
     useState<Record<string, string | boolean>>();
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  let silentSignInRetries = 0;
 
   const onLoginHandler = () => {
     authenticatorRef.current?.invokeLogin();
@@ -281,17 +282,15 @@ export const AuthProvider = ({
     silentSignInRetries < 3
       ? renewIdToken()
           .then(() => {
-            setSilentSignInRetries(0);
+            silentSignInRetries = 0;
             // eslint-disable-next-line @typescript-eslint/no-use-before-define
             startTokenExpiryTimer();
           })
           .catch((err) => {
             // eslint-disable-next-line no-console
             console.error('Error while attempting for silent signIn. ', err);
-            setSilentSignInRetries((prev) => prev + 1);
-            if (silentSignInRetries < 2) {
-              trySilentSignIn();
-            }
+            silentSignInRetries += 1;
+            trySilentSignIn();
           })
       : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
   };
