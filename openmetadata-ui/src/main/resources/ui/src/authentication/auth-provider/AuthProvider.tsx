@@ -278,26 +278,27 @@ export const AuthProvider = ({
    */
   const trySilentSignIn = () => {
     // Try to renew token
-    silentSignInRetries < 3 &&
-      renewIdToken()
-        .then(() => {
-          setSilentSignInRetries(0);
-          startTokenExpiryTimer();
-        })
-        .catch((err) => {
-          console.error('Error while attempting for silent signIn. ', err);
-          setSilentSignInRetries((prev) => prev + 1);
-          if (silentSignInRetries < 2) {
-            trySilentSignIn();
-          }
-        });
+    silentSignInRetries < 3
+      ? renewIdToken()
+          .then(() => {
+            setSilentSignInRetries(0);
+            startTokenExpiryTimer();
+          })
+          .catch((err) => {
+            console.error('Error while attempting for silent signIn. ', err);
+            setSilentSignInRetries((prev) => prev + 1);
+            if (silentSignInRetries < 2) {
+              trySilentSignIn();
+            }
+          })
+      : onLogoutHandler(); // Logout if we reaches max silent signIn limit;
   };
 
   /**
    * It will set an timer for 50 secs before Token will expire
    * If time if less then 50 secs then it will try to SilentSignIn
    * It will also ensure that we have time left for token expiry
-   * This method will be call upon sucessful signiIn
+   * This method will be call upon successful signIn
    */
   const startTokenExpiryTimer = () => {
     const token: string | void = localStorage.getItem(oidcTokenKey) || '';
@@ -311,6 +312,8 @@ export const AuthProvider = ({
           const diff = exp * 1000 - Date.now(); /* Convert to MS */
 
           // Have 50s buffer before start trying for silent signIn
+          // If token is about to expire then start silentSignIn
+          // else just set timer to try for silentSignIn before token expires
           if (diff > 50000) {
             const timerId = setTimeout(() => {
               trySilentSignIn();
@@ -319,8 +322,6 @@ export const AuthProvider = ({
           } else {
             trySilentSignIn();
           }
-          // If token is about to expire then start silentSignIn
-          // else just set timer to try for silentSignIn before token expires
         }
       } catch (error) {
         // eslint-disable-next-line no-console
