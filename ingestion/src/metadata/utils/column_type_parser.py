@@ -235,10 +235,6 @@ class ColumnTypeParser:
             if s[-1] != ">":
                 raise ValueError("expected '>', found: %s" % s)
             return ColumnTypeParser._parse_struct_fields_string(s[7:-1])
-        elif s.startswith("row("):
-            if s[-1] != ")":
-                raise ValueError("expected ')', found: %s" % s)
-            return ColumnTypeParser._parse_struct_fields_string(s[5:-1])
         elif ":" in s:
             return ColumnTypeParser._parse_struct_fields_string(s)
         else:

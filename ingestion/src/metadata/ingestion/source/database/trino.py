@@ -13,7 +13,7 @@ import logging
 import re
 import sys
 from textwrap import dedent
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
 from sqlalchemy import inspect, sql, util
@@ -40,10 +40,48 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+ROW_DATA_TYPE = "row"
+ARRAY_DATA_TYPE = "array"
 
 
-def parse_row_data_type(row: datatype.ROW) -> str:
-    pass
+def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:
+    match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
+    if not match:
+        util.warn(f"Could not parse type name '{type_str}'")
+        return sqltypes.NULLTYPE
+    type_name = match.group("type")
+    type_opts = match.group("options")
+    return type_name, type_opts
+
+
+def parse_array_data_type(type_str: str) -> str:
+    type_name, type_opts = get_type_name_and_opts(type_str)
+    final = type_name + "<"
+    if type_opts:
+        if type_opts.startswith(ROW_DATA_TYPE):
+            final += parse_row_data_type(type_opts)
+        elif type_opts.startswith(ARRAY_DATA_TYPE):
+            final += parse_array_data_type(type_opts)
+        else:
+            final += type_opts
+    return final + ">"
+
+
+def parse_row_data_type(type_str: str) -> str:
+    type_name, type_opts = get_type_name_and_opts(type_str)
+    final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
+    if type_opts:
+        for i in datatype.aware_split(type_opts) or []:
+            attr_name, attr_type_str = datatype.aware_split(
+                i.strip(), delimiter=" ", maxsplit=1
+            )
+            if attr_type_str.startswith(ROW_DATA_TYPE):
+                final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
+            elif attr_type_str.startswith(ARRAY_DATA_TYPE):
+                final += attr_name + ":" + parse_array_data_type(attr_type_str) + ","
+            else:
+                final += attr_name + ":" + attr_type_str + ","
+    return final[:-1] + ">"
 
 
 def _get_columns(
@@ -75,19 +113,11 @@ def _get_columns(
             default=record.column_default,
         )
         type_str = record.data_type.strip().lower()
-        match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", record.data_type)
-        if not match:
-            util.warn(f"Could not parse type name '{type_str}'")
-            return sqltypes.NULLTYPE
-        type_name = match.group("type")
-        type_opts = match.group("options")
-        if type_opts:
-            for i in datatype.aware_split(type_opts) or []:
-                attr_name, attr_type_str = datatype.aware_split(
-                    i.strip(), delimiter=" ", maxsplit=1
-                )
-        if type_name == "row":
-            column["raw_data_type"] = record.data_type
+        type_name, type_opts = get_type_name_and_opts(type_str)
+        if type_opts and type_name == ROW_DATA_TYPE:
+            column["raw_data_type"] = parse_row_data_type(type_str)
+        elif type_opts and type_name == ARRAY_DATA_TYPE:
+            column["raw_data_type"] = parse_array_data_type(type_str)
         columns.append(column)
     return columns
 
