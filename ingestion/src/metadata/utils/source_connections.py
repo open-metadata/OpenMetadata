@@ -111,8 +111,8 @@ def get_connection_url_common(connection):
         else connection.connectionOptions
     )
     if options:
-        if not hasattr(connection, "database") or not hasattr(
-            connection, "databaseSchema"
+        if (hasattr(connection, "database") and not connection.database) or (
+            hasattr(connection, "databaseSchema") and not connection.databaseSchema
         ):
             url += "/"
         params = "&".join(
