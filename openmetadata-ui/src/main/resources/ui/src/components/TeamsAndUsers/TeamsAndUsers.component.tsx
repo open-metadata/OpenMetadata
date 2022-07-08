@@ -131,11 +131,11 @@ const TeamsAndUsers = ({
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
                     team.name,
                     currentTeam?.name
-                  )}`}>
+                  )}`}
+                  data-testid="team-name">
                   <Ellipses
                     tooltip
                     className="tag-category label-category tw-self-center tw-w-32"
-                    data-testid="team-name"
                     rows={1}>
                     {team.displayName ?? team.name}
                   </Ellipses>
