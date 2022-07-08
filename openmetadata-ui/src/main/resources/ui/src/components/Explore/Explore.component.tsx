@@ -628,7 +628,9 @@ const Explore: React.FC<ExploreProps> = ({
    * on index change clear the filters
    */
   useEffect(() => {
-    setSelectedAdvancedField([]);
+    if (!isMounting.current) {
+      setSelectedAdvancedField([]);
+    }
   }, [searchIndex]);
 
   /**
@@ -647,7 +649,9 @@ const Explore: React.FC<ExploreProps> = ({
    * on advance field change call handleAdvancedSearch methdod
    */
   useEffect(() => {
-    handleAdvancedSearch(selectedAdvancedFields);
+    if (!isMounting.current) {
+      handleAdvancedSearch(selectedAdvancedFields);
+    }
   }, [selectedAdvancedFields]);
 
   // alwyas Keep this useEffect at the end...
