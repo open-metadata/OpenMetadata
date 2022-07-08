@@ -270,7 +270,9 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                         service_name=self.service.name.__root__,
                         pipeline_name=connection.get("connectionId"),
                     )
-                    yield from self.fetch_pipeline_status(workspace, connection, pipeline_fqn)
+                    yield from self.fetch_pipeline_status(
+                        workspace, connection, pipeline_fqn
+                    )
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,

@@ -21,7 +21,6 @@ from airflow.models import BaseOperator, DagRun
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.models.taskinstance import TaskInstance
 from airflow.serialization.serialized_objects import SerializedDAG
-from metadata.utils.helpers import datetime_to_ts
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -61,6 +60,7 @@ from metadata.utils.connections import (
     test_connection,
 )
 from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
