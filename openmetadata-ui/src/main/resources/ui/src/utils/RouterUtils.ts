@@ -24,7 +24,7 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
-import { searchFilterQS } from '../constants/explore.constants';
+import { initialFilterQS } from '../constants/explore.constants';
 
 export const isDashboard = (pathname: string): boolean => {
   return pathname === ROUTES.FEEDS;
@@ -130,7 +130,7 @@ export const getExplorePathWithInitFilters = (
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return filter
-    ? `${path}?${searchFilterQS}=${encodeURIComponent(filter)}`
+    ? `${path}?${initialFilterQS}=${encodeURIComponent(filter)}`
     : path;
 };
 

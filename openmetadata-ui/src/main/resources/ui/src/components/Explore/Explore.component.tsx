@@ -18,7 +18,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
@@ -565,7 +565,7 @@ const Explore: React.FC<ExploreProps> = ({
     if (searchResult) {
       updateSearchResults(searchResult.resSearchResults);
       setCount(searchResult.resSearchResults.data.hits.total.value);
-      if (forceSetAgg.current) {
+      if (forceSetAgg.current || !isUndefined(initialFilter)) {
         setAggregations(
           searchResult.resSearchResults.data.hits.hits.length > 0
             ? getAggregationList(
