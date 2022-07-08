@@ -4,9 +4,12 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Database Services
 
-* Airbyte
+* Amazon S3 Data Lake
 * [Amundsen](amundsen.md)
+* Apache Atlas
 * Apache Druid
+* Apache Iceberg
+* Apache Pinot
 * [Athena](athena/)
 * [Azure SQL](azure-sql/)
 * [BigQuery](bigquery/)
@@ -17,6 +20,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [Delta Lake](delta-lake/)
 * [DynamoDB](dynamodb/)
 * [Glue Catalog](glue-catalog/)
+* Google Cloud Service Data Lake
 * [Hive](hive/)
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
@@ -52,6 +56,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Pipeline Services
 
+* Airbyte
 * [Airflow](../airflow/)
 * Glue
 
