@@ -552,12 +552,8 @@ const TeamDetails = ({
             </div>
           </div>
         ) : (
-          <div className="tw-flex tw-group">
-            <Ellipses
-              tooltip
-              className="tw-w-120"
-              data-testid="team-heading"
-              rows={1}>
+          <div className="tw-flex tw-group" data-testid="team-heading">
+            <Ellipses tooltip className="tw-w-120" rows={1}>
               {heading}
             </Ellipses>
             {isActionAllowed() && (
