@@ -146,6 +146,20 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               </>
             )}
           />
+          <Route
+            path={ROUTES.SILENT_CALLBACK}
+            render={() => (
+              <>
+                <Callback
+                  userManager={userManager}
+                  onSuccess={(user) => {
+                    localStorage.setItem(oidcTokenKey, user.id_token);
+                  }}
+                />
+                <Loader />
+              </>
+            )}
+          />
           {isAuthenticated || isAuthDisabled ? (
             <Fragment>{children}</Fragment>
           ) : !isSigningIn && isEmpty(userDetails) && isEmpty(newUser) ? (

@@ -39,6 +39,12 @@ export const getRedirectUri = (callbackUrl: string) => {
     : `${window.location.origin}/callback`;
 };
 
+export const getSilentRedirectUri = () => {
+  return isDev()
+    ? 'http://localhost:3000/silent-callback'
+    : `${window.location.origin}/silent-callback`;
+};
+
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | boolean | WebStorageStateStore> => {
@@ -52,6 +58,8 @@ export const getUserManagerConfig = (
     response_type: responseType,
     // eslint-disable-next-line @typescript-eslint/camelcase
     redirect_uri: getRedirectUri(callbackUrl),
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    silent_redirect_uri: getSilentRedirectUri(),
     scope,
     userStore: new WebStorageStateStore({ store: localStorage }),
   };

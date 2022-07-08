@@ -276,24 +276,21 @@ export const AuthProvider = ({
    * This method will try to signIn silently when token is about to expire
    * It will try for max 3 times if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = async () => {
-    if (silentSignInRetries > 3) {
-      // eslint-disable-next-line no-console
-      console.error('SilentSignIn reaches max limit');
-
-      return;
-    }
-    try {
-      // Try to renew token
-      await renewIdToken();
-      // Reset silentSignInRetried upon a successful signIn
-      setSilentSignInRetries(0);
-    } catch (error: any) {
-      if (silentSignInRetries < 3) {
-        setSilentSignInRetries((count) => count + 1);
-        trySilentSignIn();
-      }
-    }
+  const trySilentSignIn = () => {
+    // Try to renew token
+    silentSignInRetries < 3 &&
+      renewIdToken()
+        .then(() => {
+          setSilentSignInRetries(0);
+          startTokenExpiryTimer();
+        })
+        .catch((err) => {
+          console.error('Error while attempting for silent signIn. ', err);
+          setSilentSignInRetries((prev) => prev + 1);
+          if (silentSignInRetries < 2) {
+            trySilentSignIn();
+          }
+        });
   };
 
   /**
@@ -313,11 +310,17 @@ export const AuthProvider = ({
           // Check if token isn't expired yet
           const diff = exp * 1000 - Date.now(); /* Convert to MS */
 
+          // Have 50s buffer before start trying for silent signIn
+          if (diff > 50000) {
+            const timerId = setTimeout(() => {
+              trySilentSignIn();
+            }, diff);
+            setTimeoutId(timerId);
+          } else {
+            trySilentSignIn();
+          }
           // If token is about to expire then start silentSignIn
           // else just set timer to try for silentSignIn before token expires
-          diff > 50000
-            ? setTimeoutId(() => setTimeout(trySilentSignIn, diff))
-            : trySilentSignIn;
         }
       } catch (error) {
         // eslint-disable-next-line no-console
@@ -335,6 +338,8 @@ export const AuthProvider = ({
   }, [timeoutId]);
 
   useEffect(() => {
+    startTokenExpiryTimer();
+
     return cleanup;
   }, []);
 
@@ -346,10 +351,6 @@ export const AuthProvider = ({
 
   const handleSuccessfulLogin = (user: OidcUser) => {
     setLoading(true);
-    // Start expiry timer on successful login
-    // eslint-disable-next-line no-console
-    console.info('Login successful');
-    startTokenExpiryTimer();
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -364,6 +365,8 @@ export const AuthProvider = ({
           getUserPermissions();
           fetchAllUsers();
           handledVerifiedUser();
+          // Start expiry timer on successful login
+          startTokenExpiryTimer();
         }
       })
       .catch((err) => {
