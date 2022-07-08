@@ -997,11 +997,10 @@ const RolesPage = () => {
     return (
       <Fragment>
         <div className="tw-flex tw-justify-between" data-testid="header">
-          <div className="tw-flex tw-items-start tw-max-w-75">
-            <Ellipses
-              tooltip
-              className="tw-heading tw-text-link tw-text-base"
-              data-testid="header-title">
+          <div
+            className="tw-flex tw-items-start tw-max-w-75"
+            data-testid="header-title">
+            <Ellipses tooltip className="tw-heading tw-text-link tw-text-base">
               {currentRole?.displayName}
             </Ellipses>
             {currentRole?.defaultRole ? getDefaultBadge('tw-ml-2') : null}
