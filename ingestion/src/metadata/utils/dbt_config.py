@@ -13,9 +13,10 @@ Hosts the singledispatch to get DBT files
 """
 import json
 import traceback
-import urllib.request
 from functools import singledispatch
 from typing import Optional, Tuple
+
+import requests
 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DbtCloudConfig,
@@ -60,11 +61,9 @@ def _(config: DbtLocalConfig):
 @get_dbt_details.register
 def _(config: DbtHttpConfig):
     try:
-        catalog_file = urllib.request.urlopen(config.dbtCatalogHttpPath)
-        manifest_file = urllib.request.urlopen(config.dbtManifestHttpPath)
-        dbt_catalog = catalog_file.read().decode()
-        dbt_manifest = manifest_file.read().decode()
-        return json.loads(dbt_catalog), json.loads(dbt_manifest)
+        dbt_catalog = requests.get(config.dbtCatalogHttpPath)
+        dbt_manifest = requests.get(config.dbtManifestHttpPath)
+        return json.loads(dbt_catalog.text), json.loads(dbt_manifest.text)
     except Exception as exc:
         logger.error(traceback.format_exc())
         logger.error(f"Error fetching dbt files from file server {repr(exc)}")

@@ -73,8 +73,8 @@ class DBTMixin:
                     model_name = (
                         mnode["alias"] if "alias" in mnode.keys() else mnode["name"]
                     )
-                    database = mnode["database"]
-                    schema = mnode["schema"]
+                    database = mnode["database"] if mnode["database"] else "default"
+                    schema = mnode["schema"] if mnode["schema"] else "default"
                     raw_sql = mnode.get("raw_sql", "")
                     model = DataModel(
                         modelType=ModelType.DBT,
@@ -108,8 +108,12 @@ class DBTMixin:
                         self.metadata,
                         entity_type=Table,
                         service_name=self.config.serviceName,
-                        database_name=parent_node["database"],
-                        schema_name=parent_node["schema"],
+                        database_name=parent_node["database"]
+                        if parent_node["database"]
+                        else "default",
+                        schema_name=parent_node["schema"]
+                        if parent_node["schema"]
+                        else "default",
                         table_name=parent_node["name"],
                     )
                     if parent_fqn:

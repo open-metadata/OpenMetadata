@@ -59,6 +59,7 @@ export type DropDownListProp = {
   domPosition?: DOMRect;
   isLoading?: boolean;
   widthClass?: string;
+  getTotalCountForGroup?: (groupName: string) => number;
 };
 
 export type DropDownProp = {

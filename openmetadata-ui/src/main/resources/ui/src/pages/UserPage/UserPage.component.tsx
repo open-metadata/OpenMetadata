@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
@@ -31,7 +31,11 @@ import {
 } from '../../constants/feed.constants';
 import { getUserCurrentTab } from '../../constants/usersprofile.constants';
 import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
@@ -59,11 +63,16 @@ const UserPage = () => {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>(
     (searchParams.get('feedFilter') as FeedFilter) ?? FeedFilter.ALL
   );
+  const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
+    ThreadTaskStatus.Open
+  );
   const threadType = useMemo(() => {
     return getUserCurrentTab(tab) === 2
       ? ThreadType.Task
       : ThreadType.Conversation;
   }, [tab]);
+
+  const isTaskType = isEqual(threadType, ThreadType.Task);
 
   const fetchUserData = () => {
     setUserData({} as User);
@@ -105,18 +114,25 @@ const UserPage = () => {
     after?: string,
     feedFilter?: FeedFilter
   ) => {
+    const status = isTaskType ? taskStatus : undefined;
     setIsFeedLoading(true);
     getFeedsWithFilter(
       userData.id,
       feedFilter || FeedFilter.ALL,
       after,
-      threadType
+      threadType,
+      status
     )
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setPaging(pagingObj);
-
-        setEntityThread((prevData) => [...prevData, ...data]);
+        setEntityThread((prevData) => {
+          if (after) {
+            return [...prevData, ...data];
+          } else {
+            return [...data];
+          }
+        });
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -223,6 +239,14 @@ const UserPage = () => {
     return userName === currentLoggedInUser?.name;
   };
 
+  const onSwitchChange = (checked: boolean) => {
+    if (checked) {
+      setTaskStatus(ThreadTaskStatus.Closed);
+    } else {
+      setTaskStatus(ThreadTaskStatus.Open);
+    }
+  };
+
   const getUserComponent = () => {
     if (!isError && !isEmpty(userData)) {
       return (
@@ -244,6 +268,7 @@ const UserPage = () => {
           updateUserDetails={updateUserDetails}
           userData={userData}
           username={username}
+          onSwitchChange={onSwitchChange}
         />
       );
     } else {
@@ -270,7 +295,7 @@ const UserPage = () => {
       setEntityThread([]);
       getFeedData(threadType, undefined, newFeedFilter);
     }
-  }, [userData, tab, search]);
+  }, [userData, tab, search, taskStatus]);
 
   useEffect(() => {
     setEntityThread([]);
