@@ -36,6 +36,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   domPosition,
   className = '',
   widthClass = 'tw-w-52',
+  getTotalCountForGroup,
 }: DropDownListProp) => {
   const { height: windowHeight } = useWindowDimensions();
   const isMounted = useRef<boolean>(false);
@@ -87,6 +88,17 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     return searchedList.filter((item) => {
       return groupName ? item.group === groupName : !item.group;
     });
+  };
+
+  const getGroupCount = (groupName?: string): number => {
+    let count = 0;
+    if (controlledSearchStr === '' && getTotalCountForGroup && groupName) {
+      count = getTotalCountForGroup(groupName);
+    } else {
+      count = getSearchedListByGroup(groupName)?.length;
+    }
+
+    return count;
   };
 
   const getDropDownElement = (item: DropDownListItem, index: number) => {
@@ -278,7 +290,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                         onClick={() => setActiveTab(index + 1)}>
                         {grp}
                         {getCountBadge(
-                          getSearchedListByGroup(grp).length,
+                          getGroupCount(grp),
                           '',
                           activeTab === index + 1
                         )}

@@ -22,6 +22,6 @@ export const UPDATE_EVENTS_DEFAULT_VALUE = {
 };
 
 export const DELETE_EVENTS_DEFAULT_VALUE = {
-  eventType: '"entityDeleted"',
+  eventType: 'entityDeleted',
   entities: ['*', 'table', 'topic', 'dashboard', 'pipeline'],
 };

@@ -78,7 +78,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               threadType={ThreadType.Task}
               updateThreadHandler={updateThreadHandler}
               onCancel={onCancel}
-              onTabChange={onTabChange}
             />
           </TabPane>
           <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
@@ -90,7 +89,6 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               threadType={ThreadType.Conversation}
               updateThreadHandler={updateThreadHandler}
               onCancel={onCancel}
-              onTabChange={onTabChange}
             />
           </TabPane>
         </Tabs>

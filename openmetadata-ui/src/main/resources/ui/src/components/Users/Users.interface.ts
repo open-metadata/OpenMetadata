@@ -54,4 +54,5 @@ export interface Props {
   feedFilter: FeedFilter;
   setFeedFilter: (value: FeedFilter) => void;
   threadType: ThreadType.Task | ThreadType.Conversation;
+  onSwitchChange: (checked: boolean) => void;
 }

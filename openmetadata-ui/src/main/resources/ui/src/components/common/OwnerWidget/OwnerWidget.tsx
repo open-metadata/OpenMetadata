@@ -12,15 +12,20 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, lowerCase } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
+import { getTeams } from '../../../axiosAPIs/teamsAPI';
+import { getUsers } from '../../../axiosAPIs/userAPI';
 import { ADMIN_ONLY_ACCESSIBLE_SECTION } from '../../../enums/common.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useAuth } from '../../../hooks/authHooks';
+import jsonData from '../../../jsons/en';
 import { hasEditAccess } from '../../../utils/CommonUtils';
 import { getTitleCase } from '../../../utils/EntityUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { isCurrentUserAdmin } from '../../../utils/UserDataUtils';
 import { Button } from '../../buttons/Button/Button';
 import DropDownList from '../../dropdown/DropDownList';
@@ -78,10 +83,49 @@ const OwnerWidget = ({
   handleSearchOwnerDropdown,
 }: OwnerWidgetProps) => {
   const { userPermissions, isAdminUser } = useAuth();
-
+  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
+  const [totalTeamsCount, setTotalTeamsCount] = useState<number>(0);
   const getOwnerGroup = () => {
     return allowTeamOwner ? ['Teams', 'Users'] : ['Users'];
   };
+
+  const fetchTeamsAndUsersCount = () => {
+    getUsers('', 0)
+      .then((res) => {
+        if (res.data) {
+          setTotalUsersCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTotalTeamsCount(0);
+      });
+
+    getTeams('', 0)
+      .then((res) => {
+        if (res.data) {
+          setTotalTeamsCount(res.data.paging.total);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+        setTotalTeamsCount(0);
+      });
+  };
+
+  useEffect(() => {
+    fetchTeamsAndUsersCount();
+  }, []);
 
   const getOwnerUpdateLoader = () => {
     switch (statusOwner) {
@@ -127,6 +171,16 @@ const OwnerWidget = ({
     entityType === 'team'
       ? 'The owner of the team can manage the team by adding or removing users. Add or update Team ownership here'
       : `Add or update ${getTitleCase(entityType)} ownership here`;
+
+  const handleTotalCountForGroup = (groupName: string) => {
+    if (lowerCase(groupName) === 'users') {
+      return totalUsersCount;
+    } else if (lowerCase(groupName) === 'teams') {
+      return totalTeamsCount;
+    } else {
+      return 0;
+    }
+  };
 
   return (
     <Fragment>
@@ -177,6 +231,7 @@ const OwnerWidget = ({
                   showEmptyList
                   controlledSearchStr={ownerSearchText}
                   dropDownList={listOwners}
+                  getTotalCountForGroup={handleTotalCountForGroup}
                   groupType="tab"
                   isLoading={isListLoading}
                   listGroups={getOwnerGroup()}

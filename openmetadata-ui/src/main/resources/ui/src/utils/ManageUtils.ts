@@ -16,9 +16,16 @@ import AppState from '../AppState';
 import { EntityReference } from '../generated/type/entityUsage';
 import { getEntityName } from './CommonUtils';
 
+/**
+ * @param listUsers - List of users
+ * @param listTeams - List of teams
+ * @param excludeCurrentUser - Wether to exclude current user to be on list. Needed when calls from searching
+ * @returns List of user or team
+ */
 export const getOwnerList = (
   listUsers?: FormattedUsersData[],
-  listTeams?: FormattedTeamsData[]
+  listTeams?: FormattedTeamsData[],
+  excludeCurrentUser?: boolean
 ) => {
   const userDetails = AppState.getCurrentUserDetails();
 
@@ -47,17 +54,21 @@ export const getOwnerList = (
     }));
 
     return [
-      {
-        name: getEntityName(userDetails as unknown as EntityReference),
-        value: userDetails.id,
-        group: 'Users',
-        type: 'user',
-      },
+      ...(!excludeCurrentUser
+        ? [
+            {
+              name: getEntityName(userDetails as unknown as EntityReference),
+              value: userDetails.id,
+              group: 'Users',
+              type: 'user',
+            },
+          ]
+        : []),
       ...users,
       ...teams,
     ];
   } else {
-    return userDetails
+    return userDetails && !excludeCurrentUser
       ? [
           {
             name: getEntityName(userDetails as unknown as EntityReference),
