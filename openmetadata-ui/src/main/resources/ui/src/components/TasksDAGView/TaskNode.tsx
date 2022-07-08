@@ -13,6 +13,7 @@
 
 import React, { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'react-flow-renderer';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 
 const handleStyles = {
   width: '8px',
@@ -42,9 +43,9 @@ const renderHandle = (position: Position, isConnectable: boolean) => {
 };
 
 const getHandle = (nodeType: string, isConnectable: boolean) => {
-  if (nodeType === 'output') {
+  if (nodeType === EntityLineageNodeType.OUTPUT) {
     return renderHandle(Position.Left, isConnectable);
-  } else if (nodeType === 'input') {
+  } else if (nodeType === EntityLineageNodeType.INPUT) {
     return renderHandle(Position.Right, isConnectable);
   } else {
     return (
