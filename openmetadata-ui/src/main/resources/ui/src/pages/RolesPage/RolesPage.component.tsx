@@ -172,7 +172,10 @@ const RolesPage = () => {
 
   const fetchPolicy = (id: string) => {
     setIsLoadingPolicy(true);
-    getPolicy(id, 'displayName,description,owner,enabled,rules,location')
+    getPolicy(
+      id,
+      'displayName,description,owner,policyUrl,enabled,rules,location'
+    )
       .then((res: AxiosResponse) => {
         if (res.data) {
           setCurrentRolePolicies((preV) => [...preV, res.data]);
