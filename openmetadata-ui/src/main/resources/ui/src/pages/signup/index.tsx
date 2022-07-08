@@ -107,26 +107,14 @@ const Signup = () => {
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (countTeams) {
-      if (details.name && details.displayName && selectedTeams.length > 0) {
-        createNewUser({
-          ...details,
-          teams: selectedTeams as Array<string>,
-          profile: {
-            images: getImages(appState.newUser.picture ?? ''),
-          },
-        });
-      }
-    } else {
-      if (details.name && details.displayName) {
-        createNewUser({
-          ...details,
-          teams: selectedTeams as Array<string>,
-          profile: {
-            images: getImages(appState.newUser.picture ?? ''),
-          },
-        });
-      }
+    if (details.name && details.displayName) {
+      createNewUser({
+        ...details,
+        teams: selectedTeams as Array<string>,
+        profile: {
+          images: getImages(appState.newUser.picture ?? ''),
+        },
+      });
     }
   };
 
