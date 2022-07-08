@@ -38,6 +38,15 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
     onSelectionChange(selectedOptions.map((option) => option.value));
   };
 
+  const getOptions = (teams: Team[]) => {
+    return teams
+      .filter((team) => team.isJoinable)
+      .map((team) => ({
+        label: getEntityName(team as EntityReference),
+        value: team.id,
+      }));
+  };
+
   const loadOptions = (text: string) => {
     return new Promise<SelectableOption[]>((resolve) => {
       if (text) {
@@ -45,24 +54,12 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
           const teams: Team[] = formatTeamsResponse(
             res.data.suggest['metadata-suggest'][0].options
           );
-          const options = teams
-            .filter((team) => team.isJoinable)
-            .map((team) => ({
-              label: getEntityName(team as EntityReference),
-              value: team.id,
-            }));
-          resolve(options);
+          resolve(getOptions(teams));
         });
       } else {
         getTeams('', PAGE_SIZE).then((res) => {
           const teams: Team[] = res.data.data || [];
-          const options = teams
-            .filter((team) => team.isJoinable)
-            .map((team) => ({
-              label: getEntityName(team as EntityReference),
-              value: team.id,
-            }));
-          resolve(options);
+          resolve(getOptions(teams));
         });
       }
     });
