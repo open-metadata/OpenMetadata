@@ -207,12 +207,11 @@ public final class JsonUtils {
         paths.add(jsonObject.getString("path"));
       }
       for (String path : paths) {
-        if (path.matches("^[a-zA-Z]*$")){
+        if (path.matches("^[a-zA-Z]*$")) {
           removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
           // reverse sort only the remove operations
           Collections.reverse(removeOperations);
-        }
-        else if (path.matches(".*\\d.*")) {
+        } else if (path.matches(".*\\d.*")) {
           removeOperations.sort(
               Comparator.comparing(
                   jsonObject -> {
