@@ -159,6 +159,10 @@ class AirbyteSource(Source[CreatePipelineRequest]):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
+
+                from pudb import set_trace;
+                set_trace()
+
                 task_status = [
                     TaskStatus(
                         name=str(connection.get("connectionId")),

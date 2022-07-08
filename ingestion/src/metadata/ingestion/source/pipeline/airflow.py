@@ -21,6 +21,7 @@ from airflow.models import BaseOperator, DagRun
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.models.taskinstance import TaskInstance
 from airflow.serialization.serialized_objects import SerializedDAG
+from metadata.utils.helpers import datetime_to_ts
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -165,6 +166,9 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     executionStatus=STATUS_MAP.get(
                         task.state, StatusType.Pending.value
                     ),
+                    startTime=datetime_to_ts(task.start_date),
+                    endTime=datetime_to_ts(task.end_date),
+                    logLink=task.log_url,
                 )
                 for task in tasks
             ]
