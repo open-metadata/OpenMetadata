@@ -58,4 +58,24 @@ Give the Ingestion Pipeline a description to show what type of data we are profi
 
 After clicking _Next_, you will be redirected to the Scheduling form. This will be the same as the Metadata and Usage Ingestions. Select your desired schedule and click on Deploy to find the usage pipeline being added to the Service Ingestions.
 
+## YAML Configuration
+
+In the [connectors](../integrations/connectors/) section we showcase how to run the metadata ingestion from a JSON file using  the Airflow SDK or the CLI via `metadata ingest`. Running a profiler workflow is also possible using a JSON configuration file.&#x20;
+
+This is a good option if you which to execute your workflow via the Airflow SDK or using the CLI. The `serviceConnection` config will be specific to your connector (you can find more information in the [connectors](../integrations/connectors/) section), though the `sourceConfig` for the profiler will be similar across all connectors.
+
+```
+  [...]
+  sourceConfig:
+    config:
+      type: Profiler
+      generateSampleData: true
+      fqnFilterPattern:
+        includes: 
+          - <fqn>
+        excludes: 
+          - <fqn>
+  [...]
+```
+
 ##

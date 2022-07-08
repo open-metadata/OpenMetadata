@@ -282,6 +282,8 @@
   * [Metrics](data-quality/data-quality-overview/metrics.md)
   * [Tests](data-quality/data-quality-overview/tests.md)
 * [Profiler Workflow](data-quality/profiler-workflow.md)
+* [3rd Party Tools Integration](data-quality/3rd-party-tools-integration/README.md)
+  * [Great Expectations](data-quality/3rd-party-tools-integration/great-expectations.md)
 
 ## 🔢 Metadata Versioning
 

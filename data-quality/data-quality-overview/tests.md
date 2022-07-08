@@ -89,6 +89,67 @@ Validate that the number of columns in a table is equal to a given value.
 }
 ```
 
+### Table Column Count to be Between
+
+Validate the number of colum in a table is between the given value
+
+**Properties**
+
+* `minColValue`: lower bound
+* `maxColValue`: upper bound
+
+**JSON Config**
+
+```
+"testCase": {
+    "config": {
+        "minColValue": 1,
+        "maxColValue: 10
+    },
+    "tableTestType": "tableColumnCountToBeBetween"
+}
+```
+
+### Table Column Name to Exist
+
+Validate a column name is present in the table
+
+**Properties**
+
+* `columnName`: the name of the column to check for
+
+**JSON Config**
+
+```
+"testCase": {
+    "config": {
+        "columnName": 1
+    },
+    "tableTestType": "tableColumnNameToExist"
+}
+```
+
+### Table Column to Match Set
+
+Validate a list of table column name matches an expected set of column
+
+**Properties**
+
+* `columnNames`: comma separated string of column name
+* `ordered`: whether the test should check for column ordering. Default to `False`
+
+**JSON Config**
+
+```
+"testCase": {
+    "config": {
+        "columnNames": "col1, col2, col3",
+        "ordered": true
+    },
+    "tableTestType": "tableColumnToMatchSet"
+}
+```
+
 ## Column Tests
 
 Tests applied on top of Column metrics.
@@ -150,6 +211,25 @@ This test allows us to specify how many values in a column we expect that will m
 }
 ```
 
+### Column Values to not Match Regex
+
+This test allows us to specify values in a column we expect that will not match a certain SQL `LIKE` expression. If the test find values matching the `forbiddenRegex` the test will fail.
+
+#### Properties
+
+* `forbiddenRegex`: SQL `LIKE` expression to match. E.g., `%something%`.
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "forbiddenRegex": "%something%"
+    },
+    "columnTestType": "columnValuesToNotMatchRegex"
+}
+```
+
 ### Column Values to Be Not In Set
 
 Validate that there are no values in a column in a set of forbidden values.
@@ -166,6 +246,25 @@ Validate that there are no values in a column in a set of forbidden values.
         "forbiddenValues": ["forbidden1", "forbidden2"]
     },
     "columnTestType": "columnValuesToBeNotInSet"
+}
+```
+
+### Column Values to Be in Set
+
+Validate values form a set are present in a column.
+
+#### Properties
+
+* `allowedValues`: List of allowed strings or numbers.
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "allowedValues": ["forbidden1", "forbidden2"]
+    },
+    "columnTestType": "columnValuesToBeInSet"
 }
 ```
 
@@ -237,5 +336,143 @@ Any of those two need to be informed.
         "maxLength": 18
     },
     "columnTestType": "columnValueLengthsToBeBetween"
+}
+```
+
+### Column Value Max to Be Between
+
+Validate the maximum value of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForMaxInCol`: lower bound
+* `maxValueForMaxInCol`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForMaxInCol": 10,
+        "maxValueForMaxInCol": 50
+    },
+    "columnTestType": "columnValueMaxToBeBetween"
+}
+```
+
+### Column Value Min to Be Between
+
+Validate the minimum value of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForMinInCol`: lower bound
+* `maxValueForMinInCol`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForMinInCol": 10,
+        "maxValueForMinInCol": 50
+    },
+    "columnTestType": "columnValueMinToBeBetween"
+}
+```
+
+### Column Value Mean to Be Between
+
+Validate the mean of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForMeanInCol`: lower bound
+* `maxValueForMeanInCol`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForMeanInCol": 10,
+        "maxValueForMeanInCol": 50
+    },
+    "columnTestType": "columnValueMeanToBeBetween"
+}
+```
+
+### Column Value Median to Be Between
+
+Validate the median of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForMedianInCol`: lower bound
+* `maxValueForMedianInCol`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForMedianInCol": 10,
+        "maxValueForMedianInCol": 50
+    },
+    "columnTestType": "columnValueMedianToBeBetween"
+}
+```
+
+### Column Values Sum to Be Between
+
+Validate the sum of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForColSum`: lower bound
+* `maxValueForColSum`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForColSum": 10,
+        "maxValueForColSum": 50
+    },
+    "columnTestType": "columnValuesSumToBeBetween"
+}
+```
+
+### Column Values Standard Deviation to Be Between
+
+Validate the standard deviation of a column is between a specific range
+
+> Only supports numerical types.
+
+**Properties**
+
+* `minValueForStdDevInCol`: lower bound
+* `minValueForStdDevInCol`: upper bound
+
+#### JSON Config
+
+```
+"testCase": {
+    "config": {
+        "minValueForStdDevInCol": 10,
+        "maxValueForStdDevInCol": 50
+    },
+    "columnTestType": "columnValueStdDevToBeBetween"
 }
 ```

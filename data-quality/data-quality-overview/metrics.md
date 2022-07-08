@@ -93,6 +93,10 @@ Only for concatenable values. Returns the maximum length of the values in a colu
 * Numerical values: returns the average of the values.
 * Concatenable values: returns the average length of the values.
 
+### Median
+
+Only for numerical values. Returns the median value for a column
+
 ### Sum
 
 Only for numerical values. Returns the sum of all values in a column.
