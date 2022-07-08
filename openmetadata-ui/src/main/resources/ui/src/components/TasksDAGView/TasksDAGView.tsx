@@ -19,6 +19,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'react-flow-renderer';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
@@ -42,9 +43,9 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       );
 
       if (isDownStreamTask) {
-        return 'output';
+        return EntityLineageNodeType.OUTPUT;
       } else {
-        return 'default';
+        return EntityLineageNodeType.DEFAULT;
       }
     },
     [tasks]
