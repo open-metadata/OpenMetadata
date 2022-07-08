@@ -312,7 +312,9 @@ class OrmProfilerProcessor(Processor[Table]):
             )
             return None
 
-        test_case_result: TestCaseResult = validation_enum_registry.registry[test_case.tableTestType.value](
+        test_case_result: TestCaseResult = validation_enum_registry.registry[
+            test_case.tableTestType.value
+        ](
             test_case.config,
             table_profile=profiler_results,
             execution_date=self.execution_date,
@@ -371,7 +373,9 @@ class OrmProfilerProcessor(Processor[Table]):
                 result=msg,
             )
 
-        test_case_result: TestCaseResult = validation_enum_registry.registry[test_case.columnTestType.value](
+        test_case_result: TestCaseResult = validation_enum_registry.registry[
+            test_case.columnTestType.value
+        ](
             test_case.config,
             col_profile=col_profiler_res,
             execution_date=self.execution_date,
