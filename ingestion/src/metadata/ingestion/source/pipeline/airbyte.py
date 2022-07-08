@@ -150,18 +150,22 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         )
 
     def fetch_pipeline_status(
-        self, connection: dict, pipeline_fqn: str
+        self, workspace: dict, connection: dict, pipeline_fqn: str
     ) -> OMetaPipelineStatus:
         """
         Method to get task & pipeline status
         """
+
+        # Airbyte does not offer specific attempt link, just at pipeline level
+        log_link = (
+            f"{self.service_connection.hostPort}/workspaces/{workspace.get('workspaceId')}/connections/"
+            f"{connection.get('connectionId')}/status"
+        )
+
         for job in self.client.list_jobs(connection.get("connectionId")):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
-
-                from pudb import set_trace;
-                set_trace()
 
                 task_status = [
                     TaskStatus(
@@ -169,6 +173,9 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                         executionStatus=STATUS_MAP.get(
                             attempt["status"].lower(), StatusType.Pending
                         ).value,
+                        startTime=attempt.get("createdAt"),
+                        endTime=attempt.get("endedAt"),
+                        logLink=log_link,
                     )
                 ]
                 pipeline_status = PipelineStatus(
@@ -263,7 +270,7 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                         service_name=self.service.name.__root__,
                         pipeline_name=connection.get("connectionId"),
                     )
-                    yield from self.fetch_pipeline_status(connection, pipeline_fqn)
+                    yield from self.fetch_pipeline_status(workspace, connection, pipeline_fqn)
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,
