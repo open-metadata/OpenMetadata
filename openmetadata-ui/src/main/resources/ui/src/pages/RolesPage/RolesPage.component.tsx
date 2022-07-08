@@ -996,16 +996,17 @@ const RolesPage = () => {
   const getRolesComponent = () => {
     return (
       <Fragment>
-        <div
-          className="tw-flex tw-justify-between tw-items-center"
-          data-testid="header">
-          <div
-            className="tw-heading tw-text-link tw-text-base"
-            data-testid="header-title">
-            {currentRole?.displayName}
+        <div className="tw-flex tw-justify-between" data-testid="header">
+          <div className="tw-flex tw-items-start tw-max-w-75">
+            <Ellipses
+              tooltip
+              className="tw-heading tw-text-link tw-text-base"
+              data-testid="header-title">
+              {currentRole?.displayName}
+            </Ellipses>
             {currentRole?.defaultRole ? getDefaultBadge('tw-ml-2') : null}
           </div>
-          <div className="tw-flex">
+          <div className="tw-flex tw-items-start">
             {!currentRole?.defaultRole ? (
               <NonAdminAction
                 position="bottom"
