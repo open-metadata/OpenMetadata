@@ -57,6 +57,7 @@ import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList'
 import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import Ellipses from '../common/Ellipses/Ellipses';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -326,7 +327,9 @@ const Users = ({
             data-testid={team.name}
             key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-            <span>{getEntityName(team)}</span>
+            <Ellipses tooltip className="tw-w-48">
+              {getEntityName(team)}
+            </Ellipses>
           </div>
         ))}
         {isEmpty(userData.teams) && (
@@ -456,7 +459,9 @@ const Users = ({
         {userData.roles?.map((role, i) => (
           <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-            <span>{getEntityName(role)}</span>
+            <Ellipses tooltip className="tw-w-48">
+              {getEntityName(role)}
+            </Ellipses>
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
@@ -593,7 +598,9 @@ const Users = ({
                   className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                  <span>{getEntityName(inheritedRole)}</span>
+                  <Ellipses tooltip className="tw-w-48">
+                    {getEntityName(inheritedRole)}
+                  </Ellipses>
                 </div>
               ))}
             </div>
