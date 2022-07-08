@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Popover } from 'antd';
 import React, { Fragment } from 'react';
 import { EdgeProps, getBezierPath, getEdgeCenter } from 'react-flow-renderer';
 import { foreignObjectSize } from '../../constants/Lineage.constants';
@@ -91,7 +92,19 @@ export const CustomEdge = ({
       {getInvisiblePath(invisibleEdgePath)}
       {getInvisiblePath(invisibleEdgePath1)}
 
-      {selected ? (
+      {!data.isColumnLineage && (
+        <text>
+          <textPath
+            href={`#${id}`}
+            startOffset="50%"
+            style={{ fontSize: '14px' }}
+            textAnchor="middle">
+            {data.label}
+          </textPath>
+        </text>
+      )}
+
+      {selected && data.isEditMode ? (
         <foreignObject
           data-testid="delete-button"
           height={foreignObjectSize}
@@ -99,15 +112,38 @@ export const CustomEdge = ({
           width={foreignObjectSize}
           x={edgeCenterX - foreignObjectSize / offset}
           y={edgeCenterY - foreignObjectSize / offset}>
-          <button
-            className="tw-cursor-pointer tw-flex tw-z-9999"
-            onClick={(event) => onEdgeClick?.(event, rest as CustomEdgeData)}>
-            <SVGIcons
-              alt="times-circle"
-              icon="icon-times-circle"
-              width="16px"
-            />
-          </button>
+          <Popover
+            content={
+              <div>
+                <button
+                  className="tw-mr-2"
+                  onClick={(event) =>
+                    onEdgeClick?.(event, rest as CustomEdgeData)
+                  }>
+                  Add pipeline
+                </button>
+                <button
+                  onClick={(event) =>
+                    onEdgeClick?.(event, rest as CustomEdgeData)
+                  }>
+                  Remove edge
+                </button>
+              </div>
+            }
+            placement="bottom"
+            trigger={['click', 'focus']}>
+            <button
+              className="tw-cursor-pointer tw-flex tw-z-9999"
+              style={{
+                transform: 'rotate(45deg)',
+              }}>
+              <SVGIcons
+                alt="times-circle"
+                icon="icon-times-circle"
+                width="16px"
+              />
+            </button>
+          </Popover>
         </foreignObject>
       ) : null}
     </Fragment>

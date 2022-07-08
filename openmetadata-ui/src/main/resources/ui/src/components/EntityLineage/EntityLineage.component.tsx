@@ -658,6 +658,7 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 });
               }
               newEdge.edge.lineageDetails = {
+                ...currentEdge,
                 sqlQuery: currentEdge.sqlQuery || '',
                 columnsLineage: updatedColumnsLineage,
               };
