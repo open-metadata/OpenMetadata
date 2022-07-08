@@ -63,7 +63,7 @@ public class LineageRepository {
     EntityReference to = addLineage.getEdge().getToEntity();
     to = Entity.getEntityReferenceById(to.getType(), to.getId(), Include.NON_DELETED);
 
-    if (addLineage.getEdge().getLineageDetails().getPipeline() != null) {
+    if (addLineage.getEdge().getLineageDetails() != null) {
       // Validate pipeline entity
       EntityReference pipeline = addLineage.getEdge().getLineageDetails().getPipeline();
       pipeline = Entity.getEntityReferenceById(pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
