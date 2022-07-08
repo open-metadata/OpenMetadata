@@ -20,16 +20,22 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ColumnProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.orm_profiler.validations.core import validation_enum_registry
 from metadata.generated.schema.tests.column.columnValuesMissingCountToBeEqual import (
     ColumnValuesMissingCount,
 )
 from metadata.generated.schema.tests.column.columnValuesToBeNotInSet import (
     ColumnValuesToBeNotInSet,
 )
+from metadata.generated.schema.tests.column.columnValuesToBeInSet import (
+    ColumnValuesToBeInSet,
+)
+from metadata.generated.schema.tests.column.columnValuesToNotMatchRegex import (
+    ColumnValuesToNotMatchRegex,
+)
 from metadata.generated.schema.tests.column.columnValuesToMatchRegex import (
     ColumnValuesToMatchRegex,
 )
-from metadata.orm_profiler.validations.core import validate
 from metadata.utils.connections import create_and_bind_session
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -86,7 +92,7 @@ class MetricsTest(TestCase):
         """
         column_profile = ColumnProfile(name="name")  # column name
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["random", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
@@ -100,7 +106,7 @@ class MetricsTest(TestCase):
             result="Found countInSet=0. It should be 0.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
@@ -114,7 +120,7 @@ class MetricsTest(TestCase):
             result="Found countInSet=1. It should be 0.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry["columnValuesToBeNotInSet"](
             ColumnValuesToBeNotInSet(forbiddenValues=["John", "forbidden"]),
             col_profile=ColumnProfile(name="random"),
             execution_date=EXECUTION_DATE,
@@ -137,7 +143,7 @@ class MetricsTest(TestCase):
         """
         column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
@@ -151,7 +157,7 @@ class MetricsTest(TestCase):
             result="Found likeCount=2 & valuesCount=2.0. They should be equal.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="Jo%"),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
@@ -165,7 +171,7 @@ class MetricsTest(TestCase):
             result="Found likeCount=1 & valuesCount=2.0. They should be equal.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry["columnValuesToMatchRegex"](
             ColumnValuesToMatchRegex(regex="J%"),
             col_profile=ColumnProfile(name="name"),
             execution_date=EXECUTION_DATE,
@@ -187,7 +193,7 @@ class MetricsTest(TestCase):
         """
         column_profile = ColumnProfile(name="nickname", nullCount=1)
 
-        res_ok = validate(
+        res_ok = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(missingCountValue=1),
             col_profile=column_profile,
             execution_date=EXECUTION_DATE,
@@ -201,7 +207,7 @@ class MetricsTest(TestCase):
             result="Found missingCount=1.0. It should be 1.",
         )
 
-        res_ok_2 = validate(
+        res_ok_2 = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(
                 missingCountValue=2,
                 missingValueMatch=["johnny b goode"],
@@ -218,7 +224,7 @@ class MetricsTest(TestCase):
             result="Found missingCount=2.0. It should be 2.",
         )
 
-        res_ko = validate(
+        res_ko = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
@@ -234,7 +240,7 @@ class MetricsTest(TestCase):
             result="Found missingCount=1.0. It should be 0.",
         )
 
-        res_aborted = validate(
+        res_aborted = validation_enum_registry.registry["columnValuesMissingCountToBeEqual"](
             ColumnValuesMissingCount(
                 missingCountValue=0,
             ),
@@ -250,4 +256,46 @@ class MetricsTest(TestCase):
             result=(
                 "We expect `nullCount` to be informed on the profiler for ColumnValuesMissingCount."
             ),
+        )
+
+
+    def test_column_values_to_be_in_set(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="name")  # column name
+
+        res_ok = validation_enum_registry.registry["columnValuesToBeInSet"](
+            ColumnValuesToBeInSet(allowedValues=["random", "forbidden"]),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found countInSet=0",
+        )
+
+
+    def test_column_values_to_not_match_regex(self):
+        """
+        Check that the metric runs and the results are correctly validated
+        """
+        column_profile = ColumnProfile(name="name", valuesCount=2)  # column name
+
+        res_ok = validation_enum_registry.registry["columnValuesToNotMatchRegex"](
+            ColumnValuesToNotMatchRegex(forbiddenRegex="J%"),
+            col_profile=column_profile,
+            execution_date=EXECUTION_DATE,
+            session=self.session,
+            table=User,
+        )
+
+        assert res_ok == TestCaseResult(
+            executionTime=EXECUTION_DATE.timestamp(),
+            testCaseStatus=TestCaseStatus.Failed,
+            result="Found 2 matching the forbidden regex pattern. Expected 0.",
         )

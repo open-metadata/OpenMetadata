@@ -46,7 +46,7 @@ from metadata.orm_profiler.profiler.handle_partition import (
     is_partitioned,
 )
 from metadata.orm_profiler.profiler.sampler import Sampler
-from metadata.orm_profiler.validations.core import validate
+from metadata.orm_profiler.validations.core import validation_enum_registry
 from metadata.orm_profiler.validations.models import TestDef
 from metadata.utils.helpers import get_start_and_end
 
@@ -312,7 +312,7 @@ class OrmProfilerProcessor(Processor[Table]):
             )
             return None
 
-        test_case_result: TestCaseResult = validate(
+        test_case_result: TestCaseResult = validation_enum_registry.registry[test_case.tableTestType.value](
             test_case.config,
             table_profile=profiler_results,
             execution_date=self.execution_date,
@@ -371,7 +371,7 @@ class OrmProfilerProcessor(Processor[Table]):
                 result=msg,
             )
 
-        test_case_result: TestCaseResult = validate(
+        test_case_result: TestCaseResult = validation_enum_registry.registry[test_case.columnTestType.value](
             test_case.config,
             col_profile=col_profiler_res,
             execution_date=self.execution_date,
