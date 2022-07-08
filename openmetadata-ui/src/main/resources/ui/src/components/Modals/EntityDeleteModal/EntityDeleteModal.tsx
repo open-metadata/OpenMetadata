@@ -21,7 +21,6 @@ import React, {
 } from 'react';
 import { getTitleCase } from '../../../utils/EntityUtils';
 import { Button } from '../../buttons/Button/Button';
-import Ellipses from '../../common/Ellipses/Ellipses';
 import Loader from '../../Loader/Loader';
 
 interface Prop extends HTMLAttributes<HTMLDivElement> {
@@ -61,10 +60,7 @@ const EntityDeleteModal: FC<Prop> = ({
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header')}>
-          <Ellipses
-            tooltip
-            className="tw-modal-title tw-break-all"
-            data-testid="modal-header">
+          <p className="tw-modal-title tw-break-all" data-testid="modal-header">
             {softDelete ? (
               <span>
                 Soft delete <strong>{entityName}</strong>
@@ -74,15 +70,15 @@ const EntityDeleteModal: FC<Prop> = ({
                 Delete <strong>{entityName}</strong>
               </span>
             )}
-          </Ellipses>
+          </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <Ellipses tooltip className="tw-mb-2 tw-break-all">
+          <p className="tw-mb-2 tw-break-all">
             {bodyText ||
               `Once you delete this ${getTitleCase(
                 entityType
               )}, it will be removed permanently`}
-          </Ellipses>
+          </p>
           <p className="tw-mb-2">
             Type <strong>DELETE</strong> to confirm
           </p>
