@@ -87,7 +87,7 @@ def column_values_to_match_regex(
         if col_profile.valuesCount == like_count_res
         else TestCaseStatus.Failed
     )
-    result = f"Found likeCount={like_count_res} & valuesCount={col_profile.valuesCount}. They should be equal."
+    result = f"Found {like_count_res} value(s) matching regex pattern vs {int(col_profile.valuesCount)} value(s) in the column."
 
     return TestCaseResult(
         executionTime=execution_date.timestamp(), testCaseStatus=status, result=result
