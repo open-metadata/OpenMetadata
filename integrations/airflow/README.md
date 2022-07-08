@@ -19,8 +19,8 @@ In other scenarios, please review how to create the DAGs using the Airflow SDK f
 
 ## Guides
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="custom-airflow-installation.md" %}
+[custom-airflow-installation.md](custom-airflow-installation.md)
 {% endcontent-ref %}
 
 {% content-ref url="airflow-lineage.md" %}

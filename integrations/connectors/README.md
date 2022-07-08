@@ -4,44 +4,45 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Database Services
 
-* [Amundsen](https://docs.open-metadata.org/integrations/connectors/amundsen)
+* Airbyte
+* [Amundsen](amundsen.md)
 * Apache Druid
 * [Athena](athena/)
-* [Azure SQL](broken-reference)
+* [Azure SQL](azure-sql/)
 * [BigQuery](bigquery/)
 * [BigQuery Usage](bigquery/)
-* [ClickHouse](broken-reference)
-* [ClickHouse Usage](broken-reference)
-* [Databricks](broken-reference)
-* [Delta Lake](broken-reference)
-* [DynamoDB](broken-reference)
+* [ClickHouse](clickhouse/)
+* [ClickHouse Usage](clickhouse/)
+* [Databricks](databricks/)
+* [Delta Lake](delta-lake/)
+* [DynamoDB](dynamodb/)
 * [Glue Catalog](glue-catalog/)
 * [Hive](hive/)
 * [IBM Db2](ibm-db2.md)
 * [MariaDB](mariadb.md)
-* [MSSQL](broken-reference)
-* [MSSQL Usage](broken-reference)
-* [MySQL](broken-reference)
-* [Oracle](broken-reference)
-* [Postgres](broken-reference)
-* [Presto](broken-reference)
+* [MSSQL](mssql/)
+* [MSSQL Usage](mssql/)
+* [MySQL](mysql/)
+* [Oracle](oracle/)
+* [Postgres](postgres/)
+* [Presto](presto/)
 * [Redshift](redshift/)
 * [Redshift Usage](redshift/)
-* [Salesforce](broken-reference)
-* [SingleStore](broken-reference)
+* [Salesforce](salesforce/)
+* [SingleStore](singlestore/)
 * [Snowflake](snowflake/)
 * [Snowflake Usage](snowflake/)
 * [Trino](trino/)
-* [Vertica](broken-reference)
+* [Vertica](vertica/)
 
 #### Dashboard Services
 
-* [Looker](broken-reference)
-* [Metabase](broken-reference)
-* [Mode](broken-reference)
+* [Looker](looker/)
+* [Metabase](metabase/)
+* [Mode](mode/)
 * Power BI
-* [Redash](broken-reference)
-* [Superset](broken-reference)
+* [Redash](redash/)
+* [Superset](superset-1/)
 * [Tableau](tableau.md)
 
 #### Messaging Services
@@ -51,8 +52,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Pipeline Services
 
-* Airflow
-* Prefect
+* [Airflow](../airflow/)
 * Glue
 
 **ML Services**

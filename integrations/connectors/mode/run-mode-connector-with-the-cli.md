@@ -6,8 +6,8 @@ description: Use the 'metadata' CLI to run a one-time ingestion
 
 Configure and schedule mode **metadata** workflows using CLI.
 
-* [Requirements](run-superset-connector-with-the-cli.md#requirements)
-* [Metadata Ingestion](run-superset-connector-with-the-cli.md#metadata-ingestion)
+* [Requirements](run-mode-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-mode-connector-with-the-cli.md#metadata-ingestion)
 
 ## Requirements
 

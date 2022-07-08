@@ -6,8 +6,8 @@ description: Use your own Airflow instance to schedule and run the Mode Connecto
 
 Configure and schedule Mode **metadata** workflows using your own Airflow instances.
 
-* [Requirements](run-superset-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-superset-connector-with-the-airflow-sdk.md#metadata-ingestion)
+* [Requirements](run-mode-connector-with-the-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-mode-connector-with-the-airflow-sdk.md#metadata-ingestion)
 
 ## Requirements
 
