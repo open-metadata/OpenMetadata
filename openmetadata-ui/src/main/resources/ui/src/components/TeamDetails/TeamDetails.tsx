@@ -43,6 +43,7 @@ import { filterEntityAssets, getInfoElements } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import Ellipses from '../common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -516,9 +517,7 @@ const TeamDetails = ({
 
   const getTeamHeading = () => {
     return (
-      <div
-        className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-120"
-        title={heading}>
+      <div className="tw-heading tw-text-link tw-text-base">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -554,7 +553,13 @@ const TeamDetails = ({
           </div>
         ) : (
           <div className="tw-flex tw-group">
-            <span data-testid="team-heading">{heading}</span>
+            <Ellipses
+              tooltip
+              className="tw-w-120"
+              data-testid="team-heading"
+              rows={1}>
+              {heading}
+            </Ellipses>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <NonAdminAction
