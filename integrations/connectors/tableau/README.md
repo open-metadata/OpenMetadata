@@ -13,12 +13,12 @@ Configure and schedule Tableau **metadata** workflows from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="broken-reference/" %}
-[broken-reference](broken-reference/)
+{% content-ref url="run-tableau-connector-with-the-airflow-sdk.md" %}
+[run-tableau-connector-with-the-airflow-sdk.md](run-tableau-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="broken-reference/" %}
-[broken-reference](broken-reference/)
+{% content-ref url="run-tableau-connector-with-the-cli.md" %}
+[run-tableau-connector-with-the-cli.md](run-tableau-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## **Requirements**
@@ -189,14 +189,14 @@ From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
 You can learn more about how to host and run the different workflows on your own Airflow instances below:
 
-{% content-ref url="broken-reference/" %}
-[broken-reference](broken-reference/)
+{% content-ref url="run-tableau-connector-with-the-airflow-sdk.md" %}
+[run-tableau-connector-with-the-airflow-sdk.md](run-tableau-connector-with-the-airflow-sdk.md)
 {% endcontent-ref %}
 
 ## One-time ingestion with the CLI
 
 You can learn more about how to run a one-time ingestion of the different workflows using the `metadata` CLI below:
 
-{% content-ref url="broken-reference/" %}
-[broken-reference](broken-reference/)
+{% content-ref url="run-tableau-connector-with-the-cli.md" %}
+[run-tableau-connector-with-the-cli.md](run-tableau-connector-with-the-cli.md)
 {% endcontent-ref %}

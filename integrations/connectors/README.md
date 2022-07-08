@@ -43,7 +43,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * Power BI
 * [Redash](redash/)
 * [Superset](superset-1/)
-* [Tableau](tableau.md)
+* [Tableau](tableau/)
 
 #### Messaging Services
 

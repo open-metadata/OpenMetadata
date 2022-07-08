@@ -6,8 +6,8 @@ description: Use the 'metadata' CLI to run a one-time ingestion
 
 Configure and schedule Tableau **metadata** workflows using CLI.
 
-* [Requirements](run-metabase-connector-with-the-cli.md#requirements)
-* [Metadata Ingestion](run-metabase-connector-with-the-cli.md#metadata-ingestion)
+* [Requirements](run-tableau-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-tableau-connector-with-the-cli.md#metadata-ingestion)
 
 ## Requirements
 

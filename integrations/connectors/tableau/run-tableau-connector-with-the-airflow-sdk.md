@@ -6,8 +6,8 @@ description: Use your own Airflow instance to schedule and run the Tableau Conne
 
 Configure and schedule Redash **metadata** workflows using your own Airflow instances.
 
-* [Requirements](run-metabase-connector-with-the-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-metabase-connector-with-the-airflow-sdk.md#metadata-ingestion)
+* [Requirements](run-tableau-connector-with-the-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-tableau-connector-with-the-airflow-sdk.md#metadata-ingestion)
 
 ## Requirements
 
