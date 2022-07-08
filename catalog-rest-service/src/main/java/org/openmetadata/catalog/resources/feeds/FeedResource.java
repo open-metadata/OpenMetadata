@@ -186,9 +186,8 @@ public class FeedResource {
           ThreadType threadType,
       @Parameter(
               description =
-                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when threadType is set to Task",
+                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
-          @DefaultValue("Open")
           @QueryParam("taskStatus")
           TaskStatus taskStatus)
       throws IOException {
@@ -364,11 +363,17 @@ public class FeedResource {
               schema = @Schema(implementation = ThreadType.class))
           @QueryParam("type")
           ThreadType threadType,
+      @Parameter(
+              description =
+                  "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
+              schema = @Schema(implementation = TaskStatus.class))
+          @QueryParam("taskStatus")
+          TaskStatus taskStatus,
       @Parameter(description = "Filter threads by whether it is active or resolved", schema = @Schema(type = "boolean"))
           @DefaultValue("false")
           @QueryParam("isResolved")
           Boolean isResolved) {
-    return dao.getThreadsCount(entityLink, threadType, isResolved);
+    return dao.getThreadsCount(entityLink, threadType, taskStatus, isResolved);
   }
 
   @POST

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -46,7 +46,11 @@ const EditWebhookPage: FunctionComponent = () => {
     setIsLoading(true);
     getWebhookByName(webhookName)
       .then((res) => {
-        setWebhookData(res.data);
+        if (res.data) {
+          setWebhookData(res.data);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
@@ -66,12 +70,16 @@ const EditWebhookPage: FunctionComponent = () => {
     setStatus('waiting');
     const { name, secretKey } = webhookData || data;
     updateWebhook({ ...data, name, secretKey })
-      .then(() => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToWebhooks();
-        }, 500);
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToWebhooks();
+          }, 500);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);
@@ -82,9 +90,13 @@ const EditWebhookPage: FunctionComponent = () => {
   const handleDelete = (id: string) => {
     setDeleteStatus('waiting');
     deleteWebhook(id)
-      .then(() => {
-        setDeleteStatus('initial');
-        goToWebhooks();
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setDeleteStatus('initial');
+          goToWebhooks();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);

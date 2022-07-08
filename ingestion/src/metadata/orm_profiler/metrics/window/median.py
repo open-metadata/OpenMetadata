@@ -37,6 +37,10 @@ class Median(StaticMetric):
     def name(cls):
         return "median"
 
+    @classmethod
+    def is_window_metric(cls):
+        return True
+
     @property
     def metric_type(self):
         return float

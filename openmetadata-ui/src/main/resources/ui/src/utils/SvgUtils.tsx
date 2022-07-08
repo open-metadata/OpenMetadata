@@ -61,6 +61,7 @@ import IconExternalLinkWhite from '../assets/svg/external-link-white.svg';
 import IconExternalLink from '../assets/svg/external-link.svg';
 import IconFailBadge from '../assets/svg/fail-badge.svg';
 import IconFitView from '../assets/svg/fitview.svg';
+import IconForeignKey from '../assets/svg/foriegnKey.svg';
 import IconGithubStar from '../assets/svg/github-star.svg';
 import IconAllApplication from '../assets/svg/ic-all-application.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
@@ -319,6 +320,7 @@ export const Icons = {
   TASK_ICON: 'task-icon',
   TASK_CLOSED: 'task-closed',
   TASK_OPEN: 'task-open',
+  FOREGIN_KEY: 'foreign-key',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -932,6 +934,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TASK_OPEN:
       IconComponent = IconTaskOpen;
+
+      break;
+    case Icons.FOREGIN_KEY:
+      IconComponent = IconForeignKey;
 
       break;
 

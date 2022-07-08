@@ -15,7 +15,6 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 
-import urllib
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
@@ -551,9 +550,8 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
-        url_params = f"&{urllib.parse.urlencode(params)}" if params else ""
         resp = self.client.get(
-            f"{suffix}{url_limit}{url_after}{url_fields}{url_params}"
+            path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params
         )
 
         if self._use_raw_data:
