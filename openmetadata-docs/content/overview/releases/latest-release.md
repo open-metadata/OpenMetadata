@@ -3,7 +3,7 @@ title: Latest Release
 slug: /overview/latest-release
 ---
 
-# Latest Release - 0.11.0 Release - June 30th 2022 🎉
+# 0.11.0 Release - June 30th 2022 🎉
 
 You can read the Release Blog [here](https://blog.open-metadata.org/openmetadata-0-11-release-8b82c85636a)
 or watch an awesome video showing the new features!
