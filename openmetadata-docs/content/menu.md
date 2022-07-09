@@ -4,8 +4,10 @@ site_menu:
     url: /quick-start
     color: violet-70
     icon: av_timer
-  - category: Quickstart / Local Deployment
-    url: /quick-start/local-deploy
+  - category: Quickstart / Try OpenMetadata in Docker
+    url: /quick-start/local-deployment
+  - category: Quickstart / Try the OpenMetadata Sandbox
+    url: /quick-start/sandbox
 
   - category: Overview
     url: /overview
@@ -24,23 +26,91 @@ site_menu:
     url: /deployment
     color: violet-70
     icon: cloud_download
-  - category: Deployment / Get started
-    url: /deployment/get-started
-  - category: Deployment / Get started / Main concepts
-    url: /deployment/get-started/main-concepts
+  - category: Deployment / Bare Metal Deployment
+    url: /deployment/bare-metal
+  - category: Deployment / Bare Metal Deployment / Enable Security
+    url: /deployment/bare-metal/security
+
+  - category: Deployment / Docker Deployment
+    url: /deployment/docker
+  - category: Deployment / Docker Deployment / Volumes
+    url: /deployment/docker/volumes
+  - category: Deployment / Docker Deployment / Enable Security
+    url: /deployment/docker/security
+
+  - category: Deployment / Kubernetes Deployment
+    url: /deployment/kubernetes
+  - category: Deployment / Kubernetes Deployment / Enable Security
+    url: /deployment/kubernetes/security
+
+  - category: Deployment / Enable Security
+    url: /deployment/security
+  - category: Deployment / Enable Security / Auth0 SSO
+    url: /deployment/security/auth0
+  - category: Deployment / Enable Security / Auth0 SSO / Docker
+    url: /deployment/security/auth0/docker
+  - category: Deployment / Enable Security / Auth0 SSO / Bare Metal
+    url: /deployment/security/auth0/bare-metal
+  - category: Deployment / Enable Security / Auth0 SSO / Kubernetes
+    url: /deployment/security/auth0/kubernetes
+  - category: Deployment / Enable Security / Azure SSO
+    url: /deployment/security/azure
+  - category: Deployment / Enable Security / Azure SSO / Docker
+    url: /deployment/security/azure/docker
+  - category: Deployment / Enable Security / Azure SSO / Bare Metal
+    url: /deployment/security/azure/bare-metal
+  - category: Deployment / Enable Security / Azure SSO / Kubernetes
+    url: /deployment/security/azure/kubernetes
+  - category: Deployment / Enable Security / Custom OIDC SSO
+    url: /deployment/security/custom-oidc
+  - category: Deployment / Enable Security / Custom OIDC SSO / Docker
+    url: /deployment/security/custom-oidc/docker
+  - category: Deployment / Enable Security / Custom OIDC SSO / Bare Metal
+    url: /deployment/security/custom-oidc/bare-metal
+  - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
+    url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / Google SSO
+    url: /deployment/security/google
+  - category: Deployment / Enable Security / Google SSO / Docker
+    url: /deployment/security/google/docker
+  - category: Deployment / Enable Security / Google SSO / Bare Metal
+    url: /deployment/security/google/bare-metal
+  - category: Deployment / Enable Security / Google SSO / Kubernetes
+    url: /deployment/security/google/kubernetes
+  - category: Deployment / Enable Security / Okta SSO
+    url: /deployment/security/okta
+  - category: Deployment / Enable Security / Okta SSO / Docker
+    url: /deployment/security/okta/docker
+  - category: Deployment / Enable Security / Okta SSO / Bare Metal
+    url: /deployment/security/okta/bare-metal
+  - category: Deployment / Enable Security / Okta SSO / Kubernetes
+    url: /deployment/security/okta/kubernetes
+
+  - category: Deployment / Upgrade OpenMetadata
+    url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / Backup Metadata
+    url: /deployment/upgrade/backup-metadata
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
+    url: /deployment/upgrade/bare-metal
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
+    url: /deployment/upgrade/docker
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
+    url: /deployment/upgrade/kubernetes
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
+    url: /deployment/upgrade/versions
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.9 to 0.10
+    url: /deployment/upgrade/versions/090-to-010
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
+    url: /deployment/upgrade/versions/010-to-011
+
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
 
   - category: OpenMetadata
     url: /openmetadata
     color: violet-70
     icon: storage
-  - category: OpenMetadata / Ingestion
-    url: /openmetadata/ingestion
-  - category: OpenMetadata / Ingestion / Workflows
-    url: /openmetadata/ingestion/workflows
-  - category: OpenMetadata / Ingestion / Workflows / Metadata
-    url: /openmetadata/ingestion/workflows/metadata
-  - category: OpenMetadata / Ingestion / Workflows / Metadata / Connectors
-    url: /openmetadata/ingestion/workflows/metadata/connectors
 
   - category: OpenMetadata / Connectors
     url: /openmetadata/connectors
@@ -235,6 +305,13 @@ site_menu:
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
+
+  - category: OpenMetadata / Ingestion
+    url: /openmetadata/ingestion
+  - category: OpenMetadata / Ingestion / Workflows
+    url: /openmetadata/ingestion/workflows
+  - category: OpenMetadata / Ingestion / Workflows / Metadata
+    url: /openmetadata/ingestion/workflows/metadata
 
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT
     url: /openmetadata/ingestion/workflows/metadata/dbt
