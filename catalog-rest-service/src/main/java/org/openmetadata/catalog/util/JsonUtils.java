@@ -183,12 +183,46 @@ public final class JsonUtils {
 
     // sort the operations by path
     if (!otherOperations.isEmpty()) {
-      otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      ArrayList<String> paths = new ArrayList<>();
+      for (JsonObject jsonObject : otherOperations) {
+        paths.add(jsonObject.getString("path"));
+      }
+      for (String path : paths) {
+        if (path.matches("^[a-zA-Z]*$")) {
+          otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+        } else if (path.matches(".*\\d.*")) {
+          otherOperations.sort(
+              Comparator.comparing(
+                  jsonObject -> {
+                    String pathValue = jsonObject.getString("path");
+                    String tagIndex = pathValue.replaceAll("\\D", "");
+                    return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
+                  }));
+        }
+      }
     }
     if (!removeOperations.isEmpty()) {
-      removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
-      // reverse sort only the remove operations
-      Collections.reverse(removeOperations);
+      ArrayList<String> paths = new ArrayList<>();
+      for (JsonObject jsonObject : removeOperations) {
+        paths.add(jsonObject.getString("path"));
+      }
+      for (String path : paths) {
+        if (path.matches("^[a-zA-Z]*$")) {
+          removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+          // reverse sort only the remove operations
+          Collections.reverse(removeOperations);
+        } else if (path.matches(".*\\d.*")) {
+          removeOperations.sort(
+              Comparator.comparing(
+                  jsonObject -> {
+                    String pathValue = jsonObject.getString("path");
+                    String tagIndex = pathValue.replaceAll("\\D", "");
+                    return tagIndex.isEmpty() ? 0 : Integer.parseInt(tagIndex);
+                  }));
+          // reverse sort only the remove operations
+          Collections.reverse(removeOperations);
+        }
+      }
     }
 
     // Build new sorted patch
