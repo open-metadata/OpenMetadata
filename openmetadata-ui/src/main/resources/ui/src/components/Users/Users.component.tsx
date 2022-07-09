@@ -12,9 +12,9 @@
  */
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Card } from 'antd';
+import { Card, Switch } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
-import { isEmpty, isNil, toLower } from 'lodash';
+import { capitalize, isEmpty, isEqual, isNil, toLower } from 'lodash';
 import { observer } from 'mobx-react';
 import React, {
   Fragment,
@@ -54,12 +54,10 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
-import {
-  filterList,
-  filterListTasks,
-} from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
+import { filterListTasks } from '../ActivityFeed/ActivityFeedList/ActivityFeedList.util';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import Ellipses from '../common/Ellipses/Ellipses';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { reactSingleSelectCustomStyle } from '../common/react-select-component/reactSelectCustomStyle';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -67,6 +65,7 @@ import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import { Option, Props } from './Users.interface';
+import { userPageFilterList } from './Users.util';
 
 const Users = ({
   userData,
@@ -86,6 +85,7 @@ const Users = ({
   feedFilter,
   setFeedFilter,
   threadType,
+  onSwitchChange,
 }: Props) => {
   const [activeTab, setActiveTab] = useState(getUserCurrentTab(tab));
   const [elementRef, isInView] = useInfiniteScroll(observerOptions);
@@ -102,6 +102,8 @@ const Users = ({
   const [showFilterList, setShowFilterList] = useState(false);
 
   const location = useLocation();
+
+  const isTaskType = isEqual(threadType, ThreadType.Task);
 
   const handleFilterDropdownChange = useCallback(
     (_e: React.MouseEvent<HTMLElement, MouseEvent>, value?: string) => {
@@ -136,8 +138,8 @@ const Users = ({
   };
 
   const activeTabHandler = (tabNum: number) => {
+    setFeedFilter(tabNum === 1 ? FeedFilter.ALL : FeedFilter.OWNER);
     setActiveTab(tabNum);
-    setFeedFilter(FeedFilter.ALL);
     // To reset search params appends from other page for proper navigation
     location.search = '';
     if (profileInfo[tabNum - 1].path !== tab) {
@@ -325,7 +327,9 @@ const Users = ({
             data-testid={team.name}
             key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-            <span>{getEntityName(team)}</span>
+            <Ellipses tooltip className="tw-w-48">
+              {getEntityName(team)}
+            </Ellipses>
           </div>
         ))}
         {isEmpty(userData.teams) && (
@@ -455,7 +459,9 @@ const Users = ({
         {userData.roles?.map((role, i) => (
           <div className="tw-mb-2 tw-flex tw-items-center tw-gap-2" key={i}>
             <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-            <span>{getEntityName(role)}</span>
+            <Ellipses tooltip className="tw-w-48">
+              {getEntityName(role)}
+            </Ellipses>
           </div>
         ))}
         {!userData.isAdmin && isEmpty(userData.roles) && (
@@ -592,7 +598,9 @@ const Users = ({
                   className="tw-mb-2 tw-flex tw-items-center tw-gap-2"
                   key={i}>
                   <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-                  <span>{getEntityName(inheritedRole)}</span>
+                  <Ellipses tooltip className="tw-w-48">
+                    {getEntityName(inheritedRole)}
+                  </Ellipses>
                 </div>
               ))}
             </div>
@@ -663,30 +671,38 @@ const Users = ({
   const getFeedTabData = () => {
     return (
       <Fragment>
-        <div className="tw-relative tw--mt-4 tw-px-1.5">
-          <Button
-            className="hover:tw-no-underline focus:tw-no-underline"
-            data-testid="feeds"
-            size="custom"
-            tag="button"
-            variant="link"
-            onClick={() => setShowFilterList((visible) => !visible)}>
-            <span className="tw-font-medium tw-text-grey">
-              {
-                (activeTab === 1 ? filterList : filterListTasks).find(
+        <div className="tw--mt-4 tw-px-1.5 tw-flex tw-justify-between">
+          <div className="tw-relative">
+            <Button
+              className="hover:tw-no-underline focus:tw-no-underline"
+              data-testid="feeds"
+              size="custom"
+              tag="button"
+              variant="link"
+              onClick={() => setShowFilterList((visible) => !visible)}>
+              <span className="tw-font-medium tw-text-grey">
+                {(activeTab === 1 ? userPageFilterList : filterListTasks).find(
                   (f) => f.value === feedFilter
-                )?.name
-              }
-            </span>
-            <DropDownIcon />
-          </Button>
-          {showFilterList && (
-            <DropDownList
-              dropDownList={activeTab === 1 ? filterList : filterListTasks}
-              value={feedFilter}
-              onSelect={handleFilterDropdownChange}
-            />
-          )}
+                )?.name || capitalize(feedFilter)}
+              </span>
+              <DropDownIcon />
+            </Button>
+            {showFilterList && (
+              <DropDownList
+                dropDownList={
+                  activeTab === 1 ? userPageFilterList : filterListTasks
+                }
+                value={feedFilter}
+                onSelect={handleFilterDropdownChange}
+              />
+            )}
+          </div>
+          {isTaskType ? (
+            <div className="tw-flex tw-justify-end">
+              <Switch onChange={onSwitchChange} />
+              <span className="tw-ml-1">Closed Tasks</span>
+            </div>
+          ) : null}
         </div>
         <div className="tw-mt-3.5">
           <ActivityFeedList

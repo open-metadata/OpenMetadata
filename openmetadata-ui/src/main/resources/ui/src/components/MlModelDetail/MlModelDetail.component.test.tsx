@@ -12,6 +12,7 @@
  */
 
 import { findByTestId, findByText, render } from '@testing-library/react';
+import { LeafNodes } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -141,6 +142,16 @@ const mockProp = {
   tagUpdateHandler,
   updateMlModelFeatures,
   settingsUpdateHandler,
+  lineageTabData: {
+    loadNodeHandler: jest.fn(),
+    addLineageHandler: jest.fn(),
+    removeLineageHandler: jest.fn(),
+    entityLineageHandler: jest.fn(),
+    isLineageLoading: false,
+    entityLineage: { entity: { id: 'test', type: 'mlmodel' } },
+    lineageLeafNodes: {} as LeafNodes,
+    isNodeLoading: { id: undefined, state: false },
+  },
 };
 
 jest.mock('../ManageTab/ManageTab.component', () => {
@@ -157,6 +168,10 @@ jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock('../EntityLineage/EntityLineage.component', () => {
+  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
 jest.mock('./MlModelFeaturesList', () => {
@@ -224,9 +239,22 @@ describe('Test MlModel entity detail component', () => {
     expect(mlStoreTable).toBeInTheDocument();
   });
 
-  it('Should render manage component for manage tab', async () => {
+  it('Should render lineage tab', async () => {
     const { container } = render(
       <MlModelDetailComponent {...mockProp} activeTab={3} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const detailContainer = await findByTestId(container, 'lineage-details');
+
+    expect(detailContainer).toBeInTheDocument();
+  });
+
+  it('Should render manage component for manage tab', async () => {
+    const { container } = render(
+      <MlModelDetailComponent {...mockProp} activeTab={4} />,
       {
         wrapper: MemoryRouter,
       }

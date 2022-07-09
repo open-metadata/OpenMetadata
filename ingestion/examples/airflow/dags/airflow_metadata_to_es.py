@@ -49,7 +49,7 @@ config = """
     "sourceConfig":{"config":{}}
   },
   "sink": {
-    "type": "elasticsearch_mapping",
+    "type": "elasticsearch",
     "config": {
       "index_tables": "true",
       "index_topics": "true",

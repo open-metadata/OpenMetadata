@@ -17,7 +17,7 @@
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this schema.",

@@ -35,6 +35,7 @@ import { getTeams, patchTeamDetail } from '../../axiosAPIs/teamsAPI';
 import { getUserCounts } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PageContainerV1 from '../../components/containers/PageContainerV1';
@@ -605,11 +606,12 @@ const RolesPage = () => {
                 data-testid="role-name-container"
                 key={role.name}
                 onClick={() => setCurrentRole(role)}>
-                <span
-                  className="tag-category label-category tw-self-center tw-truncate tw-w-52"
-                  title={role.displayName}>
+                <Ellipses
+                  tooltip
+                  className="tag-category label-category tw-self-center tw-w-52"
+                  rows={1}>
                   <span>{role.displayName}</span>{' '}
-                </span>
+                </Ellipses>
                 {role.defaultRole ? getDefaultBadge() : null}
               </div>
             ))}
@@ -994,16 +996,16 @@ const RolesPage = () => {
   const getRolesComponent = () => {
     return (
       <Fragment>
-        <div
-          className="tw-flex tw-justify-between tw-items-center"
-          data-testid="header">
+        <div className="tw-flex tw-justify-between" data-testid="header">
           <div
-            className="tw-heading tw-text-link tw-text-base"
+            className="tw-flex tw-items-start tw-max-w-75"
             data-testid="header-title">
-            {currentRole?.displayName}
+            <Ellipses tooltip className="tw-heading tw-text-link tw-text-base">
+              {currentRole?.displayName}
+            </Ellipses>
             {currentRole?.defaultRole ? getDefaultBadge('tw-ml-2') : null}
           </div>
-          <div className="tw-flex">
+          <div className="tw-flex tw-items-start">
             {!currentRole?.defaultRole ? (
               <NonAdminAction
                 position="bottom"

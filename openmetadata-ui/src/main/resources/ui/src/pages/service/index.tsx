@@ -24,6 +24,7 @@ import {
   checkAirflowStatus,
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
 } from '../../axiosAPIs/ingestionPipelineAPI';
@@ -87,6 +88,8 @@ import {
   getServiceCategoryFromType,
   servicePageTabs,
   serviceTypeLogo,
+  setServiceSchemaCount,
+  setServiceTableCount,
 } from '../../utils/ServiceUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -123,6 +126,9 @@ const ServicePage: FunctionComponent = () => {
   const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
   const [isAirflowRunning, setIsAirflowRunning] = useState(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
+
+  const [schemaCount, setSchemaCount] = useState<number>(0);
+  const [tableCount, setTableCount] = useState<number>(0);
 
   const getCountLabel = () => {
     switch (serviceName) {
@@ -326,6 +332,23 @@ const ServicePage: FunctionComponent = () => {
     });
   };
 
+  const handleEnableDisableIngestion = (id: string) => {
+    enableDisableIngestionPipelineById(id)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          getAllIngestionWorkflows();
+        } else {
+          throw jsonData['api-error-messages']['unexpected-server-response'];
+        }
+      })
+      .catch((err: AxiosError) => {
+        showErrorToast(
+          err,
+          jsonData['api-error-messages']['unexpected-server-response']
+        );
+      });
+  };
+
   const deleteIngestionById = (
     id: string,
     displayName: string
@@ -352,6 +375,8 @@ const ServicePage: FunctionComponent = () => {
       .then((res: AxiosResponse) => {
         if (res.data.data) {
           setData(res.data.data);
+          setServiceSchemaCount(res.data.data, setSchemaCount);
+          setServiceTableCount(res.data.data, setTableCount);
           setPaging(res.data.paging);
           setInstanceCount(res.data.paging.total);
           setIsloading(false);
@@ -668,7 +693,10 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.DATABASE_SERVICES:
         return getEntityDeleteMessage(
           service || 'Service',
-          pluralize(instanceCount, 'Database')
+          `${pluralize(instanceCount, 'Database')}, ${pluralize(
+            schemaCount,
+            'Schema'
+          )} and ${pluralize(tableCount, 'Table')}`
         );
 
       case ServiceCategory.MESSAGING_SERVICES:
@@ -861,6 +889,7 @@ const ServicePage: FunctionComponent = () => {
             currrentPage={ingestionCurrentPage}
             deleteIngestion={deleteIngestionById}
             deployIngestion={deployIngestion}
+            handleEnableDisableIngestion={handleEnableDisableIngestion}
             ingestionList={ingestions}
             paging={ingestionPaging}
             pagingHandler={ingestionPagingHandler}

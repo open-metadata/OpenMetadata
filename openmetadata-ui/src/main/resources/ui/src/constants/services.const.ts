@@ -12,6 +12,7 @@
  */
 
 import { ServiceTypes, StepperStepType } from 'Models';
+import airbyte from '../assets/img/Airbyte.png';
 import noDataFound from '../assets/img/no-data-placeholder.png';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
@@ -97,6 +98,7 @@ export const MLFLOW = mlflow;
 export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
+export const AIRBYTE = airbyte;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
