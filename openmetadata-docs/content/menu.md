@@ -106,6 +106,9 @@ site_menu:
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
 
+  - category: Deployment / Airflow
+    url: /deployment/airflow
+
 
   - category: OpenMetadata
     url: /openmetadata
