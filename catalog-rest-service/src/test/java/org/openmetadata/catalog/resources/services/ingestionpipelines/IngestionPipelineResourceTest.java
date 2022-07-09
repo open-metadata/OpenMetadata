@@ -196,6 +196,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void post_AirflowWithDatabaseServiceMetadata_200_ok(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
+            .withLoggerLevel(LogLevels.INFO)
             .withPipelineType(PipelineType.METADATA)
             .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
             .withDescription("description")
@@ -209,6 +210,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         updateIngestionPipeline(
             request
                 .withSourceConfig(DATABASE_METADATA_CONFIG)
+                .withLoggerLevel(LogLevels.INFO)
                 .withAirflowConfig(
                     new AirflowConfig()
                         .withConcurrency(pipelineConcurrency)
@@ -269,6 +271,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   void put_IngestionPipelineUrlUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
         createRequest(test)
+            .withLoggerLevel(LogLevels.ERROR)
             .withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId()).withType("databaseService"))
             .withDescription("description")
             .withAirflowConfig(new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE));
@@ -281,6 +284,7 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
         updateIngestionPipeline(
             request
                 .withSourceConfig(DATABASE_METADATA_CONFIG)
+                .withLoggerLevel(LogLevels.ERROR)
                 .withAirflowConfig(
                     new AirflowConfig()
                         .withConcurrency(pipelineConcurrency)

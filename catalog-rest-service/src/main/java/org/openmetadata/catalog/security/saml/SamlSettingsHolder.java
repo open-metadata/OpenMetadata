@@ -7,6 +7,7 @@ import java.util.Map;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 
 public class SamlSettingsHolder {
   private static SamlSettingsHolder INSTANCE;
@@ -14,8 +15,9 @@ public class SamlSettingsHolder {
   private SettingsBuilder builder;
   private Saml2Settings saml2Settings;
   private String relayState;
-
   private JWTTokenConfiguration jwtTokenConfiguration;
+  private SamlSSOClientConfig samlConfig;
+  private JWTTokenExpiry tokenValidity;
 
   private SamlSettingsHolder() {
     samlData = new HashMap<>();
@@ -29,8 +31,9 @@ public class SamlSettingsHolder {
   }
 
   public void initDefaultSettings(CatalogApplicationConfig catalogApplicationConfig) {
-    SamlSSOClientConfig samlConfig = catalogApplicationConfig.getSamlConfiguration();
+    samlConfig = catalogApplicationConfig.getSamlConfiguration();
     jwtTokenConfiguration = catalogApplicationConfig.getJwtTokenConfiguration();
+    tokenValidity = JWTTokenExpiry.fromValue(samlConfig.getSp().getTokenValidity());
     if (samlData == null) {
       samlData = new HashMap<>();
     }
@@ -100,5 +103,9 @@ public class SamlSettingsHolder {
 
   public JWTTokenConfiguration getJwtTokenConfiguration() {
     return jwtTokenConfiguration;
+  }
+
+  public JWTTokenExpiry getTokenValidity() {
+    return tokenValidity;
   }
 }

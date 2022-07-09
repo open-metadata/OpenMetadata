@@ -55,6 +55,11 @@
         "callback": {
           "description": "Service Provider Entity ID usually same as the SSO login URL.",
           "type": "string"
+        },
+        "tokenValidity": {
+          "description": "Validity for the JWT Token created from SAML Response",
+          "type": "string",
+          "default": "1"
         }
       },
       "additionalProperties": false,

@@ -11,7 +11,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
-import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +33,7 @@ public class SamlResponseServlet extends HttpServlet {
 
     if (!auth.isAuthenticated()) {
       logger.error("Not Authenticated");
+      resp.sendError(403, "Unauthorized");
     }
 
     List<String> errors = auth.getErrors();
@@ -43,6 +43,7 @@ public class SamlResponseServlet extends HttpServlet {
         String errorReason = auth.getLastErrorReason();
         if (errorReason != null && !errorReason.isEmpty()) {
           logger.error(errorReason);
+          resp.sendError(500, errorReason);
         }
       }
     } else {
@@ -52,7 +53,8 @@ public class SamlResponseServlet extends HttpServlet {
 
       JWTTokenGenerator.getInstance().init(SamlSettingsHolder.getInstance().getJwtTokenConfiguration());
       JWTAuthMechanism jwtAuthMechanism =
-          JWTTokenGenerator.getInstance().generateJWTToken(nameId, email, JWTTokenExpiry.Unlimited, false);
+          JWTTokenGenerator.getInstance()
+              .generateJWTToken(nameId, email, SamlSettingsHolder.getInstance().getTokenValidity(), false);
 
       String relayState = req.getParameter("RelayState");
 

@@ -139,6 +139,20 @@ authenticationConfiguration:
   clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
   callbackUrl: "http://localhost:8585/callback"
 
+samlConfiguration:
+  idp:
+    entityId: ""
+    ssoLoginUrl: ""
+    ssoLogoutUrl: ""
+    idpX509Certificate: ""
+  sp:
+    entityId: ""
+    acs: ""
+    logoutUrl: ""
+    spX509Certificate: ""
+    callback: ""
+    tokenValidity: "7"
+
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
   rsaprivateKeyFilePath: "src/test/resources/private_key.der"

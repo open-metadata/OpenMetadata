@@ -78,6 +78,7 @@ import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
 import org.openmetadata.catalog.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
+import org.openmetadata.catalog.security.saml.SamlLogoutServlet;
 import org.openmetadata.catalog.security.saml.SamlRedirectServlet;
 import org.openmetadata.catalog.security.saml.SamlResponseServlet;
 import org.openmetadata.catalog.security.saml.SamlSettingsHolder;
@@ -162,8 +163,14 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     authorizer.init(catalogConfig.getAuthorizerConfiguration(), jdbi);
 
     intializeWebsockets(catalogConfig, environment);
+    registerSamlHandlers(catalogConfig, environment);
 
-    // try init
+    FilterRegistration.Dynamic micrometerFilter =
+        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
+    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+  }
+
+  private void registerSamlHandlers(CatalogApplicationConfig catalogConfig, Environment environment) {
     SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
     ServletRegistration.Dynamic samlRedirectServlet =
         environment.servlets().addServlet("SAML Login", new SamlRedirectServlet());
@@ -171,10 +178,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     ServletRegistration.Dynamic samlRecieverServlet =
         environment.servlets().addServlet("SAML ACS", new SamlResponseServlet());
     samlRecieverServlet.addMapping("/api/v1/saml/acs");
-
-    FilterRegistration.Dynamic micrometerFilter =
-        environment.servlets().addFilter("MicrometerHttpFilter", new MicrometerHttpFilter());
-    micrometerFilter.addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), true, "/*");
+    ServletRegistration.Dynamic samlLogoutServlet =
+        environment.servlets().addServlet("SAML Logout", new SamlLogoutServlet());
+    samlLogoutServlet.addMapping("/api/v1/saml/logout");
   }
 
   @SneakyThrows
