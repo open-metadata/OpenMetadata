@@ -11,6 +11,8 @@ site_menu:
     url: /overview
     color: violet-70
     icon: map
+  - category: Overview / Latest Release
+    url: /overview/latest-release
   - category: Overview / Features
     url: /overview/features
   - category: Overview / Roadmap
