@@ -4,8 +4,10 @@ site_menu:
     url: /quick-start
     color: violet-70
     icon: av_timer
-  - category: Quickstart / Local Deployment
-    url: /quick-start/local-deploy
+  - category: Quickstart / Try OpenMetadata in Docker
+    url: /quick-start/local-deployment
+  - category: Quickstart / Try the OpenMetadata Sandbox
+    url: /quick-start/sandbox
 
   - category: Overview
     url: /overview
