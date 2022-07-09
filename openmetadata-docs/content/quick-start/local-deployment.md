@@ -130,10 +130,31 @@ In a few seconds, you should be able to access the OpenMetadata UI at [http://lo
 
 ## Go on a tour and start discovering the power of metadata & collaboration
 
-![Login](/images/quickstart/tour.png)
+<Image src="/images/quickstart/tour.png" alt="tour"/>
+
+## Log in to Airflow
+
+OpenMetadata ships with an Airflow container to run the ingestion workflows that have been deployed
+via the UI.
+
+In the Airflow, you will also see some sample DAGs that will ingest sample data and serve as an example.
+
+You can access Airflow at [http://localhost:8080](http://localhost:8080). Use the following credentials to log in to Airflow.
+- Username: `admin`
+- Password: `admin`
+
+## Security
+
+Please follow our [Enable Security Guide](/deployment/docker/security) to configure security for your OpenMetadata
+installation.
+
+## Advanced
+
+If you want to persist your data, prepare [Named Volumes](/deployment/docker/volumes) for the containers.
 
 ## Next Steps
 
 1. Visit the [Features](/overview/features) overview page and explore the OpenMetadata UI.
-2. Visit the [Connectors](/openmetadata/connectors) documentation to see what services you can integrate with OpenMetadata.
+2. Visit the [Connectors](/openmetadata/connectors) documentation to see what services you can integrate with
+   OpenMetadata.
 3. Visit the [API](/swagger.html) documentation and explore the rich set of OpenMetadata APIs.
