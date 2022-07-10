@@ -29,10 +29,8 @@ from metadata.orm_profiler.metrics.static.column_names import ColumnNames
 from metadata.orm_profiler.metrics.static.count import Count
 from metadata.orm_profiler.metrics.static.count_in_set import CountInSet
 from metadata.orm_profiler.metrics.static.distinct_count import DistinctCount
-from metadata.orm_profiler.metrics.static.earliest_time import EarliestTime
 from metadata.orm_profiler.metrics.static.histogram import Histogram
 from metadata.orm_profiler.metrics.static.ilike_count import ILikeCount
-from metadata.orm_profiler.metrics.static.latest_time import LatestTime
 from metadata.orm_profiler.metrics.static.like_count import LikeCount
 from metadata.orm_profiler.metrics.static.max import Max
 from metadata.orm_profiler.metrics.static.max_length import MaxLength
@@ -75,8 +73,6 @@ class Metrics(MetricRegistry):
     UNIQUE_COUNT = UniqueCount
     UNIQUE_RATIO = UniqueRatio
     COLUMN_NAMES = ColumnNames
-    EARLIEST_TIME = EarliestTime
-    LATEST_TIME = LatestTime
 
     # Composed Metrics
     DUPLICATE_COUNT = DuplicateCount

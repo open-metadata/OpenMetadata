@@ -402,11 +402,11 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "minLength": {
           "description": "Minimum string length in a column.",
@@ -431,14 +431,6 @@
         "variance": {
           "description": "Variance of a column.",
           "type": "number"
-        },
-        "earliestTime": {
-          "description": "Earliest time of a date column",
-          "type" : "string"
-        },
-        "latestTime" : {
-          "description": "Latest time of a date column",
-          "type": "string"
         },
         "histogram": {
           "description": "Histogram of a column.",
