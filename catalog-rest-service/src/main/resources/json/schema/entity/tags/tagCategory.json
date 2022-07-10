@@ -11,7 +11,7 @@
       "description": "Name of the tag.",
       "type": "string",
       "minLength": 2,
-      "maxLength": 25
+      "maxLength": 64
     },
     "tagCategoryType": {
       "description": "Type of tag category.",
