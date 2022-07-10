@@ -226,6 +226,8 @@
       * [Configure OpenMetadata Server using Docker](deploy/secure-openmetadata/azure-sso/configure-openmetadata/configure-openmetadata-server-using-docker.md)
       * [Configure OpenMetadata Helm](deploy/secure-openmetadata/azure-sso/configure-openmetadata/configure-openmetadata-helm.md)
     * [Configure Ingestion](deploy/secure-openmetadata/azure-sso/configure-ingestion.md)
+* [Enable SSL](deploy/enable-ssl/README.md)
+  * [Use Nginx](deploy/enable-ssl/use-nginx.md)
 * [Reference](deploy/reference/README.md)
   * [Server Configuration Parameters](deploy/reference/configuration.md)
   * [Connector Configuration Parameters](deploy/reference/connector-configuration.md)
