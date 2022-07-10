@@ -22,7 +22,7 @@ from metadata.orm_profiler.orm.registry import is_date_time, is_quantifiable
 
 class Max(StaticMetric):
     """
-    MIN Metric
+    MAX Metric
 
     Given a column, return the max value.
     """
