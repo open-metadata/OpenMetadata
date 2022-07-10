@@ -273,7 +273,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     // Long name
     create.withName(TestUtils.LONG_ENTITY_NAME).withCategoryType(TagCategoryType.Descriptive);
     assertResponseContains(
-        () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 25");
+        () -> createAndCheckCategory(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name size must be between 2 and 64");
   }
 
   @Order(1)
