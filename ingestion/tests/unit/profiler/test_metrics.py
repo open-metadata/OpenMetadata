@@ -150,12 +150,9 @@ class MetricsTest(TestCase):
         )
         res = profiler.execute()._column_results
         assert (
-            res.get(User.dob.name).get(Metrics.MIN.name)
-            == "1982-02-02 00:00:00.000000"
+            res.get(User.dob.name).get(Metrics.MIN.name) == "1982-02-02 00:00:00.000000"
         )
-        assert (
-            res.get(User.tob.name).get(Metrics.MIN.name) == "09:03:25.000000"
-        )
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == "09:03:25.000000"
         assert res.get(User.doe.name).get(Metrics.MIN.name) == "2009-11-11"
 
     def test_latest_time(self):
@@ -171,8 +168,7 @@ class MetricsTest(TestCase):
         )
         res = profiler.execute()._column_results
         assert (
-            res.get(User.dob.name).get(Metrics.MAX.name)
-            == "1992-05-17 00:00:00.000000"
+            res.get(User.dob.name).get(Metrics.MAX.name) == "1992-05-17 00:00:00.000000"
         )
         assert res.get(User.tob.name).get(Metrics.MAX.name) == "11:02:32.000000"
         assert res.get(User.doe.name).get(Metrics.MAX.name) == "2020-01-12"
