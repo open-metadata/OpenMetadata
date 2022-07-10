@@ -228,6 +228,7 @@
     * [Configure Ingestion](deploy/secure-openmetadata/azure-sso/configure-ingestion.md)
 * [Enable SSL](deploy/enable-ssl/README.md)
   * [Use Nginx](deploy/enable-ssl/use-nginx.md)
+  * [OpenMetadata Server](deploy/enable-ssl/openmetadata-server.md)
 * [Reference](deploy/reference/README.md)
   * [Server Configuration Parameters](deploy/reference/configuration.md)
   * [Connector Configuration Parameters](deploy/reference/connector-configuration.md)

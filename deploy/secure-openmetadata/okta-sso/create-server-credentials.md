@@ -83,7 +83,7 @@ Once the Authorization Server has been added, navigate to Security >> API >> Aut
 
 The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL and save the changes.
 
-![](<../../../.gitbook/assets/image (314).png>)
+![](<../../../.gitbook/assets/image (314) (1).png>)
 
 ## Step 6: Create a Default Scope
 

@@ -51,7 +51,7 @@ Click on the _Add New Service_ button to start the Service creation.
 
 Select Trino as the service type and click _Next_.
 
-![](<../../../.gitbook/assets/image (315).png>)
+![](<../../../.gitbook/assets/image (315) (1).png>)
 
 ### 4. Name and Describe your Service
 
