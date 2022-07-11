@@ -18,7 +18,7 @@ Run the below command to generate an X509 Certificate and import it into keystor
 keytool -keystore openmetadata.keystore.jks -alias localhost -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -genkey -validity 365
 ```
 
-![](<../../.gitbook/assets/image (168).png>)
+![](<../../.gitbook/assets/image (168) (1).png>)
 
 For this example, we are configuring the password to be `test12`
 

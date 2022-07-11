@@ -76,7 +76,7 @@ In this step, we will configure the connection settings required for this connec
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
-![Test Connection and save the Service](<../../../.gitbook/assets/image (200).png>)
+![Test Connection and save the Service](<../../../.gitbook/assets/image (200) (1).png>)
 
 <details>
 
