@@ -82,7 +82,7 @@ import ColumnDetail from '../shared/ColumnDetail';
 import CommentModal from '../shared/CommentModal';
 import DescriptionTask from '../shared/DescriptionTask';
 import EntityDetail from '../shared/EntityDetail';
-import TagSuggestion from '../shared/TagSuggestion';
+import TagsTask from '../shared/TagsTask';
 import TaskStatus from '../shared/TaskStatus';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import {
@@ -506,7 +506,7 @@ const TaskDetailPage = () => {
                 data-testid="task-title">
                 {`Task #${taskId}`} {taskDetail.message}
               </p>
-              <p className="tw-flex tw-mb-4" data-testid="task-metadata">
+              <div className="tw-flex tw-mb-4" data-testid="task-metadata">
                 <TaskStatus
                   status={taskDetail.task?.status as ThreadTaskStatus}
                 />
@@ -534,7 +534,7 @@ const TaskDetailPage = () => {
                     )}
                   </span>
                 </span>
-              </p>
+              </div>
 
               <ColumnDetail column={columnObject} />
               <div className="tw-flex" data-testid="task-assignees">
@@ -613,13 +613,10 @@ const TaskDetailPage = () => {
               )}
 
               {isTaskTags && (
-                <div data-testid="task-tags-tabs">
-                  <p className="tw-text-grey-muted">Tags:</p>{' '}
-                  <TagSuggestion
-                    selectedTags={tagsSuggestion}
-                    onChange={setTagsSuggestion}
-                  />
-                </div>
+                <TagsTask
+                  setSuggestion={setTagsSuggestion}
+                  suggestions={tagsSuggestion}
+                />
               )}
               {hasEditAccess() && !isTaskClosed && (
                 <div

@@ -14,7 +14,7 @@
 import { Select } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import { isEmpty, isEqual } from 'lodash';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
 import {
   LabelType,
@@ -38,17 +38,14 @@ interface Props {
 }
 
 const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
-  const selectedOptions = React.useMemo(
-    () =>
-      selectedTags.map((tag) => ({
-        label: tag.tagFQN,
-        value: tag.tagFQN,
-        'data-sourceType': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
-      })),
-    [selectedTags]
-  );
+  const selectedOptions = () =>
+    selectedTags.map((tag) => ({
+      label: tag.tagFQN,
+      value: tag.tagFQN,
+      'data-sourceType': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
+    }));
 
-  const [options, setOptions] = useState<SelectOption[]>(selectedOptions);
+  const [options, setOptions] = useState<SelectOption[]>([]);
 
   const fetchOptions = (query: string) => {
     getTagSuggestions(query)
@@ -94,6 +91,10 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     onChange(newTags);
   };
 
+  useEffect(() => {
+    setOptions(selectedOptions());
+  }, [selectedTags]);
+
   return (
     <Select
       showSearch
@@ -105,12 +106,12 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       notFoundContent={null}
       placeholder="Search to Select"
       showArrow={false}
-      value={!isEmpty(selectedOptions) ? selectedOptions : undefined}
+      value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
       onChange={handleOnChange}
       onSearch={handleSearch}>
       {options.map((d) => (
         <Option
-          data-sourcetype={d['data-sourceType']}
+          data-sourceType={d['data-sourceType']}
           data-testid="tag-option"
           key={d.value}>
           {d.label}
