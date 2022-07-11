@@ -315,6 +315,18 @@ class SouceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url(clickhouse_conn_obj)
 
+        expected_url = (
+            "clickhouse+http://username:@localhost:8123/default?protocol=https"
+        )
+        clickhouse_conn_obj = ClickhouseConnection(
+            username="username",
+            hostPort="localhost:8123",
+            scheme=ClickhouseScheme.clickhouse_http,
+            connectionOptions=dict(protocol="https"),
+            databaseSchema="default",
+        )
+        assert expected_url == get_connection_url(clickhouse_conn_obj)
+
     def test_mariadb_url(self):
         # connection arguments without db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:3306"

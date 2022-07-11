@@ -4,253 +4,346 @@ site_menu:
     url: /quick-start
     color: violet-70
     icon: av_timer
-  - category: Quickstart / Local Deployment
-    url: /quick-start/local-deploy
+  - category: Quickstart / Try OpenMetadata in Docker
+    url: /quick-start/local-deployment
+  - category: Quickstart / Try the OpenMetadata Sandbox
+    url: /quick-start/sandbox
+
+  - category: Overview
+    url: /overview
+    color: violet-70
+    icon: map
+  - category: Overview / Latest Release
+    url: /overview/latest-release
+  - category: Overview / Features
+    url: /overview/features
+  - category: Overview / Roadmap
+    url: /overview/roadmap
+  - category: Overview / Releases
+    url: /overview/releases
 
   - category: Deployment
     url: /deployment
     color: violet-70
     icon: cloud_download
-  - category: Deployment / Get started
-    url: /deployment/get-started
-  - category: Deployment / Get started / Main concepts
-    url: /deployment/get-started/main-concepts
+  - category: Deployment / Bare Metal Deployment
+    url: /deployment/bare-metal
+  - category: Deployment / Bare Metal Deployment / Enable Security
+    url: /deployment/bare-metal/security
 
-  - category: OpenMetadata UI
-    url: /metadata-ui
+  - category: Deployment / Docker Deployment
+    url: /deployment/docker
+  - category: Deployment / Docker Deployment / Volumes
+    url: /deployment/docker/volumes
+  - category: Deployment / Docker Deployment / Enable Security
+    url: /deployment/docker/security
+
+  - category: Deployment / Kubernetes Deployment
+    url: /deployment/kubernetes
+  - category: Deployment / Kubernetes Deployment / Enable Security
+    url: /deployment/kubernetes/security
+
+  - category: Deployment / Enable Security
+    url: /deployment/security
+  - category: Deployment / Enable Security / Auth0 SSO
+    url: /deployment/security/auth0
+  - category: Deployment / Enable Security / Auth0 SSO / Docker
+    url: /deployment/security/auth0/docker
+  - category: Deployment / Enable Security / Auth0 SSO / Bare Metal
+    url: /deployment/security/auth0/bare-metal
+  - category: Deployment / Enable Security / Auth0 SSO / Kubernetes
+    url: /deployment/security/auth0/kubernetes
+  - category: Deployment / Enable Security / Azure SSO
+    url: /deployment/security/azure
+  - category: Deployment / Enable Security / Azure SSO / Docker
+    url: /deployment/security/azure/docker
+  - category: Deployment / Enable Security / Azure SSO / Bare Metal
+    url: /deployment/security/azure/bare-metal
+  - category: Deployment / Enable Security / Azure SSO / Kubernetes
+    url: /deployment/security/azure/kubernetes
+  - category: Deployment / Enable Security / Custom OIDC SSO
+    url: /deployment/security/custom-oidc
+  - category: Deployment / Enable Security / Custom OIDC SSO / Docker
+    url: /deployment/security/custom-oidc/docker
+  - category: Deployment / Enable Security / Custom OIDC SSO / Bare Metal
+    url: /deployment/security/custom-oidc/bare-metal
+  - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
+    url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / Google SSO
+    url: /deployment/security/google
+  - category: Deployment / Enable Security / Google SSO / Docker
+    url: /deployment/security/google/docker
+  - category: Deployment / Enable Security / Google SSO / Bare Metal
+    url: /deployment/security/google/bare-metal
+  - category: Deployment / Enable Security / Google SSO / Kubernetes
+    url: /deployment/security/google/kubernetes
+  - category: Deployment / Enable Security / Okta SSO
+    url: /deployment/security/okta
+  - category: Deployment / Enable Security / Okta SSO / Docker
+    url: /deployment/security/okta/docker
+  - category: Deployment / Enable Security / Okta SSO / Bare Metal
+    url: /deployment/security/okta/bare-metal
+  - category: Deployment / Enable Security / Okta SSO / Kubernetes
+    url: /deployment/security/okta/kubernetes
+
+  - category: Deployment / Upgrade OpenMetadata
+    url: /deployment/upgrade
+  - category: Deployment / Upgrade OpenMetadata / Backup Metadata
+    url: /deployment/upgrade/backup-metadata
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Bare Metal
+    url: /deployment/upgrade/bare-metal
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Docker
+    url: /deployment/upgrade/docker
+  - category: Deployment / Upgrade OpenMetadata / Upgrade on Kubernetes
+    url: /deployment/upgrade/kubernetes
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions
+    url: /deployment/upgrade/versions
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.9 to 0.10
+    url: /deployment/upgrade/versions/090-to-010
+  - category: Deployment / Upgrade OpenMetadata / Upgrade Version Instructions / 0.10 to 0.11
+    url: /deployment/upgrade/versions/010-to-011
+
+  - category: Deployment / Server Configuration Reference
+    url: /deployment/configuration
+
+  - category: Deployment / Airflow
+    url: /deployment/airflow
+
+
+  - category: OpenMetadata
+    url: /openmetadata
     color: violet-70
     icon: storage
-  - category: OpenMetadata UI / Ingestion
-    url: /metadata-ui/ingestion
-  - category: OpenMetadata UI / Ingestion / Workflows
-    url: /metadata-ui/ingestion/workflows
-  - category: OpenMetadata UI / Ingestion / Workflows / Metadata
-    url: /metadata-ui/ingestion/workflows/metadata
-  - category: OpenMetadata UI / Ingestion / Workflows / Metadata / Connectors
-    url: /metadata-ui/ingestion/workflows/metadata/connectors
 
-  - category: OpenMetadata UI / Connectors
-    url: /metadata-ui/connectors
-  - category: OpenMetadata UI / Connectors / Database
-    url: /metadata-ui/connectors/database
-  - category: OpenMetadata UI / Connectors / Database / Athena
-    url: /metadata-ui/connectors/database/athena
-  - category: OpenMetadata UI / Connectors / Database / Athena / Airflow
-    url: /metadata-ui/connectors/database/athena/airflow
-  - category: OpenMetadata UI / Connectors / Database / Athena / CLI
-    url: /metadata-ui/connectors/database/athena/cli
-  - category: OpenMetadata UI / Connectors / Database / BigQuery
-    url: /metadata-ui/connectors/database/bigquery
-  - category: OpenMetadata UI / Connectors / Database / BigQuery / Airflow
-    url: /metadata-ui/connectors/database/bigquery/airflow
-  - category: OpenMetadata UI / Connectors / Database / BigQuery / CLI
-    url: /metadata-ui/connectors/database/bigquery/cli
-  - category: OpenMetadata UI / Connectors / Database / Snowflake
-    url: /metadata-ui/connectors/database/snowflake
-  - category: OpenMetadata UI / Connectors / Database / Snowflake / Airflow
-    url: /metadata-ui/connectors/database/snowflake/airflow
-  - category: OpenMetadata UI / Connectors / Database / Snowflake / CLI
-    url: /metadata-ui/connectors/database/snowflake/cli
-  - category: OpenMetadata UI / Connectors / Database / Redshift
-    url: /metadata-ui/connectors/database/redshift
-  - category: OpenMetadata UI / Connectors / Database / Redshift / Airflow
-    url: /metadata-ui/connectors/database/redshift/airflow
-  - category: OpenMetadata UI / Connectors / Database / Redshift / CLI
-    url: /metadata-ui/connectors/database/redshift/cli
-  - category: OpenMetadata UI / Connectors / Database / Glue
-    url: /metadata-ui/connectors/database/glue
-  - category: OpenMetadata UI / Connectors / Database / Glue / Airflow
-    url: /metadata-ui/connectors/database/glue/airflow
-  - category: OpenMetadata UI / Connectors / Database / Glue / CLI
-    url: /metadata-ui/connectors/database/glue/cli
-  - category: OpenMetadata UI / Connectors / Database / MSSQL
-    url: /metadata-ui/connectors/database/mssql
-  - category: OpenMetadata UI / Connectors / Database / MSSQL / Airflow
-    url: /metadata-ui/connectors/database/mssql/airflow
-  - category: OpenMetadata UI / Connectors / Database / MSSQL / CLI
-    url: /metadata-ui/connectors/database/mssql/cli
-  - category: OpenMetadata UI / Connectors / Database / Postgres
-    url: /metadata-ui/connectors/database/postgres
-  - category: OpenMetadata UI / Connectors / Database / Postgres / Airflow
-    url: /metadata-ui/connectors/database/postgres/airflow
-  - category: OpenMetadata UI / Connectors / Database / Postgres / CLI
-    url: /metadata-ui/connectors/database/postgres/cli
-  - category: OpenMetadata UI / Connectors / Database / MySQL
-    url: /metadata-ui/connectors/database/mysql
-  - category: OpenMetadata UI / Connectors / Database / MySQL / Airflow
-    url: /metadata-ui/connectors/database/mysql/airflow
-  - category: OpenMetadata UI / Connectors / Database / MySQL / CLI
-    url: /metadata-ui/connectors/database/mysql/cli
-  - category: OpenMetadata UI / Connectors / Database / Oracle
-    url: /metadata-ui/connectors/database/oracle
-  - category: OpenMetadata UI / Connectors / Database / Oracle / Airflow
-    url: /metadata-ui/connectors/database/oracle/airflow
-  - category: OpenMetadata UI / Connectors / Database / Oracle / CLI
-    url: /metadata-ui/connectors/database/oracle/cli
-  - category: OpenMetadata UI / Connectors / Database / Clickhouse
-    url: /metadata-ui/connectors/database/clickhouse
-  - category: OpenMetadata UI / Connectors / Database / Clickhouse / Airflow
-    url: /metadata-ui/connectors/database/clickhouse/airflow
-  - category: OpenMetadata UI / Connectors / Database / Clickhouse / CLI
-    url: /metadata-ui/connectors/database/clickhouse/cli
-  - category: OpenMetadata UI / Connectors / Database / AzureSQL
-    url: /metadata-ui/connectors/database/azuresql
-  - category: OpenMetadata UI / Connectors / Database / AzureSQL / Airflow
-    url: /metadata-ui/connectors/database/azuresql/airflow
-  - category: OpenMetadata UI / Connectors / Database / AzureSQL / CLI
-    url: /metadata-ui/connectors/database/azuresql/cli
-  - category: OpenMetadata UI / Connectors / Database / Databricks
-    url: /metadata-ui/connectors/database/databricks
-  - category: OpenMetadata UI / Connectors / Database / Databricks / Airflow
-    url: /metadata-ui/connectors/database/databricks/airflow
-  - category: OpenMetadata UI / Connectors / Database / Databricks / CLI
-    url: /metadata-ui/connectors/database/databricks/cli
-  - category: OpenMetadata UI / Connectors / Database / DB2
-    url: /metadata-ui/connectors/database/db2
-  - category: OpenMetadata UI / Connectors / Database / DB2 / Airflow
-    url: /metadata-ui/connectors/database/db2/airflow
-  - category: OpenMetadata UI / Connectors / Database / DB2 / CLI
-    url: /metadata-ui/connectors/database/db2/cli
-  - category: OpenMetadata UI / Connectors / Database / DeltaLake
-    url: /metadata-ui/connectors/database/deltalake
-  - category: OpenMetadata UI / Connectors / Database / DeltaLake / Airflow
-    url: /metadata-ui/connectors/database/deltalake/airflow
-  - category: OpenMetadata UI / Connectors / Database / DeltaLake / CLI
-    url: /metadata-ui/connectors/database/deltalake/cli
-  - category: OpenMetadata UI / Connectors / Database / Druid
-    url: /metadata-ui/connectors/database/druid
-  - category: OpenMetadata UI / Connectors / Database / Druid / Airflow
-    url: /metadata-ui/connectors/database/druid/airflow
-  - category: OpenMetadata UI / Connectors / Database / Druid / CLI
-    url: /metadata-ui/connectors/database/druid/cli
-  - category: OpenMetadata UI / Connectors / Database / DynamoDB
-    url: /metadata-ui/connectors/database/dynamodb
-  - category: OpenMetadata UI / Connectors / Database / DynamoDB / Airflow
-    url: /metadata-ui/connectors/database/dynamodb/airflow
-  - category: OpenMetadata UI / Connectors / Database / DynamoDB / CLI
-    url: /metadata-ui/connectors/database/dynamodb/cli
-  - category: OpenMetadata UI / Connectors / Database / Hive
-    url: /metadata-ui/connectors/database/hive
-  - category: OpenMetadata UI / Connectors / Database / Hive / Airflow
-    url: /metadata-ui/connectors/database/hive/airflow
-  - category: OpenMetadata UI / Connectors / Database / Hive / CLI
-    url: /metadata-ui/connectors/database/hive/cli
-  - category: OpenMetadata UI / Connectors / Database / Presto
-    url: /metadata-ui/connectors/database/presto
-  - category: OpenMetadata UI / Connectors / Database / Presto / Airflow
-    url: /metadata-ui/connectors/database/presto/airflow
-  - category: OpenMetadata UI / Connectors / Database / Presto / CLI
-    url: /metadata-ui/connectors/database/presto/cli
-  - category: OpenMetadata UI / Connectors / Database / Trino
-    url: /metadata-ui/connectors/database/trino
-  - category: OpenMetadata UI / Connectors / Database / Trino / Airflow
-    url: /metadata-ui/connectors/database/trino/airflow
-  - category: OpenMetadata UI / Connectors / Database / Trino / CLI
-    url: /metadata-ui/connectors/database/trino/cli
-  - category: OpenMetadata UI / Connectors / Database / Salesforce
-    url: /metadata-ui/connectors/database/salesforce
-  - category: OpenMetadata UI / Connectors / Database / Salesforce / Airflow
-    url: /metadata-ui/connectors/database/salesforce/airflow
-  - category: OpenMetadata UI / Connectors / Database / Salesforce / CLI
-    url: /metadata-ui/connectors/database/salesforce/cli
-  - category: OpenMetadata UI / Connectors / Database / SingleStore
-    url: /metadata-ui/connectors/database/singlestore
-  - category: OpenMetadata UI / Connectors / Database / SingleStore / Airflow
-    url: /metadata-ui/connectors/database/singlestore/airflow
-  - category: OpenMetadata UI / Connectors / Database / SingleStore / CLI
-    url: /metadata-ui/connectors/database/singlestore/cli
-  - category: OpenMetadata UI / Connectors / Database / Vertica
-    url: /metadata-ui/connectors/database/vertica
-  - category: OpenMetadata UI / Connectors / Database / Vertica / Airflow
-    url: /metadata-ui/connectors/database/vertica/airflow
-  - category: OpenMetadata UI / Connectors / Database / Vertica / CLI
-    url: /metadata-ui/connectors/database/vertica/cli
-  - category: OpenMetadata UI / Connectors / Database / MariaDB
-    url: /metadata-ui/connectors/database/mariadb
-  - category: OpenMetadata UI / Connectors / Database / MariaDB / Airflow
-    url: /metadata-ui/connectors/database/mariadb/airflow
-  - category: OpenMetadata UI / Connectors / Database / MariaDB / CLI
-    url: /metadata-ui/connectors/database/mariadb/cli
+  - category: OpenMetadata / Connectors
+    url: /openmetadata/connectors
+  - category: OpenMetadata / Connectors / Database
+    url: /openmetadata/connectors/database
+  - category: OpenMetadata / Connectors / Database / Athena
+    url: /openmetadata/connectors/database/athena
+  - category: OpenMetadata / Connectors / Database / Athena / Airflow
+    url: /openmetadata/connectors/database/athena/airflow
+  - category: OpenMetadata / Connectors / Database / Athena / CLI
+    url: /openmetadata/connectors/database/athena/cli
+  - category: OpenMetadata / Connectors / Database / BigQuery
+    url: /openmetadata/connectors/database/bigquery
+  - category: OpenMetadata / Connectors / Database / BigQuery / Airflow
+    url: /openmetadata/connectors/database/bigquery/airflow
+  - category: OpenMetadata / Connectors / Database / BigQuery / CLI
+    url: /openmetadata/connectors/database/bigquery/cli
+  - category: OpenMetadata / Connectors / Database / Snowflake
+    url: /openmetadata/connectors/database/snowflake
+  - category: OpenMetadata / Connectors / Database / Snowflake / Airflow
+    url: /openmetadata/connectors/database/snowflake/airflow
+  - category: OpenMetadata / Connectors / Database / Snowflake / CLI
+    url: /openmetadata/connectors/database/snowflake/cli
+  - category: OpenMetadata / Connectors / Database / Redshift
+    url: /openmetadata/connectors/database/redshift
+  - category: OpenMetadata / Connectors / Database / Redshift / Airflow
+    url: /openmetadata/connectors/database/redshift/airflow
+  - category: OpenMetadata / Connectors / Database / Redshift / CLI
+    url: /openmetadata/connectors/database/redshift/cli
+  - category: OpenMetadata / Connectors / Database / Glue
+    url: /openmetadata/connectors/database/glue
+  - category: OpenMetadata / Connectors / Database / Glue / Airflow
+    url: /openmetadata/connectors/database/glue/airflow
+  - category: OpenMetadata / Connectors / Database / Glue / CLI
+    url: /openmetadata/connectors/database/glue/cli
+  - category: OpenMetadata / Connectors / Database / MSSQL
+    url: /openmetadata/connectors/database/mssql
+  - category: OpenMetadata / Connectors / Database / MSSQL / Airflow
+    url: /openmetadata/connectors/database/mssql/airflow
+  - category: OpenMetadata / Connectors / Database / MSSQL / CLI
+    url: /openmetadata/connectors/database/mssql/cli
+  - category: OpenMetadata / Connectors / Database / Postgres
+    url: /openmetadata/connectors/database/postgres
+  - category: OpenMetadata / Connectors / Database / Postgres / Airflow
+    url: /openmetadata/connectors/database/postgres/airflow
+  - category: OpenMetadata / Connectors / Database / Postgres / CLI
+    url: /openmetadata/connectors/database/postgres/cli
+  - category: OpenMetadata / Connectors / Database / MySQL
+    url: /openmetadata/connectors/database/mysql
+  - category: OpenMetadata / Connectors / Database / MySQL / Airflow
+    url: /openmetadata/connectors/database/mysql/airflow
+  - category: OpenMetadata / Connectors / Database / MySQL / CLI
+    url: /openmetadata/connectors/database/mysql/cli
+  - category: OpenMetadata / Connectors / Database / Oracle
+    url: /openmetadata/connectors/database/oracle
+  - category: OpenMetadata / Connectors / Database / Oracle / Airflow
+    url: /openmetadata/connectors/database/oracle/airflow
+  - category: OpenMetadata / Connectors / Database / Oracle / CLI
+    url: /openmetadata/connectors/database/oracle/cli
+  - category: OpenMetadata / Connectors / Database / Clickhouse
+    url: /openmetadata/connectors/database/clickhouse
+  - category: OpenMetadata / Connectors / Database / Clickhouse / Airflow
+    url: /openmetadata/connectors/database/clickhouse/airflow
+  - category: OpenMetadata / Connectors / Database / Clickhouse / CLI
+    url: /openmetadata/connectors/database/clickhouse/cli
+  - category: OpenMetadata / Connectors / Database / AzureSQL
+    url: /openmetadata/connectors/database/azuresql
+  - category: OpenMetadata / Connectors / Database / AzureSQL / Airflow
+    url: /openmetadata/connectors/database/azuresql/airflow
+  - category: OpenMetadata / Connectors / Database / AzureSQL / CLI
+    url: /openmetadata/connectors/database/azuresql/cli
+  - category: OpenMetadata / Connectors / Database / Databricks
+    url: /openmetadata/connectors/database/databricks
+  - category: OpenMetadata / Connectors / Database / Databricks / Airflow
+    url: /openmetadata/connectors/database/databricks/airflow
+  - category: OpenMetadata / Connectors / Database / Databricks / CLI
+    url: /openmetadata/connectors/database/databricks/cli
+  - category: OpenMetadata / Connectors / Database / DB2
+    url: /openmetadata/connectors/database/db2
+  - category: OpenMetadata / Connectors / Database / DB2 / Airflow
+    url: /openmetadata/connectors/database/db2/airflow
+  - category: OpenMetadata / Connectors / Database / DB2 / CLI
+    url: /openmetadata/connectors/database/db2/cli
+  - category: OpenMetadata / Connectors / Database / DeltaLake
+    url: /openmetadata/connectors/database/deltalake
+  - category: OpenMetadata / Connectors / Database / DeltaLake / Airflow
+    url: /openmetadata/connectors/database/deltalake/airflow
+  - category: OpenMetadata / Connectors / Database / DeltaLake / CLI
+    url: /openmetadata/connectors/database/deltalake/cli
+  - category: OpenMetadata / Connectors / Database / Druid
+    url: /openmetadata/connectors/database/druid
+  - category: OpenMetadata / Connectors / Database / Druid / Airflow
+    url: /openmetadata/connectors/database/druid/airflow
+  - category: OpenMetadata / Connectors / Database / Druid / CLI
+    url: /openmetadata/connectors/database/druid/cli
+  - category: OpenMetadata / Connectors / Database / DynamoDB
+    url: /openmetadata/connectors/database/dynamodb
+  - category: OpenMetadata / Connectors / Database / DynamoDB / Airflow
+    url: /openmetadata/connectors/database/dynamodb/airflow
+  - category: OpenMetadata / Connectors / Database / DynamoDB / CLI
+    url: /openmetadata/connectors/database/dynamodb/cli
+  - category: OpenMetadata / Connectors / Database / Hive
+    url: /openmetadata/connectors/database/hive
+  - category: OpenMetadata / Connectors / Database / Hive / Airflow
+    url: /openmetadata/connectors/database/hive/airflow
+  - category: OpenMetadata / Connectors / Database / Hive / CLI
+    url: /openmetadata/connectors/database/hive/cli
+  - category: OpenMetadata / Connectors / Database / Presto
+    url: /openmetadata/connectors/database/presto
+  - category: OpenMetadata / Connectors / Database / Presto / Airflow
+    url: /openmetadata/connectors/database/presto/airflow
+  - category: OpenMetadata / Connectors / Database / Presto / CLI
+    url: /openmetadata/connectors/database/presto/cli
+  - category: OpenMetadata / Connectors / Database / Trino
+    url: /openmetadata/connectors/database/trino
+  - category: OpenMetadata / Connectors / Database / Trino / Airflow
+    url: /openmetadata/connectors/database/trino/airflow
+  - category: OpenMetadata / Connectors / Database / Trino / CLI
+    url: /openmetadata/connectors/database/trino/cli
+  - category: OpenMetadata / Connectors / Database / Salesforce
+    url: /openmetadata/connectors/database/salesforce
+  - category: OpenMetadata / Connectors / Database / Salesforce / Airflow
+    url: /openmetadata/connectors/database/salesforce/airflow
+  - category: OpenMetadata / Connectors / Database / Salesforce / CLI
+    url: /openmetadata/connectors/database/salesforce/cli
+  - category: OpenMetadata / Connectors / Database / SingleStore
+    url: /openmetadata/connectors/database/singlestore
+  - category: OpenMetadata / Connectors / Database / SingleStore / Airflow
+    url: /openmetadata/connectors/database/singlestore/airflow
+  - category: OpenMetadata / Connectors / Database / SingleStore / CLI
+    url: /openmetadata/connectors/database/singlestore/cli
+  - category: OpenMetadata / Connectors / Database / Vertica
+    url: /openmetadata/connectors/database/vertica
+  - category: OpenMetadata / Connectors / Database / Vertica / Airflow
+    url: /openmetadata/connectors/database/vertica/airflow
+  - category: OpenMetadata / Connectors / Database / Vertica / CLI
+    url: /openmetadata/connectors/database/vertica/cli
+  - category: OpenMetadata / Connectors / Database / MariaDB
+    url: /openmetadata/connectors/database/mariadb
+  - category: OpenMetadata / Connectors / Database / MariaDB / Airflow
+    url: /openmetadata/connectors/database/mariadb/airflow
+  - category: OpenMetadata / Connectors / Database / MariaDB / CLI
+    url: /openmetadata/connectors/database/mariadb/cli
 
-  - category: OpenMetadata UI / Connectors / Dashboard
-    url: /metadata-ui/connectors/dashboard
-  - category: OpenMetadata UI / Connectors / Dashboard / Looker
-    url: /metadata-ui/connectors/dashboard/looker
-  - category: OpenMetadata UI / Connectors / Dashboard / Looker / Airflow
-    url: /metadata-ui/connectors/dashboard/looker/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / Looker / CLI
-    url: /metadata-ui/connectors/dashboard/looker/cli
-  - category: OpenMetadata UI / Connectors / Dashboard / Redash
-    url: /metadata-ui/connectors/dashboard/redash
-  - category: OpenMetadata UI / Connectors / Dashboard / Redash / Airflow
-    url: /metadata-ui/connectors/dashboard/redash/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / Redash / CLI
-    url: /metadata-ui/connectors/dashboard/redash/cli
-  - category: OpenMetadata UI / Connectors / Dashboard / Tableau
-    url: /metadata-ui/connectors/dashboard/tableau
-  - category: OpenMetadata UI / Connectors / Dashboard / Tableau / Airflow
-    url: /metadata-ui/connectors/dashboard/tableau/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / Tableau / CLI
-    url: /metadata-ui/connectors/dashboard/tableau/cli
-  - category: OpenMetadata UI / Connectors / Dashboard / PowerBI
-    url: /metadata-ui/connectors/dashboard/powerbi
-  - category: OpenMetadata UI / Connectors / Dashboard / PowerBI / Airflow
-    url: /metadata-ui/connectors/dashboard/powerbi/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / PowerBI / CLI
-    url: /metadata-ui/connectors/dashboard/powerbi/cli
-  - category: OpenMetadata UI / Connectors / Dashboard / Superset
-    url: /metadata-ui/connectors/dashboard/superset
-  - category: OpenMetadata UI / Connectors / Dashboard / Superset / Airflow
-    url: /metadata-ui/connectors/dashboard/superset/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / Superset / CLI
-    url: /metadata-ui/connectors/dashboard/superset/cli
-  - category: OpenMetadata UI / Connectors / Dashboard / Metabase
-    url: /metadata-ui/connectors/dashboard/metabase
-  - category: OpenMetadata UI / Connectors / Dashboard / Metabase / Airflow
-    url: /metadata-ui/connectors/dashboard/metabase/airflow
-  - category: OpenMetadata UI / Connectors / Dashboard / Metabase / CLI
-    url: /metadata-ui/connectors/dashboard/metabase/cli
+  - category: OpenMetadata / Connectors / Dashboard
+    url: /openmetadata/connectors/dashboard
+  - category: OpenMetadata / Connectors / Dashboard / Looker
+    url: /openmetadata/connectors/dashboard/looker
+  - category: OpenMetadata / Connectors / Dashboard / Looker / Airflow
+    url: /openmetadata/connectors/dashboard/looker/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Looker / CLI
+    url: /openmetadata/connectors/dashboard/looker/cli
+  - category: OpenMetadata / Connectors / Dashboard / Redash
+    url: /openmetadata/connectors/dashboard/redash
+  - category: OpenMetadata / Connectors / Dashboard / Redash / Airflow
+    url: /openmetadata/connectors/dashboard/redash/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Redash / CLI
+    url: /openmetadata/connectors/dashboard/redash/cli
+  - category: OpenMetadata / Connectors / Dashboard / Tableau
+    url: /openmetadata/connectors/dashboard/tableau
+  - category: OpenMetadata / Connectors / Dashboard / Tableau / Airflow
+    url: /openmetadata/connectors/dashboard/tableau/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Tableau / CLI
+    url: /openmetadata/connectors/dashboard/tableau/cli
+  - category: OpenMetadata / Connectors / Dashboard / PowerBI
+    url: /openmetadata/connectors/dashboard/powerbi
+  - category: OpenMetadata / Connectors / Dashboard / PowerBI / Airflow
+    url: /openmetadata/connectors/dashboard/powerbi/airflow
+  - category: OpenMetadata / Connectors / Dashboard / PowerBI / CLI
+    url: /openmetadata/connectors/dashboard/powerbi/cli
+  - category: OpenMetadata / Connectors / Dashboard / Superset
+    url: /openmetadata/connectors/dashboard/superset
+  - category: OpenMetadata / Connectors / Dashboard / Superset / Airflow
+    url: /openmetadata/connectors/dashboard/superset/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Superset / CLI
+    url: /openmetadata/connectors/dashboard/superset/cli
+  - category: OpenMetadata / Connectors / Dashboard / Metabase
+    url: /openmetadata/connectors/dashboard/metabase
+  - category: OpenMetadata / Connectors / Dashboard / Metabase / Airflow
+    url: /openmetadata/connectors/dashboard/metabase/airflow
+  - category: OpenMetadata / Connectors / Dashboard / Metabase / CLI
+    url: /openmetadata/connectors/dashboard/metabase/cli
 
-  - category: OpenMetadata UI / Connectors / Messaging
-    url: /metadata-ui/connectors/messaging
-  - category: OpenMetadata UI / Connectors / Messaging / Kafka
-    url: /metadata-ui/connectors/messaging/kafka
-  - category: OpenMetadata UI / Connectors / Messaging / Kafka / Airflow
-    url: /metadata-ui/connectors/messaging/kafka/airflow
-  - category: OpenMetadata UI / Connectors / Messaging / Kafka / CLI
-    url: /metadata-ui/connectors/messaging/kafka/cli
+  - category: OpenMetadata / Connectors / Messaging
+    url: /openmetadata/connectors/messaging
+  - category: OpenMetadata / Connectors / Messaging / Kafka
+    url: /openmetadata/connectors/messaging/kafka
+  - category: OpenMetadata / Connectors / Messaging / Kafka / Airflow
+    url: /openmetadata/connectors/messaging/kafka/airflow
+  - category: OpenMetadata / Connectors / Messaging / Kafka / CLI
+    url: /openmetadata/connectors/messaging/kafka/cli
   
-  - category: OpenMetadata UI / Connectors / Pipeline
-    url: /metadata-ui/connectors/pipeline
+  - category: OpenMetadata / Connectors / Pipeline
+    url: /openmetadata/connectors/pipeline
 
-  - category: OpenMetadata UI / Ingestion / Workflows/ Metadata / DBT
-    url: /metadata-ui/ingestion/workflows/metadata/dbt
+  - category: OpenMetadata / Ingestion
+    url: /openmetadata/ingestion
+  - category: OpenMetadata / Ingestion / Workflows
+    url: /openmetadata/ingestion/workflows
+  - category: OpenMetadata / Ingestion / Workflows / Metadata
+    url: /openmetadata/ingestion/workflows/metadata
 
-  - category: OpenMetadata UI / Ingestion / Workflows / Usage
-    url: /metadata-ui/ingestion/workflows/usage
-  - category: OpenMetadata UI / Ingestion / Workflows / Profiler
-    url: /metadata-ui/ingestion/workflows/profiler
-  - category: OpenMetadata UI / Ingestion / Lineage
-    url: /metadata-ui/ingestion/lineage
-  - category: OpenMetadata UI / Ingestion / Versioning
-    url: /metadata-ui/ingestion/versioning
-  - category: OpenMetadata UI / Ingestion / Versioning / Change Feeds
-    url: /metadata-ui/ingestion/versioning/change-feeds
-  - category: OpenMetadata UI / Ingestion / Versioning / Change Events
-    url: /metadata-ui/ingestion/versioning/change-events
-  - category: OpenMetadata UI / Ingestion / Versioning / Event Notification via Webhooks
-    url: /metadata-ui/ingestion/versioning/event-notification-via-webhooks
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT
+    url: /openmetadata/ingestion/workflows/metadata/dbt
 
-  - category: OpenMetadata UI / Discovery & Collaboration
-    url: /metadata-ui/discovery-collaboration
-  - category: OpenMetadata UI / Teams & Users
-    url: /metadata-ui/users
-  - category: OpenMetadata UI / Data Quality
-    url: /metadata-ui/data-quality
-  - category: OpenMetadata UI / Data Quality / Tests
-    url: /metadata-ui/data-quality/tests
-  - category: OpenMetadata UI / Data Quality / Metrics
-    url: /metadata-ui/data-quality/metrics
+  - category: OpenMetadata / Ingestion / Workflows / Usage
+    url: /openmetadata/ingestion/workflows/usage
+  - category: OpenMetadata / Ingestion / Workflows / Profiler
+    url: /openmetadata/ingestion/workflows/profiler
+  - category: OpenMetadata / Ingestion / Lineage
+    url: /openmetadata/ingestion/lineage
+  - category: OpenMetadata / Ingestion / Versioning
+    url: /openmetadata/ingestion/versioning
+  - category: OpenMetadata / Ingestion / Versioning / Change Feeds
+    url: /openmetadata/ingestion/versioning/change-feeds
+  - category: OpenMetadata / Ingestion / Versioning / Change Events
+    url: /openmetadata/ingestion/versioning/change-events
+  - category: OpenMetadata / Ingestion / Versioning / Event Notification via Webhooks
+    url: /openmetadata/ingestion/versioning/event-notification-via-webhooks
+
+  - category: OpenMetadata / Discovery & Collaboration
+    url: /openmetadata/discovery-collaboration
+  - category: OpenMetadata / Teams & Users
+    url: /openmetadata/users
+  - category: OpenMetadata / Data Quality
+    url: /openmetadata/data-quality
+  - category: OpenMetadata / Data Quality / Tests
+    url: /openmetadata/data-quality/tests
+  - category: OpenMetadata / Data Quality / Metrics
+    url: /openmetadata/data-quality/metrics
 
   - category: Main Concepts
     url: /main-concepts

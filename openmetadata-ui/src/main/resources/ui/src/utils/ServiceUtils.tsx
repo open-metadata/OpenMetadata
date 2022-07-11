@@ -33,6 +33,7 @@ import {
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
+  AIRBYTE,
   AIRFLOW,
   arrServiceTypes,
   ATHENA,
@@ -188,6 +189,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
+
+    case PipelineServiceType.Airbyte:
+      return AIRBYTE;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;

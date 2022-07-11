@@ -22,6 +22,7 @@ import AddUsersModal from '../../pages/teams/AddUsersModal';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
+import Ellipses from '../common/Ellipses/Ellipses';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
@@ -130,13 +131,14 @@ const TeamsAndUsers = ({
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
                     team.name,
                     currentTeam?.name
-                  )}`}>
-                  <p
-                    className="tag-category label-category tw-self-center tw-truncate"
-                    data-testid="team-name"
-                    title={team.displayName ?? team.name}>
+                  )}`}
+                  data-testid="team-name">
+                  <Ellipses
+                    tooltip
+                    className="tag-category label-category tw-self-center tw-w-32"
+                    rows={1}>
                     {team.displayName ?? team.name}
-                  </p>
+                  </Ellipses>
                 </div>
                 {getCountBadge(
                   getActiveUsers(team.users).length,
