@@ -492,6 +492,7 @@ const MyDataPage = () => {
 
   const onRefreshFeeds = () => {
     getFeedData();
+    setEntityThread([]);
     setActivityFeeds([]);
   };
 
