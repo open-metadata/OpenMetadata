@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData, SlackChatConfig } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -27,7 +27,11 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
+import {
+  fetchSandboxConfig,
+  fetchSlackConfig,
+  searchData,
+} from '../../axiosAPIs/miscAPI';
 import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
@@ -38,6 +42,7 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
+import SlackChat from '../../components/SlackChat/SlackChat';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import {
@@ -73,8 +78,8 @@ const MyDataPage = () => {
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
-  const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
-  const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
+  const [ownedData, setOwnedData] = useState<Array<FormattedTableData>>();
+  const [followedData, setFollowedData] = useState<Array<FormattedTableData>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
@@ -82,6 +87,7 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
+  const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
 
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
@@ -411,7 +417,7 @@ const MyDataPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const fetchOMDMode = () => {
+  const fetchSandboxMode = () => {
     fetchSandboxConfig()
       .then((res) => {
         if (res.data) {
@@ -426,6 +432,28 @@ const MyDataPage = () => {
           jsonData['api-error-messages']['unexpected-server-response']
         );
         setIsSandbox(false);
+      });
+  };
+
+  const fetchSlackChatConfig = () => {
+    fetchSlackConfig()
+      .then((res) => {
+        if (res.data) {
+          const { apiToken, botName, channels } = res.data;
+          const slackConfig = {
+            apiToken,
+            botName,
+            channels,
+          };
+          setSlackConfig(slackConfig);
+        } else {
+          throw '';
+        }
+      })
+      .catch((err: AxiosError) => {
+        // eslint-disable-next-line no-console
+        console.error(err);
+        setSlackConfig(undefined);
       });
   };
 
@@ -446,7 +474,8 @@ const MyDataPage = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchOMDMode();
+    fetchSandboxMode();
+    fetchSlackChatConfig();
     fetchData(true);
     fetchMyTaskData();
   }, []);
@@ -533,6 +562,9 @@ const MyDataPage = () => {
             onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
+          {slackConfig && slackConfig.apiToken ? (
+            <SlackChat currentUser={currentUser} slackConfig={slackConfig} />
+          ) : null}
         </Fragment>
       ) : (
         <Loader />
