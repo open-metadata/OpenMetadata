@@ -52,8 +52,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import FormModal from '../Modals/FormModal';
-import Form from './Form';
 
 const TeamDetails = ({
   hasAccess,
@@ -64,12 +62,8 @@ const TeamDetails = ({
   currentTeamUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
-  errorNewTeamData,
-  isAddingTeam,
   isTeamMemberLoading,
   handleAddTeam,
-  createNewTeam,
-  onNewTeamDataChange,
   updateTeamHandler,
   onDescriptionUpdate,
   descriptionHandler,
@@ -671,22 +665,6 @@ const TeamDetails = ({
             {' to add new Team'}
           </div>
         </ErrorPlaceHolder>
-      )}
-
-      {isAddingTeam && (
-        <FormModal
-          errorData={errorNewTeamData}
-          form={Form}
-          header="Adding new team"
-          initialData={{
-            name: '',
-            description: '',
-            displayName: '',
-          }}
-          onCancel={() => handleAddTeam(false)}
-          onChange={(data) => onNewTeamDataChange(data as Team)}
-          onSave={(data) => createNewTeam(data as Team)}
-        />
       )}
 
       {deletingUser.state && (
