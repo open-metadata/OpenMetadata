@@ -13,14 +13,14 @@
 
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Dropdown, Layout, Menu, Modal, Tabs } from 'antd';
+import { Button, Card, Dropdown, Layout, Menu, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EditorContentRef, EntityReference } from 'Models';
-import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { EntityReference } from 'Models';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
@@ -40,10 +40,9 @@ import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { TaskOperation } from '../../../constants/feed.constants';
+import { PanelTab, TaskOperation } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import {
@@ -71,7 +70,6 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getDescriptionDiff,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
@@ -79,9 +77,10 @@ import {
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
+import ClosedTask from '../shared/ClosedTask';
 import ColumnDetail from '../shared/ColumnDetail';
-import { DescriptionTabs } from '../shared/DescriptionTabs';
-import { DiffView } from '../shared/DiffView';
+import CommentModal from '../shared/CommentModal';
+import DescriptionTask from '../shared/DescriptionTask';
 import EntityDetail from '../shared/EntityDetail';
 import TagSuggestion from '../shared/TagSuggestion';
 import TaskStatus from '../shared/TaskStatus';
@@ -101,8 +100,6 @@ const TaskDetailPage = () => {
   const { isAuthDisabled } = useAuthContext();
 
   const { taskId } = useParams<{ [key: string]: string }>();
-
-  const markdownRef = useRef<EditorContentRef>();
 
   const [taskDetail, setTaskDetail] = useState<Thread>({} as Thread);
   const [taskFeedDetail, setTaskFeedDetail] = useState<Thread>({} as Thread);
@@ -133,24 +130,25 @@ const TaskDetailPage = () => {
   }, [taskDetail]);
 
   const columnObject = useMemo(() => {
+    // prepare column from entityField
     const column = entityField?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
+
+    // prepare column value by replacing double quotes
     const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
+
+    /**
+     * Get column name by spliting columnValue with FQN Separator
+     */
     const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
 
     return getColumnObject(columnName as string, entityData.columns || []);
   }, [taskDetail, entityData]);
 
-  const isRequestDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.RequestDescription
-  );
-
-  const isUpdateDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.UpdateDescription
-  );
+  // const isRequestTag = isEqual(taskDetail.task?.type, TaskType.RequestTag);
+  // const isUpdateTag = isEqual(taskDetail.task?.type, TaskType.UpdateTag);
 
   const isOwner = isEqual(entityData.owner?.id, currentUser?.id);
+
   const isAssignee = taskDetail.task?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
   );
@@ -164,10 +162,12 @@ const TaskDetailPage = () => {
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
 
+  // TODO: Think for good variable name
   const isTaskDescription = isDescriptionTask(
     taskDetail.task?.type as TaskType
   );
 
+  // TODO: Think for good variable name
   const isTaskTags = isTagsTask(taskDetail.task?.type as TaskType);
 
   const fetchTaskDetail = () => {
@@ -299,6 +299,7 @@ const TaskDetailPage = () => {
     setEditAssignee(false);
   };
 
+  // TODO: Think for tags task
   const onTaskResolve = () => {
     if (suggestion) {
       const data = { newValue: suggestion };
@@ -376,6 +377,7 @@ const TaskDetailPage = () => {
     updateThreadData(threadId, postId, isThread, data, callback);
   };
 
+  // prepare current description for update description task
   const currentDescription = () => {
     if (entityField && !isEmpty(columnObject)) {
       return columnObject.description || '';
@@ -384,24 +386,47 @@ const TaskDetailPage = () => {
     }
   };
 
+  // handle assignees search
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
   };
 
+  // handle sider tab change
   const onTabChange = (key: string) => {
-    if (isEqual(key, '1')) {
+    if (isEqual(key, PanelTab.TASKS)) {
       fetchTaskFeed(taskDetail.id);
     }
   };
 
+  // handle task action change
   const onTaskActionChange = (key: string) => {
     setTaskAction(
       TASK_ACTION_LIST.find((action) => isEqual(action.key, key)) as TaskAction
     );
   };
 
+  /**
+   *
+   * @param taskSuggestion suggestion value
+   * Based on task type set's the suggestion for task
+   */
+  const setTaskSuggestionOnRender = (taskSuggestion: string | undefined) => {
+    if (isTaskTags) {
+      const tagsSuggestion = JSON.parse(taskSuggestion || '[]');
+      isEmpty(tagsSuggestion) && setTaskAction(TASK_ACTION_LIST[1]);
+      setTagsSuggestion(tagsSuggestion);
+    } else {
+      if (!taskSuggestion) {
+        setTaskAction(TASK_ACTION_LIST[1]);
+      }
+      setSuggestion(taskSuggestion || '');
+    }
+  };
+
+  // handle task details change
   const onTaskDetailChange = () => {
     if (!isEmpty(taskDetail)) {
+      // get entityFQN and fetch entity data
       const entityFQN = getEntityFQN(taskDetail.about);
 
       entityFQN &&
@@ -412,8 +437,8 @@ const TaskDetailPage = () => {
         );
       fetchTaskFeed(taskDetail.id);
 
+      // set task assignees
       const taskAssignees = taskDetail.task?.assignees || [];
-      const taskSuggestion = taskDetail.task?.suggestion;
       if (taskAssignees.length) {
         const assigneesArr = taskAssignees.map((assignee) => ({
           label: assignee.name as string,
@@ -424,16 +449,8 @@ const TaskDetailPage = () => {
         setOptions(assigneesArr);
       }
 
-      if (isTaskTags) {
-        const tagsSuggestion = JSON.parse(taskSuggestion || '[]');
-        isEmpty(tagsSuggestion) && setTaskAction(TASK_ACTION_LIST[1]);
-        setTagsSuggestion(tagsSuggestion);
-      } else {
-        if (!taskSuggestion) {
-          setTaskAction(TASK_ACTION_LIST[1]);
-        }
-        setSuggestion(taskSuggestion || '');
-      }
+      // set task suggestion on render
+      setTaskSuggestionOnRender(taskDetail.task?.suggestion);
     }
   };
 
@@ -449,52 +466,18 @@ const TaskDetailPage = () => {
     onTaskDetailChange();
   }, [taskDetail]);
 
-  const getDiffView = () => {
-    const oldValue = taskDetail.task?.oldValue;
-    const newValue = taskDetail.task?.newValue;
-    if (!oldValue && !newValue) {
-      return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Description</span>
-        </div>
-      );
-    } else {
-      return (
-        <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
-          diffArr={getDescriptionDiff(
-            taskDetail?.task?.oldValue || '',
-            taskDetail?.task?.newValue || ''
-          )}
-        />
-      );
-    }
-  };
-
-  const getCurrentDescription = () => {
-    const newDescription = taskDetail?.task?.suggestion;
-    const oldDescription = taskDetail?.task?.oldValue;
-
-    const diffs = getDescriptionDiff(
-      oldDescription || '',
-      newDescription || ''
-    );
-
-    return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
-    ) : (
-      <DiffView className="tw-p-2" diffArr={diffs} />
-    );
-  };
-
-  const onModalClose = () => {
+  // handle comment modal close
+  const onCommentModalClose = () => {
     setModalVisible(false);
     setComment('');
   };
 
-  const hasEditAccess = () => {
-    return isAdminUser || isAuthDisabled || isAssignee || isOwner;
-  };
+  /**
+   *
+   * @returns True if has access otherwise false
+   */
+  const hasEditAccess = () =>
+    isAdminUser || isAuthDisabled || isAssignee || isOwner;
 
   return (
     <Layout style={{ ...background, height: '100vh' }}>
@@ -619,53 +602,14 @@ const TaskDetailPage = () => {
               data-testid="task-data"
               style={{ ...cardStyles, marginTop: '16px', marginLeft: '24px' }}>
               {isTaskDescription && (
-                <div data-testid="task-description-tabs">
-                  <p className="tw-text-grey-muted">Description:</p>{' '}
-                  {!isEmpty(taskDetail) && (
-                    <Fragment>
-                      {isTaskClosed ? (
-                        getDiffView()
-                      ) : (
-                        <div data-testid="description-task">
-                          {isRequestDescription && (
-                            <div data-testid="request-description">
-                              {isTaskActionEdit && hasEditAccess() ? (
-                                <RichTextEditor
-                                  height="208px"
-                                  initialValue={suggestion}
-                                  placeHolder="Add description"
-                                  style={{ marginTop: '0px' }}
-                                  onTextChange={onSuggestionChange}
-                                />
-                              ) : (
-                                <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                  {getCurrentDescription()}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {isUpdateDescription && (
-                            <div data-testid="update-description">
-                              {isTaskActionEdit && hasEditAccess() ? (
-                                <DescriptionTabs
-                                  description={currentDescription()}
-                                  markdownRef={markdownRef}
-                                  suggestion={suggestion}
-                                  onChange={onSuggestionChange}
-                                />
-                              ) : (
-                                <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                  {getCurrentDescription()}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Fragment>
-                  )}
-                </div>
+                <DescriptionTask
+                  currentDescription={currentDescription()}
+                  hasEditAccess={hasEditAccess()}
+                  isTaskActionEdit={isTaskActionEdit}
+                  suggestion={suggestion}
+                  taskDetail={taskDetail}
+                  onSuggestionChange={onSuggestionChange}
+                />
               )}
 
               {isTaskTags && (
@@ -722,57 +666,16 @@ const TaskDetailPage = () => {
                 </div>
               )}
 
-              {isTaskClosed && (
-                <div className="tw-flex" data-testid="task-closed">
-                  <UserPopOverCard userName={taskDetail?.task?.closedBy || ''}>
-                    <span className="tw-flex">
-                      <ProfilePicture
-                        displayName={taskDetail?.task?.closedBy}
-                        id=""
-                        name={taskDetail?.task?.closedBy || ''}
-                        width="20"
-                      />
-                      <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1">
-                        {taskDetail?.task?.closedBy}
-                      </span>{' '}
-                    </span>
-                  </UserPopOverCard>
-                  <span className="tw-ml-1"> closed this task </span>
-                  <span className="tw-ml-1">
-                    {toLower(
-                      getDayTimeByTimeStamp(
-                        taskDetail?.task?.closedAt as number
-                      )
-                    )}
-                  </span>
-                </div>
-              )}
+              {isTaskClosed && <ClosedTask task={taskDetail.task} />}
             </Card>
-            <Modal
-              centered
-              destroyOnClose
-              cancelButtonProps={{
-                type: 'link',
-                className: 'ant-btn-link-custom',
-              }}
-              okButtonProps={{
-                disabled: !comment,
-                className: 'ant-btn-primary-custom',
-              }}
-              okText="Close with comment"
-              title={`Close Task #${taskDetail.task?.id} ${taskDetail.message}`}
-              visible={modalVisible}
-              width={700}
-              onCancel={onModalClose}
-              onOk={onTaskReject}>
-              <RichTextEditor
-                height="208px"
-                initialValue={comment}
-                placeHolder="Add comment"
-                style={{ marginTop: '0px' }}
-                onTextChange={setComment}
-              />
-            </Modal>
+            <CommentModal
+              comment={comment}
+              isVisible={modalVisible}
+              setComment={setComment}
+              taskDetail={taskDetail}
+              onClose={onCommentModalClose}
+              onConfirm={onTaskReject}
+            />
           </Content>
 
           <Sider
@@ -780,7 +683,7 @@ const TaskDetailPage = () => {
             data-testid="task-right-sider"
             width={600}>
             <Tabs className="ant-tabs-custom-line" onChange={onTabChange}>
-              <TabPane key="1" tab="Task">
+              <TabPane key={PanelTab.TASKS} tab="Task">
                 {!isEmpty(taskFeedDetail) ? (
                   <div id="task-feed">
                     <FeedPanelBody
@@ -797,7 +700,7 @@ const TaskDetailPage = () => {
                 ) : null}
               </TabPane>
 
-              <TabPane key="2" tab="Conversations">
+              <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
                 {!isEmpty(taskFeedDetail) ? (
                   <ActivityThreadPanelBody
                     className="tw-p-0"
