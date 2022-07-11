@@ -27,7 +27,7 @@ WORKDIR /ingestion
 COPY ingestion /ingestion
 
 ARG INGESTION_DEPENDENCY=all
-RUN pip install ".[airflow-container,elasticsearch,mysql]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 
 RUN airflow db init
