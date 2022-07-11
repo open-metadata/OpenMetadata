@@ -39,7 +39,7 @@ import {
 } from '../constants/regex.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { Ownership } from '../enums/mydata.enum';
-import { ThreadType } from '../generated/entity/feed/thread';
+import { ThreadTaskStatus, ThreadType } from '../generated/entity/feed/thread';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import jsonData from '../jsons/en';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
@@ -650,13 +650,13 @@ export const getFeedCounts = (
   taskCallback: (value: React.SetStateAction<EntityFieldThreadCount[]>) => void,
   entityCallback: (value: React.SetStateAction<number>) => void
 ) => {
+  // To get conversation count
   getFeedCount(
     getEntityFeedLink(entityType, entityFQN),
     ThreadType.Conversation
   )
     .then((res: AxiosResponse) => {
       if (res.data) {
-        entityCallback(res.data.totalCount);
         conversationCallback(res.data.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
@@ -669,11 +669,31 @@ export const getFeedCounts = (
       );
     });
 
-  getFeedCount(getEntityFeedLink(entityType, entityFQN), ThreadType.Task)
+  // To get open tasks count
+  getFeedCount(
+    getEntityFeedLink(entityType, entityFQN),
+    ThreadType.Task,
+    ThreadTaskStatus.Open
+  )
+    .then((res: AxiosResponse) => {
+      if (res.data) {
+        taskCallback(res.data.counts);
+      } else {
+        throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
+      }
+    })
+    .catch((err: AxiosError) => {
+      showErrorToast(
+        err,
+        jsonData['api-error-messages']['fetch-entity-feed-count-error']
+      );
+    });
+
+  // To get all thread count (task + conversation)
+  getFeedCount(getEntityFeedLink(entityType, entityFQN))
     .then((res: AxiosResponse) => {
       if (res.data) {
         entityCallback(res.data.totalCount);
-        taskCallback(res.data.counts);
       } else {
         throw jsonData['api-error-messages']['fetch-entity-feed-count-error'];
       }

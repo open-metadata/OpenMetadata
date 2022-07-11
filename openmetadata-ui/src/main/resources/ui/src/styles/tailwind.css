@@ -496,7 +496,7 @@
 
   /* New Feed Button style */
   .tw-refreshButton {
-    @apply tw-w-full tw-rounded tw-text-info tw-w-full tw-py-1 tw-rounded tw-bg-feed-background tw-border tw-border-feed hover:tw-bg-feed-hover;
+    @apply tw-w-full tw-rounded tw-text-info tw-py-1 tw-bg-feed-background tw-border tw-border-feed hover:tw-bg-feed-hover;
     box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.1);
     transition: background-color 100ms linear;
   }
@@ -509,5 +509,9 @@
     color: white;
     top: 0.4rem;
     left: 1.3rem;
+  }
+
+  .tw-max-w-75 {
+    max-width: 75%;
   }
 }

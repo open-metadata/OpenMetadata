@@ -216,3 +216,12 @@ export const getAdvancedFieldOptions = (
 
   return APIClient.get(`/search/suggest`, { params });
 };
+
+export const getEntityCount = (
+  path: string,
+  database?: string
+): Promise<AxiosResponse> => {
+  const params = { database, limit: 0 };
+
+  return APIClient.get(`/${path}`, { params });
+};

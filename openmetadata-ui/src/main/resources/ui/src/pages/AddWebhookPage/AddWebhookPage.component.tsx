@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -43,12 +43,16 @@ const AddWebhookPage: FunctionComponent = () => {
   const handleSave = (data: CreateWebhook) => {
     setStatus('waiting');
     addWebhook(data)
-      .then(() => {
-        setStatus('success');
-        setTimeout(() => {
-          setStatus('initial');
-          goToWebhooks();
-        }, 500);
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          setStatus('success');
+          setTimeout(() => {
+            setStatus('initial');
+            goToWebhooks();
+          }, 500);
+        } else {
+          throw jsonData['api-error-messages']['unexpected-error'];
+        }
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['unexpected-error']);

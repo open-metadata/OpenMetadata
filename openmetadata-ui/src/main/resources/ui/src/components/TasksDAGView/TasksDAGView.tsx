@@ -19,6 +19,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'react-flow-renderer';
+import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName, replaceSpaceWith_ } from '../../utils/CommonUtils';
@@ -36,12 +37,16 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   const [edgesData, setEdgesData, onEdgesChange] = useEdgesState([]);
 
   const getNodeType = useCallback(
-    (index: number) => {
-      return index === 0
-        ? 'input'
-        : index === tasks.length - 1
-        ? 'output'
-        : 'default';
+    (task: Task) => {
+      const isDownStreamTask = tasks.some((taskData) =>
+        taskData.downstreamTasks?.includes(task.name)
+      );
+
+      if (isDownStreamTask) {
+        return EntityLineageNodeType.OUTPUT;
+      } else {
+        return EntityLineageNodeType.DEFAULT;
+      }
     },
     [tasks]
   );
@@ -56,7 +61,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
   );
 
   useEffect(() => {
-    const nodes = tasks.map((task, index) => {
+    const nodes = tasks.map((task) => {
       const taskStatus = getTaskExecStatus(
         task.name,
         selectedExec?.taskStatus || []
@@ -65,11 +70,12 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       return {
         className: classNames('leaf-node', taskStatus),
         id: replaceSpaceWith_(task.name),
-        type: getNodeType(index),
+        type: getNodeType(task),
         data: {
           label: getEntityName(task as EntityReference),
         },
         position: { x: 0, y: 0 },
+        isConnectable: false,
       };
     });
 

@@ -47,10 +47,11 @@ def _(elements, compiler, **kwargs):
     return "median(%s)" % col
 
 
+@compiles(MedianFn, Dialects.Trino)
 @compiles(MedianFn, Dialects.Presto)
 def _(elements, compiler, **kwargs):
     col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "approx_percentile(%s, 0.5, 0.99)" % col
+    return "approx_percentile(%s, 0.5)" % col
 
 
 @compiles(MedianFn, Dialects.SQLite)
