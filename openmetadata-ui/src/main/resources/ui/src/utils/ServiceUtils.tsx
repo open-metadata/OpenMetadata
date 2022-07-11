@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   Bucket,
@@ -23,6 +23,7 @@ import {
   ServiceTypes,
 } from 'Models';
 import React from 'react';
+import { getEntityCount } from '../axiosAPIs/miscAPI';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import {
   addMetadataIngestionGuide,
@@ -32,6 +33,7 @@ import {
   addUsageIngestionGuide,
 } from '../constants/service-guide.constant';
 import {
+  AIRBYTE,
   AIRFLOW,
   arrServiceTypes,
   ATHENA,
@@ -77,6 +79,7 @@ import {
 } from '../constants/services.const';
 import { ServiceCategory } from '../enums/service.enum';
 import { ConnectionType } from '../generated/api/services/ingestionPipelines/testServiceConnection';
+import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -84,6 +87,7 @@ import { PipelineType as IngestionPipelineType } from '../generated/entity/servi
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { ServiceResponse } from '../interface/service.interface';
+import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
@@ -185,6 +189,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case PipelineServiceType.Airflow:
       return AIRFLOW;
+
+    case PipelineServiceType.Airbyte:
+      return AIRBYTE;
 
     case MlModelServiceType.Mlflow:
       return MLFLOW;
@@ -591,4 +598,46 @@ export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   }
 
   return [serviceCat, 'service'].join(' ');
+};
+
+export const setServiceSchemaCount = (
+  data: Database[],
+  callback: (value: React.SetStateAction<number>) => void
+) => {
+  const promises = data.map((database) =>
+    getEntityCount('databaseSchemas', database.fullyQualifiedName)
+  );
+
+  Promise.allSettled(promises)
+    .then((results) => {
+      let count = 0;
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          count += result.value.data?.paging?.total || 0;
+        }
+      });
+      callback(count);
+    })
+    .catch((err: AxiosError) => showErrorToast(err));
+};
+
+export const setServiceTableCount = (
+  data: Database[],
+  callback: (value: React.SetStateAction<number>) => void
+) => {
+  const promises = data.map((database) =>
+    getEntityCount('tables', database.fullyQualifiedName)
+  );
+
+  Promise.allSettled(promises)
+    .then((results) => {
+      let count = 0;
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          count += result.value.data?.paging?.total || 0;
+        }
+      });
+      callback(count);
+    })
+    .catch((err: AxiosError) => showErrorToast(err));
 };

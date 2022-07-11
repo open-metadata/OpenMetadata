@@ -283,7 +283,16 @@ const TeamsAndUsersPage = () => {
             setCurrentTeam(res.data.data[0]);
             setIsRightPanelLoading(false);
           } else {
-            setCurrentTeam({} as Team);
+            const team = res.data.data.find(
+              (t: Team) =>
+                t.name === teamAndUser || t.displayName === teamAndUser
+            );
+            if (!isUndefined(team)) {
+              getCurrentTeamUsers(team.name);
+              setCurrentTeam(team);
+            } else {
+              setCurrentTeam({} as Team);
+            }
           }
           setTeams(res.data.data);
           AppState.updateUserTeam(res.data.data);

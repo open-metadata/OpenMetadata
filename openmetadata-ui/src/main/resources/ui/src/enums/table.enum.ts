@@ -16,6 +16,7 @@ export enum ConstraintTypes {
   NULL = 'NULL',
   NOT_NULL = 'NOT_NULL',
   UNIQUE = 'UNIQUE',
+  FOREIGN_KEY = 'FOREIGN_KEY',
 }
 
 export enum PrimaryTableDataTypes {

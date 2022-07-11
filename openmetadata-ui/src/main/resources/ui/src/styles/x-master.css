@@ -1004,14 +1004,6 @@ code {
   background-color: transparent;
 }
 
-@media only screen and (min-width: 2000px) {
-  .centered-layout {
-    margin-left: auto;
-    margin-right: auto;
-    width: auto;
-  }
-}
-
 .ant-card-body {
   padding: 14px;
 }
@@ -1347,4 +1339,14 @@ div.ant-typography-ellipsis-custom {
 
 .table-query-editor pre.CodeMirror-line {
   padding-right: 60px !important;
+}
+
+/* antd switch css */
+.ant-switch-checked {
+  background: #7147e8;
+}
+/* antd switch css */
+
+.ant-empty-tasks {
+  margin-top: 32px;
 }

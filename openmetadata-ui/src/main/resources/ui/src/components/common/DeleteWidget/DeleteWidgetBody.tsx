@@ -13,6 +13,7 @@
 
 import React from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../../constants/constants';
+import Ellipses from '../Ellipses/Ellipses';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 
 type DeleteWidgetBodyProps = {
@@ -35,13 +36,15 @@ const DeleteWidgetBody = ({
   return (
     <div className="tw-flex tw-justify-between tw-px-5 tw-py-3">
       <div data-testid="danger-zone-text">
-        <p
-          className="tw-text-sm tw-mb-1 tw-font-medium"
-          data-testid="danger-zone-text-title">
+        <Ellipses
+          tooltip
+          className="tw-text-sm tw-mb-1 tw-font-medium tw-w-120"
+          data-testid="danger-zone-text-title"
+          rows={1}>
           {header}
-        </p>
+        </Ellipses>
         <p
-          className="tw-text-grey-muted tw-text-xs"
+          className="tw-text-grey-muted tw-text-xs tw-break-all"
           data-testid="danger-zone-text-para">
           {description}
         </p>

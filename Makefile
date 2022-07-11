@@ -181,4 +181,8 @@ install_antlr_cli:  ## Install antlr CLI locally
 
 .PHONY: docker-docs
 docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata/docs:latest
+
+.PHONY: docker-docs
+docker-docs-local:  ## Runs the OM docs in docker with a local image
 	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images -v ${PWD}/openmetadata-docs/ingestion:/docs/public/ingestion openmetadata-docs:local

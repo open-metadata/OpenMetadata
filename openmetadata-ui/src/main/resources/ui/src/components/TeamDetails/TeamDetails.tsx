@@ -43,6 +43,7 @@ import { filterEntityAssets, getInfoElements } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
+import Ellipses from '../common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -51,8 +52,6 @@ import TabsPane from '../common/TabsPane/TabsPane';
 import Loader from '../Loader/Loader';
 import ManageTab from '../ManageTab/ManageTab.component';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
-import FormModal from '../Modals/FormModal';
-import Form from './Form';
 
 const TeamDetails = ({
   hasAccess,
@@ -63,12 +62,8 @@ const TeamDetails = ({
   currentTeamUserPage,
   teamUsersSearchText,
   isDescriptionEditable,
-  errorNewTeamData,
-  isAddingTeam,
   isTeamMemberLoading,
   handleAddTeam,
-  createNewTeam,
-  onNewTeamDataChange,
   updateTeamHandler,
   onDescriptionUpdate,
   descriptionHandler,
@@ -516,9 +511,7 @@ const TeamDetails = ({
 
   const getTeamHeading = () => {
     return (
-      <div
-        className="tw-heading tw-text-link tw-text-base tw-truncate tw-w-120"
-        title={heading}>
+      <div className="tw-heading tw-text-link tw-text-base">
         {isHeadingEditing ? (
           <div className="tw-flex tw-items-center tw-gap-1">
             <input
@@ -553,8 +546,10 @@ const TeamDetails = ({
             </div>
           </div>
         ) : (
-          <div className="tw-flex tw-group">
-            <span data-testid="team-heading">{heading}</span>
+          <div className="tw-flex tw-group" data-testid="team-heading">
+            <Ellipses tooltip className="tw-w-120" rows={1}>
+              {heading}
+            </Ellipses>
             {isActionAllowed() && (
               <div className={classNames('tw-w-5 tw-min-w-max')}>
                 <NonAdminAction
@@ -670,22 +665,6 @@ const TeamDetails = ({
             {' to add new Team'}
           </div>
         </ErrorPlaceHolder>
-      )}
-
-      {isAddingTeam && (
-        <FormModal
-          errorData={errorNewTeamData}
-          form={Form}
-          header="Adding new team"
-          initialData={{
-            name: '',
-            description: '',
-            displayName: '',
-          }}
-          onCancel={() => handleAddTeam(false)}
-          onChange={(data) => onNewTeamDataChange(data as Team)}
-          onSave={(data) => createNewTeam(data as Team)}
-        />
       )}
 
       {deletingUser.state && (

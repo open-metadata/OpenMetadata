@@ -88,10 +88,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const logout = () => {
       setLoadingIndicator(true);
       setIsAuthenticated(false);
-      localStorage.removeItem(
-        `oidc.user:${userConfig.authority}:${userConfig.client_id}`
-      );
+      userManager.removeUser();
       onLogoutSuccess();
+    };
+
+    // Performs silent signIn and returns with IDToken
+    const signInSilently = async () => {
+      return userManager.signinSilent().then((user) => user.id_token);
     };
 
     useImperativeHandle(ref, () => ({
@@ -102,62 +105,72 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       renewIdToken() {
-        return Promise.resolve('');
+        return signInSilently();
       },
     }));
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
 
-    return (
-      <Fragment>
-        {!loading ? (
-          <>
-            <Appbar />
-            <Switch>
-              <Route exact path={ROUTES.HOME}>
-                {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
-                  <Redirect to={ROUTES.SIGNIN} />
-                ) : (
-                  <Redirect to={ROUTES.MY_DATA} />
-                )}
-              </Route>
-              <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-              {!isSigningIn ? (
-                <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-              ) : null}
-              <Route
-                path={ROUTES.CALLBACK}
-                render={() => (
-                  <>
-                    <Callback
-                      userManager={userManager}
-                      onError={(error) => {
-                        showErrorToast(error?.message);
-                        onLoginFailure();
-                      }}
-                      onSuccess={(user) => {
-                        localStorage.setItem(oidcTokenKey, user.id_token);
-                        setIsAuthenticated(true);
-                        onLoginSuccess(user as OidcUser);
-                      }}
-                    />
-                    <Loader />
-                  </>
-                )}
-              />
-              {isAuthenticated || isAuthDisabled ? (
-                <Fragment>{children}</Fragment>
-              ) : !isSigningIn && isEmpty(userDetails) && isEmpty(newUser) ? (
-                <Redirect to={ROUTES.SIGNIN} />
-              ) : (
-                <AppWithAuth />
-              )}
-            </Switch>
-          </>
-        ) : (
-          <Loader />
-        )}
-      </Fragment>
+    return !loading ? (
+      <>
+        <Appbar />
+        <Switch>
+          <Route exact path={ROUTES.HOME}>
+            {!isAuthDisabled && !isAuthenticated && !isSigningIn ? (
+              <Redirect to={ROUTES.SIGNIN} />
+            ) : (
+              <Redirect to={ROUTES.MY_DATA} />
+            )}
+          </Route>
+          <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+          {!isSigningIn ? (
+            <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+          ) : null}
+          <Route
+            path={ROUTES.CALLBACK}
+            render={() => (
+              <>
+                <Callback
+                  userManager={userManager}
+                  onError={(error) => {
+                    showErrorToast(error?.message);
+                    onLoginFailure();
+                  }}
+                  onSuccess={(user) => {
+                    localStorage.setItem(oidcTokenKey, user.id_token);
+                    setIsAuthenticated(true);
+                    onLoginSuccess(user as OidcUser);
+                  }}
+                />
+                <Loader />
+              </>
+            )}
+          />
+          <Route
+            path={ROUTES.SILENT_CALLBACK}
+            render={() => (
+              <>
+                <Callback
+                  userManager={userManager}
+                  onSuccess={(user) => {
+                    localStorage.setItem(oidcTokenKey, user.id_token);
+                  }}
+                />
+                <Loader />
+              </>
+            )}
+          />
+          {isAuthenticated || isAuthDisabled ? (
+            <Fragment>{children}</Fragment>
+          ) : !isSigningIn && isEmpty(userDetails) && isEmpty(newUser) ? (
+            <Redirect to={ROUTES.SIGNIN} />
+          ) : (
+            <AppWithAuth />
+          )}
+        </Switch>
+      </>
+    ) : (
+      <Loader />
     );
   }
 );

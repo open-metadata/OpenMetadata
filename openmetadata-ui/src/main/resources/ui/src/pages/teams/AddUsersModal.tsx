@@ -14,6 +14,7 @@
 import { toLower } from 'lodash';
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
+import Ellipses from '../../components/common/Ellipses/Ellipses';
 import Searchbar from '../../components/common/searchbar/Searchbar';
 import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import { getEntityName } from '../../utils/CommonUtils';
@@ -96,10 +97,10 @@ const AddUsersModal = ({
     <dialog className="tw-modal " data-testid="modal-container">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
-        <div className="tw-modal-header">
-          <p className="tw-modal-title" data-testid="header">
+        <div className="tw-modal-header" data-testid="header">
+          <Ellipses tooltip className="tw-modal-title">
             {header}
-          </p>
+          </Ellipses>
         </div>
         <div className="tw-modal-body">
           <Searchbar

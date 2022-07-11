@@ -31,6 +31,7 @@ import {
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import Description from '../../components/common/description/Description';
+import Ellipses from '../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
@@ -50,11 +51,13 @@ import {
 } from '../../generated/api/tags/createTagCategory';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
+import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import {
   getActiveCatClass,
   getCountBadge,
+  getEntityName,
   isEven,
   isUrlFriendlyName,
 } from '../../utils/CommonUtils';
@@ -448,9 +451,13 @@ const TagsPage = () => {
                 onClick={() => {
                   fetchCurrentCategory(category.name);
                 }}>
-                <p className="tw-text-center tw-self-center tag-category label-category">
-                  {category.displayName ?? category.name}
-                </p>
+                <Ellipses
+                  tooltip
+                  className="tag-category label-category tw-self-center tw-w-32"
+                  data-testid="tag-name"
+                  rows={1}>
+                  {getEntityName(category as unknown as EntityReference)}
+                </Ellipses>
 
                 {getCountBadge(
                   currentCategory?.name === category.name
