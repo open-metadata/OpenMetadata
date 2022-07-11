@@ -13,6 +13,7 @@ from typing import Iterable
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine import reflection
+from sqlalchemy.sql import text
 
 from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
@@ -62,6 +63,32 @@ def get_view_names(self, connection, schema, **kw):
 
 
 @reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    schema = schema or self.default_schema_name
+    if schema:
+        cursor = connection.execute(
+            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
+            "LIKE '{0}' IN {1}".format(view_name, schema)
+        )
+    else:
+        cursor = connection.execute(
+            "SHOW /* sqlalchemy:get_view_definition */ VIEWS "
+            "LIKE '{0}'".format(view_name)
+        )
+    n2i = self.__class__._map_name_to_idx(cursor)
+    try:
+        ret = cursor.fetchone()
+        if ret:
+            return ret[n2i["text"]]
+    except Exception:
+        pass
+    return None
+
+
+@reflection.cache
 def get_table_comment(self, connection, table_name, schema_name, **kw):
     """
     Returns comment of table.
@@ -87,6 +114,7 @@ SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
+SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
 
 
