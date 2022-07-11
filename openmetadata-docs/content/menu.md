@@ -87,6 +87,10 @@ site_menu:
     url: /deployment/security/okta/kubernetes
   - category: Deployment / Enable Security / Enable SSL
     url: /deployment/security/enable-ssl
+  - category: Deployment / Enable Security / Enable SSL / Use Nginx
+    url: /deployment/security/enable-ssl/nginx
+  - category: Deployment / Enable Security / Enable SSL / Use the OpenMetadata Server
+    url: /deployment/security/enable-ssl/openmetadata-server
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
 
