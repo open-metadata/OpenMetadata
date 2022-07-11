@@ -93,20 +93,11 @@ export interface TeamDetailsProp {
   isDescriptionEditable: boolean;
   isTeamMemberLoading: boolean;
   hasAccess: boolean;
-  errorNewTeamData: FormErrorData | undefined;
-  isAddingTeam: boolean;
   handleAddTeam: (value: boolean) => void;
-  onNewTeamDataChange: (
-    data: Team,
-    forceSet?: boolean
-  ) => {
-    [key: string]: string;
-  };
   descriptionHandler: (value: boolean) => void;
   onDescriptionUpdate: (value: string) => void;
   handleTeamUsersSearchAction: (text: string) => void;
   updateTeamHandler: (data: Team) => Promise<void>;
-  createNewTeam: (data: Team) => void;
   teamUserPaginHandler: (
     cursorValue: string | number,
     activePage?: number
