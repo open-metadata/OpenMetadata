@@ -92,13 +92,15 @@ const CreateUserPage = () => {
 
   return (
     <PageContainerV1>
-      <CreateUserComponent
-        allowAccess={isAdminUser || isAuthDisabled}
-        roles={roles}
-        saveState={status}
-        onCancel={handleCancel}
-        onSave={handleAddUserSave}
-      />
+      <div className="tw-self-center">
+        <CreateUserComponent
+          allowAccess={isAdminUser || isAuthDisabled}
+          roles={roles}
+          saveState={status}
+          onCancel={handleCancel}
+          onSave={handleAddUserSave}
+        />
+      </div>
     </PageContainerV1>
   );
 };

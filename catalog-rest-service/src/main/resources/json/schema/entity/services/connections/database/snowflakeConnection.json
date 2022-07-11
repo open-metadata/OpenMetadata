@@ -106,5 +106,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account", "password", "warehouse"]
+  "required": ["username", "account", "warehouse"]
 }

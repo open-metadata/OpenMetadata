@@ -18,10 +18,10 @@ describe('Tags page should work', () => {
   beforeEach(() => {
     cy.goToHomePage();
     cy.get(
-        '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
-      )
-        .should('be.visible')
-        .click();
+      '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
+    )
+      .should('be.visible')
+      .click();
     cy.get('[data-testid="menu-item-Tags"]').should('be.visible').click();
     // cy.get('[data-testid="appbar-item-tags"]').should('be.visible').click();
   });
@@ -113,20 +113,19 @@ describe('Tags page should work', () => {
         expect(text).to.equal('2');
       });
 
-    // Todo: skipping for now as it flaky on CI
-    // cy.get('@count').click();
+    cy.get('@count').click();
 
-    // cy.wait(500);
-    // cy.get('[data-testid="table-data-card"]')
-    //   .first()
-    //   .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
-    //   .should('be.visible');
+    cy.wait(500);
+    cy.get('[data-testid="table-data-card"]')
+      .first()
+      .contains(`#${NEW_TAG_CATEGORY.name}.${NEW_TAG.name}`)
+      .should('be.visible');
 
-    // cy.get('[data-testid="filter-container-TestCategory.test"]')
-    //   .should('be.visible')
-    //   .find('[data-testid="checkbox"]')
-    //   .should('be.visible')
-    //   .should('be.checked');
+    cy.get('[data-testid="filter-container-TestCategory.test"]')
+      .should('be.visible')
+      .find('[data-testid="checkbox"]')
+      .should('be.visible')
+      .should('be.checked');
   });
 
   it('Delete tag flow should work properly', () => {
