@@ -99,8 +99,8 @@ class DynamodbSource(DatabaseServiceSource):
         """
         return schema names
         """
-        if self.service_connection.__dict__.get("databaseSchema"):
-            yield self.service_connection.databaseSchema
+        database_schema_name = "default"
+        yield database_schema_name
 
     def yield_database_schema(
         self, schema_name: str
@@ -126,7 +126,7 @@ class DynamodbSource(DatabaseServiceSource):
         """
         schema_name = self.context.database_schema.name.__root__
         if self.source_config.includeTables:
-            tables = list(self.dynamodb.tables.all())
+            tables = self.dynamodb.tables.all()
             for table in tables:
                 if filter_by_table(
                     self.source_config.tableFilterPattern, table_name=table.name
