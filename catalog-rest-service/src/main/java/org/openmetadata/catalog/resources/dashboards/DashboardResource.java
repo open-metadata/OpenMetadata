@@ -352,7 +352,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dao.addFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -374,7 +374,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dao.deleteFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 

@@ -348,7 +348,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return dao.addFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -370,7 +370,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return dao.deleteFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 

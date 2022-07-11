@@ -399,7 +399,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return dao.addFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -499,7 +499,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "string")) @PathParam("id") String id,
       @Parameter(description = "Id of the location to be added", schema = @Schema(type = "string")) String locationId)
       throws IOException {
-    Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(EntityUtil.manageEntityId(locationId)));
+    Table table = dao.addLocation(UUID.fromString(id), UUID.fromString(EntityUtil.formatUID(locationId)));
     return Response.ok().entity(table).build();
   }
 
@@ -729,7 +729,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return dao.deleteFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 

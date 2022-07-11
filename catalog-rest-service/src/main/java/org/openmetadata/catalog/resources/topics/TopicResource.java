@@ -379,7 +379,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return dao.addFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -406,7 +406,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return dao.deleteFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 

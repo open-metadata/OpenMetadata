@@ -308,7 +308,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return dao.addFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
@@ -336,7 +336,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return dao.deleteFollower(
             securityContext.getUserPrincipal().getName(),
             UUID.fromString(id),
-            UUID.fromString(EntityUtil.manageEntityId(userId)))
+            UUID.fromString(EntityUtil.formatUID(userId)))
         .toResponse();
   }
 
