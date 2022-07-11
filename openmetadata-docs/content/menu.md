@@ -403,6 +403,8 @@ site_menu:
     url: /developers/open-source-community
   - category: Developers / Contribute
     url: /developers/contribute
+  - category: Developers / Build the Code and Run Tests
+    url: /developers/build-code-and-run-tests
   - category: Developers / Webhooks
     url: /developers/webhooks
 
