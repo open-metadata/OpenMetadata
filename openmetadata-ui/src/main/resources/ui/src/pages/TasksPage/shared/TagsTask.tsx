@@ -11,20 +11,35 @@
  *  limitations under the License.
  */
 
+import { Tag } from 'antd';
+import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import TagSuggestion from './TagSuggestion';
 
 interface TagsTaskProps {
+  isTaskActionEdit: boolean;
   suggestions: TagLabel[];
   setSuggestion: (value: TagLabel[]) => void;
 }
 
-const TagsTask: FC<TagsTaskProps> = ({ suggestions, setSuggestion }) => {
+const TagsTask: FC<TagsTaskProps> = ({
+  suggestions,
+  setSuggestion,
+  isTaskActionEdit,
+}) => {
   return (
     <div data-testid="task-tags-tabs">
       <p className="tw-text-grey-muted">Tags:</p>{' '}
-      <TagSuggestion selectedTags={suggestions} onChange={setSuggestion} />
+      {isTaskActionEdit ? (
+        <TagSuggestion selectedTags={suggestions} onChange={setSuggestion} />
+      ) : (
+        <div className="tw-flex tw-flex-wrap tw-mt-2">
+          {suggestions.map((suggestion) => (
+            <Tag key={uniqueId()}>{suggestion.tagFQN}</Tag>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

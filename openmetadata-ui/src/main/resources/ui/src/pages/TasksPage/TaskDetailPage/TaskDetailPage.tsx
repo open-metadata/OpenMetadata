@@ -162,12 +162,10 @@ const TaskDetailPage = () => {
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
 
-  // TODO: Think for good variable name
   const isTaskDescription = isDescriptionTask(
     taskDetail.task?.type as TaskType
   );
 
-  // TODO: Think for good variable name
   const isTaskTags = isTagsTask(taskDetail.task?.type as TaskType);
 
   const fetchTaskDetail = () => {
@@ -299,10 +297,8 @@ const TaskDetailPage = () => {
     setEditAssignee(false);
   };
 
-  // TODO: Think for tags task
   const onTaskResolve = () => {
-    if (suggestion) {
-      const data = { newValue: suggestion };
+    const updateTaskData = (data: Record<string, string>) => {
       updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
         .then(() => {
           showSuccessToast('Task Resolved Successfully');
@@ -314,10 +310,24 @@ const TaskDetailPage = () => {
           );
         })
         .catch((err: AxiosError) => showErrorToast(err));
+    };
+
+    if (isTaskTags) {
+      if (!isEmpty(tagsSuggestion)) {
+        const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
+        updateTaskData(data);
+      } else {
+        showErrorToast('Cannot accept an empty tag list. Please add a tags.');
+      }
     } else {
-      showErrorToast(
-        'Cannot accept an empty description. Please add a description.'
-      );
+      if (suggestion) {
+        const data = { newValue: suggestion };
+        updateTaskData(data);
+      } else {
+        showErrorToast(
+          'Cannot accept an empty description. Please add a description.'
+        );
+      }
     }
   };
 
@@ -614,6 +624,7 @@ const TaskDetailPage = () => {
 
               {isTaskTags && (
                 <TagsTask
+                  isTaskActionEdit={isTaskActionEdit}
                   setSuggestion={setTagsSuggestion}
                   suggestions={tagsSuggestion}
                 />

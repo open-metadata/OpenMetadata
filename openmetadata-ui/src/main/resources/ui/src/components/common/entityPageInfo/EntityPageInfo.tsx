@@ -297,7 +297,7 @@ const EntityPageInfo = ({
         </button>
       ) : (
         <button
-          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
           data-testid="start-tag-thread"
           onClick={() =>
             onThreadLinkSelect?.(
