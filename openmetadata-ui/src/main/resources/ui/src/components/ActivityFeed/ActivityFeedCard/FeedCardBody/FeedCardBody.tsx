@@ -29,7 +29,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
       <div className={classNames('tw-group', className)}>
         <div className="feed-meesage">
           <RichTextEditorPreviewer
-            className="activity-feed-card-text tw-whitespace-pre-wrap"
+            className="activity-feed-card-text"
             enableSeeMoreVariant={false}
             markdown={getFrontEndFormat(message)}
           />
