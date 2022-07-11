@@ -1350,3 +1350,9 @@ div.ant-typography-ellipsis-custom {
 .ant-empty-tasks {
   margin-top: 32px;
 }
+
+/* Feed text pre tag CSS */
+.activity-feed-card-text pre {
+  white-space: pre-wrap; /* Since CSS 2.1 */
+}
+/* Feed text pre tag CSS */
