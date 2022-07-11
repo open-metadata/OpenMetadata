@@ -316,6 +316,26 @@ site_menu:
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
+  - category: OpenMetadata / Connectors / Pipeline / Airflow
+    url: /openmetadata/connectors/pipeline/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / CLI
+    url: /openmetadata/connectors/pipeline/airflow/cli
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / GCS Composer
+    url: /openmetadata/connectors/pipeline/airflow/gcs
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / Lineage Backend
+    url: /openmetadata/connectors/pipeline/airflow/lineage-backend
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte
+    url: /openmetadata/connectors/pipeline/airbyte
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte / Airflow
+    url: /openmetadata/connectors/pipeline/airbyte/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte / CLI
+    url: /openmetadata/connectors/pipeline/airbyte/cli
+  - category: OpenMetadata / Connectors / Pipeline / Glue
+    url: /openmetadata/connectors/pipeline/glue
+  - category: OpenMetadata / Connectors / Pipeline / Glue / Airflow
+    url: /openmetadata/connectors/pipeline/glue/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Glue / CLI
+    url: /openmetadata/connectors/pipeline/glue/cli
 
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
