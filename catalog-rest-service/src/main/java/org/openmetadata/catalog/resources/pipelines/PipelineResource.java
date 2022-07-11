@@ -63,6 +63,7 @@ import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -380,7 +381,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.manageEntityId(userId)))
         .toResponse();
   }
 
@@ -406,7 +410,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.manageEntityId(userId)))
         .toResponse();
   }
 

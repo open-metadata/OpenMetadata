@@ -379,4 +379,12 @@ public final class EntityUtil {
         .withDescription(tag.getDescription())
         .withSource(Source.TAG);
   }
+
+  public static String manageEntityId(String id) {
+    if (id.startsWith("\"") && id.endsWith("\"")) {
+      return id.replace("\"", "");
+    } else {
+      return id;
+    }
+  }
 }

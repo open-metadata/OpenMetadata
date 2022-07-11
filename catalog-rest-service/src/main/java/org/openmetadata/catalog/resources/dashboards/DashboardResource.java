@@ -60,6 +60,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/dashboards")
@@ -348,7 +349,10 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "string"))
           String userId)
       throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+    return dao.addFollower(
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.manageEntityId(userId)))
         .toResponse();
   }
 
@@ -368,7 +372,9 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
           String userId)
       throws IOException {
     return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
+            securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id),
+            UUID.fromString(EntityUtil.manageEntityId(userId)))
         .toResponse();
   }
 
