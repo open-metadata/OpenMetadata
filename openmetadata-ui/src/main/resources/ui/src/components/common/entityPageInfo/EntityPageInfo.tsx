@@ -17,11 +17,13 @@ import { Popover } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
@@ -34,7 +36,7 @@ import {
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
-import { getRequestTagsPath } from '../../../utils/TasksUtils';
+import { getRequestTagsPath, TASK_ENTITIES } from '../../../utils/TasksUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
@@ -63,7 +65,8 @@ interface Props {
   version?: string;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
+  entityFieldTasks?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
@@ -91,9 +94,11 @@ const EntityPageInfo = ({
   onThreadLinkSelect,
   entityFqn,
   entityType,
+  entityFieldTasks,
 }: Props) => {
   const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
+  const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
     useState<Array<EntityReference>>(followersList);
@@ -277,7 +282,8 @@ const EntityPageInfo = ({
 
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
-      return !isUndefined(tagThread) ? (
+      return !isUndefined(tagThread) &&
+        TASK_ENTITIES.includes(entityType as EntityType) ? (
         <button
           className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
@@ -306,7 +312,7 @@ const EntityPageInfo = ({
     }
   };
 
-  const getRequestTagsElements = () => {
+  const getRequestTagsElements = useCallback(() => {
     const hasTags = !isEmpty(tags);
 
     return onThreadLinkSelect && !hasTags ? (
@@ -324,7 +330,25 @@ const EntityPageInfo = ({
         </Popover>
       </button>
     ) : null;
-  };
+  }, [tags]);
+
+  const getTaskElement = useCallback(() => {
+    return !isUndefined(tagTask) ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="tag-task"
+        onClick={() =>
+          onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
+        }>
+        <span className="tw-flex">
+          <SVGIcons alt="comments" icon={Icons.TASK_ICON} />
+          <span className="tw-ml-1" data-testid="tag-task-count">
+            {tagTask.count}
+          </span>
+        </span>
+      </button>
+    ) : null;
+  }, [tagTask]);
 
   useEffect(() => {
     setEntityFollowers(followersList);
@@ -526,6 +550,7 @@ const EntityPageInfo = ({
             </NonAdminAction>
             <div className="tw--mt-1.5">
               {getRequestTagsElements()}
+              {getTaskElement()}
               {getThreadElements()}
             </div>
           </Fragment>
