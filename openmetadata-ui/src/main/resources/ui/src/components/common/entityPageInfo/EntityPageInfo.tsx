@@ -309,14 +309,14 @@ const EntityPageInfo = ({
   const getRequestTagsElements = () => {
     const hasTags = !isEmpty(tags);
 
-    return onThreadLinkSelect ? (
+    return onThreadLinkSelect && !hasTags ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
         data-testid="request-description"
         onClick={handleRequestTags}>
         <Popover
           destroyTooltipOnHide
-          content={hasTags ? 'Request update tags' : 'Request tags'}
+          content="Request tags"
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
@@ -482,7 +482,7 @@ const EntityPageInfo = ({
               position="bottom"
               trigger="click">
               <div
-                className="tw-inline-block"
+                className="tw-inline-block tw-mr-1"
                 data-testid="tags-wrapper"
                 onClick={() => {
                   // Fetch tags and terms only once
@@ -507,14 +507,9 @@ const EntityPageInfo = ({
                   }}>
                   {tags.length || tier ? (
                     <button
-                      className=" tw-ml-1 focus:tw-outline-none"
+                      className="tw-w-8 tw-h-auto tw-flex-none focus:tw-outline-none"
                       data-testid="edit-button">
-                      <SVGIcons
-                        alt="edit"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="16px"
-                      />
+                      <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
                     </button>
                   ) : (
                     <span>
