@@ -8,8 +8,8 @@ If you are deploying OpenMetadata on Bare Metal, then follow the instructions to
 
 In case you are deploying OpenMetadata on a Docker, then follow the instructions to **Configure OpenMetadata Server using Docker**.
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="configure-openmetadata-server-using-docker.md" %}
+[configure-openmetadata-server-using-docker.md](configure-openmetadata-server-using-docker.md)
 {% endcontent-ref %}
 
 In case you are deploying OpenMetadata on a Kubernetes cluster, then follow the instructions to **Configure OpenMetadata Helm**.

@@ -40,6 +40,22 @@ Please use absolute path for public and private key files that we generated in p
 
 Update JWT\__ISSUER to be the domain where you are running the OpenMetadata server.  Generate UUID64 id to configure JWT\_KEY\_ID. This should be generated once and keep it static even when you are updating the versions. Any change in this id will result in all the tokens issued so far to be invalid._
 
+#### Add public key URIS
+
+```
+authenticationConfiguration:
+  provider: ${AUTHENTICATION_PROVIDER:-no-auth}
+  # This will only be valid when provider type specified is customOidc
+  providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://www.googleapis.com/oauth2/v3/certs]}
+  authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
+  clientId: ${AUTHENTICATION_CLIENT_ID:-""}
+  callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
+```
+
+_add http://localhost:8585/api/v1/config/jwks to publicKeyUrls. You should append to the existing configuration such that your SSO and JWTToken auth verification will work._&#x20;
+
 _Once you configure the above settings, restart OpenMetadata server ._
 
 __
