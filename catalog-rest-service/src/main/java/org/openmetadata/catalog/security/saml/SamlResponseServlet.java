@@ -23,6 +23,7 @@ public class SamlResponseServlet extends HttpServlet {
     try {
       handleResponse(req, resp);
     } catch (Exception e) {
+      logger.error("SamlResponseError :" + e.getMessage());
       throw new RuntimeException(e);
     }
   }
@@ -61,7 +62,7 @@ public class SamlResponseServlet extends HttpServlet {
       if (relayState != null
           && !relayState.isEmpty()
           && !relayState.equals(ServletUtils.getSelfRoutedURLNoQuery(req))) {
-        String url = req.getParameter("RelayState") + "#id_token=" + jwtAuthMechanism.getJWTToken();
+        String url = SamlSettingsHolder.getInstance().getRelayState() + "#id_token=" + jwtAuthMechanism.getJWTToken();
         resp.sendRedirect(url);
       } else {
         if (attributes.isEmpty()) {
