@@ -374,7 +374,7 @@ public class TagResourceTest extends CatalogApplicationTest {
     assertResponseContains(
         () -> updateCategory(USER_TAG_CATEGORY.getName(), create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 25");
+        "name size must be between 2 and 64");
   }
 
   @Test
