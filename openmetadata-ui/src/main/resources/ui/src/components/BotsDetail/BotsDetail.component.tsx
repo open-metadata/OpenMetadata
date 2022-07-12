@@ -296,7 +296,7 @@ const BotsDetail: FC<BotsDetailProp> = ({
       // get the current date timestamp
       const currentTimeStamp = Date.now();
 
-      const isTokenExpired = currentTimeStamp === Number(botsTokenExpiry);
+      const isTokenExpired = currentTimeStamp >= Number(botsTokenExpiry);
 
       // get the token expiry date
       const tokenExpiryDate =
