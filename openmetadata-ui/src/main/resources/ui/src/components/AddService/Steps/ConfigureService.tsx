@@ -29,6 +29,29 @@ const ConfigureService = ({
 }: ConfigureServiceProps) => {
   const markdownRef = useRef<EditorContentRef>();
 
+  const validationErrorMsg = (): string => {
+    if (showError.name) {
+      return 'Service name is required';
+    }
+    if (showError.duplicateName) {
+      return 'Service name already exist.';
+    }
+    if (showError.delimit) {
+      return 'Name with delimiters are not allowed';
+    }
+    if (showError.nameWithSpace) {
+      return 'Name with space are not allowed';
+    }
+    if (showError.nameLength) {
+      return 'Name size must be between 1 and 128';
+    }
+    if (showError.specialChar) {
+      return 'Special characters are not allowed';
+    }
+
+    return '';
+  };
+
   return (
     <div data-testid="configure-service-container">
       <Field>
@@ -46,9 +69,7 @@ const ConfigureService = ({
           value={serviceName}
           onChange={handleValidation}
         />
-
-        {showError.name && errorMsg('Service name is required.')}
-        {showError.duplicateName && errorMsg('Service name already exist.')}
+        {errorMsg(validationErrorMsg())}
       </Field>
       <Field>
         <label className="tw-block tw-form-label" htmlFor="description">
