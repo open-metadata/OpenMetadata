@@ -394,8 +394,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean hardDelete,
       @Parameter(description = "Name of the table", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
       throws IOException {
-    String id = String.valueOf(dao.getByName(uriInfo, fqn, Fields.EMPTY_FIELDS).getId());
-    return delete(uriInfo, securityContext, id, false, hardDelete, ADMIN | BOT);
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete, ADMIN | BOT | OWNER);
   }
 
   @PUT
