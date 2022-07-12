@@ -1,13 +1,12 @@
-import json
 import uuid
 from dataclasses import dataclass, field
 from distutils.command.config import config
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
+import yaml
 from importlib_metadata import SelectableGroups
 
-from metadata.config.common import FQDN_SEPARATOR
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -28,6 +27,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -38,14 +38,22 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.atlas_client import AtlasClient
 from metadata.utils.column_type_parser import ColumnTypeParser
-from metadata.utils.fqn import FQN_SEPARATOR
-from metadata.utils.helpers import (
-    get_database_service_or_create,
-    get_messaging_service_or_create,
-)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+ATLAS_DEFAULT_CONFIG = {
+    "type": "Atlas",
+    "serviceConnection": {
+        "config": {
+            "username": "test",
+            "password": "test",
+            "hostPort": "http://localhost:8088",
+            "type": "Mysql",
+        }
+    },
+    "sourceConfig": {"config": {"tableFilterPattern": {}}},
+}
 
 
 @dataclass
@@ -89,8 +97,8 @@ class AtlasSource(Source):
         if not path.is_file():
             logger.error(f"File not found {self.service_connection.entityTypes}")
             raise FileNotFoundError()
-        f = open(self.service_connection.entityTypes)
-        self.service_connection.entityTypes = json.load(f)
+        with open(self.service_connection.entityTypes, "r") as f:
+            self.service_connection.entityTypes = yaml.load(f, Loader=yaml.SafeLoader)
         self.tables: Dict[str, Any] = {}
         self.topics: Dict[str, Any] = {}
 
@@ -107,14 +115,15 @@ class AtlasSource(Source):
 
     def prepare(self):
         for key in self.service_connection.entityTypes["Table"].keys():
-            self.service = self.get_database_service_or_create(
+            self.service = self.get_database_service(
                 self.config.serviceName,
                 self.service_connection.serviceType,
             )
+
             self.tables[key] = self.atlas_client.list_entities(entityType=key)
         for key in self.service_connection.entityTypes.get("Topic", []):
-            self.message_service = self.metadata.get_service_or_create(
-                entity=MessagingService, config=self.config
+            self.message_service = self.get_message_service(
+                self.config.serviceName, self.service_connection.serviceType
             )
             self.topics[key] = self.atlas_client.list_entities(entityType=key)
 
@@ -170,12 +179,18 @@ class AtlasSource(Source):
                     ]
                     db = self.get_database_entity(db_entity["displayText"])
                     table_name = tbl_attrs["name"]
-                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
                     tbl_description = tbl_attrs["description"]
 
                     tbl_attrs = tbl_entity["attributes"]
                     db_entity = tbl_entity["relationshipAttributes"]["db"]
-
+                    fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.config.serviceName,
+                        database_name=db.name.__root__,
+                        schema_name=db_entity["displayText"],
+                        table_name=table_name,
+                    )
                     om_table_entity = Table(
                         id=uuid.uuid4(),
                         name=table_name,
@@ -242,6 +257,31 @@ class AtlasSource(Source):
             ),
         )
 
+    def create_database_service(self):
+        ATLAS_DEFAULT_CONFIG["serviceName"] = self.config.serviceName
+        config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
+        create_service_entity = self.metadata.get_create_service_from_source(
+            entity=DatabaseService, config=config
+        )
+        logger.info(f"Created Database Service {ATLAS_DEFAULT_CONFIG['serviceName']}")
+        self.service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=ATLAS_DEFAULT_CONFIG["serviceName"]
+        )
+        return create_service_entity
+
+    def create_message_service(self):
+        ATLAS_DEFAULT_CONFIG["serviceName"] = self.config.serviceName
+        config = WorkflowSource.parse_obj(ATLAS_DEFAULT_CONFIG)
+        create_service_entity = self.metadata.get_create_service_from_source(
+            entity=MessagingService, config=config
+        )
+        self.message_service = self.metadata.get_by_name(
+            entity=DatabaseService, fqn=ATLAS_DEFAULT_CONFIG["serviceName"]
+        )
+        logger.info(f"Created Messaging Service {ATLAS_DEFAULT_CONFIG['serviceName']}")
+
+        return create_service_entity
+
     def ingest_lineage(self, source_guid, name) -> Iterable[AddLineageRequest]:
         lineage_response = self.atlas_client.get_lineage(source_guid)
         lineage_relations = lineage_response["relations"]
@@ -260,8 +300,14 @@ class AtlasSource(Source):
             table_name = tbl_entity["referredEntities"][key]["relationshipAttributes"][
                 "table"
             ]["displayText"]
-
-            fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
+            fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.config.serviceName,
+                database_name=db.name.__root__,
+                schema_name=db_entity["displayText"],
+                table_name=table_name,
+            )
             from_entity_ref = self.get_lineage_entity_ref(
                 fqn, self.metadata_config, "table"
             )
@@ -282,7 +328,14 @@ class AtlasSource(Source):
                     table_name = tbl_entity["referredEntities"][key][
                         "relationshipAttributes"
                     ]["table"]["displayText"]
-                    fqn = f"{self.config.service_name}{FQN_SEPARATOR}{db.name.__root__}{FQN_SEPARATOR}{table_name}"
+                    fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.config.serviceName,
+                        database_name=db.name.__root__,
+                        schema_name=db_entity["displayText"],
+                        table_name=table_name,
+                    )
                     to_entity_ref = self.get_lineage_entity_ref(
                         fqn, self.metadata_config, "table"
                     )
@@ -311,24 +364,25 @@ class AtlasSource(Source):
                 return
             return EntityReference(id=pipeline.id.__root__, type="pipeline")
 
-    def get_database_service_or_create(
+    def get_database_service(
         self, service_name: str, service_type: str
     ) -> DatabaseService:
         metadata = OpenMetadata(self.metadata_config)
-        service = metadata.get_by_name(entity=DatabaseService, fqdn=service_name)
+        service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
         if service is not None:
             return service
         else:
-            service = {
-                "name": service_name,
-                "description": "",
-                "serviceType": DatabaseServiceType.BigQuery.value,
-                "connection": {"config": {}},
-            }
-            created_service = metadata.create_or_update(
-                CreateDatabaseServiceRequest(**service)
-            )
-            return created_service
+            return self.create_database_service()
+
+    def get_message_service(
+        self, service_name: str, service_type: str
+    ) -> DatabaseService:
+        metadata = OpenMetadata(self.metadata_config)
+        service = metadata.get_by_name(entity=MessagingService, fqn=service_name)
+        if service is not None:
+            return service
+        else:
+            self.create_message_service()
 
     def test_connection(self) -> None:
         pass
