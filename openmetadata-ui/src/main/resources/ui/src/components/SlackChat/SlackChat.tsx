@@ -16,8 +16,9 @@ import React, { FC } from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
 import { ReactSlackChat } from 'react-slack-chat/dist/react-slack-chat-with-default-hooks';
+import ChannelIcon from '../../assets/img/slackChat/icon-support.svg';
+import UserIcon from '../../assets/img/slackChat/icon-user.svg';
 import { User } from '../../generated/entity/teams/user';
-import './SlackChat.css';
 
 type Props = {
   slackConfig: SlackChatConfig;
@@ -26,8 +27,21 @@ type Props = {
 
 const SlackChat: FC<Props> = ({ slackConfig, currentUser }) => {
   const channels = slackConfig.channels.map((ch) => {
-    return { name: ch };
+    return { name: ch, icon: ChannelIcon };
   });
+  const customHooks = [
+    {
+      id: 'getUrl',
+      action: () => Promise.resolve('URL: ' + window.location.href),
+    },
+    {
+      id: 'getUser',
+      action: () =>
+        Promise.resolve(
+          `User: ${currentUser?.name}, Email: ${currentUser?.email}, Name: ${currentUser?.displayName}, Admin: ${currentUser?.isAdmin}`
+        ),
+    },
+  ];
 
   return (
     <div className="slack-chat">
@@ -38,22 +52,10 @@ const SlackChat: FC<Props> = ({ slackConfig, currentUser }) => {
         channels={channels}
         defaultMessage="Welcome! Someone will help shortly."
         helpText="Need Help?"
-        hooks={[
-          {
-            id: 'getUrl',
-            action: () => Promise.resolve('URL: ' + window.location.href),
-          },
-          {
-            id: 'getUser',
-            action: () =>
-              Promise.resolve(
-                `User: ${currentUser?.name}, Email: ${currentUser?.email}, Name: ${currentUser?.displayName}, Admin: ${currentUser?.isAdmin}`
-              ),
-          },
-        ]}
+        hooks={customHooks}
         singleUserMode={false}
         themeColor="#7147E8"
-        userImage="http://www.iconshock.com/img_vista/FLAT/mail/jpg/robot_icon.jpg"
+        userImage={UserIcon}
       />
     </div>
   );
