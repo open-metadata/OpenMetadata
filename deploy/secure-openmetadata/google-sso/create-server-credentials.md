@@ -12,7 +12,7 @@ description: >-
 * Go to [Create Google Cloud Account](https://console.cloud.google.com)
 * Click on `Create Project`
 
-![](<../../../.gitbook/assets/image (64) (2).png>)
+![Create a New Project](<../../../.gitbook/assets/image (244).png>)
 
 ## Step 2: Create a New Project
 
@@ -77,7 +77,7 @@ description: >-
 * Click **Create**
 * You will get the credentials
 
-![](<../../../.gitbook/assets/image (12) (1).png>)
+![](<../../../.gitbook/assets/image (124).png>)
 
 ## Step 5: Where to Find the Credentials
 
