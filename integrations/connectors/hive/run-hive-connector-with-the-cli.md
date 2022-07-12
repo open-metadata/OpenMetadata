@@ -170,13 +170,7 @@ source:
       hostPort: "<hostPort>"
       username: "<username>"
       password: "<password>"
-      database: "<database>"
-      warehouse: "<warehouse>"
-      account: "<acount>"
-      privateKey: "<privateKey>"
-      snowflakePrivatekeyPassphrase: "<passphrase>"
-      scheme: "<scheme>"
-      role: "<role>"
+      databaseSchema: "<database>"
   sourceConfig:
     config:
       type: Profiler
