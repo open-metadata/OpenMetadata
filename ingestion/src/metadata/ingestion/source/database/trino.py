@@ -17,15 +17,11 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
 from sqlalchemy import inspect, sql, util
-from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 from trino.sqlalchemy import datatype
 from trino.sqlalchemy.dialect import TrinoDialect
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
@@ -38,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sql_queries import TRINO_GET_COLUMNS
 
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"
@@ -55,6 +52,12 @@ def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:
 
 
 def parse_array_data_type(type_str: str) -> str:
+    """
+    This mehtod is used to convert the complex array datatype to the format that is supported by OpenMetadata
+    For Example:
+    If we have a row type as array(row(col1 bigint, col2 string))
+    this method will return type as -> array<struct<col1:bigint,col2:string>>
+    """
     type_name, type_opts = get_type_name_and_opts(type_str)
     final = type_name + "<"
     if type_opts:
@@ -68,6 +71,12 @@ def parse_array_data_type(type_str: str) -> str:
 
 
 def parse_row_data_type(type_str: str) -> str:
+    """
+    This mehtod is used to convert the complex row datatype to the format that is supported by OpenMetadata
+    For Example:
+    If we have a row type as row(col1 bigint, col2 bigint, col3 row(col4 string, col5 bigint))
+    this method will return type as -> struct<col1:bigint,col2:bigint,col3:struct<col4:string,col5:bigint>>
+    """
     type_name, type_opts = get_type_name_and_opts(type_str)
     final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
     if type_opts:
@@ -88,19 +97,7 @@ def _get_columns(
     self, connection: Connection, table_name: str, schema: str = None, **kw
 ) -> List[Dict[str, Any]]:
     schema = schema or self._get_default_schema_name(connection)
-    query = dedent(
-        """
-        SELECT
-            "column_name",
-            "data_type",
-            "column_default",
-            UPPER("is_nullable") AS "is_nullable"
-        FROM "information_schema"."columns"
-        WHERE "table_schema" = :schema
-            AND "table_name" = :table
-        ORDER BY "ordinal_position" ASC
-    """
-    ).strip()
+    query = dedent(TRINO_GET_COLUMNS).strip()
     res = connection.execute(sql.text(query), schema=schema, table=table_name)
     columns = []
 
