@@ -19,11 +19,11 @@ echo "Starting Local Docker Containers"
 
 docker compose down && docker compose up --build -d
 
-until curl -s -f -o /dev/null "http://localhost:9200/_cat/indices/team_search_index"; do
+until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
   printf 'Checking if ES is up...\n'
   sleep 5
 done
-until curl -s -f -o /dev/null --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
+until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
   printf 'Checking if Sample Data DAG is reachable...\n'
   sleep 5
 done
@@ -33,7 +33,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --data-raw '{
         "is_paused": false
       }'
-until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
+until curl -s -f "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
   printf 'Waiting on Sample Data Ingestion...\n'
   sleep 5
 done
