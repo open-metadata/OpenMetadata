@@ -87,10 +87,6 @@ Enter the fully qualified hostname and port number for your Redash deployment in
 
 Enter the details of the Redash API key.
 
-**Database Service Name (optional)**
-
-Enter the Database Service Name for the Lineage creation.
-
 </details>
 
 ![Service has been saved](<../../../.gitbook/assets/Screenshot 2022-05-20 at 9.42.30 AM.png>)

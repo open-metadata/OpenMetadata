@@ -45,6 +45,7 @@ source:
       username: random
   sourceConfig:
     config:
+      dbServiceName: <dbServiceName>
       dashboardFilterPattern: {}
       chartFilterPattern: {}
 sink:
@@ -63,12 +64,12 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **username**: Enter the username of your Redash user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your Redash user in the _Password_ field.
 * **hostPort**: Enter the fully qualified hostname and port number for your Redash deployment in the _Host and Port_ field.
-* **dbServiceName**: If you want create Lineage enter the database Service name.
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/dashboardServiceMetadataPipeline.json).
 
+* **dbServiceName**: If you want create Lineage enter the database Service name.
 * **dashboardFilterPattern** and **chartFilterPattern**: Note that the `dashboardFilterPattern` and `chartFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
