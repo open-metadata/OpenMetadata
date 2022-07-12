@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import moment from 'moment';
 import React, {
   FC,
@@ -294,9 +294,9 @@ const BotsDetail: FC<BotsDetailProp> = ({
   const getBotsTokenExpiryDate = () => {
     if (botsTokenExpiry) {
       // get the current date timestamp
-      const currentTimeStamp = moment().valueOf();
+      const currentTimeStamp = Date.now();
 
-      const isTokenExpired = isEqual(currentTimeStamp, botsTokenExpiry);
+      const isTokenExpired = currentTimeStamp === Number(botsTokenExpiry);
 
       // get the token expiry date
       const tokenExpiryDate =
