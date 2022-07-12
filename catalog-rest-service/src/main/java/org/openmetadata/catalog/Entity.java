@@ -235,10 +235,9 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, String entityIdentifier, boolean recursive, boolean hardDelete)
-      throws IOException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityIdentifier, recursive, hardDelete);
+    dao.delete(updatedBy, entityId.toString(), recursive, hardDelete);
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {

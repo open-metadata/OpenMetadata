@@ -529,13 +529,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  private DeleteResponse<T> delete(
-      String updatedBy, String json, String entityIdentifier, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
       throws IOException {
     T original = JsonUtils.readValue(json, entityClass);
     setFields(original, putFields); // TODO why this?
 
-    deleteChildren(entityIdentifier, recursive, hardDelete, updatedBy);
+    deleteChildren(id, recursive, hardDelete, updatedBy);
 
     String changeType;
     T updated = JsonUtils.readValue(json, entityClass);
@@ -563,7 +562,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (json == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
     }
-    return delete(updatedBy, json, name, recursive, hardDelete);
+    String id = String.valueOf(JsonUtils.readValue(json, entityClass).getId());
+    return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
   @Transaction
@@ -577,11 +577,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
-  private void deleteChildren(String entityIdentifier, boolean recursive, boolean hardDelete, String updatedBy)
-      throws IOException {
+  private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(entityIdentifier, entityType, Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
 
     if (records.isEmpty()) {
       return;
@@ -593,7 +592,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the contained entities
     for (EntityRelationshipRecord record : records) {
       LOG.info("Recursively {} deleting {} {}", hardDelete ? "hard" : "soft", record.getType(), record.getId());
-      Entity.deleteEntity(updatedBy, record.getType(), record.getId().toString(), true, hardDelete);
+      Entity.deleteEntity(updatedBy, record.getType(), record.getId(), true, hardDelete);
     }
   }
 
