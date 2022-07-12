@@ -1,12 +1,11 @@
 package org.openmetadata.catalog.secrets;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
 
 public class SecretsManagerFactoryTest {
 
@@ -30,24 +29,16 @@ public class SecretsManagerFactoryTest {
 
   @Test
   void testIsCreatedIfLocalSecretsManager() {
-    config.setSecretsManager("LocalSecretsManager");
+    config.setSecretsManager(SecretsManagerProvider.LOCAL);
     assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof LocalSecretsManager);
   }
 
   @Test
   void testIsCreatedIfAWSSecretsManager() {
-    config.setSecretsManager("AWSSecretsManager");
+    config.setSecretsManager(SecretsManagerProvider.AWS);
     config.getParameters().put("region", "eu-west-1");
     config.getParameters().put("accessKeyId", "123456");
     config.getParameters().put("secretAccessKey", "654321");
     assertTrue(SecretsManagerFactory.createSecretsManager(config) instanceof AWSSecretsManager);
-  }
-
-  @Test
-  void testExceptionIfNotExists() {
-    config.setSecretsManager("WrongSecretsManager");
-    IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> SecretsManagerFactory.createSecretsManager(config));
-    assertEquals("Unknown secret manager store: WrongSecretsManager", exception.getMessage());
   }
 }

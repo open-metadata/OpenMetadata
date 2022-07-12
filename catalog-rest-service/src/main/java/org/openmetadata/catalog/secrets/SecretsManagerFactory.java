@@ -1,19 +1,21 @@
 package org.openmetadata.catalog.secrets;
 
+import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection.SecretsManagerProvider;
+
 public class SecretsManagerFactory {
 
   public static SecretsManager createSecretsManager(SecretsManagerConfiguration config) {
-    String secretManager =
+    SecretsManagerProvider secretManager =
         config != null && config.getSecretsManager() != null
             ? config.getSecretsManager()
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
     switch (secretManager) {
-      case "LocalSecretsManager":
+      case LOCAL:
         return new LocalSecretsManager();
-      case "AWSSecretsManager":
+      case AWS:
         return new AWSSecretsManager(config);
       default:
-        throw new IllegalArgumentException("Unknown secret manager store: " + secretManager);
+        throw new IllegalArgumentException("Not implemented secret manager store: " + secretManager);
     }
   }
 }

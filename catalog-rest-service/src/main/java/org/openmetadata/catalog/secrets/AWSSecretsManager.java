@@ -17,6 +17,9 @@ public class AWSSecretsManager extends SecretsManager {
   private SecretsManagerClient secretsClient;
 
   public AWSSecretsManager(SecretsManagerConfiguration config) {
+    if (config == null) {
+      throw new SecretsManagerException("Secrets manager configuration is empty.");
+    }
     String region = config.getParameters().getOrDefault("region", "");
     String accessKeyId = config.getParameters().getOrDefault("accessKeyId", "");
     String secretAccessKey = config.getParameters().getOrDefault("secretAccessKey", "");

@@ -224,8 +224,8 @@ fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 
 secretsManagerConfiguration:
-  secretsManager: ${SECRET_MANAGER_CLASS_NAME:-LocalSecretsManager}
-#  secretsManager: AWSSecretsManager
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
+#  secretsManager: aws
 #  parameters:
 #    region:
 #    accessKeyId:
