@@ -68,7 +68,11 @@ description: >-
 
 ![](<../../../.gitbook/assets/image (81) (1).png>)
 
-* After selecting the **Application Type**, name your project and give the authorized URIs.
+* After selecting the **Application Type**, name your project and give the authorized URIs:
+  * \<domain>/callback
+  * \<domain>/silent-callback
+
+![](<../../../.gitbook/assets/image (50).png>)
 
 ![](<../../../.gitbook/assets/image (56) (2).png>)
 

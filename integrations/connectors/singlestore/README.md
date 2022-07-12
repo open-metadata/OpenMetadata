@@ -67,7 +67,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your BigQuery service as desired.
 
-![Configure the Service connection](<../../../.gitbook/assets/image (50).png>)
+![Configure the Service connection](<../../../.gitbook/assets/image (50) (1).png>)
 
 Once the credentials have been added, click on **Test Connection** and _Save_ the changes.
 
