@@ -15,7 +15,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isEqual, isNil } from 'lodash';
 import moment from 'moment';
 import React, {
   FC,
@@ -293,11 +293,22 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getBotsTokenExpiryDate = () => {
     if (botsTokenExpiry) {
+      // get the current date timestamp
+      const currentTimeStamp = moment().valueOf();
+
+      const isTokenExpired = isEqual(currentTimeStamp, botsTokenExpiry);
+
+      // get the token expiry date
+      const tokenExpiryDate =
+        moment(botsTokenExpiry).format('ddd Do MMMM, YYYY');
+
       return (
         <p
           className="tw-text-grey-muted tw-mt-2 tw-italic"
           data-testid="token-expiry">
-          Expires on {moment(botsTokenExpiry).format('ddd Do MMMM, YYYY')}
+          {isTokenExpired
+            ? `Expired on ${tokenExpiryDate}`
+            : `Expires on ${tokenExpiryDate}`}
         </p>
       );
     } else {
