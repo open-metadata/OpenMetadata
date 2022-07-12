@@ -44,12 +44,12 @@ class ClickhouseUsageSource(UsageSource):
 
         return cls(config, metadata_config)
 
-    def get_database_name(self, data: dict) -> str:
+    def get_schema_name(self, data: dict) -> str:
         """
-        Method to fetch database name from row data
+        Method to fetch schema name from row data
         """
-        database = "default"
-        if data["database_name"]:
-            database_list = ast.literal_eval(data["database_name"])
-            database = database_list[0] if len(database_list) == 1 else "default"
-        return database
+        schema = None
+        if data.get("schema_name"):
+            schema_list = ast.literal_eval(data["schema_name"])
+            schema = schema_list[0] if len(schema_list) == 1 else None
+        return schema
