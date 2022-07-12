@@ -24,7 +24,6 @@ public class SamlResponseServlet extends HttpServlet {
       handleResponse(req, resp);
     } catch (Exception e) {
       logger.error("SamlResponseError :" + e.getMessage());
-      throw new RuntimeException(e);
     }
   }
 
