@@ -38,7 +38,7 @@ const Assignees: FC<Props> = ({ assignees, onSearch, onChange, options }) => {
   return (
     <Select
       showSearch
-      className="ant-select-assignee"
+      className="ant-select-custom"
       data-testid="select-assignee"
       defaultActiveFirstOption={false}
       filterOption={false}

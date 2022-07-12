@@ -42,3 +42,9 @@ OpenMetadata can extract metadata from the following list of connectors:
 
 ## Messaging Services
 - [Kafka](/openmetadata/connectors/messaging/kafka) 
+
+## Pipeline Services
+
+- [Airbyte](/openmetadata/connectors/pipeline/airbyte)
+- [Airflow](/openmetadata/connectors/pipeline/airflow)
+- [Glue](/openmetadata/connectors/pipeline/glue)

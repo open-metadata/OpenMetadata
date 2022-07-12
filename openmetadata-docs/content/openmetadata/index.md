@@ -1,9 +1,9 @@
 ---
-title: OpenMetadata UI
+title: OpenMetadata
 slug: /openmetadata
 ---
 
-# OpenMetadata UI
+# OpenMetadata
 
 The OpenMetadata UI is the single stop for all users in the organisation to discover and collaborate.
 

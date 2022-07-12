@@ -85,6 +85,14 @@ site_menu:
     url: /deployment/security/okta/bare-metal
   - category: Deployment / Enable Security / Okta SSO / Kubernetes
     url: /deployment/security/okta/kubernetes
+  - category: Deployment / Enable Security / Enable SSL
+    url: /deployment/security/enable-ssl
+  - category: Deployment / Enable Security / Enable SSL / Use Nginx
+    url: /deployment/security/enable-ssl/nginx
+  - category: Deployment / Enable Security / Enable SSL / Use the OpenMetadata Server
+    url: /deployment/security/enable-ssl/openmetadata-server
+  - category: Deployment / Enable Security / Enable JWT Tokens
+    url: /deployment/security/enable-jwt-tokens
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
@@ -308,6 +316,26 @@ site_menu:
   
   - category: OpenMetadata / Connectors / Pipeline
     url: /openmetadata/connectors/pipeline
+  - category: OpenMetadata / Connectors / Pipeline / Airflow
+    url: /openmetadata/connectors/pipeline/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / CLI
+    url: /openmetadata/connectors/pipeline/airflow/cli
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / GCS Composer
+    url: /openmetadata/connectors/pipeline/airflow/gcs
+  - category: OpenMetadata / Connectors / Pipeline / Airflow / Lineage Backend
+    url: /openmetadata/connectors/pipeline/airflow/lineage-backend
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte
+    url: /openmetadata/connectors/pipeline/airbyte
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte / Airflow
+    url: /openmetadata/connectors/pipeline/airbyte/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Airbyte / CLI
+    url: /openmetadata/connectors/pipeline/airbyte/cli
+  - category: OpenMetadata / Connectors / Pipeline / Glue
+    url: /openmetadata/connectors/pipeline/glue
+  - category: OpenMetadata / Connectors / Pipeline / Glue / Airflow
+    url: /openmetadata/connectors/pipeline/glue/airflow
+  - category: OpenMetadata / Connectors / Pipeline / Glue / CLI
+    url: /openmetadata/connectors/pipeline/glue/cli
 
   - category: OpenMetadata / Ingestion
     url: /openmetadata/ingestion
@@ -336,8 +364,7 @@ site_menu:
 
   - category: OpenMetadata / Discovery & Collaboration
     url: /openmetadata/discovery-collaboration
-  - category: OpenMetadata / Teams & Users
-    url: /openmetadata/users
+
   - category: OpenMetadata / Data Quality
     url: /openmetadata/data-quality
   - category: OpenMetadata / Data Quality / Tests
@@ -345,37 +372,66 @@ site_menu:
   - category: OpenMetadata / Data Quality / Metrics
     url: /openmetadata/data-quality/metrics
 
+  - category: OpenMetadata / Teams & Users
+    url: /openmetadata/users
+
+  - category: OpenMetadata / Integrations
+    url: /openmetadata/integrations
+  - category: OpenMetadata / Integrations / Great Expectations & OpenMetadata
+    url: /openmetadata/integrations/great-expectations
+  - category: OpenMetadata / Integrations / Prefect
+    url: /openmetadata/integrations/prefect
+
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
-    icon: developer_board
-  - category: Main Concepts / Get started
-    url: /main-concepts/get-started
+    icon: public
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Metadata Standard
     url: /main-concepts/metadata-standard
-  - category: Main Concepts / Metadata Standard / Entities
-    url: /main-concepts/metadata-standard/entities
-  - category: Main Concepts / Metadata Standard / API's
+  - category: Main Concepts / Metadata Standard / Schemas
+    url: /main-concepts/metadata-standard/schemas
+  - category: Main Concepts / Metadata Standard / APIs
     url: /main-concepts/metadata-standard/apis
 
   - category: Developers
     url: /developers
     color: violet-70
     icon: developer_mode
+  - category: Developers / Open Source Community
+    url: /developers/open-source-community
   - category: Developers / Contribute
     url: /developers/contribute
-  - category: Developers / Ingestion Workflows
-    url: /developers/ingestion-workflows
+  - category: Developers / Build the Code and Run Tests
+    url: /developers/build-code-and-run-tests
   - category: Developers / Webhooks
     url: /developers/webhooks
-  - category: Developers / OpenMetadata SDK
-    url: /developers/sdk
-  - category: Developers / OpenMetadata SDK / Python SDK
-    url: /developers/sdk/python
-  - category: Developers / OpenMetadata SDK / Python SDK / ML Model Python SDK
-    url: /developers/sdk/python/ml-model-sdk
-  - category: Developers / OpenMetadata SDK / Python SDK / Build a Connector
-    url: /developers/sdk/python/build-connector
+
+  - category: SDK
+    url: /sdk
+    color: violet-70
+    icon: developer_board
+  - category: SDK / Python SDK
+    url: /sdk/python
+  - category: SDK / Python SDK / Entities
+    url: /sdk/python/entities
+  - category: SDK / Python SDK / Entities / ML Model Python SDK
+    url: /sdk/python/entities/ml-model-sdk
+  - category: SDK / Python SDK / Ingestion
+    url: /sdk/python/ingestion
+  - category: SDK / Python SDK / Ingestion / DBT
+    url: /sdk/python/ingestion/dbt
+  - category: SDK / Python SDK / Build a Connector
+    url: /sdk/python/build-connector
+  - category: SDK / Python SDK / Build a Connector / Source
+    url: /sdk/python/build-connector/source
+  - category: SDK / Python SDK / Build a Connector / Stage
+    url: /sdk/python/build-connector/stage
+  - category: SDK / Python SDK / Build a Connector / Sink
+    url: /sdk/python/build-connector/sink
+  - category: SDK / Python SDK / Build a Connector / Bulk Sink
+    url: /sdk/python/build-connector/bulk-sink
+  - category: SDK / Java SDK
+    url: /sdk/java
 ---
