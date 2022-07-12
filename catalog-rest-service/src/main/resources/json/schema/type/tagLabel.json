@@ -12,6 +12,7 @@
     },
     "TagSource": {
       "type": "string",
+      "default": "Tag",
       "enum": ["Tag", "Glossary"]
     }
   },
