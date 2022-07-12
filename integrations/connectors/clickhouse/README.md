@@ -66,7 +66,7 @@ OpenMetadata uniquely identifies services by their _Service Name_. Provide a nam
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your ClickHouse service as desired.
 
-![](<../../../.gitbook/assets/Screenshot 2022-05-09 at 7.33.07 PM.png>)
+![](<../../../.gitbook/assets/image (284).png>)
 
 <details>
 
@@ -92,9 +92,9 @@ Enter the details for the ClickHouse _Account_.
 
 Enter the details of the ClickHouse Account _Role_. This is an optional detail.
 
-**Database (optional)**
+**DatabaseSchema (optional)**
 
-If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+If you want to limit metadata ingestion to a single database schema, enter the name of this database schema in the DatabaseSchema field. If no value is entered for this field, the connector will ingest metadata from all database schemas that the specified user is authorized to read.
 
 **Connection Options (Optional)**
 
@@ -149,18 +149,6 @@ Explicitly exclude schemas by adding a list of comma-separated regular expressio
 Set the _Include views_ toggle to the on position to control whether or not to include views as part of metadata ingestion and data profiling.
 
 Explicitly include views by adding the following key-value pair in the `source.config` field of your configuration file.
-
-**Enable data profiler (toggle)**
-
-The data profiler ingests usage information for tables. This enables you to assess the frequency of use, reliability, and other details.
-
-When enabled, the data profiler will run as part of metadata ingestion. Running the data profiler increases the amount of time it takes for metadata ingestion but provides the benefits mentioned above.
-
-Set the _Enable data profiler_ toggle to the on position to enable the data profiler.
-
-**Ingest sample data (toggle)**
-
-Set the _Ingest sample data_ toggle to the on position to control whether or not to generate sample data to include in table views in the OpenMetadata user interface.
 
 </details>
 

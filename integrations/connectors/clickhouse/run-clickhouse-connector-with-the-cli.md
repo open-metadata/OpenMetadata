@@ -32,45 +32,38 @@ In order to create and run a Metadata Ingestion workflow, we will follow the ste
 
 The workflow is modeled around the following [JSON Schema](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/workflow.json).
 
-### 1. Define the JSON Config
+### 1. Define the YAML Config
 
 This is a sample config for ClickHouse:
 
 ```json
-{
-    "source": {
-      "type": "clickhouse",
-      "serviceName": "local_clickhouse",
-      "serviceConnection": {
-        "config": {
-          "type": "Clickhouse",
-          "username":"<username>",
-          "password":"<password>",
-          "hostPort": "<hostPort>",
-          "database": "<database>"
-        }
-      },
-      "sourceConfig": {
-        "config": {
-        "enableDataProfiler": false,
-        "schemaFilterPattern":{
-          "excludes": []  
-        },
-        "markDeletedTables": false
-        }
-      }
-    },
-    "sink": {
-      "type": "metadata-rest",
-      "config": {}
-    },
-   "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-  }
+source:
+  type: clickhouse
+  serviceName: local_clickhouse
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      databaseSchema: <databaseSchema>
+  sourceConfig:
+    config:
+      markDeletedTables: true or false
+      includeTables: true or false
+      includeViews: true or false
+      includeTags: true or false
+      schemaFilterPattern: <schema name regex list>
+      tableFilterPattern: <table name regex list>
+      dbtConfigSource: <configs for gcs, s3, local or file server to get the DBT files
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+
 ```
 
 #### Source Configuration - Service Connection
@@ -80,39 +73,37 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **username**: Enter the username of your ClickHouse user in the _Username_ field. The specified user should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **password**: Enter the password for your ClickHouse user in the _Password_ field.
 * **hostPort**: Enter the fully qualified hostname and port number for your ClickHouse deployment in the _Host and Port_ field.
-* **database**: If you want to limit metadata ingestion to a single database, enter the name of this database in the Database field. If no value is entered for this field, the connector will ingest metadata from all databases that the specified user is authorized to read.
+* **databaseSchema**: If you want to limit metadata ingestion to a single database schema, enter the name of this database schema in the DatabaseSchema field. If no value is entered for this field, the connector will ingest metadata from all database schemas that the specified user is authorized to read.
 * **connectionOptions** (Optional): Enter the details for any additional connection options that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
 * **connectionArguments** (Optional): Enter the details for any additional connection arguments such as security or protocol configs that can be sent to ClickHouse during the connection. These details must be added as Key-Value pairs.
 
 For the Connection Arguments, In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
-`"authenticator" : "sso_login_url"`
+`authenticator: sso_login_url`
 
 In case you authenticate with SSO using an external browser popup, then add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows.
 
-`"authenticator" : "externalbrowser"`
+`authenticator: externalbrowser`
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
-"tableFilterPattern": {
-  "includes": ["users", "type_test"]
-}
+tableFilterPattern:
+  includes:
+    - users
+    - type_test
 ```
 
 #### Sink Configuration
 
-To send the metadata to OpenMetadata, it needs to be specified as `"type": "metadata-rest"`.
+To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
 
 #### Workflow Configuration
 
@@ -121,12 +112,10 @@ The main property here is the `openMetadataServerConfig`, where you can define t
 For a simple, local installation using our docker containers, this looks like:
 
 ```
-"workflowConfig": {
-  "openMetadataServerConfig": {
-    "hostPort": "http://localhost:8585/api",
-    "authProvider": "no-auth"
-  }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth
 ```
 
 #### OpenMetadata Security Providers
@@ -134,84 +123,67 @@ For a simple, local installation using our docker containers, this looks like:
 We support different security providers. You can find their definitions [here](https://github.com/open-metadata/OpenMetadata/tree/main/catalog-rest-service/src/main/resources/json/schema/security/client). An example of an Auth0 configuration would be the following:
 
 ```
-"workflowConfig": {
-    "openMetadataServerConfig": {
-        "hostPort": "http://localhost:8585/api",
-        "authProvider": "auth0",
-        "securityConfig": {
-            "clientId": "<client ID>",
-            "secretKey": "<secret key>",
-            "domain": "<domain>"
-        }
-    }
-}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: auth0
+    securityConfig:
+      clientId: <client ID>
+      secretKey: <secret key>
+      domain: <domain>
 ```
 
 ### 2. Run with the CLI
 
-First, we will need to save the JSON file. Afterward, and with all requirements installed, we can run:
+First, we will need to save the YAML file. Afterward, and with all requirements installed, we can run:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
-Note that from connector to connector, this recipe will always be the same. By updating the JSON configuration, you will be able to extract metadata from different sources.
+Note that from connector to connector, this recipe will always be the same. By updating the YAML configuration, you will be able to extract metadata from different sources.
 
 ## Query Usage and Lineage Ingestion
 
 To ingest the Query Usage and Lineage information, the `serviceConnection` configuration will remain the same. However, the `sourceConfig` is now modeled after [this](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceQueryUsagePipeline.json) JSON Schema.
 
-### 1. Define the JSON Configuration
+### 1. Define the YAML Configuration
 
 This is a sample config for ClickHouse Usage:
 
 ```json
-{
-    "source": {
-        "type": "clickhouse-usage",
-        "serviceName": "<service name>",
-        "serviceConnection": {
-            "config": {
-              "type": "Clickhouse",
-              "username":"<username>",
-              "password":"<password>",
-              "hostPort": "<hostPort>",
-              "database": "<database>"
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "queryLogDuration": "<query log duration integer>",
-                "stageFileLocation": "<path to store the stage file>",
-                "resultLimit": "<query log limit integer>"
-            }
-        }
-    },
-    "processor": {
-        "type": "query-parser",
-        "config": {
-            "filter": ""
-        }
-    },
-    "stage": {
-        "type": "table-usage",
-        "config": {
-            "filename": "/tmp/clickhouse_usage"
-        }
-    },
-    "bulkSink": {
-        "type": "metadata-usage",
-        "config": {
-            "filename": "/tmp/clickhouse_usage"
-        }
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "<OpenMetadata host and port>",
-            "authProvider": "<OpenMetadata auth provider>"
-        }
-    }
-}
+source:
+  type: clickhouse-usage
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      databaseSchema: <databaseSchema>
+  sourceConfig:
+    config:
+      queryLogDuration: <query log duration integer>
+      stageFileLocation: <path to store the stage file>
+      resultLimit: <query log limit integer>
+processor:
+  type: query-parser
+  config:
+    filter: ''
+stage:
+  type: table-usage
+  config:
+    filename: /tmp/clickhouse_usage
+bulkSink:
+  type: metadata-usage
+  config:
+    filename: /tmp/clickhouse_usage
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+
 ```
 
 #### Source Configuration - Service Connection
@@ -247,20 +219,59 @@ pip3 install --upgrade 'openmetadata-ingestion[clickhouse-usage]'
 
 #### Run the command
 
-After saving the JSON config, we will run the command the same way we did for the metadata ingestion:
+After saving the YAML config, we will run the command the same way we did for the metadata ingestion:
 
 ```
-metadata ingest -c <path-to-json>
+metadata ingest -c <path-to-yaml>
 ```
 
 ## Data Profiler and Quality Tests
 
 The Data Profiler workflow will be using the `orm-profiler` processor. While the `serviceConnection` will still be the same to reach the source system, the `sourceConfig` will be updated from previous configurations.
 
+### 1. Define the YAML Configuration
+
+This is a sample config for the profiler:
+
 ```
-"fqnFilterPattern": {
-  "includes": ["service.database.schema.*"]
-}
+source:
+  type: clickhouse
+  serviceName: <service name>
+  serviceConnection:
+    config:
+      type: Clickhouse
+      username: <username>
+      password: <password>
+      hostPort: <hostPort>
+      databaseSchema: <databaseSchema>
+  sourceConfig:
+    config:
+      type: Profiler
+      fqnFilterPattern: <table FQN filtering regex>
+processor:
+  type: orm-profiler
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: <OpenMetadata host and port>
+    authProvider: <OpenMetadata auth provider>
+
+```
+
+#### Source Configuration
+
+* You can find all the definitions and types for the `serviceConnection` [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json).
+* The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json). If you don't need to add any `fqnFilterPattern`, the `type: Profiler` is still required to be present.
+
+Note that the `fqnFilterPattern` supports regex as `include` or `exclude`. E.g.,
+
+```
+fqnFilterPattern:
+  includes:
+    - service.database.schema.*
 ```
 
 #### Processor
@@ -268,41 +279,26 @@ The Data Profiler workflow will be using the `orm-profiler` processor. While the
 To choose the `orm-profiler`. It can also be updated to define tests from the JSON itself instead of the UI:
 
 ```json
- "processor": {
-    "type": "orm-profiler",
-    "config": {
-        "test_suite": {
-            "name": "<Test Suite name>",
-            "tests": [
-                {
-                    "table": "<Table FQN>",
-                    "table_tests": [
-                        {
-                            "testCase": {
-                                "config": {
-                                    "value": 100
-                                },
-                                "tableTestType": "tableRowCountToEqual"
-                            }
-                        }
-                    ],
-                    "column_tests": [
-                        {
-                            "columnName": "<Column Name>",
-                            "testCase": {
-                                "config": {
-                                    "minValue": 0,
-                                    "maxValue": 99
-                                },
-                                "columnTestType": "columnValuesToBeBetween"
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-     }
-  },
+processor:
+  type: orm-profiler
+  config:
+    test_suite:
+      name: <Test Suite name>
+      tests:
+        - table: <Table FQN>
+          table_tests:
+            - testCase:
+                config:
+                  value: 100
+                tableTestType: tableRowCountToEqual
+          column_tests:
+            - columnName: <Column Name>
+              testCase:
+                config:
+                  minValue: 0
+                  maxValue: 99
+                columnTestType: columnValuesToBeBetween
+
 ```
 
 `tests` is a list of test definitions that will be applied to `table`, informed by its FQN. For each table, one can then define a list of `table_tests` and `column_tests`. Review the supported tests and their definitions to learn how to configure the different cases [here](../../../data-quality/data-quality-overview/tests.md).
@@ -313,12 +309,12 @@ The same as the [metadata](run-clickhouse-connector-with-the-cli.md#workflow-con
 
 ### 2. Run with the CLI
 
-Again, we will start by saving the JSON file.
+Again, we will start by saving the YAML file.
 
 Then, we can run the workflow as:
 
 ```
-metadata profile -c <path-to-json>
+metadata profile -c <path-to-yaml>
 ```
 
 ## DBT Integration
