@@ -83,10 +83,6 @@ Enter the password for your Metabase user in the _Password_ field.
 
 Enter the fully qualified hostname and port number for your Metabase deployment in the _Host and Port_ field.
 
-**Database Service Name (optional)**
-
-Enter the Database Service Name for the Lineage creation.
-
 </details>
 
 ![Service has been saved](<../../../.gitbook/assets/image (18).png>)
