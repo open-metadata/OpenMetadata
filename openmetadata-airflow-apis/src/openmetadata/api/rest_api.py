@@ -102,10 +102,7 @@ class REST_API(AppBuilderBaseView):
         """
 
         try:
-            url = AIRFLOW_WEBSERVER_BASE_URL + REST_API_ENDPOINT
-            return ApiResponse.success(
-                {"message": f"Airflow REST {REST_API_PLUGIN_VERSION} running at {url}"}
-            )
+            return ApiResponse.success({"status": "healthy"})
         except Exception as err:
             return ApiResponse.error(
                 status=ApiResponse.STATUS_SERVER_ERROR,
