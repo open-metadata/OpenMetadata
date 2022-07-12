@@ -67,7 +67,7 @@ jobs:
       env:
         INGESTION_DEPENDENCY: "airflow-container,sample-data,elasticsearch"
       run: ./docker/run_local_docker.sh
-      timeout-minutes: 30
+      timeout-minutes: 40
 
     - name: Run Python Tests & record coverage
       run: |
