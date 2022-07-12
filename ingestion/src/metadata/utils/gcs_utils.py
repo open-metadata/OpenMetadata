@@ -53,6 +53,6 @@ def read_json_from_gcs(key: Blob) -> DataFrame:
 
 def read_parquet_from_gcs(key: Blob, bucket_name: str) -> DataFrame:
     gs = gcsfs.GCSFileSystem()
-    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key.name}", filesystem=gs)
+    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key}", filesystem=gs)
     df = arrow_df.read_pandas().to_pandas()
     return df

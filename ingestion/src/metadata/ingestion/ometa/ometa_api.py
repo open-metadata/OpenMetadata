@@ -24,6 +24,8 @@ try:
 except ImportError:
     from typing_compat import get_args
 
+import urllib.parse
+
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -458,7 +460,11 @@ class OpenMetadata(
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{model_str(fqn)}", fields=fields)
+        return self._get(
+            entity=entity,
+            path=f"name/{urllib.parse.quote_plus(model_str(fqn))}",
+            fields=fields,
+        )
 
     def get_by_id(
         self,
