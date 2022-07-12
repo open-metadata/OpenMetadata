@@ -74,8 +74,6 @@ description: >-
 
 ![](<../../../.gitbook/assets/image (50).png>)
 
-![](<../../../.gitbook/assets/image (56) (2).png>)
-
 * Click **Create**
 * You will get the credentials
 
