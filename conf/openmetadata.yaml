@@ -195,7 +195,7 @@ airflowConfiguration:
       domain: ${OM_AUTH_AIRFLOW_AUTH0_DOMAIN_URL:-""}
     customOidc:
       clientId: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_CLIENT_ID:-""}
-      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY_PATH:-""}
+      secretKey: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_SECRET_KEY:-""}
       tokenEndpoint: ${OM_AUTH_AIRFLOW_CUSTOM_OIDC_TOKEN_ENDPOINT_URL:-""}
     openmetadata:
       jwtToken: ${OM_AUTH_JWT_TOKEN:-""}
@@ -221,7 +221,7 @@ slackEventPublishers:
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
-  fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
+  fernetKey: ${FERNET_KEY:-no_encryption_at_rest}
 
 health:
   delayedShutdownHandlerEnabled: true
