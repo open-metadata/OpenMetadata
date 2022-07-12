@@ -435,7 +435,7 @@ const EntityTable = ({
 
     return !hasTags ? (
       <button
-        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100"
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-align-top"
         data-testid="request-tags"
         onClick={() => onRequestTagsHandler(cell)}>
         <Popover
@@ -667,6 +667,7 @@ const EntityTable = ({
                                 />
                               </NonAdminAction>
                               <div className="tw-mt-1">
+                                {getRequestTagsElement(cell)}
                                 {getFieldThreadElement(
                                   getColumnName(cell),
                                   'tags',
@@ -679,7 +680,23 @@ const EntityTable = ({
                                   )}${ENTITY_LINK_SEPARATOR}tags`,
                                   Boolean(cell.value.length)
                                 )}
-                                {getRequestTagsElement(cell)}
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  EntityField.TAGS,
+                                  entityFieldTasks as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `${
+                                    EntityField.COLUMNS
+                                  }${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}${
+                                    EntityField.TAGS
+                                  }`,
+                                  Boolean(cell.value),
+                                  ThreadType.Task
+                                )}
                               </div>
                             </div>
                           )}
