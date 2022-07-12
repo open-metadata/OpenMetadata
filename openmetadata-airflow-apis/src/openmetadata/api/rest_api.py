@@ -94,6 +94,24 @@ class REST_API(AppBuilderBaseView):
             rbac_authentication_enabled=True,
         )
 
+    @csrf.exempt  # Exempt the CSRF token
+    @app_builder_expose("/health", methods=["GET"])  # for Flask AppBuilder
+    def health(self):
+        """
+        /health endpoint to check Airflow REST status without auth
+        """
+
+        try:
+            url = AIRFLOW_WEBSERVER_BASE_URL + REST_API_ENDPOINT
+            return ApiResponse.success(
+                {"message": f"Airflow REST {REST_API_PLUGIN_VERSION} running at {url}"}
+            )
+        except Exception as err:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_SERVER_ERROR,
+                error=f"Internal error obtaining REST status - {err} - {traceback.format_exc()}",
+            )
+
     # '/api' REST Endpoint where API requests should all come in
     @csrf.exempt  # Exempt the CSRF token
     @admin_expose("/api", methods=["GET", "POST", "DELETE"])  # for Flask Admin
