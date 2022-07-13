@@ -11,9 +11,9 @@ public class SecretsManagerFactory {
             : SecretsManagerConfiguration.DEFAULT_SECRET_MANAGER;
     switch (secretManager) {
       case LOCAL:
-        return new LocalSecretsManager();
+        return LocalSecretsManager.getInstance();
       case AWS:
-        return new AWSSecretsManager(config);
+        return AWSSecretsManager.getInstance(config);
       default:
         throw new IllegalArgumentException("Not implemented secret manager store: " + secretManager);
     }

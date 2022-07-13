@@ -47,7 +47,7 @@ public class AWSSecretsManagerTest {
     parameters.put("secretAccessKey", "654321");
     SecretsManagerConfiguration config = new SecretsManagerConfiguration();
     config.setParameters(parameters);
-    secretsManager = new AWSSecretsManager(config);
+    secretsManager = AWSSecretsManager.getInstance(config);
     secretsManager.setSecretsClient(secretsManagerClient);
     reset(secretsManagerClient);
   }

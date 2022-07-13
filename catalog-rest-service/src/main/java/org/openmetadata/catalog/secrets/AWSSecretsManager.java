@@ -14,9 +14,11 @@ import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
 public class AWSSecretsManager extends SecretsManager {
 
+  private static AWSSecretsManager INSTANCE = null;
+
   private SecretsManagerClient secretsClient;
 
-  public AWSSecretsManager(SecretsManagerConfiguration config) {
+  private AWSSecretsManager(SecretsManagerConfiguration config) {
     if (config == null) {
       throw new SecretsManagerException("Secrets manager configuration is empty.");
     }
@@ -102,6 +104,11 @@ public class AWSSecretsManager extends SecretsManager {
   public String getSecret(String secretName) {
     GetSecretValueRequest getSecretValueRequest = GetSecretValueRequest.builder().secretId(secretName).build();
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
+  }
+
+  public static AWSSecretsManager getInstance(SecretsManagerConfiguration config) {
+    if (INSTANCE == null) INSTANCE = new AWSSecretsManager(config);
+    return INSTANCE;
   }
 
   @VisibleForTesting

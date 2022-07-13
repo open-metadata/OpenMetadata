@@ -33,7 +33,7 @@ public class LocalSecretsManagerTest {
 
   @BeforeEach
   void setUp() {
-    secretsManager = new LocalSecretsManager();
+    secretsManager = LocalSecretsManager.getInstance();
     lenient().when(fernet.decrypt(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);

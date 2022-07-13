@@ -9,9 +9,11 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 public class LocalSecretsManager extends SecretsManager {
 
+  private static LocalSecretsManager INSTANCE;
+
   private Fernet fernet;
 
-  public LocalSecretsManager() {
+  private LocalSecretsManager() {
     this.fernet = Fernet.getInstance();
   }
 
@@ -54,6 +56,11 @@ public class LocalSecretsManager extends SecretsManager {
       }
     } catch (NoSuchMethodException ignore) {
     }
+  }
+
+  public static LocalSecretsManager getInstance() {
+    if (INSTANCE == null) INSTANCE = new LocalSecretsManager();
+    return INSTANCE;
   }
 
   @VisibleForTesting
