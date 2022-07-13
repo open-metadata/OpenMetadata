@@ -61,6 +61,12 @@
         }
       ]
     },
+    "secretsManagerProvider": {
+      "description": "OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server.",
+      "type": "string",
+      "enum": ["local", "aws"],
+      "default": "local"
+    },
     "apiVersion": {
       "description": "OpenMetadata server API version to use.",
       "type": "string",

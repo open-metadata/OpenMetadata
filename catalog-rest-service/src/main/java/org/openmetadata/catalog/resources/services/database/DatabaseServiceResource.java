@@ -50,12 +50,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -74,9 +74,9 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource extends EntityResource<DatabaseService, DatabaseServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  private final Fernet fernet;
-
   static final String FIELDS = "pipelines,owner";
+
+  private final SecretsManager secretsManager;
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -86,9 +86,9 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     return service;
   }
 
-  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer);
-    this.fernet = Fernet.getInstance();
+  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(DatabaseService.class, new DatabaseServiceRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -381,7 +381,8 @@ public class DatabaseServiceResource extends EntityResource<DatabaseService, Dat
     } catch (AuthorizationException e) {
       return databaseService.withConnection(null);
     }
-    fernet.encryptOrDecryptDatabaseConnection(databaseService.getConnection(), databaseService.getServiceType(), false);
+    secretsManager.encryptOrDecryptServiceConnection(
+        databaseService.getConnection(), databaseService.getServiceType().value(), databaseService.getName(), false);
     return databaseService;
   }
 }
