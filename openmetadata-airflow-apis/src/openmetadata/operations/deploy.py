@@ -26,6 +26,7 @@ from openmetadata.api.config import (
 )
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import import_path
+from openmetadata.helpers import clean_dag_id
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -53,6 +54,7 @@ class DagDeployer:
 
         self.ingestion_pipeline = ingestion_pipeline
         self.dag_bag = dag_bag
+        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
 
     def store_airflow_pipeline_config(
         self, dag_config_file_path: Path
@@ -74,9 +76,7 @@ class DagDeployer:
         the rendered strings
         """
 
-        dag_py_file = (
-            Path(AIRFLOW_DAGS_FOLDER) / f"{self.ingestion_pipeline.name.__root__}.py"
-        )
+        dag_py_file = Path(AIRFLOW_DAGS_FOLDER) / f"{self.dag_id}.py"
 
         # Open the template and render
         with open(DAG_RUNNER_TEMPLATE, "r") as f:
@@ -113,28 +113,22 @@ class DagDeployer:
             logging.info("dagbag size {}".format(self.dag_bag.size()))
             found_dags = self.dag_bag.process_file(dag_py_file)
             logging.info("processed dags {}".format(found_dags))
-            dag = self.dag_bag.get_dag(
-                self.ingestion_pipeline.name.__root__, session=session
-            )
+            dag = self.dag_bag.get_dag(self.dag_id, session=session)
             SerializedDagModel.write_dag(dag)
             dag.sync_to_db(session=session)
             dag_model = (
-                session.query(DagModel)
-                .filter(DagModel.dag_id == self.ingestion_pipeline.name.__root__)
-                .first()
+                session.query(DagModel).filter(DagModel.dag_id == self.dag_id).first()
             )
             logging.info("dag_model:" + str(dag_model))
 
             return ApiResponse.success(
-                {
-                    "message": f"Workflow [{self.ingestion_pipeline.name.__root__}] has been created"
-                }
+                {"message": f"Workflow [{self.dag_id}] has been created"}
             )
         except Exception as exc:
             logging.info(f"Failed to serialize the dag {exc}")
             return ApiResponse.server_error(
                 {
-                    "message": f"Workflow [{self.ingestion_pipeline.name.__root__}] failed to refresh due to [{exc}] "
+                    "message": f"Workflow [{self.dag_id}] failed to refresh due to [{exc}] "
                     + f"- {traceback.format_exc()}"
                 }
             )
@@ -143,10 +137,7 @@ class DagDeployer:
         """
         Run all methods to deploy the DAG
         """
-        dag_config_file_path = (
-            Path(DAG_GENERATED_CONFIGS)
-            / f"{self.ingestion_pipeline.name.__root__}.json"
-        )
+        dag_config_file_path = Path(DAG_GENERATED_CONFIGS) / f"{self.dag_id}.json"
         logging.info(f"Config file under {dag_config_file_path}")
 
         dag_runner_config = self.store_airflow_pipeline_config(dag_config_file_path)

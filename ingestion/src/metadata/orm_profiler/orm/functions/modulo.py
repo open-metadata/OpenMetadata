@@ -42,13 +42,7 @@ def validate_and_compile(element, compiler, **kw):
 
 @compiles(ModuloFn)
 def _(element, compiler, **kw):
-
-    value, base = validate_and_compile(element, compiler, **kw)
-    return f"{value} % {base}"
-
-
-@compiles(ModuloFn, Dialects.MSSQL)
-def _(element, compiler, **kw):
+    """Generic modulo function"""
     value, base = validate_and_compile(element, compiler, **kw)
     return f"{value} %% {base}"
 
@@ -62,7 +56,7 @@ def _(element, compiler, **kw):
 @compiles(ModuloFn, Dialects.Oracle)
 @compiles(ModuloFn, Dialects.Presto)
 def _(element, compiler, **kw):
-
+    """Modulo function for specific dialect"""
     value, base = validate_and_compile(element, compiler, **kw)
     return f"MOD({value}, {base})"
 
@@ -72,3 +66,10 @@ def _(element, compiler, **kw):
     """Handles modulo function for ClickHouse"""
     value, base = validate_and_compile(element, compiler, **kw)
     return f"modulo({value}, {base})"
+
+
+@compiles(ModuloFn, Dialects.SQLite)
+def _(element, compiler, **kw):
+    """SQLite modulo function"""
+    value, base = validate_and_compile(element, compiler, **kw)
+    return f"{value} % {base}"

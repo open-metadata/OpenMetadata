@@ -62,7 +62,7 @@ import org.openmetadata.catalog.type.MlHyperParameter;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
@@ -370,13 +370,13 @@ public final class EntityUtil {
     return new TagLabel()
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
-        .withSource(Source.GLOSSARY);
+        .withSource(TagSource.GLOSSARY);
   }
 
   public static TagLabel getTagLabel(Tag tag) throws HttpResponseException {
     return new TagLabel()
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
-        .withSource(Source.TAG);
+        .withSource(TagSource.TAG);
   }
 }

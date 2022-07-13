@@ -18,7 +18,7 @@ import { EntityTags, TagOption } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { Source } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { Button } from '../buttons/Button/Button';
 import Tags from '../tags/tags';
@@ -109,7 +109,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
         }}
-        showOnlyName={tag.source === Source.Glossary}
+        showOnlyName={tag.source === TagSource.Glossary}
         tag={tag}
         type="border"
       />
