@@ -13,7 +13,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [ClickHouse](broken-reference/)
 * [ClickHouse Usage](broken-reference/)
 * [Databricks](broken-reference/)
-* [Datalake](../../../integrations/connectors/dynamodb-1/)
+* [Datalake](../../../integrations/connectors/datalake/)
 * [Delta Lake](broken-reference/)
 * [DynamoDB](broken-reference/)
 * [Glue Catalog](glue-catalog/)

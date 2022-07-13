@@ -6,8 +6,8 @@ description: Use the 'metadata' CLI to run a one-time ingestion
 
 Configure and schedule Datalake **metadata** workflows using your the `metadata` CLI.
 
-* [Requirements](run-dynamodb-connector-with-the-cli.md#requirements)
-* [Metadata Ingestion](run-dynamodb-connector-with-the-cli.md#metadata-ingestion)
+* [Requirements](run-datalake-connector-with-the-cli.md#requirements)
+* [Metadata Ingestion](run-datalake-connector-with-the-cli.md#metadata-ingestion)
 
 ## Requirements
 

@@ -8,8 +8,8 @@ description: >-
 
 Configure and schedule Datalake **metadata** workflows using your own Airflow instance.
 
-* [Requirements](run-dynamodb-connector-using-airflow-sdk.md#requirements)
-* [Metadata Ingestion](run-dynamodb-connector-using-airflow-sdk.md#metadata-ingestion)
+* [Requirements](run-datalake-connector-using-airflow-sdk.md#requirements)
+* [Metadata Ingestion](run-datalake-connector-using-airflow-sdk.md#metadata-ingestion)
 
 ## Metadata Ingestion
 

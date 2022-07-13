@@ -13,12 +13,12 @@ Configure and schedule Datalake **metadata** workflows from the OpenMetadata UI.
 
 If you don't want to use the OpenMetadata Ingestion container to configure the workflows via the UI, then you can check the following docs to connect using Airflow SDK or with the CLI.
 
-{% content-ref url="run-dynamodb-connector-using-airflow-sdk.md" %}
-[run-dynamodb-connector-using-airflow-sdk.md](run-dynamodb-connector-using-airflow-sdk.md)
+{% content-ref url="run-datalake-connector-using-airflow-sdk.md" %}
+[run-datalake-connector-using-airflow-sdk.md](run-datalake-connector-using-airflow-sdk.md)
 {% endcontent-ref %}
 
-{% content-ref url="run-dynamodb-connector-with-the-cli.md" %}
-[run-dynamodb-connector-with-the-cli.md](run-dynamodb-connector-with-the-cli.md)
+{% content-ref url="run-datalake-connector-with-the-cli.md" %}
+[run-datalake-connector-with-the-cli.md](run-datalake-connector-with-the-cli.md)
 {% endcontent-ref %}
 
 ## Requirements
