@@ -13,14 +13,14 @@
 
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Button, Card, Dropdown, Layout, Menu, Modal, Tabs } from 'antd';
+import { Button, Card, Dropdown, Layout, Menu, Tabs } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined, toLower } from 'lodash';
+import { isEmpty, isEqual, toLower } from 'lodash';
 import { observer } from 'mobx-react';
-import { EditorContentRef, EntityReference, EntityTags } from 'Models';
-import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { EntityReference } from 'Models';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
@@ -37,17 +37,14 @@ import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEdi
 import FeedPanelBody from '../../../components/ActivityFeed/ActivityFeedPanel/FeedPanelBody';
 import ActivityThreadPanelBody from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
 import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
-import Ellipses from '../../../components/common/Ellipses/Ellipses';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { TaskOperation } from '../../../constants/feed.constants';
+import { PanelTab, TaskOperation } from '../../../constants/feed.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
-import { Column } from '../../../generated/entity/data/table';
 import {
   TaskDetails,
   TaskType,
@@ -55,8 +52,8 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName } from '../../../utils/CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import {
   deletePost,
@@ -67,24 +64,26 @@ import {
 } from '../../../utils/FeedUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import SVGIcons from '../../../utils/SvgUtils';
-import {
-  getEntityLink,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
   getColumnObject,
-  getDescriptionDiff,
+  isDescriptionTask,
+  isTagsTask,
   TASK_ACTION_LIST,
 } from '../../../utils/TasksUtils';
 import { getDayTimeByTimeStamp } from '../../../utils/TimeUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Assignees from '../shared/Assignees';
-import { DescriptionTabs } from '../shared/DescriptionTabs';
-import { DiffView } from '../shared/DiffView';
+import ClosedTask from '../shared/ClosedTask';
+import ColumnDetail from '../shared/ColumnDetail';
+import CommentModal from '../shared/CommentModal';
+import DescriptionTask from '../shared/DescriptionTask';
+import EntityDetail from '../shared/EntityDetail';
+import TagsTask from '../shared/TagsTask';
+import TaskStatus from '../shared/TaskStatus';
 import { background, cardStyles, contentStyles } from '../TaskPage.styles';
 import {
   EntityData,
@@ -102,8 +101,6 @@ const TaskDetailPage = () => {
 
   const { taskId } = useParams<{ [key: string]: string }>();
 
-  const markdownRef = useRef<EditorContentRef>();
-
   const [taskDetail, setTaskDetail] = useState<Thread>({} as Thread);
   const [taskFeedDetail, setTaskFeedDetail] = useState<Thread>({} as Thread);
   const [entityData, setEntityData] = useState<EntityData>({} as EntityData);
@@ -116,24 +113,13 @@ const TaskDetailPage = () => {
   const [taskAction, setTaskAction] = useState<TaskAction>(TASK_ACTION_LIST[0]);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [comment, setComment] = useState<string>('');
+  const [tagsSuggestion, setTagsSuggestion] = useState<TagLabel[]>([]);
 
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
-
-  const entityTier = useMemo(() => {
-    const tierFQN = getTierTags(entityData.tags || [])?.tagFQN;
-
-    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [entityData.tags]);
-
-  const entityTags = useMemo(() => {
-    const tags: EntityTags[] = getTagsWithoutTier(entityData.tags || []) || [];
-
-    return tags.map((tag) => `#${tag.tagFQN}`).join('  ');
-  }, [entityData.tags]);
 
   const entityType = useMemo(() => {
     return getEntityType(taskDetail.about);
@@ -144,24 +130,25 @@ const TaskDetailPage = () => {
   }, [taskDetail]);
 
   const columnObject = useMemo(() => {
+    // prepare column from entityField
     const column = entityField?.split(ENTITY_LINK_SEPARATOR)?.slice(-2)?.[0];
+
+    // prepare column value by replacing double quotes
     const columnValue = column?.replaceAll(/^"|"$/g, '') || '';
+
+    /**
+     * Get column name by spliting columnValue with FQN Separator
+     */
     const columnName = columnValue.split(FQN_SEPARATOR_CHAR).pop();
 
     return getColumnObject(columnName as string, entityData.columns || []);
   }, [taskDetail, entityData]);
 
-  const isRequestDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.RequestDescription
-  );
-
-  const isUpdateDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.UpdateDescription
-  );
+  // const isRequestTag = isEqual(taskDetail.task?.type, TaskType.RequestTag);
+  // const isUpdateTag = isEqual(taskDetail.task?.type, TaskType.UpdateTag);
 
   const isOwner = isEqual(entityData.owner?.id, currentUser?.id);
+
   const isAssignee = taskDetail.task?.assignees?.some((assignee) =>
     isEqual(assignee.id, currentUser?.id)
   );
@@ -174,6 +161,12 @@ const TaskDetailPage = () => {
   const isCreator = isEqual(taskDetail.createdBy, currentUser?.name);
 
   const isTaskActionEdit = isEqual(taskAction.key, TaskActionMode.EDIT);
+
+  const isTaskDescription = isDescriptionTask(
+    taskDetail.task?.type as TaskType
+  );
+
+  const isTaskTags = isTagsTask(taskDetail.task?.type as TaskType);
 
   const fetchTaskDetail = () => {
     getTask(taskId)
@@ -305,8 +298,7 @@ const TaskDetailPage = () => {
   };
 
   const onTaskResolve = () => {
-    if (suggestion) {
-      const data = { newValue: suggestion };
+    const updateTaskData = (data: Record<string, string>) => {
       updateTask(TaskOperation.RESOLVE, taskDetail.task?.id, data)
         .then(() => {
           showSuccessToast('Task Resolved Successfully');
@@ -318,10 +310,24 @@ const TaskDetailPage = () => {
           );
         })
         .catch((err: AxiosError) => showErrorToast(err));
+    };
+
+    if (isTaskTags) {
+      if (!isEmpty(tagsSuggestion)) {
+        const data = { newValue: JSON.stringify(tagsSuggestion || '[]') };
+        updateTaskData(data);
+      } else {
+        showErrorToast('Cannot accept an empty tag list. Please add a tags.');
+      }
     } else {
-      showErrorToast(
-        'Cannot accept an empty description. Please add a description.'
-      );
+      if (suggestion) {
+        const data = { newValue: suggestion };
+        updateTaskData(data);
+      } else {
+        showErrorToast(
+          'Cannot accept an empty description. Please add a description.'
+        );
+      }
     }
   };
 
@@ -381,6 +387,7 @@ const TaskDetailPage = () => {
     updateThreadData(threadId, postId, isThread, data, callback);
   };
 
+  // prepare current description for update description task
   const currentDescription = () => {
     if (entityField && !isEmpty(columnObject)) {
       return columnObject.description || '';
@@ -389,24 +396,47 @@ const TaskDetailPage = () => {
     }
   };
 
+  // handle assignees search
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
   };
 
+  // handle sider tab change
   const onTabChange = (key: string) => {
-    if (isEqual(key, '1')) {
+    if (isEqual(key, PanelTab.TASKS)) {
       fetchTaskFeed(taskDetail.id);
     }
   };
 
+  // handle task action change
   const onTaskActionChange = (key: string) => {
     setTaskAction(
       TASK_ACTION_LIST.find((action) => isEqual(action.key, key)) as TaskAction
     );
   };
 
+  /**
+   *
+   * @param taskSuggestion suggestion value
+   * Based on task type set's the suggestion for task
+   */
+  const setTaskSuggestionOnRender = (taskSuggestion: string | undefined) => {
+    if (isTaskTags) {
+      const tagsSuggestion = JSON.parse(taskSuggestion || '[]');
+      isEmpty(tagsSuggestion) && setTaskAction(TASK_ACTION_LIST[1]);
+      setTagsSuggestion(tagsSuggestion);
+    } else {
+      if (!taskSuggestion) {
+        setTaskAction(TASK_ACTION_LIST[1]);
+      }
+      setSuggestion(taskSuggestion || '');
+    }
+  };
+
+  // handle task details change
   const onTaskDetailChange = () => {
     if (!isEmpty(taskDetail)) {
+      // get entityFQN and fetch entity data
       const entityFQN = getEntityFQN(taskDetail.about);
 
       entityFQN &&
@@ -417,8 +447,8 @@ const TaskDetailPage = () => {
         );
       fetchTaskFeed(taskDetail.id);
 
+      // set task assignees
       const taskAssignees = taskDetail.task?.assignees || [];
-      const taskSuggestion = taskDetail.task?.suggestion;
       if (taskAssignees.length) {
         const assigneesArr = taskAssignees.map((assignee) => ({
           label: assignee.name as string,
@@ -428,10 +458,9 @@ const TaskDetailPage = () => {
         setAssignees(assigneesArr);
         setOptions(assigneesArr);
       }
-      if (!taskSuggestion) {
-        setTaskAction(TASK_ACTION_LIST[1]);
-      }
-      setSuggestion(taskSuggestion || '');
+
+      // set task suggestion on render
+      setTaskSuggestionOnRender(taskDetail.task?.suggestion);
     }
   };
 
@@ -447,154 +476,18 @@ const TaskDetailPage = () => {
     onTaskDetailChange();
   }, [taskDetail]);
 
-  const TaskStatusElement = ({ status }: { status: ThreadTaskStatus }) => {
-    const openCheck = isEqual(status, ThreadTaskStatus.Open);
-    const closedCheck = isEqual(status, ThreadTaskStatus.Closed);
-
-    return (
-      <Fragment>
-        <div
-          className={classNames(
-            'tw-rounded-3xl tw-px-2 tw-p-0',
-            {
-              'tw-bg-task-status-bg': openCheck,
-            },
-            { 'tw-bg-gray-100': closedCheck }
-          )}>
-          <span
-            className={classNames(
-              'tw-inline-block tw-w-2 tw-h-2 tw-rounded-full',
-              {
-                'tw-bg-task-status-fg': openCheck,
-              },
-              {
-                'tw-bg-gray-500': closedCheck,
-              }
-            )}
-          />
-          <span
-            className={classNames(
-              'tw-ml-1',
-              { 'tw-text-task-status-fg': openCheck },
-              { 'tw-text-gray-500': closedCheck }
-            )}>
-            {status}
-          </span>
-        </div>
-      </Fragment>
-    );
-  };
-
-  const ColumnDetail = ({ column }: { column: Column }) => {
-    return !isEmpty(column) && !isUndefined(column) ? (
-      <div className="tw-mb-4" data-testid="column-details">
-        <div className="tw-flex">
-          <span className="tw-text-grey-muted tw-flex-none tw-mr-1">
-            Column type:
-          </span>{' '}
-          <Ellipses tooltip rows={1}>
-            {column.dataTypeDisplay}
-          </Ellipses>
-        </div>
-        {column.tags && column.tags.length ? (
-          <div className="tw-flex tw-mt-4">
-            <SVGIcons
-              alt="icon-tag"
-              className="tw-mr-1"
-              icon="icon-tag-grey"
-              width="12"
-            />
-            <div>{column.tags.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</div>
-          </div>
-        ) : null}
-      </div>
-    ) : null;
-  };
-
-  const EntityDetail = () => {
-    return (
-      <div data-testid="entityDetail">
-        <div className="tw-flex tw-ml-6">
-          <span className="tw-text-grey-muted">Owner:</span>{' '}
-          <span>
-            {entityData.owner ? (
-              <span className="tw-flex tw-ml-1">
-                <ProfilePicture
-                  displayName={getEntityName(entityData.owner)}
-                  id=""
-                  name={getEntityName(entityData.owner)}
-                  width="20"
-                />
-                <span className="tw-ml-1">
-                  {getEntityName(entityData.owner)}
-                </span>
-              </span>
-            ) : (
-              <span className="tw-text-grey-muted tw-ml-1">No Owner</span>
-            )}
-          </span>
-          <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
-          <p data-testid="tier">
-            {entityTier ? (
-              entityTier
-            ) : (
-              <span className="tw-text-grey-muted">No Tier</span>
-            )}
-          </p>
-        </div>
-        <p className="tw-ml-6" data-testid="tags">
-          {entityTags}
-        </p>
-      </div>
-    );
-  };
-
-  const getDiffView = () => {
-    const oldValue = taskDetail.task?.oldValue;
-    const newValue = taskDetail.task?.newValue;
-    if (!oldValue && !newValue) {
-      return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Description</span>
-        </div>
-      );
-    } else {
-      return (
-        <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
-          diffArr={getDescriptionDiff(
-            taskDetail?.task?.oldValue || '',
-            taskDetail?.task?.newValue || ''
-          )}
-        />
-      );
-    }
-  };
-
-  const getCurrentDescription = () => {
-    const newDescription = taskDetail?.task?.suggestion;
-    const oldDescription = taskDetail?.task?.oldValue;
-
-    const diffs = getDescriptionDiff(
-      oldDescription || '',
-      newDescription || ''
-    );
-
-    return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
-    ) : (
-      <DiffView className="tw-p-2" diffArr={diffs} />
-    );
-  };
-
-  const onModalClose = () => {
+  // handle comment modal close
+  const onCommentModalClose = () => {
     setModalVisible(false);
     setComment('');
   };
 
-  const hasEditAccess = () => {
-    return isAdminUser || isAuthDisabled || isAssignee || isOwner;
-  };
+  /**
+   *
+   * @returns True if has access otherwise false
+   */
+  const hasEditAccess = () =>
+    isAdminUser || isAuthDisabled || isAssignee || isOwner;
 
   return (
     <Layout style={{ ...background, height: '100vh' }}>
@@ -613,7 +506,7 @@ const TaskDetailPage = () => {
                 },
               ]}
             />
-            <EntityDetail />
+            <EntityDetail entityData={entityData} />
 
             <Card
               data-testid="task-metadata"
@@ -623,8 +516,8 @@ const TaskDetailPage = () => {
                 data-testid="task-title">
                 {`Task #${taskId}`} {taskDetail.message}
               </p>
-              <p className="tw-flex tw-mb-4" data-testid="task-metadata">
-                <TaskStatusElement
+              <div className="tw-flex tw-mb-4" data-testid="task-metadata">
+                <TaskStatus
                   status={taskDetail.task?.status as ThreadTaskStatus}
                 />
                 <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
@@ -651,7 +544,7 @@ const TaskDetailPage = () => {
                     )}
                   </span>
                 </span>
-              </p>
+              </div>
 
               <ColumnDetail column={columnObject} />
               <div className="tw-flex" data-testid="task-assignees">
@@ -718,54 +611,24 @@ const TaskDetailPage = () => {
             <Card
               data-testid="task-data"
               style={{ ...cardStyles, marginTop: '16px', marginLeft: '24px' }}>
-              <div data-testid="task-description-tabs">
-                <p className="tw-text-grey-muted">Description:</p>{' '}
-                {!isEmpty(taskDetail) && (
-                  <Fragment>
-                    {isTaskClosed ? (
-                      getDiffView()
-                    ) : (
-                      <div data-testid="description-task">
-                        {isRequestDescription && (
-                          <div data-testid="request-description">
-                            {isTaskActionEdit && hasEditAccess() ? (
-                              <RichTextEditor
-                                height="208px"
-                                initialValue={suggestion}
-                                placeHolder="Add description"
-                                style={{ marginTop: '0px' }}
-                                onTextChange={onSuggestionChange}
-                              />
-                            ) : (
-                              <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                {getCurrentDescription()}
-                              </div>
-                            )}
-                          </div>
-                        )}
+              {isTaskDescription && (
+                <DescriptionTask
+                  currentDescription={currentDescription()}
+                  hasEditAccess={hasEditAccess()}
+                  isTaskActionEdit={isTaskActionEdit}
+                  suggestion={suggestion}
+                  taskDetail={taskDetail}
+                  onSuggestionChange={onSuggestionChange}
+                />
+              )}
 
-                        {isUpdateDescription && (
-                          <div data-testid="update-description">
-                            {isTaskActionEdit && hasEditAccess() ? (
-                              <DescriptionTabs
-                                description={currentDescription()}
-                                markdownRef={markdownRef}
-                                suggestion={suggestion}
-                                onChange={onSuggestionChange}
-                              />
-                            ) : (
-                              <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
-                                {getCurrentDescription()}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Fragment>
-                )}
-              </div>
-
+              {isTaskTags && (
+                <TagsTask
+                  isTaskActionEdit={isTaskActionEdit}
+                  setSuggestion={setTagsSuggestion}
+                  suggestions={tagsSuggestion}
+                />
+              )}
               {hasEditAccess() && !isTaskClosed && (
                 <div
                   className="tw-flex tw-justify-end"
@@ -811,57 +674,16 @@ const TaskDetailPage = () => {
                 </div>
               )}
 
-              {isTaskClosed && (
-                <div className="tw-flex" data-testid="task-closed">
-                  <UserPopOverCard userName={taskDetail?.task?.closedBy || ''}>
-                    <span className="tw-flex">
-                      <ProfilePicture
-                        displayName={taskDetail?.task?.closedBy}
-                        id=""
-                        name={taskDetail?.task?.closedBy || ''}
-                        width="20"
-                      />
-                      <span className="tw-font-semibold tw-cursor-pointer hover:tw-underline tw-ml-1">
-                        {taskDetail?.task?.closedBy}
-                      </span>{' '}
-                    </span>
-                  </UserPopOverCard>
-                  <span className="tw-ml-1"> closed this task </span>
-                  <span className="tw-ml-1">
-                    {toLower(
-                      getDayTimeByTimeStamp(
-                        taskDetail?.task?.closedAt as number
-                      )
-                    )}
-                  </span>
-                </div>
-              )}
+              {isTaskClosed && <ClosedTask task={taskDetail.task} />}
             </Card>
-            <Modal
-              centered
-              destroyOnClose
-              cancelButtonProps={{
-                type: 'link',
-                className: 'ant-btn-link-custom',
-              }}
-              okButtonProps={{
-                disabled: !comment,
-                className: 'ant-btn-primary-custom',
-              }}
-              okText="Close with comment"
-              title={`Close Task #${taskDetail.task?.id} ${taskDetail.message}`}
-              visible={modalVisible}
-              width={700}
-              onCancel={onModalClose}
-              onOk={onTaskReject}>
-              <RichTextEditor
-                height="208px"
-                initialValue={comment}
-                placeHolder="Add comment"
-                style={{ marginTop: '0px' }}
-                onTextChange={setComment}
-              />
-            </Modal>
+            <CommentModal
+              comment={comment}
+              isVisible={modalVisible}
+              setComment={setComment}
+              taskDetail={taskDetail}
+              onClose={onCommentModalClose}
+              onConfirm={onTaskReject}
+            />
           </Content>
 
           <Sider
@@ -869,7 +691,7 @@ const TaskDetailPage = () => {
             data-testid="task-right-sider"
             width={600}>
             <Tabs className="ant-tabs-custom-line" onChange={onTabChange}>
-              <TabPane key="1" tab="Task">
+              <TabPane key={PanelTab.TASKS} tab="Task">
                 {!isEmpty(taskFeedDetail) ? (
                   <div id="task-feed">
                     <FeedPanelBody
@@ -886,7 +708,7 @@ const TaskDetailPage = () => {
                 ) : null}
               </TabPane>
 
-              <TabPane key="2" tab="Conversations">
+              <TabPane key={PanelTab.CONVERSATIONS} tab="Conversations">
                 {!isEmpty(taskFeedDetail) ? (
                   <ActivityThreadPanelBody
                     className="tw-p-0"

@@ -31,6 +31,7 @@ import {
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Column, Table } from '../generated/entity/data/table';
+import { TaskType } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/type/entityReference';
 import {
   EntityData,
@@ -52,6 +53,26 @@ export const getRequestDescriptionPath = (
   value?: string
 ) => {
   let pathname = ROUTES.REQUEST_DESCRIPTION;
+  pathname = pathname
+    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
+    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+  const searchParams = new URLSearchParams();
+
+  if (!isUndefined(field) && !isUndefined(value)) {
+    searchParams.append('field', field);
+    searchParams.append('value', value);
+  }
+
+  return { pathname, search: searchParams.toString() };
+};
+
+export const getRequestTagsPath = (
+  entityType: string,
+  entityFQN: string,
+  field?: string,
+  value?: string
+) => {
+  let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
     .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
@@ -263,3 +284,9 @@ export const TASK_ACTION_LIST = [
     key: TaskActionMode.EDIT,
   },
 ];
+
+export const isDescriptionTask = (taskType: TaskType) =>
+  [TaskType.RequestDescription, TaskType.UpdateDescription].includes(taskType);
+
+export const isTagsTask = (taskType: TaskType) =>
+  [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);

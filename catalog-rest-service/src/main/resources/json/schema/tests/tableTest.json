@@ -30,6 +30,9 @@
             },
             {
               "$ref": "./table/tableColumnToMatchSet.json"
+            },
+            {
+              "$ref": "./table/tableCustomSQLQuery.json"
             }
           ]
         },
@@ -40,7 +43,8 @@
             "tableColumnCountToEqual",
             "tableColumnCountToBeBetween",
             "tableColumnToMatchSet",
-            "tableColumnNameToExist"
+            "tableColumnNameToExist",
+            "tableCustomSQLQuery"
           ]
         }
       },
