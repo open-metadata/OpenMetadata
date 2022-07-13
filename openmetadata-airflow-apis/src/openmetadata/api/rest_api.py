@@ -32,6 +32,7 @@ from openmetadata.api.config import (
 )
 from openmetadata.api.response import ApiResponse
 from openmetadata.api.utils import jwt_token_secure
+from openmetadata.helpers import clean_dag_id
 from openmetadata.operations.delete import delete_dag_id
 from openmetadata.operations.deploy import DagDeployer
 from openmetadata.operations.last_dag_logs import last_dag_logs
@@ -222,9 +223,11 @@ class REST_API(AppBuilderBaseView):
         """
         request_json = request.get_json()
 
-        dag_id = request_json.get("workflow_name")
-        if not dag_id:
+        raw_dag_id = request_json.get("workflow_name")
+        if not raw_dag_id:
             return ApiResponse.bad_request("workflow_name should be informed")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             run_id = request_json.get("run_id")
@@ -243,13 +246,12 @@ class REST_API(AppBuilderBaseView):
         """
         Check the status of a DAG runs
         """
-        dag_id: str = self.get_request_arg(request, "dag_id")
+        raw_dag_id: str = self.get_request_arg(request, "dag_id")
 
-        if not dag_id:
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Missing dag_id argument in the request",
-            )
+        if not raw_dag_id:
+            return ApiResponse.bad_request("Missing dag_id argument in the request")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             return status(dag_id)
@@ -270,10 +272,12 @@ class REST_API(AppBuilderBaseView):
             "workflow_name": "my_ingestion_pipeline3"
         }
         """
-        dag_id: str = self.get_request_arg(request, "dag_id")
+        raw_dag_id: str = self.get_request_arg(request, "dag_id")
 
-        if not dag_id:
+        if not raw_dag_id:
             return ApiResponse.bad_request("workflow_name should be informed")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             return delete_dag_id(dag_id)
@@ -289,13 +293,12 @@ class REST_API(AppBuilderBaseView):
         """
         Retrieve all logs from the task instances of a last DAG run
         """
-        dag_id: str = self.get_request_arg(request, "dag_id")
+        raw_dag_id: str = self.get_request_arg(request, "dag_id")
 
-        if not dag_id:
-            return ApiResponse.error(
-                status=ApiResponse.STATUS_BAD_REQUEST,
-                error=f"Missing dag_id argument in the request",
-            )
+        if not raw_dag_id:
+            ApiResponse.bad_request("Missing dag_id parameter in the request")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             return last_dag_logs(dag_id)
@@ -314,9 +317,11 @@ class REST_API(AppBuilderBaseView):
         """
         request_json = request.get_json()
 
-        dag_id = request_json.get("dag_id")
-        if not dag_id:
+        raw_dag_id = request_json.get("dag_id")
+        if not raw_dag_id:
             return ApiResponse.bad_request(f"Missing dag_id argument in the request")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             return enable_dag(dag_id)
@@ -335,9 +340,11 @@ class REST_API(AppBuilderBaseView):
         """
         request_json = request.get_json()
 
-        dag_id = request_json.get("dag_id")
-        if not dag_id:
+        raw_dag_id = request_json.get("dag_id")
+        if not raw_dag_id:
             return ApiResponse.bad_request(f"Missing dag_id argument in the request")
+
+        dag_id = clean_dag_id(raw_dag_id)
 
         try:
             return disable_dag(dag_id)
