@@ -517,20 +517,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  public final DeleteResponse<T> deleteByName(String updatedBy, String name, boolean recursive, boolean hardDelete)
+      throws IOException {
+    DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+    postDelete(response.getEntity());
+    return response;
+  }
+
   protected void postDelete(T entity) {
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  @Transaction
-  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
       throws IOException {
-    // Validate entity
-    String json = dao.findJsonById(id, ALL);
-    if (json == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
-
     T original = JsonUtils.readValue(json, entityClass);
     setFields(original, putFields); // TODO why this?
 
@@ -552,6 +552,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteInternalByName(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) throws IOException {
+    // Validate entity
+    String json = dao.findJsonByFqn(name, ALL);
+    if (json == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
+    }
+    String id = String.valueOf(JsonUtils.readValue(json, entityClass).getId());
+    return delete(updatedBy, json, id, recursive, hardDelete);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+      throws IOException {
+    // Validate entity
+    String json = dao.findJsonById(id, ALL);
+    if (json == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
   private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
