@@ -293,15 +293,36 @@ const BotsDetail: FC<BotsDetailProp> = ({
 
   const getBotsTokenExpiryDate = () => {
     if (botsTokenExpiry) {
+      // get the current date timestamp
+      const currentTimeStamp = Date.now();
+
+      const isTokenExpired = currentTimeStamp >= Number(botsTokenExpiry);
+
+      // get the token expiry date
+      const tokenExpiryDate =
+        moment(botsTokenExpiry).format('ddd Do MMMM, YYYY');
+
       return (
         <p
           className="tw-text-grey-muted tw-mt-2 tw-italic"
           data-testid="token-expiry">
-          Expires on {moment(botsTokenExpiry).format('ddd Do MMMM, YYYY')}
+          {isTokenExpired
+            ? `Expired on ${tokenExpiryDate}`
+            : `Expires on ${tokenExpiryDate}`}
+          .
         </p>
       );
     } else {
-      return null;
+      return (
+        <p
+          className="tw-text-grey-muted tw-mt-2 tw-italic"
+          data-testid="token-expiry">
+          <SVGIcons alt="warning" icon="error" />
+          <span className="tw-ml-1 tw-align-middle">
+            This token has no expiration date.
+          </span>
+        </p>
+      );
     }
   };
 
