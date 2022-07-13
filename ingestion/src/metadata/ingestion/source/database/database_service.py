@@ -40,7 +40,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
@@ -314,7 +319,7 @@ class DatabaseServiceSource(DBTMixin, TopologyRunnerMixin, Source, ABC):
                 ),
                 labelType=LabelType.Automated,
                 state=State.Suggested,
-                source=Source1.Tag,
+                source=TagSource.Tag,
             )
             for tag_and_category in self.context.tags or []
             if tag_and_category.fqn.__root__ == entity_fqn
