@@ -34,19 +34,19 @@ const ConfigureService = ({
       return 'Service name is required';
     }
     if (showError.duplicateName) {
-      return 'Service name already exist.';
+      return 'Service name already exists';
     }
     if (showError.delimit) {
-      return 'Name with delimiters are not allowed';
+      return 'Service name with delimiters are not allowed';
     }
     if (showError.nameWithSpace) {
-      return 'Name with space are not allowed';
+      return 'Service name with spaces are not allowed';
     }
     if (showError.nameLength) {
-      return 'Name size must be between 1 and 128';
+      return 'Service name length must be between 1 and 128 characters';
     }
     if (showError.specialChar) {
-      return 'Special characters are not allowed';
+      return 'Service name contains special characters that are not allowed';
     }
 
     return '';
