@@ -309,10 +309,20 @@ const BotsDetail: FC<BotsDetailProp> = ({
           {isTokenExpired
             ? `Expired on ${tokenExpiryDate}`
             : `Expires on ${tokenExpiryDate}`}
+          .
         </p>
       );
     } else {
-      return null;
+      return (
+        <p
+          className="tw-text-grey-muted tw-mt-2 tw-italic"
+          data-testid="token-expiry">
+          <SVGIcons alt="warning" icon="error" />
+          <span className="tw-ml-1 tw-align-middle">
+            This token has no expiration date.
+          </span>
+        </p>
+      );
     }
   };
 
