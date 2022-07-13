@@ -701,8 +701,6 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/teams/user
   - category: Main Concepts / Metadata Standard / Schemas / Entity / type
     url: /main-concepts/metadata-standard/schemas/entity/type
-  - category: Main Concepts / Metadata Standard / Schemas / Openmetadata-docs / Content / Main-concepts / Metadata-standard / Schemas
-    url: /main-concepts/metadata-standard/schemas
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / dashboardServiceMetadataPipeline
     url: /main-concepts/metadata-standard/schemas/metadataIngestion/dashboardservicemetadatapipeline
   - category: Main Concepts / Metadata Standard / Schemas / Metadataingestion / databaseServiceMetadataPipeline
