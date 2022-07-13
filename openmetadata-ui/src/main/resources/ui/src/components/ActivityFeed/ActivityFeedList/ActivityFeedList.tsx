@@ -272,7 +272,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
         <Fragment>
           {entityName && feedFilter === FeedFilter.ALL && !threadType ? (
             <NoFeedPlaceholder entityName={entityName} />
-          ) : (
+          ) : !refreshFeedCount ? (
             <Fragment>
               <FeedListSeparator
                 className="tw-relative tw-mt-1 tw-mb-3.5 tw-pb-5"
@@ -280,7 +280,7 @@ const ActivityFeedList: FC<ActivityFeedListProp> = ({
               />
               <>No conversations found. Try changing the filter.</>
             </Fragment>
-          )}
+          ) : null}
         </Fragment>
       )}
       {confirmationState.state && (
