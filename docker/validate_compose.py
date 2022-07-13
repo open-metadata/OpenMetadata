@@ -28,7 +28,7 @@ def get_last_run_info() -> Tuple[str, str]:
     dag_runs = None
     while not dag_runs:
         print("Waiting for DAG Run data...")
-        # time.sleep(5)
+        time.sleep(5)
         runs = requests.get("http://localhost:8080/api/v1/dags/sample_data/dagRuns", headers=HEADER_AUTH).json()
         dag_runs = runs.get("dag_runs")
 
