@@ -12,6 +12,7 @@
     },
     "TagSource": {
       "type": "string",
+      "default": "Tag",
       "enum": ["Tag", "Glossary"]
     }
   },
@@ -25,7 +26,6 @@
     },
     "source": {
       "description": "Label is from Tags or Glossary.",
-      "default": "Tag",
       "$ref": "#/definitions/TagSource"
     },
     "labelType": {
