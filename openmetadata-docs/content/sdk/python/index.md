@@ -1,6 +1,6 @@
 ---
 title: Python SDK
-slug: /developers/sdk/python
+slug: /sdk/python
 ---
 
 # Python SDK

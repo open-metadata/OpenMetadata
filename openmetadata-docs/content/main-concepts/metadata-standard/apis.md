@@ -1,6 +1,6 @@
 ---
-title: API's
+title: APIs
 slug: /main-concepts/metadata-standard/apis
 ---
 
-# API's
+# APIs

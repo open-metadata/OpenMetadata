@@ -203,7 +203,11 @@ const Appbar: React.FC = (): JSX.Element => {
       <div className="tw-max-w-xs" data-testid="greeting-text">
         <Link to={getUserPath(currentUser?.name as string)}>
           {' '}
-          <Ellipses tooltip className="tw-font-medium tw-cursor-pointer">
+          <Ellipses
+            tooltip
+            className="tw-font-medium tw-cursor-pointer"
+            rows={1}
+            style={{ color: '#7147E8' }}>
             {name}
           </Ellipses>
         </Link>
