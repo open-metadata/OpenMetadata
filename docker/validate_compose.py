@@ -58,6 +58,7 @@ def main():
         print(f"DAG run: [{dag_run_id}, {state}]")
 
         print_last_run_logs()
+        time.sleep(10)
 
 
 if __name__ == "__main__":

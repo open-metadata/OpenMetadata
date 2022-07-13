@@ -12,7 +12,7 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 echo "Maven Build - Skipping Tests"
-cd ../ && mvn -DskipTests clean package
+cd ../ #&& mvn -DskipTests clean package
 echo "Prepare Docker volume for the operators"
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
@@ -34,6 +34,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
         "is_paused": false
       }'
 
+cd ../
 printf 'Validate sample data DAG...'
 sleep 5
 python validate_compose.py
