@@ -30,7 +30,7 @@ import org.openmetadata.catalog.resources.glossary.GlossaryResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
@@ -91,7 +91,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private Integer getUsageCount(Glossary glossary) {
-    return daoCollection.tagUsageDAO().getTagCount(Source.GLOSSARY.ordinal(), glossary.getName());
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), glossary.getName());
   }
 
   @Override

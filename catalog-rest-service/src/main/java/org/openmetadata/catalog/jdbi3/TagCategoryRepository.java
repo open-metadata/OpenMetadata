@@ -28,7 +28,7 @@ import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.TagCategory;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -103,7 +103,7 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
   public void storeRelationships(TagCategory entity) {}
 
   private Integer getUsageCount(TagCategory category) {
-    return daoCollection.tagUsageDAO().getTagCount(Source.TAG.ordinal(), category.getName());
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.TAG.ordinal(), category.getName());
   }
 
   @Transaction
@@ -111,8 +111,8 @@ public class TagCategoryRepository extends EntityRepository<TagCategory> {
     TagCategory category = get(uriInfo, id, Fields.EMPTY_FIELDS, Include.NON_DELETED);
     dao.delete(id);
     daoCollection.tagDAO().deleteTagsByPrefix(category.getName());
-    daoCollection.tagUsageDAO().deleteTagLabels(Source.TAG.ordinal(), category.getName());
-    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(Source.TAG.ordinal(), category.getName());
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.TAG.ordinal(), category.getName());
+    daoCollection.tagUsageDAO().deleteTagLabelsByPrefix(TagSource.TAG.ordinal(), category.getName());
     return category;
   }
 
