@@ -30,6 +30,11 @@ export type ConfigureServiceProps = {
   showError: {
     name: boolean;
     duplicateName: boolean;
+    nameWithSpace: boolean;
+    delimit: boolean;
+    specialChar: boolean;
+    nameLength: boolean;
+    allowChar: boolean;
   };
   handleValidation: (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
