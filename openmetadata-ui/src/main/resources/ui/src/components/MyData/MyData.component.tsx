@@ -18,7 +18,6 @@ import React, {
   RefObject,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -228,33 +227,26 @@ const MyData: React.FC<MyDataProps> = ({
 
   const newFeedsLength = activityFeeds && activityFeeds.length;
 
-  // Check if feedFilter or ThreadType filter is applied or not
-  const filtersApplied = useMemo(
-    () => feedFilter === FeedFilter.ALL && !threadType,
-    [feedFilter, threadType]
-  );
-
   return (
     <PageLayout leftPanel={getLeftPanel()} rightPanel={getRightPanel()}>
       {error ? (
         <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <Fragment>
-          {feedData?.length > 0 || !filtersApplied || newFeedsLength ? (
-            <>
-              <ActivityFeedList
-                withSidePanel
-                className="tw-mt-3"
-                deletePostHandler={deletePostHandler}
-                feedList={feedData}
-                postFeedHandler={postFeedHandler}
-                refreshFeedCount={newFeedsLength}
-                updateThreadHandler={updateThreadHandler}
-                onFeedFiltersUpdate={handleFeedFilterChange}
-                onRefreshFeeds={onRefreshFeeds}
-              />
-              {filtersApplied && feedData?.length <= 0 ? <Onboarding /> : null}
-            </>
+          {feedData?.length > 0 ||
+          feedFilter !== FeedFilter.ALL ||
+          threadType ? (
+            <ActivityFeedList
+              withSidePanel
+              className=""
+              deletePostHandler={deletePostHandler}
+              feedList={feedData}
+              postFeedHandler={postFeedHandler}
+              refreshFeedCount={newFeedsLength}
+              updateThreadHandler={updateThreadHandler}
+              onFeedFiltersUpdate={handleFeedFilterChange}
+              onRefreshFeeds={onRefreshFeeds}
+            />
           ) : (
             !isFeedLoading && <Onboarding />
           )}
