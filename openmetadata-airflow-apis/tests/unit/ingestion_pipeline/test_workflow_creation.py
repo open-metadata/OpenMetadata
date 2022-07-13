@@ -16,6 +16,7 @@ import json
 import uuid
 from unittest import TestCase
 
+from openmetadata.helpers import clean_dag_id
 from openmetadata.workflows.ingestion.metadata import build_metadata_workflow_config
 from openmetadata.workflows.ingestion.profiler import build_profiler_workflow_config
 from openmetadata.workflows.ingestion.usage import build_usage_workflow_config
@@ -122,6 +123,15 @@ class OMetaServiceTest(TestCase):
             recursive=True,
             hard_delete=True,
         )
+
+    def test_clean_dag_id(self):
+        """
+        Validate dag_id clean
+        """
+        self.assertEqual(clean_dag_id("hello"), "hello")
+        self.assertEqual(clean_dag_id("hello(world)"), "hello_world_")
+        self.assertEqual(clean_dag_id("hello-world"), "hello-world")
+        self.assertEqual(clean_dag_id("%%&^++hello__"), "_hello__")
 
     def test_ingestion_workflow(self):
         """
