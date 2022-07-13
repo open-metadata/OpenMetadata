@@ -20,7 +20,7 @@ import { EntityTags } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { getTagSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
-import { Source } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { withLoader } from '../../hoc/withLoader';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { Button } from '../buttons/Button/Button';
@@ -100,7 +100,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
         }}
-        showOnlyName={tag.source === Source.Glossary}
+        showOnlyName={tag.source === TagSource.Glossary}
         tag={tag}
         type="border"
       />

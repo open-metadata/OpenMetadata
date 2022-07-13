@@ -30,7 +30,7 @@ import {
   TermReference,
 } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
-import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import { getEntityName } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
@@ -177,7 +177,7 @@ const GlossaryTermsV1 = ({
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: Source.Tag,
+          source: TagSource.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
