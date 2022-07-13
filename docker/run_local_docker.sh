@@ -12,7 +12,7 @@
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 echo "Maven Build - Skipping Tests"
-cd ../ #&& mvn -DskipTests clean package
+cd ../ && mvn -DskipTests clean package
 echo "Prepare Docker volume for the operators"
 cd docker/local-metadata
 echo "Starting Local Docker Containers"
