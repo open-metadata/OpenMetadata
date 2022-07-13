@@ -54,6 +54,13 @@ def _(elements, compiler, **kwargs):
     return "approx_percentile(%s, 0.5)" % col
 
 
+@compiles(MedianFn, Dialects.MSSQL)
+def _(elements, compiler, **kwargs):
+    """Median computation for MSSQL"""
+    col, _ = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return "percentile_cont(0.5)  WITHIN GROUP (ORDER BY %s ASC) OVER()" % col
+
+
 @compiles(MedianFn, Dialects.SQLite)
 def _(elements, compiler, **kwargs):
     col, table = [element for element in elements.clauses]
