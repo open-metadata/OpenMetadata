@@ -66,7 +66,7 @@ import org.openmetadata.catalog.type.MessagingConnection;
 import org.openmetadata.catalog.type.MlModelConnection;
 import org.openmetadata.catalog.type.PipelineConnection;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 
 @Slf4j
 public final class TestUtils {
@@ -337,7 +337,7 @@ public final class TestUtils {
     EntityUtil.mergeTags(updatedExpectedList, expectedList);
 
     for (TagLabel expected : expectedList) {
-      if (expected.getSource() == Source.GLOSSARY) {
+      if (expected.getSource() == TagSource.GLOSSARY) {
         GlossaryTerm glossaryTerm =
             new GlossaryTermResourceTest().getEntityByName(expected.getTagFQN(), null, "tags", ADMIN_AUTH_HEADERS);
         List<TagLabel> derived = new ArrayList<>();
