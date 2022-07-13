@@ -112,7 +112,7 @@ Validate the number of colum in a table is between the given value
 "testCase": {
     "config": {
         "minColValue": 1,
-        "maxColValue: 10
+        "maxColValue": 10
     },
     "tableTestType": "tableColumnCountToBeBetween"
 }
