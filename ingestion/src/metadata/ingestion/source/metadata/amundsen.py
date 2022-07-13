@@ -34,9 +34,7 @@ from metadata.generated.schema.entity.services.connections.metadata.amundsenConn
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -86,6 +84,20 @@ AMUNDSEN_TAG_CATEGORY = "AmundsenTags"
 AMUNDSEN_TABLE_TAG = "amundsen_table"
 
 
+SUPERSET_DEFAULT_CONFIG = {
+    "type": "superset",
+    "serviceConnection": {
+        "config": {
+            "username": "test",
+            "password": "test",
+            "hostPort": "http://localhost:8088",
+            "type": "Superset",
+        }
+    },
+    "sourceConfig": {"config": {"chartFilterPattern": {}}},
+}
+
+
 @dataclass
 class AmundsenStatus(SourceStatus):
     success: List[str] = field(default_factory=list)
@@ -102,6 +114,8 @@ class AmundsenStatus(SourceStatus):
 
 
 class AmundsenSource(Source[Entity]):
+    dashboard_service: DashboardService
+
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
         self.config = config
         self.metadata_config = metadata_config
@@ -149,6 +163,7 @@ class AmundsenSource(Source[Entity]):
             NEO4J_AMUNDSEN_DASHBOARD_QUERY
         )
         for dashboard in dashboard_entities:
+            yield from self.create_dashboard_service(dashboard)
             yield from self.create_chart_entity(dashboard)
             yield from self.create_dashboard_entity(dashboard)
 
@@ -302,15 +317,21 @@ class AmundsenSource(Source[Entity]):
             self.status.failure(table["name"], str(e))
             return None
 
+    def create_dashboard_service(self, dashboard: dict):
+        service_name = dashboard["cluster"]
+        SUPERSET_DEFAULT_CONFIG["serviceName"] = service_name
+        config = WorkflowSource.parse_obj(SUPERSET_DEFAULT_CONFIG)
+        create_service_entity = self.metadata.get_create_service_from_source(
+            entity=DashboardService, config=config
+        )
+        yield create_service_entity
+        logger.info(f"Created Dashboard Service {service_name}")
+        self.dashboard_service = self.metadata.get_by_name(
+            entity=DashboardService, fqn=service_name
+        )
+
     def create_dashboard_entity(self, dashboard):
         try:
-            service_name = dashboard["cluster"]
-            service_entity = get_dashboard_service_or_create(
-                service_name,
-                DashboardServiceType.Superset.name,
-                {"username": "test", "hostPort": "http://localhost:8088"},
-                self.metadata_config,
-            )
             self.status.scanned(dashboard["name"])
             yield CreateDashboardRequest(
                 name=dashboard["name"],
@@ -320,9 +341,11 @@ class AmundsenSource(Source[Entity]):
                 charts=get_chart_entities_from_id(
                     chart_ids=dashboard["chart_ids"],
                     metadata=self.metadata,
-                    service_name=service_entity.name.__root__,
+                    service_name=self.dashboard_service.name.__root__,
                 ),
-                service=EntityReference(id=service_entity.id, type="dashboardService"),
+                service=EntityReference(
+                    id=self.dashboard_service.id, type="dashboardService"
+                ),
             )
         except Exception as e:
             logger.debug(traceback.format_exc())
@@ -331,13 +354,6 @@ class AmundsenSource(Source[Entity]):
             return None
 
     def create_chart_entity(self, dashboard):
-        service_name = dashboard["cluster"]
-        service_entity = get_dashboard_service_or_create(
-            service_name,
-            DashboardServiceType.Superset.name,
-            {"username": "test", "hostPort": "http://localhost:8088"},
-            self.metadata_config,
-        )
         for (name, chart_id, chart_type, url) in zip(
             dashboard["chart_names"],
             dashboard["chart_ids"],
@@ -350,7 +366,9 @@ class AmundsenSource(Source[Entity]):
                 description="",
                 chartUrl=url,
                 chartType=get_standard_chart_type(chart_type).value,
-                service=EntityReference(id=service_entity.id, type="dashboardService"),
+                service=EntityReference(
+                    id=self.dashboard_service.id, type="dashboardService"
+                ),
             )
             self.status.scanned(name)
             yield chart
