@@ -382,6 +382,9 @@ site_menu:
   - category: OpenMetadata / Integrations / Prefect
     url: /openmetadata/integrations/prefect
 
+  - category: OpenMetadata / Glossaries
+    url: /openmetadata/glossaries
+
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
