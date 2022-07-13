@@ -117,7 +117,7 @@ You can review the supported tests [here](tests.md). We will keep expanding the 
 
 Once tests are added, we will be able to see them in the _Data Quality_ tab:
 
-![Freshly created tests](<../../.gitbook/assets/image (120).png>)
+![Freshly created tests](<../../.gitbook/assets/image (120) (1).png>)
 
 Note how the tests are grouped in Table and Column tests. All tests from the same column will also be grouped together. From this view, we can both edit and delete the tests if needed.
 

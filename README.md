@@ -39,7 +39,7 @@ The key components of OpenMetadata include the following:
 * **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
 * **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard. See the [Schema Concepts](docs/openmetadata-apis/schemas/overview.md) section to learn more about metadata schemas.
 
-![](<.gitbook/assets/openmetadata-overview (1) (1).png>)
+![](<.gitbook/assets/openmetadata-overview (1).png>)
 
 ## License
 

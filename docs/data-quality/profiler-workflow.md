@@ -18,13 +18,13 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 ![Data Quality tab of a Table Entity](<../.gitbook/assets/image (6) (1) (1) (1).png>)
 
-You can learn how to configure the Data Quality of a Table Entity [here](broken-reference).
+You can learn how to configure the Data Quality of a Table Entity [here](broken-reference/).
 
 ### 1. Add a Profiler Ingestion
 
 From the Service Page, go to the _Ingestions_ tab to add a new ingestion and click on _Add Profiler Ingestion_.
 
-![Add Ingestion](<../.gitbook/assets/image (9) (2) (2).png>)
+![Add Ingestion](<../.gitbook/assets/image (9) (2).png>)
 
 If you already added a Usage ingestion, the button will directly specify to _Add Profiler Ingestion_.
 

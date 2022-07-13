@@ -45,7 +45,7 @@ To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10).png>)
+![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (28).png>)
 
 ### 3. Select the Service Type
 
@@ -61,13 +61,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Mode services that you might be ingesting metadata from.
 
-![Enter a service name](<../../../.gitbook/assets/image (22).png>)
+![Enter a service name](<../../../.gitbook/assets/image (45).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Mode service as desired.
 
-![](<../../../.gitbook/assets/image (40) (2).png>)
+![](<../../../.gitbook/assets/image (114).png>)
 
 <details>
 
@@ -87,13 +87,13 @@ Enter the workspace name of your Mode environment.
 
 </details>
 
-![](<../../../.gitbook/assets/image (3).png>)
+![](<../../../.gitbook/assets/image (3) (1).png>)
 
 ### 6. Configure the Metadata Ingestion
 
 Once the service is created, we can add a **Metadata Ingestion Workflow**, either directly from the _Add Ingestion_ button in the figure above, or from the Service page:
 
-![](../../../.gitbook/assets/image.png)
+![](<../../../.gitbook/assets/image (15).png>)
 
 <details>
 
@@ -149,13 +149,13 @@ The _Minute_ dropdown is only active when ingesting metadata once per hour. Use 
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (33).png>)
 
 ### 8. View the Ingestion Pipeline
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![](<../../../.gitbook/assets/image (1) (3).png>)
+![](<../../../.gitbook/assets/image (132).png>)
 
 ### 9. Workflow Deployment Error
 
@@ -165,7 +165,7 @@ You can then edit the Ingestion Pipeline and _Deploy_ it again.
 
 From the _Connection_ tab, you can also _Edit_ the Service if needed.
 
-![](<../../../.gitbook/assets/image (65).png>)
+![](<../../../.gitbook/assets/image (27).png>)
 
 ## Run using Airflow SDK
 

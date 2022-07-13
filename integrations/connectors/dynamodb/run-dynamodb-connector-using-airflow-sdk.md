@@ -13,7 +13,7 @@ Configure and schedule DynamoDB **metadata** workflows using your own Airflow in
 
 ## Metadata Ingestion
 
-All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/dynamoDBConnection.json) you can find the structure to create a connection to DynamoDB.
+All connectors are now defined as JSON Schemas. [Here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/connections/database/datalakeConnection.json) you can find the structure to create a connection to DynamoDB.
 
 In order to create and run a Metadata Ingestion workflow, we will follow the steps to create a YAML configuration able to connect to the source, process the Entities if needed, and reach the OpenMetadata server.
 
@@ -38,7 +38,7 @@ source:
       database: custom_database_name
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
       tableFilterPattern:
         includes:
         - ''
@@ -59,18 +59,12 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 * **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
 * **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
 * **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
-* **awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
 * **endPointURL**: Optional parameter.The DynamoDB connector will automatically determine the AWS DynamoDB endpoint URL based on the AWS Region. You may specify a value to override this behavior.
 
 #### Source Configuration - Source Config
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: DynamoDB does not provide query capabilities, so profiler is not supported.
-* **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
-* **includeTables**: `true` or `false`, to ingest table data. Default is true.
-* **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: DynamoDB does not provide query capabilities, so sample data is not supported.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```

@@ -27,7 +27,7 @@ If you don't want to use the OpenMetadata Ingestion container to configure the w
 
 #### **OpenMetadata (version 0.10 or later)**
 
-To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](broken-reference) or follow the [OpenMetadata & Prefect](broken-reference) guide.
+To deploy OpenMetadata, follow the procedure [Try OpenMetadata in Docker](broken-reference/) or follow the [OpenMetadata & Prefect](broken-reference/) guide.
 
 To run the Ingestion via the UI you'll need to use the OpenMetadata [Ingestion Container](https://hub.docker.com/r/openmetadata/ingestion), which comes shipped with custom Airflow plugins to handle the workflow deployment.
 
@@ -37,19 +37,19 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1) (2).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (4) (1).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (61) (1).png>)
+![Add a New Service from the Database Services Page](<../../../../.gitbook/assets/image (123).png>)
 
 ### 3. Select the Service Type
 
 Select Hive as the service type and click _Next_.
 
-![](<../../../../.gitbook/assets/image (51) (1).png>)
+![](<../../../../.gitbook/assets/image (109).png>)
 
 ### 4. Name and Describe your Service <a href="#4.-name-and-describe-your-service" id="4.-name-and-describe-your-service"></a>
 
@@ -59,13 +59,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Hive services that you might be ingesting metadata from.
 
-![](<../../../../.gitbook/assets/image (46).png>)
+![](<../../../../.gitbook/assets/image (102).png>)
 
 ### 5. Configure the Service Connection <a href="#5.-configure-the-service-connection" id="5.-configure-the-service-connection"></a>
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Hive service as desired.
 
-![Configure the Service connection](<../../../../.gitbook/assets/image (73).png>)
+![Configure the Service connection](<../../../../.gitbook/assets/image (73) (1).png>)
 
 <details>
 
@@ -199,13 +199,13 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (13).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../../.gitbook/assets/image (33).png>)
 
 ### 8. View the Ingestion Pipeline <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
 Once the workflow has been successfully deployed, you can view the Ingestion Pipeline running from the Service Page.
 
-![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1) (1) (1) (1) (1) (1) (1) (1) (1) (1).png>)
+![View the Ingestion Pipeline from the Service Page](<../../../.gitbook/assets/image (55) (1) (1) (1) (1) (1) (1) (1) (1) (1) (1) (1).png>)
 
 ### 9. Workflow Deployment Error <a href="#8.-view-the-ingestion-pipeline" id="8.-view-the-ingestion-pipeline"></a>
 
@@ -227,7 +227,7 @@ You can learn more about how to configure the Data Profiler and about executing 
 
 ## DBT Integration
 
-You can learn more about how to ingest DBT models' definitions and their lineage [here](broken-reference).
+You can learn more about how to ingest DBT models' definitions and their lineage [here](broken-reference/).
 
 ## Run using Airflow SDK
 

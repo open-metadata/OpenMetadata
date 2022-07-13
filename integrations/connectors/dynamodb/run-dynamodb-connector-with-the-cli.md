@@ -48,7 +48,7 @@ source:
       database: custom_database_name
   sourceConfig:
     config:
-      enableDataProfiler: false
+      type: DatabaseMetadata
       tableFilterPattern:
         includes:
         - ''
@@ -66,12 +66,6 @@ workflowConfig:
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: DynamoDB does not provide query capabilities, so the profiler is not supported.
-* **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
-* **includeTables**: `true` or `false`, to ingest table data. Default is true.
-* **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: DynamoDB does not provide query capabilities, so sample data is not supported.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilternPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```

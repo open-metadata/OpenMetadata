@@ -37,13 +37,13 @@ The first step is ingesting the metadata from your sources. Under Settings you w
 
 To visit the _Services_ page, select _Services_ from the _Settings_ menu.
 
-![Navigate to Settings >> Services](<../../../docs/.gitbook/assets/image (4) (1).png>)
+![Navigate to Settings >> Services](<../../../.gitbook/assets/image (14).png>)
 
 ### 2. Create a New Service
 
 Click on the _Add New Service_ button to start the Service creation.
 
-![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (10).png>)
+![Add a New Service from the Dashboard Services Page](<../../../.gitbook/assets/image (28).png>)
 
 ### 3. Select the Service Type
 
@@ -59,13 +59,13 @@ Provide a name and description for your service as illustrated below.
 
 OpenMetadata uniquely identifies services by their _Service Name_. Provide a name that distinguishes your deployment from other services, including the other Looker services that you might be ingesting metadata from.
 
-![](<../../../.gitbook/assets/image (12).png>)
+![](<../../../.gitbook/assets/image (31).png>)
 
 ### 5. Configure the Service Connection
 
 In this step, we will configure the connection settings required for this connector. Please follow the instructions below to ensure that you've configured the connector to read from your Looker service as desired.
 
-![](<../../../.gitbook/assets/image (22) (1).png>)
+![](<../../../.gitbook/assets/image (47).png>)
 
 <details>
 
@@ -167,7 +167,7 @@ Use the _End date_ selector to choose the date at which to stop ingesting metada
 
 After configuring the workflow, you can click on _Deploy_ to create the pipeline.
 
-![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (13).png>)
+![Schedule the Ingestion Pipeline and Deploy](<../../../.gitbook/assets/image (33).png>)
 
 ### 8. View the Ingestion Pipeline
 

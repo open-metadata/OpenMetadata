@@ -25,7 +25,7 @@ description: >-
 
 * Click on the **Create App Integration** button.
 
-![](<../../../.gitbook/assets/image (11) (1) (1) (1) (1) (1) (1) (1) (1) (1) (3).png>)
+![](<../../../.gitbook/assets/image (11) (1) (1) (1) (1) (1) (1) (1) (1) (1) (3) (1).png>)
 
 ## Step 3: Configuring the App
 
@@ -65,7 +65,7 @@ It is recommended to create a separate authorization server for different applic
 
 * From the **Authorization Servers** tab, click on **Add Authorization Server** button.
 
-![](<../../../../.gitbook/assets/image (29) (1) (1) (1) (1).png>)
+![](<../../../../.gitbook/assets/image (29) (1) (1) (1) (1) (3).png>)
 
 * Enter a Name and Description.
 * While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next [Step 7](create-server-credentials.md#step-7-where-to-find-the-credentials) to locate the Client ID.
@@ -79,17 +79,17 @@ This will generate the Issuer URL.
 
 Once the Authorization Server has been added, navigate to Security >> API >> Authorization Servers and click on the authorization server created in the previous step.
 
-![](<../../../../.gitbook/assets/image (61).png>)
+![](<../../../../.gitbook/assets/image (120).png>)
 
 The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL and save the changes.
 
-![](<../../../../.gitbook/assets/image (1) (1) (2).png>)
+![](<../../../../.gitbook/assets/image (167).png>)
 
 ## Step 6: Create a Default Scope
 
 * To create a default scope from **Security -> API**, click on the required **Authorization Server**.
 
-![](<../../../.gitbook/assets/image (71) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (71) (1) (1).png>)
 
 * In the resulting page, click on the **Scopes** tab
 * Click on **Add Scope**
@@ -124,14 +124,14 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 * You can also go to **Application -> Application** as in step 2.
 * You should be able to see your application in the list.
 
-![](<../../../../.gitbook/assets/image (35) (1) (1) (1) (1) (1) (11) (6).png>)
+![](<../../../../.gitbook/assets/image (35) (1) (1) (1) (1) (1) (11) (6) (1).png>)
 
 * Click on your application.
 * You will find your **Client ID** and **Okta domain**.
 * The **Client authentication** is enabled by default.
 * By clicking on the Edit \*\*\*\* option for General Settings, you can deselect the option for **User consent**. Save the changes.
 
-![](<../../../.gitbook/assets/image (1) (1) (1) (1).png>)
+![](<../../../.gitbook/assets/image (1) (1) (1) (1) (1).png>)
 
 * Click on the **Sign On** tab from the top navigation bar.
 * Click on Edit for **OpenID Connect ID Token**.

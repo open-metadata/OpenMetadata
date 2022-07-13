@@ -8,8 +8,6 @@ These instructions have been tested on macOS, Windows 10, and Ubuntu 20.04.
 
 Please ensure your host system meets the requirements listed below. Then continue to the Procedure for installing OpenMetadata.
 
-
-
 ### Docker (version 20.10.0 or greater)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
@@ -27,8 +25,6 @@ Note: You must **allocate at least 6GB of memory to Docker** in order to run Ope
 
 Preferences -> Resources -> Advanced
 {% endhint %}
-
-
 
 ### `compose` command for Docker (version v2.1.1 or greater)
 
@@ -79,7 +75,7 @@ docker compose version
 Docker Compose version v2.2.3
 ```
 
-### ``
+### \`\`
 
 ## Requirements (Windows)
 
@@ -229,7 +225,7 @@ Username: `admin`
 
 Password: `admin`
 
-![](../../docs/.gitbook/assets/airflow-login.png)
+![](../../.gitbook/assets/airflow-login.png)
 
 ### 10. Begin using OpenMetadata
 
@@ -241,7 +237,7 @@ http://localhost:8585
 
 You should see a page similar to the following as the landing page for the OpenMetadata server.
 
-![](../../docs/.gitbook/assets/om-homepage.png)
+![](../../.gitbook/assets/om-homepage.png)
 
 ### Next Steps
 
