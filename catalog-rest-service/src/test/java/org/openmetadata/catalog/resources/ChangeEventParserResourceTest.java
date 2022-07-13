@@ -67,7 +67,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
     deleteTag.withName("tags").withOldValue("tag1");
     changeDescription.withFieldsAdded(List.of(addTag)).withFieldsDeleted(List.of(deleteTag)).withPreviousVersion(1.0);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     TagLabel tag1 = new TagLabel();
@@ -79,7 +80,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
     addTag.withNewValue(JsonUtils.pojoToJson(List.of(tag2)));
     deleteTag.withOldValue(JsonUtils.pojoToJson(List.of(tag1)));
 
-    Map<EntityLink, String> jsonMessages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> jsonMessages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, jsonMessages.size());
 
     // The entity links and values of both the messages should be the same
@@ -97,7 +99,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
     changeDescription.withFieldsAdded(List.of(addOwner)).withPreviousVersion(1.0);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals("Added **owner**: `User One`", messages.values().iterator().next());
@@ -112,7 +115,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
 
     changeDescription.withFieldsUpdated(List.of(updateDescription)).withPreviousVersion(1.0);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -132,7 +136,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         .withPreviousVersion(1.0);
 
     // now test if both the type of updates give the same message
-    Map<EntityLink, String> updatedMessages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> updatedMessages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, updatedMessages.size());
 
     assertEquals(messages.keySet().iterator().next(), updatedMessages.keySet().iterator().next());
@@ -160,7 +165,8 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.3);
 
-    Map<EntityLink, String> messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -178,7 +184,7 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.3);
 
-    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
@@ -196,7 +202,7 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
         .withFieldsDeleted(List.of(deleteColumn))
         .withPreviousVersion(1.4);
 
-    messages = ChangeEventParser.getFormattedMessages(changeDescription, TABLE);
+    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.FEED, changeDescription, TABLE);
     assertEquals(1, messages.size());
 
     assertEquals(
