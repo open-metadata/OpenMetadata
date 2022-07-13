@@ -9,13 +9,30 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+This script generates all markdown files from JSON Schemas.
+
+It prints out the content that should be pasted into the menu.md.
+
+We should automate this at some point.
+
+Note that it currently has a bug where we generate an entry:
+
+```
+  - category: Main Concepts / Metadata Standard / Schemas / Openmetadata-docs / Content / Main-concepts / Metadata-standard / Schemas
+    url: /main-concepts/metadata-standard/schemas
+```
+which is incorrect and should be removed when pasting this in.
+"""
+
+import os
 import json
 import jsonschema2md
 from datetime import datetime
 from typing import List
 from pathlib import Path
 
-SOURCES_ROOT = "catalog-rest-service/src/main/resources/json/"
+SOURCES_ROOT = "catalog-rest-service/src/main/resources/json/schema"
 SINK_ROOT = "openmetadata-docs/content"
 SCHEMAS_ROOT = SINK_ROOT + "/main-concepts/metadata-standard/schemas/"
 
@@ -31,9 +48,11 @@ def build_new_file(file: Path) -> Path:
     return Path(str(file).replace(SOURCES_ROOT, SCHEMAS_ROOT).replace(".json", ".md"))
 
 
-def generate_slug(new_file: Path) -> str:
-    return str(new_file.parent).replace(SINK_ROOT, "")
-
+def generate_slug(new_file: Path, is_file) -> str:
+    url = str(new_file.parent).replace(SINK_ROOT, "")
+    if is_file:
+        return url + f"/{new_file.stem.lower()}"
+    return url
 
 def write_md(new_file: Path, lines: List[str]) -> None:
     new_absolute = new_file.absolute()
@@ -44,20 +63,22 @@ def write_md(new_file: Path, lines: List[str]) -> None:
             f.write(line)
 
 
-def prepare_menu(new_file: Path) -> None:
-    slug = generate_slug(new_file)
+def prepare_menu(new_file: Path, is_file: bool) -> None:
+    slug = generate_slug(new_file, is_file)
+
     category_root = "- category: Main Concepts / Metadata Standard / Schemas / "
     category_suffix = str(new_file.parent).replace(SCHEMAS_ROOT, "")
-    category_suffix_list = list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + ([new_file.stem] if new_file.stem != "index" else [])
+
+    category_suffix_list = list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + ([new_file.stem] if is_file else [])
     category = category_root + " / ".join(category_suffix_list)
     print(category)
     print(f"  url: {slug}")
 
 
-def generate_header(new_file: Path) -> List[str]:
+def generate_header(new_file: Path, is_file: bool) -> List[str]:
     sep = "---\n"
     title = f"title: {new_file.stem}\n"
-    slug = f"slug: {generate_slug(new_file)}\n"
+    slug = f"slug: {generate_slug(new_file, is_file)}\n"
     return [sep, title, slug, sep, "\n"]
 
 
@@ -69,31 +90,38 @@ def main() -> None:
     """
     Main execution to generate the markdown docs
     based on the JSON Schemas
+
+    We build a list of (FilePath, True or False, if it is file or index)
     """
 
     results = [
-        file
+        (file, True)
         for file in Path(SOURCES_ROOT).rglob("*.json")
     ]
 
-    for file in results:
-        with open(file.absolute()) as f:
-            md_lines = PARSER.parse_schema(json.load(f))
+    directories = [Path(x[0]) for x in os.walk(SOURCES_ROOT)]
 
-            new_file = build_new_file(file)
-            all_lines = generate_header(new_file) + md_lines + generated_at()
-            write_md(new_file, all_lines)
-            prepare_menu(new_file)
+    indexes = list(
+        (directory / "index.md", False) for directory in directories
+    )
 
-    indexes = list({
-        file.parent / "index.md" for file in results
-    })
+    all_elems = results + indexes
+    all_elems.sort()
 
-    for index in indexes:
-        new_file = build_new_file(index)
-        all_lines = generate_header(new_file) + [f"# {index.parent.stem}"] + generated_at()
+    for elem, is_file in all_elems:
+
+        new_file = build_new_file(elem)
+
+        if is_file:
+            with open(elem.absolute()) as f:
+                md_lines = PARSER.parse_schema(json.load(f))
+        else:
+            md_lines = [f"# {elem.parent.stem}"]
+
+        all_lines = generate_header(new_file, is_file) + md_lines + generated_at()
         write_md(new_file, all_lines)
-        prepare_menu(new_file.parent)
+
+        prepare_menu(new_file, is_file)
 
 
 if __name__ == "__main__":
