@@ -18,9 +18,9 @@ import React, { useEffect, useState } from 'react';
 import { getTagSuggestions } from '../../../axiosAPIs/miscAPI';
 import {
   LabelType,
-  Source,
   State,
   TagLabel,
+  TagSource,
 } from '../../../generated/type/tagLabel';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -84,8 +84,8 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       labelType: LabelType.Manual,
       state: State.Suggested,
       source: isEqual(value['data-sourceType'], 'tag')
-        ? Source.Tag
-        : Source.Glossary,
+        ? TagSource.Tag
+        : TagSource.Glossary,
       tagFQN: value.value,
     }));
     onChange(newTags);

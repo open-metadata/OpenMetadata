@@ -37,7 +37,7 @@ import org.openmetadata.catalog.resources.glossary.GlossaryTermResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -71,7 +71,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getUsageCount(GlossaryTerm term) {
-    return daoCollection.tagUsageDAO().getTagCount(Source.GLOSSARY.ordinal(), term.getFullyQualifiedName());
+    return daoCollection.tagUsageDAO().getTagCount(TagSource.GLOSSARY.ordinal(), term.getFullyQualifiedName());
   }
 
   private EntityReference getParent(GlossaryTerm entity) throws IOException {
@@ -197,7 +197,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postDelete(GlossaryTerm entity) {
     // Cleanup all the tag labels using this glossary term
-    daoCollection.tagUsageDAO().deleteTagLabels(Source.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
+    daoCollection.tagUsageDAO().deleteTagLabels(TagSource.GLOSSARY.ordinal(), entity.getFullyQualifiedName());
   }
 
   /** Handles entity updated from PUT and POST operation. */
