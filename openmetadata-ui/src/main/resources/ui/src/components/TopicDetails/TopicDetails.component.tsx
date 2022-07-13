@@ -390,6 +390,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
           entityFieldThreads={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldThreadCount

@@ -60,6 +60,7 @@ from metadata.utils.connections import (
     test_connection,
 )
 from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -165,6 +166,9 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     executionStatus=STATUS_MAP.get(
                         task.state, StatusType.Pending.value
                     ),
+                    startTime=datetime_to_ts(task.start_date),
+                    endTime=datetime_to_ts(task.end_date),
+                    logLink=task.log_url,
                 )
                 for task in tasks
             ]

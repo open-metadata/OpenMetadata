@@ -1,6 +1,6 @@
 ---
-title: OpenMetadata SDK
-slug: /developers/sdk
+title: OpenMetadata
+slug: /developers
 ---
 
-# OpenMetadata SDK
+# OpenMetadata

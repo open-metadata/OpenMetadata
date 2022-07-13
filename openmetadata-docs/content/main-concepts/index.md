@@ -5,7 +5,7 @@ slug: /main-concepts
 
 # Main Concepts
 
-Here yiou can find out some information about the main concepts around Open Metadata 
+Here you can find out some information about the main concepts around Open Metadata 
 
 ## Why Open Metadata? 
 

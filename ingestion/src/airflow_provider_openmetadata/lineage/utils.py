@@ -292,7 +292,10 @@ def add_status(
     updated_task_status = [
         TaskStatus(
             name=task_instance.task_id,
-            executionStatus=_STATUS_MAP.get(context["task_instance"].state),
+            executionStatus=_STATUS_MAP.get(task_instance.state),
+            startTime=datetime_to_ts(task_instance.start_date),
+            endTime=datetime_to_ts(task_instance.end_date),
+            logLink=task_instance.log_url,
         ),
         *task_status,
     ]

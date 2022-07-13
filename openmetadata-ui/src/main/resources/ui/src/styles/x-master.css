@@ -1183,12 +1183,12 @@ code {
 }
 /* Antd custom button CSS */
 
-.ant-select-assignee {
+.ant-select-custom {
   width: 100%;
   margin: 8px 0px;
   outline: none;
 }
-.ant-select-assignee:not(.ant-select-disabled):hover .ant-select-selector {
+.ant-select-custom:not(.ant-select-disabled):hover .ant-select-selector {
   border-color: #7147e8;
 }
 .ant-select-focused {
@@ -1350,3 +1350,9 @@ div.ant-typography-ellipsis-custom {
 .ant-empty-tasks {
   margin-top: 32px;
 }
+
+/* Feed text pre tag CSS */
+.activity-feed-card-text pre {
+  white-space: pre-wrap; /* Since CSS 2.1 */
+}
+/* Feed text pre tag CSS */

@@ -36,9 +36,23 @@
         "executionStatus": {
           "description": "Status at a specific execution date.",
           "$ref": "#/definitions/statusType"
+        },
+        "startTime": {
+          "description": "Task start time",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "endTime": {
+          "description": "Task end time",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "logLink": {
+          "description": "Task end time",
+          "type": "string",
+          "format": "uri"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["name", "executionStatus"]
     },
     "task": {
       "type": "object",

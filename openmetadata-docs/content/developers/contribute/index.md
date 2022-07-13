@@ -3,7 +3,7 @@ title: Contribute
 slug: /developers/contribute
 ---
 
-# Contribute to Open Metadatas
+# How to Contribute
 
 
 ## Local Setup 
