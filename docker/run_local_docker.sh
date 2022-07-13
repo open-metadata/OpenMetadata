@@ -33,6 +33,11 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --data-raw '{
         "is_paused": false
       }'
+
+printf 'Validate sample data DAG...'
+sleep 5
+python validate_compose.py
+
 until curl -s -f "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
   printf 'Waiting on Sample Data Ingestion...\n'
   curl -v "http://localhost:8585/api/v1/tables"
