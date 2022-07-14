@@ -15,12 +15,19 @@ package org.openmetadata.catalog.jdbi3;
 
 import static org.openmetadata.catalog.Entity.FIELD_OWNER;
 import static org.openmetadata.catalog.Entity.TEAM;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
+import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
@@ -46,6 +53,8 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setOwns(fields.contains("owns") ? getOwns(team) : null);
     team.setDefaultRoles(fields.contains("defaultRoles") ? getDefaultRoles(team) : null);
     team.setOwner(fields.contains(FIELD_OWNER) ? getOwner(team) : null);
+    team.setParents(fields.contains("parents") ? getParents(team) : null);
+    team.setChildren(fields.contains("children") ? getChildren(team) : null);
     return team;
   }
 
@@ -59,6 +68,8 @@ public class TeamRepository extends EntityRepository<Team> {
   public void prepare(Team team) throws IOException {
     setFullyQualifiedName(team);
     populateOwner(team.getOwner()); // Validate owner
+    populateParents(team); // Validate parents
+    populateChildren(team); // Validate children
     validateUsers(team.getUsers());
     validateRoles(team.getDefaultRoles());
   }
@@ -69,6 +80,8 @@ public class TeamRepository extends EntityRepository<Team> {
     EntityReference owner = team.getOwner();
     List<EntityReference> users = team.getUsers();
     List<EntityReference> defaultRoles = team.getDefaultRoles();
+    List<EntityReference> parents = team.getParents();
+    List<EntityReference> children = team.getChildren();
 
     // Don't store users, defaultRoles, href as JSON. Build it on the fly based on relationships
     team.withUsers(null).withDefaultRoles(null).withHref(null).withOwner(null);
@@ -76,7 +89,7 @@ public class TeamRepository extends EntityRepository<Team> {
     store(team.getId(), team, update);
 
     // Restore the relationships
-    team.withUsers(users).withDefaultRoles(defaultRoles).withOwner(owner);
+    team.withUsers(users).withDefaultRoles(defaultRoles).withOwner(owner).withParents(parents).withChildren(children);
   }
 
   @Override
@@ -88,6 +101,12 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     for (EntityReference defaultRole : listOrEmpty(team.getDefaultRoles())) {
       addRelationship(team.getId(), defaultRole.getId(), TEAM, Entity.ROLE, Relationship.HAS);
+    }
+    for (EntityReference parent : listOrEmpty(team.getParents())) {
+      addRelationship(parent.getId(), team.getId(), TEAM, TEAM, Relationship.PARENT_OF);
+    }
+    for (EntityReference child : listOrEmpty(team.getChildren())) {
+      addRelationship(team.getId(), child.getId(), TEAM, TEAM, Relationship.PARENT_OF);
     }
   }
 
@@ -110,6 +129,97 @@ public class TeamRepository extends EntityRepository<Team> {
   private List<EntityReference> getDefaultRoles(Team team) throws IOException {
     List<EntityRelationshipRecord> defaultRoleIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.ROLE);
     return EntityUtil.populateEntityReferences(defaultRoleIds, Entity.ROLE);
+  }
+
+  private List<EntityReference> getParents(Team team) throws IOException {
+    List<EntityRelationshipRecord> parents = findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+    return EntityUtil.populateEntityReferences(parents, TEAM);
+  }
+
+  private List<EntityReference> getChildren(Team team) throws IOException {
+    List<EntityRelationshipRecord> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
+    return EntityUtil.populateEntityReferences(children, TEAM);
+  }
+
+  private void populateChildren(Team team) throws IOException {
+    List<EntityReference> childrenRefs = team.getChildren();
+    if (childrenRefs == null) {
+      return;
+    }
+    List<Team> children = getTeams(childrenRefs);
+    switch (team.getTeamType()) {
+      case DEPARTMENT:
+        validateTeams(team, "child", children, DEPARTMENT);
+        break;
+      case DIVISION:
+        validateTeams(team, "child", children, DEPARTMENT, DIVISION);
+        break;
+      case BUSINESS_UNIT:
+        validateTeams(team, "child", children, BUSINESS_UNIT, DIVISION);
+        break;
+      case ORGANIZATION:
+        validateTeams(team, "child", children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
+        break;
+    }
+    populateTeamRefs(childrenRefs, children);
+  }
+
+  private void populateParents(Team team) throws IOException {
+    List<EntityReference> parentRefs = team.getParents();
+    if (parentRefs == null) {
+      return;
+    }
+    List<Team> parents = getTeams(parentRefs);
+    switch (team.getTeamType()) {
+      case DEPARTMENT:
+        validateTeams(team, "parent", parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
+        break;
+      case DIVISION:
+        validateSingleParent(parentRefs);
+        validateTeams(team, "parent", parents, DIVISION, BUSINESS_UNIT, ORGANIZATION);
+        break;
+      case BUSINESS_UNIT:
+        validateSingleParent(parentRefs);
+        validateTeams(team, "parent", parents, BUSINESS_UNIT, ORGANIZATION);
+        break;
+      case ORGANIZATION:
+        throw new IllegalArgumentException("Team of type Organization can't have a parent team");
+    }
+    populateTeamRefs(parentRefs, parents);
+  }
+
+  // Populate team refs from team entity list
+  private void populateTeamRefs(List<EntityReference> teamRefs, List<Team> teams) {
+    for (int i = 0; i < teams.size(); i++) {
+      EntityUtil.copy(teamRefs.get(i), teams.get(i).getEntityReference());
+    }
+  }
+
+  private List<Team> getTeams(List<EntityReference> teamRefs) throws IOException {
+    List<Team> teams = new ArrayList<>();
+    for (EntityReference teamRef : teamRefs) {
+      teams.add(dao.findEntityById(teamRef.getId()));
+    }
+    return teams;
+  }
+
+  // Validate given list of teams are of team types in allowedTeamTypes list
+  private void validateTeams(Team team, String relation, List<Team> relatedTeams, TeamType... allowedTeamTypes) {
+    List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
+    for (Team relatedTeam : relatedTeams) {
+      if (!allowed.contains(relatedTeam.getTeamType())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "For table of type %s invalid %s team %s of type %s",
+                team.getTeamType(), relation, relatedTeam.getName(), relatedTeam.getTeamType()));
+      }
+    }
+  }
+
+  private void validateSingleParent(List<EntityReference> parentRefs) {
+    if (parentRefs.size() != 1) {
+      throw new IllegalArgumentException(String.format("Team can have only %s parents", 1));
+    }
   }
 
   /** Handles entity updated from PUT and POST operation. */
