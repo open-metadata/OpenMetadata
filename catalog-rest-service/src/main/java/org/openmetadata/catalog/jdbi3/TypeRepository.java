@@ -72,6 +72,10 @@ public class TypeRepository extends EntityRepository<Type> {
     updateTypeMap(type);
   }
 
+  public void addToRegistry(Type type) {
+    updateTypeMap(type);
+  }
+
   @Override
   public void storeRelationships(Type type) {
     // Nothing to do
