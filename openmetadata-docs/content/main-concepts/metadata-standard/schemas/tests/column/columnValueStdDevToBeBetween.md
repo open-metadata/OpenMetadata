@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestddevtob
 - **`maxValueForStdDevInCol`** *(integer)*: Expected std. dev value for the column to be greater or equal than.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

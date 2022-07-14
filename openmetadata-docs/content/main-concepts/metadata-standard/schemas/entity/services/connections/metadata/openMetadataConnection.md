@@ -13,6 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`hostPort`** *(string)*: OpenMetadata Server Config. Must include API end point ex: http://localhost:8585/api. Default: `http://localhost:8585/api`.
 - **`authProvider`** *(string)*: OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server. Must be one of: `['no-auth', 'azure', 'google', 'okta', 'auth0', 'custom-oidc', 'openmetadata']`. Default: `no-auth`.
 - **`securityConfig`**: OpenMetadata Client security configuration.
+- **`secretsManagerProvider`** *(string)*: OpenMetadata Secrets Manager Provider. Make sure to configure the same secrets manager providers as the ones configured on the OpenMetadata server. Must be one of: `['local', 'aws']`. Default: `local`.
 - **`apiVersion`** *(string)*: OpenMetadata server API version to use. Default: `v1`.
 - **`includeTopics`** *(boolean)*: Include Topics for Indexing. Default: `True`.
 - **`includeTables`** *(boolean)*: Include Tables for Indexing. Default: `True`.
@@ -35,4 +36,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/metad
 - **`openmetadataType`** *(string)*: OpenMetadata service type. Must be one of: `['OpenMetadata']`. Default: `OpenMetadata`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

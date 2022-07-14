@@ -1,6 +1,6 @@
 ---
 title: rule
-slug: /main-concepts/metadata-standard/schemas/entity/policies/accessControl/rule
+slug: /main-concepts/metadata-standard/schemas/entity/policies/accesscontrol/rule
 ---
 
 # AccessControlRule
@@ -22,4 +22,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/accessControl/rul
 - **`operation`** *(string)*: This schema defines all possible operations on metadata of data entities. Must be one of: `['Create', 'Delete', 'ViewAll', 'ViewUsage', 'ViewTests', 'TableViewQueries', 'TableViewDataProfile', 'TableViewSampleData', 'EditAll', 'EditDescription', 'EditTags', 'EditOwner', 'EditTier', 'EditCustomFields', 'EditLineage', 'EditReviewers', 'EditTests', 'TableEditQueries', 'TableEditDataProfile', 'TableEditSampleData', 'TeamEditUsers']`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

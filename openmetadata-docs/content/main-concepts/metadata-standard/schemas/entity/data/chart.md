@@ -35,4 +35,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/chart
 - **`chartType`** *(string)*: This schema defines the type used for describing different types of charts. Must be one of: `['Line', 'Table', 'Bar', 'Area', 'Pie', 'Histogram', 'Scatter', 'Text', 'BoxPlot', 'Other']`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

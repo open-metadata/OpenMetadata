@@ -23,4 +23,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 - **`powerBiType`** *(string)*: PowerBI service type. Must be one of: `['PowerBI']`. Default: `PowerBI`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

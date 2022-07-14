@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/tests/table/tablerowcounttobebetw
 - **`maxValue`** *(integer)*: Expected number of rows should be lower than or equal to {maxValue}. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

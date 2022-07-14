@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies/lifecycle/deletea
 - **`daysAfterModification`** *(integer)*: Number of days after last modification of the entity that the deletion should be triggered. Minimum: `1`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.
