@@ -18,10 +18,6 @@ from typing import Iterable, List, Optional, Tuple, cast
 from mlflow.entities import RunData
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 
-from metadata.ingestion.source.mlmodel.mlmodel_service import (
-    MlModelServiceSource,
-)
-from metadata.utils.filters import filter_by_mlmodel
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureType,
@@ -40,6 +36,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
+from metadata.utils.filters import filter_by_mlmodel
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
