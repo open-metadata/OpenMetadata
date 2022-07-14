@@ -18,6 +18,7 @@ public class WebSocketManager {
   private final SocketIoServer mSocketIoServer;
   public static final String feedBroadcastChannel = "activityFeed";
   public static final String taskBroadcastChannel = "taskChannel";
+  public static final String mentionChannel = "mentioned";
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints = new ConcurrentHashMap<>();
 
   private WebSocketManager(EngineIoServerOptions eiOptions) {

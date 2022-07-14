@@ -431,7 +431,7 @@ public class FeedRepository {
 
     // Query 2 - Find the thread
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
-    thread.withUpdatedBy(userName).withUpdatedAt(System.currentTimeMillis());
+    thread.withUpdatedBy(userName).withUpdatedAt(System.currentTimeMillis()).withAddressedTo(post.getMessage());
     FeedUtil.addPost(thread, post);
 
     // TODO is rewriting entire json okay?
