@@ -53,12 +53,9 @@ This is a sample config for Vertica:
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": true or false,
         "markDeletedTables": true or false,
         "includeTables": true or false,
         "includeViews": true or false,
-        "generateSampleData": true or false,
-        "sampleDataQuery": "<query to fetch table data>",
         "schemaFilterPattern": "<schema name regex list>",
         "tableFilterPattern": "<table name regex list>",
         "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"

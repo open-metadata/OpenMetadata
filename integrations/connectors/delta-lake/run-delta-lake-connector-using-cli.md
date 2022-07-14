@@ -50,12 +50,9 @@ This is a sample config for Delta Lake:
     },
     "sourceConfig": {
       "config": {
-        "enableDataProfiler": true or false,
         "markDeletedTables": true or false,
         "includeTables": true or false,
         "includeViews": true or false,
-        "generateSampleData": true or false,
-        "sampleDataQuery": "<query to fetch table data>",
         "schemaFilterPattern": "<schema name regex list>",
         "tableFilterPattern": "<table name regex list>",
         "dbtConfigSource": "<configs for gcs, s3, local or file server to get the DBT files"
@@ -89,12 +86,9 @@ You can find all the definitions and types for the `serviceConnection` [here](ht
 
 The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/metadataIngestion/databaseServiceMetadataPipeline.json).
 
-* **enableDataProfiler**: \*\*\*\* `true` or `false`, to run the profiler (not the tests) during the metadata ingestion.
 * **markDeletedTables**: To flag tables as soft-deleted if they are not present anymore in the source system.
 * **includeTables**: `true` or `false`, to ingest table data. Default is true.
 * **includeViews**: `true` or `false`, to ingest views definitions.
-* **generateSampleData**: To ingest sample data based on `sampleDataQuery`.
-* **sampleDataQuery**: Defaults to `select * from {}.{} limit 50`.
 * **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 ```
