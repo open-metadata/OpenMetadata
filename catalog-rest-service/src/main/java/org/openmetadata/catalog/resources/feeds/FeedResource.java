@@ -511,7 +511,7 @@ public class FeedResource {
         .withMessage(create.getMessage())
         .withCreatedBy(create.getFrom())
         .withAbout(create.getAbout())
-        .withAddressedTo(create.getAddressedTo())
+        .withAddressedTo(create.getMessage())
         .withReactions(Collections.emptyList())
         .withType(create.getType())
         .withTask(getTaskDetails(create.getTaskDetails()))
