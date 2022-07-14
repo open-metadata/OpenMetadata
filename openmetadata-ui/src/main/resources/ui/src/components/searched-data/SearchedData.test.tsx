@@ -17,7 +17,7 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
 import SearchedData from './SearchedData';
@@ -62,7 +62,7 @@ const mockData = [
     tier: { tagFQN: 'tier3' },
     index: 'index1',
   },
-] as FormatedTableData[];
+] as FormattedTableData[];
 
 const mockPaginate = jest.fn();
 
