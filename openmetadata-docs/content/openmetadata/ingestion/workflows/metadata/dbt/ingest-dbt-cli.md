@@ -117,7 +117,7 @@ sourceConfig:
 
 #### Local Storage
 
-Path of the manifest.json and catalog.json files stored in the local system or in the container in which openmetadata server is running can be directly provided.
+Path of the `manifest.json` and `catalog.json` files stored in the local system or in the container in which openmetadata server is running can be directly provided.
 
 ```yaml
 sourceConfig:
