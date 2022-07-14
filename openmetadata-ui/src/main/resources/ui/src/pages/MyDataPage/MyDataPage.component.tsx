@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormattedTableData, SlackChatConfig } from 'Models';
+import { FormattedTableData } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -27,11 +27,7 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getFeedsWithFilter, postFeedById } from '../../axiosAPIs/feedsAPI';
-import {
-  fetchSandboxConfig,
-  fetchSlackConfig,
-  searchData,
-} from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig, searchData } from '../../axiosAPIs/miscAPI';
 import { getAllMlModal } from '../../axiosAPIs/mlModelAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
@@ -42,7 +38,6 @@ import PageContainerV1 from '../../components/containers/PageContainerV1';
 import GithubStarButton from '../../components/GithubStarButton/GithubStarButton';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
-import SlackChat from '../../components/SlackChat/SlackChat';
 import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
 import {
@@ -87,7 +82,6 @@ const MyDataPage = () => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState<boolean>(false);
   const [isSandbox, setIsSandbox] = useState<boolean>(false);
-  const [slackConfig, setSlackConfig] = useState<SlackChatConfig | undefined>();
 
   const [activityFeeds, setActivityFeeds] = useState<Thread[]>([]);
 
@@ -435,28 +429,6 @@ const MyDataPage = () => {
       });
   };
 
-  const fetchSlackChatConfig = () => {
-    fetchSlackConfig()
-      .then((res) => {
-        if (res.data) {
-          const { apiToken, botName, channels } = res.data;
-          const slackConfig = {
-            apiToken,
-            botName,
-            channels,
-          };
-          setSlackConfig(slackConfig);
-        } else {
-          throw '';
-        }
-      })
-      .catch((err: AxiosError) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-        setSlackConfig(undefined);
-      });
-  };
-
   // Fetch tasks list to show count for Pending tasks
   const fetchMyTaskData = useCallback(() => {
     if (!currentUser || !currentUser.id) {
@@ -475,7 +447,6 @@ const MyDataPage = () => {
 
   useEffect(() => {
     fetchSandboxMode();
-    fetchSlackChatConfig();
     fetchData(true);
     fetchMyTaskData();
   }, []);
@@ -562,9 +533,6 @@ const MyDataPage = () => {
             onRefreshFeeds={onRefreshFeeds}
           />
           {isSandbox ? <GithubStarButton /> : null}
-          {slackConfig && slackConfig.apiToken ? (
-            <SlackChat currentUser={currentUser} slackConfig={slackConfig} />
-          ) : null}
         </Fragment>
       ) : (
         <Loader />

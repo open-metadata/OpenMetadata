@@ -12,20 +12,23 @@
  */
 
 import { SlackChatConfig } from 'Models';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
 import { ReactSlackChat } from 'react-slack-chat/dist/react-slack-chat-with-default-hooks';
+import AppState from '../../AppState';
 import ChannelIcon from '../../assets/img/slackChat/icon-support.svg';
 import UserIcon from '../../assets/img/slackChat/icon-user.svg';
-import { User } from '../../generated/entity/teams/user';
 
 type Props = {
   slackConfig: SlackChatConfig;
-  currentUser: User | undefined;
 };
 
-const SlackChat: FC<Props> = ({ slackConfig, currentUser }) => {
+const SlackChat: FC<Props> = ({ slackConfig }) => {
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
   const channels = slackConfig.channels.map((ch) => {
     return { name: ch, icon: ChannelIcon };
   });
@@ -42,13 +45,14 @@ const SlackChat: FC<Props> = ({ slackConfig, currentUser }) => {
         ),
     },
   ];
+  const botName = currentUser?.name || slackConfig.botName || 'support-bot';
 
   return (
     <div className="slack-chat">
       <ReactSlackChat
         closeChatButton
         apiToken={slackConfig.apiToken}
-        botName={slackConfig.botName}
+        botName={botName}
         channels={channels}
         defaultMessage="Welcome! Someone will help shortly."
         helpText="Need Help?"
