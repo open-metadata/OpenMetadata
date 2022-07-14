@@ -54,6 +54,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MlModelServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -73,6 +74,8 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
 
   public static final String FIELDS = "pipelines,owner";
 
+  private final SecretsManager secretsManager;
+
   @Override
   public MlModelService addHref(UriInfo uriInfo, MlModelService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
@@ -81,8 +84,9 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
     return service;
   }
 
-  public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MlModelService.class, new MlModelServiceRepository(dao), authorizer);
+  public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(MlModelService.class, new MlModelServiceRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public static class MlModelServiceList extends ResultList<MlModelService> {
@@ -369,6 +373,8 @@ public class MlModelServiceResource extends EntityResource<MlModelService, MlMod
     } catch (AuthorizationException e) {
       return mlModelService.withConnection(null);
     }
+    secretsManager.encryptOrDecryptServiceConnection(
+        mlModelService.getConnection(), mlModelService.getServiceType().value(), mlModelService.getName(), false);
     return mlModelService;
   }
 }

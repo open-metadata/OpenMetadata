@@ -111,6 +111,9 @@ migrationConfiguration:
 #  host: localhost
 #  port: 0
 
+secretsManagerConfiguration:
+  secretsManager: local
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 5s

@@ -235,7 +235,15 @@ slackEventPublishers:
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
 fernetConfiguration:
-  fernetKey: ${FERNET_KEY:-no_encryption_at_rest}
+  fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
+
+secretsManagerConfiguration:
+  secretsManager: ${SECRET_MANAGER:-local} # Possible values are "local", "aws"
+#  secretsManager: aws
+#  parameters:
+#    region:
+#    accessKeyId:
+#    secretAccessKey:
 
 health:
   delayedShutdownHandlerEnabled: true
