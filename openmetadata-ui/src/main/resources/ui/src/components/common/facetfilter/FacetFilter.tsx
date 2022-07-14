@@ -178,7 +178,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         className="sidebar-my-data-holder mt-2 mb-3"
         data-testid="show-deleted-cntnr">
         <div
-          className="filter-group tw-justify-between tw-mb-2"
+          className="filter-group tw-justify-between tw-mb-1"
           data-testid="filter-container-deleted">
           <div className="tw-flex">
             <div className="filters-title tw-w-36 tw-truncate custom-checkbox-label">
