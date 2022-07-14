@@ -144,6 +144,7 @@ class ColumnTypeParser:
         "SQL_VARIANT": "VARBINARY",
         "STRING": "STRING",
         "STRUCT": "STRUCT",
+        "ROW": "STRUCT",
         "TABLE": "BINARY",
         "TEXT": "TEXT",
         "TIME": "TIME",
