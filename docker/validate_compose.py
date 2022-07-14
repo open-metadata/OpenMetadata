@@ -52,7 +52,7 @@ def main():
     state = None
     while state != "success":
 
-        print("Waiting for sample data to be a success. We'll show some logs along the way.")
+        print("Waiting for sample data ingestion to be a success. We'll show some logs along the way.")
 
         dag_run_id, state = get_last_run_info()
         print(f"DAG run: [{dag_run_id}, {state}]")

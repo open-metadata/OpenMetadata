@@ -20,7 +20,7 @@ echo "Starting Local Docker Containers"
 docker compose down && docker compose up --build -d
 
 until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
-  printf 'Checking if ES is up...\n'
+  printf 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
 until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
@@ -40,7 +40,7 @@ sleep 5
 python validate_compose.py
 
 until curl -s -f "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
-  printf 'Waiting on Sample Data Ingestion...\n'
+  printf 'Waiting on Sample Data Ingestion to complete...\n'
   curl -v "http://localhost:8585/api/v1/tables"
   sleep 5
 done
