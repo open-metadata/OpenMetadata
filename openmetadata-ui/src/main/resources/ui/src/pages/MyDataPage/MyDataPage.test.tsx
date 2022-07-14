@@ -14,7 +14,7 @@
 import { findByText, queryByText, render } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { getAllDashboards } from '../../axiosAPIs/dashboardAPI';
-import { fetchSandboxConfig, fetchSlackConfig } from '../../axiosAPIs/miscAPI';
+import { fetchSandboxConfig } from '../../axiosAPIs/miscAPI';
 import { getAllPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getAllTables } from '../../axiosAPIs/tableAPI';
 import { getTeams } from '../../axiosAPIs/teamsAPI';
@@ -204,10 +204,6 @@ jest.mock('../../components/GithubStarButton/GithubStarButton', () => {
   return jest.fn().mockImplementation(() => <p>GithubStarButton.component</p>);
 });
 
-jest.mock('../../components/SlackChat/SlackChat', () => {
-  return jest.fn().mockImplementation(() => <p>SlackChat.component</p>);
-});
-
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
@@ -244,26 +240,6 @@ describe('Test MyData page component', () => {
 
     expect(myData).toBeInTheDocument();
     expect(githubStarButton).toBeInTheDocument();
-  });
-
-  it('Component should render the slack chat box', async () => {
-    (fetchSlackConfig as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        data: {
-          apiToken: 'abc',
-          botName: 'bot',
-          channels: ['channel'],
-        },
-      })
-    );
-
-    const { container } = render(<MyDataPageComponent />);
-    const myData = await findByText(container, /MyData.component/i);
-
-    const slackChat = await findByText(container, /SlackChat.component/i);
-
-    expect(myData).toBeInTheDocument();
-    expect(slackChat).toBeInTheDocument();
   });
 
   describe('render Sad Paths', () => {
