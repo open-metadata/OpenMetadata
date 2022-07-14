@@ -91,7 +91,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     }
   }
 
-  static final String FIELDS = "owner,profile,users,owns,defaultRoles";
+  static final String FIELDS = "owner,profile,users,owns,defaultRoles,parents,children";
 
   @GET
   @Valid
