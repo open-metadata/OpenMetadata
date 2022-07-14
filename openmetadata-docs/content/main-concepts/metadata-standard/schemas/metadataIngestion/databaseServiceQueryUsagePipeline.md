@@ -1,6 +1,6 @@
 ---
 title: databaseServiceQueryUsagePipeline
-slug: /main-concepts/metadata-standard/schemas/metadataIngestion/databaseservicequeryusagepipeline
+slug: /main-concepts/metadata-standard/schemas/metadataingestion/databaseservicequeryusagepipeline
 ---
 
 # DatabaseServiceQueryUsagePipeline
@@ -22,4 +22,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataIngestion/databaseservice
 - **`databaseUsageConfigType`** *(string)*: Database Source Config Usage Pipeline type. Must be one of: `['DatabaseUsage']`. Default: `DatabaseUsage`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

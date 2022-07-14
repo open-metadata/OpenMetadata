@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/tests/column/columnvaluestobebetw
 - **`maxValue`** *(integer)*: The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

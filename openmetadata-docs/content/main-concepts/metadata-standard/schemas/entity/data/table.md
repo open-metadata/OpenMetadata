@@ -72,7 +72,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`dataLength`** *(integer)*: Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.
   - **`precision`** *(integer)*: The precision of a numeric is the total count of significant digits in the whole number, that is, the number of digits to both sides of the decimal point. Precision is applicable Integer types, such as `INT`, `SMALLINT`, `BIGINT`, etc. It also applies to other Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
   - **`scale`** *(integer)*: The scale of a numeric is the count of decimal digits in the fractional part, to the right of the decimal point. For Integer types, the scale is `0`. It mainly applies to non Integer Numeric types, such as `NUMBER`, `DECIMAL`, `DOUBLE`, `FLOAT`, etc.
-  - **`dataTypeDisplay`** *(string)*: Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.
+  - **`dataTypeDisplay`** *(string)*: Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.
   - **`description`**: Description of the column. Refer to *../../type/basic.json#/definitions/markdown*.
   - **`fullyQualifiedName`**: Refer to *../../type/basic.json#/definitions/fullyQualifiedEntityName*.
   - **`tags`** *(array)*: Tags associated with the column. Default: `None`.
@@ -122,8 +122,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`uniqueProportion`** *(number)*: Proportion of number of unique values in a column.
   - **`distinctCount`** *(number)*: Number of values that contain distinct values.
   - **`distinctProportion`** *(number)*: Proportion of distinct values in a column.
-  - **`min`** *(['number', 'integer', 'string'])*: Minimum value in a column.
-  - **`max`** *(['number', 'integer', 'string'])*: Maximum value in a column.
+  - **`min`**: Minimum value in a column.
+  - **`max`**: Maximum value in a column.
   - **`minLength`** *(number)*: Minimum string length in a column.
   - **`maxLength`** *(number)*: Maximum string length in a column.
   - **`mean`** *(number)*: Avg value in a column.
@@ -166,4 +166,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/data/table
   - **`generatedAt`**: Refer to *../../type/basic.json#/definitions/dateTime*.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

@@ -49,10 +49,18 @@ def build_new_file(file: Path) -> Path:
 
 
 def generate_slug(new_file: Path, is_file) -> str:
-    url = str(new_file.parent).replace(SINK_ROOT, "")
+    url = str(new_file.parent).replace(SINK_ROOT, "").lower()
     if is_file:
         return url + f"/{new_file.stem.lower()}"
     return url
+
+
+def to_tile(string: str) -> str:
+    """
+    Convert string to title
+    """
+    return string[0].upper() + string[1:]
+
 
 def write_md(new_file: Path, lines: List[str]) -> None:
     new_absolute = new_file.absolute()
@@ -69,7 +77,9 @@ def prepare_menu(new_file: Path, is_file: bool) -> None:
     category_root = "- category: Main Concepts / Metadata Standard / Schemas / "
     category_suffix = str(new_file.parent).replace(SCHEMAS_ROOT, "")
 
-    category_suffix_list = list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + ([new_file.stem] if is_file else [])
+    title = ([to_tile(new_file.stem)] if is_file else [])
+
+    category_suffix_list = list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + title
     category = category_root + " / ".join(category_suffix_list)
     print(category)
     print(f"  url: {slug}")
@@ -116,7 +126,7 @@ def main() -> None:
             with open(elem.absolute()) as f:
                 md_lines = PARSER.parse_schema(json.load(f))
         else:
-            md_lines = [f"# {elem.parent.stem}"]
+            md_lines = [f"# {to_tile(elem.parent.stem)}"]
 
         all_lines = generate_header(new_file, is_file) + md_lines + generated_at()
         write_md(new_file, all_lines)

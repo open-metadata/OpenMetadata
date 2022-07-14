@@ -28,4 +28,4 @@ slug: /main-concepts/metadata-standard/schemas/entity/teams/team
 - **`defaultRoles`**: Default roles of a team. These roles will be inherited by all the users that are part of this team. Refer to *../../type/entityReference.json#/definitions/entityReferenceList*.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.
