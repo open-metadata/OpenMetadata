@@ -55,6 +55,7 @@ import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -74,6 +75,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
 
   public static final String FIELDS = FIELD_OWNER;
 
+  private final SecretsManager secretsManager;
+
   @Override
   public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
     service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
@@ -81,8 +84,9 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     return service;
   }
 
-  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MessagingService.class, new MessagingServiceRepository(dao), authorizer);
+  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(MessagingService.class, new MessagingServiceRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -372,6 +376,8 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
     } catch (AuthorizationException e) {
       return messagingService.withConnection(null);
     }
+    secretsManager.encryptOrDecryptServiceConnection(
+        messagingService.getConnection(), messagingService.getServiceType().value(), messagingService.getName(), false);
     return messagingService;
   }
 }
