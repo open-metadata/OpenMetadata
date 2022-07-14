@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import { startCase, uniqueId } from 'lodash';
+import { isUndefined, startCase, uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import {
   EntityTags,
@@ -160,15 +160,19 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       showLabel: true,
       isLink: true,
     },
-    {
-      key: 'Dashboard',
-      value: getDashboardDetailsPath(
-        mlModelDetail.dashboard?.fullyQualifiedName as string
-      ),
-      placeholderText: getEntityName(mlModelDetail.dashboard),
-      showLabel: true,
-      isLink: true,
-    },
+    ...(!isUndefined(mlModelDetail.dashboard)
+      ? [
+          {
+            key: 'Dashboard',
+            value: getDashboardDetailsPath(
+              mlModelDetail.dashboard?.fullyQualifiedName as string
+            ),
+            placeholderText: getEntityName(mlModelDetail.dashboard),
+            showLabel: true,
+            isLink: true,
+          },
+        ]
+      : []),
   ];
 
   const hasEditAccess = () => {
