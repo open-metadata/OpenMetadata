@@ -158,27 +158,26 @@ public class ChangeEventHandler implements EventHandler {
             if (thread.getAddressedTo() != null && !thread.getAddressedTo().equals(StringUtils.EMPTY)) {
               // need to send notification to all the user or team's user addressed
               List<EntityLink> mentions = MessageParser.getEntityLinks(thread.getAddressedTo());
-              mentions
-                  .forEach(
-                      (entityLink) -> {
-                        String fqn = entityLink.getEntityFQN();
-                        switch (entityLink.getEntityType()) {
-                          case USER:
-                            User user = dao.userDAO().findEntityByName(fqn);
-                            WebSocketManager.getInstance()
-                                .sendToOne(user.getId(), WebSocketManager.mentionChannel, jsonThread);
-                            break;
-                          case TEAM:
-                            Team team = dao.teamDAO().findEntityByName(fqn);
-                            // fetch all that are there in the team
-                            List<EntityRelationshipRecord> records =
-                                dao.relationshipDAO()
-                                    .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-                            WebSocketManager.getInstance()
-                                .sendToManyWithString(records, WebSocketManager.mentionChannel, jsonThread);
-                            break;
-                        }
-                      });
+              mentions.forEach(
+                  (entityLink) -> {
+                    String fqn = entityLink.getEntityFQN();
+                    switch (entityLink.getEntityType()) {
+                      case USER:
+                        User user = dao.userDAO().findEntityByName(fqn);
+                        WebSocketManager.getInstance()
+                            .sendToOne(user.getId(), WebSocketManager.mentionChannel, jsonThread);
+                        break;
+                      case TEAM:
+                        Team team = dao.teamDAO().findEntityByName(fqn);
+                        // fetch all that are there in the team
+                        List<EntityRelationshipRecord> records =
+                            dao.relationshipDAO()
+                                .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                        WebSocketManager.getInstance()
+                            .sendToManyWithString(records, WebSocketManager.mentionChannel, jsonThread);
+                        break;
+                    }
+                  });
             }
             return;
           case Announcement:
