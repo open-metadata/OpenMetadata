@@ -27,7 +27,7 @@ import {
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/type/entityReference';
-import { LabelType, Source, State } from '../../generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import jsonData from '../../jsons/en';
 import { getEntityName, hasEditAccess } from '../../utils/CommonUtils';
@@ -111,7 +111,7 @@ const GlossaryDetails = ({ isHasAccess, glossary, updateGlossary }: props) => {
         .map((tag) => ({
           labelType: LabelType.Manual,
           state: State.Confirmed,
-          source: Source.Tag,
+          source: TagSource.Tag,
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];

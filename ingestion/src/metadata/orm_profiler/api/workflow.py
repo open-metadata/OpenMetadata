@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -89,6 +90,13 @@ class ProfilerWorkflow:
 
         # OpenMetadata client to fetch tables
         self.metadata = OpenMetadata(self.metadata_config)
+
+        if not self._validate_service_name():
+            raise ValueError(
+                f"Service name `{self.config.source.serviceName}` does not exist. "
+                "Make sure you have run the ingestion for the service specified in the profiler workflow. "
+                "If so, make sure the profiler service name matches the service name specified during ingestion."
+            )
 
     @classmethod
     def create(cls, config_dict: dict) -> "ProfilerWorkflow":
@@ -281,6 +289,12 @@ class ProfilerWorkflow:
                 raise WorkflowExecutionError(
                     "Sink reported warnings", self.sink.get_status()
                 )
+
+    def _validate_service_name(self):
+        """Validate service name exists in OpenMetadata"""
+        return self.metadata.get_by_name(
+            entity=DatabaseService, fqn=self.config.source.serviceName
+        )
 
     def stop(self):
         """
