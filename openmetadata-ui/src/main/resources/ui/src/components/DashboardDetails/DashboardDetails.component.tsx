@@ -170,7 +170,7 @@ const DashboardDetails = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Task',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -466,6 +466,10 @@ const DashboardDetails = ({
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
           entityFieldThreads={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldThreadCount

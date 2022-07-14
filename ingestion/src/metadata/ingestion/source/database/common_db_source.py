@@ -41,7 +41,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
@@ -240,8 +245,15 @@ class CommonDbSourceService(
                     "" if view_definition is None else str(view_definition)
                 )
                 return view_definition
+
             except NotImplementedError:
                 logger.error("View definition not implemented")
+                return ""
+
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                logger.debug(err)
+                logger.error(f"Failed to fetch view definition for {table_name}")
                 return ""
 
     def is_partition(

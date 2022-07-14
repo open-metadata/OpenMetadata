@@ -142,6 +142,7 @@ export const facetFilterPlaceholder = [
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
+  SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   MY_DATA: '/my-data',
   TOUR: '/tour',
@@ -208,7 +209,9 @@ export const ROUTES = {
 
   // Tasks Routes
   REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  REQUEST_TAGS: `/request-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  UPDATE_TAGS: `/update-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',

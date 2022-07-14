@@ -84,7 +84,7 @@ describe('Test ActivityThreadPanel Component', () => {
     );
 
     expect(panelOverlay).toBeInTheDocument();
-    expect(panelThreadList).toHaveLength(2);
+    expect(panelThreadList).toHaveLength(1);
   });
 
   it('Should create an observer if IntersectionObserver is available', async () => {

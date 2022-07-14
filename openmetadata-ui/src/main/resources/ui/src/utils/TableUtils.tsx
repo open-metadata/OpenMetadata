@@ -39,7 +39,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { ModifiedTableColumn } from '../interface/dataQuality.interface';
 import { getGlossaryPath } from './RouterUtils';
 import { ordinalize } from './StringsUtils';
-import SVGIcons from './SvgUtils';
+import SVGIcons, { Icons } from './SvgUtils';
 
 export const getBadgeName = (tableType?: string) => {
   switch (tableType) {
@@ -130,21 +130,28 @@ export const getConstraintIcon = (constraint = '', className = '') => {
     case ConstraintTypes.PRIMARY_KEY:
       {
         title = 'Primary key';
-        icon = 'key';
+        icon = Icons.KEY;
       }
 
       break;
     case ConstraintTypes.UNIQUE:
       {
         title = 'Unique';
-        icon = 'unique';
+        icon = Icons.UNIQUE;
       }
 
       break;
     case ConstraintTypes.NOT_NULL:
       {
         title = 'Not null';
-        icon = 'not-null';
+        icon = Icons.NOT_NULL;
+      }
+
+      break;
+    case ConstraintTypes.FOREIGN_KEY:
+      {
+        title = 'Foreign key';
+        icon = Icons.FOREGIN_KEY;
       }
 
       break;
@@ -228,6 +235,11 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
       icon = 'dashboard-grey';
+
+      break;
+    case SearchIndex.MLMODEL:
+    case EntityType.MLMODEL:
+      icon = 'mlmodel-grey';
 
       break;
     case SearchIndex.PIPELINE:

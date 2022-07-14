@@ -45,6 +45,7 @@ import {
 } from '../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Ellipses from '../common/Ellipses/Ellipses';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import NavBar from '../nav-bar/NavBar';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
@@ -151,9 +152,9 @@ const Appbar: React.FC = (): JSX.Element => {
       <div>
         <div className="tw-text-grey-muted tw-text-xs">{name}</div>
         {userRoleArr.map((userRole, i) => (
-          <p className="tw-font-medium" key={i}>
+          <Ellipses tooltip className="tw-font-medium" key={i}>
             {userRole}
-          </p>
+          </Ellipses>
         ))}
         <hr className="tw-my-1.5" />
       </div>
@@ -199,10 +200,16 @@ const Appbar: React.FC = (): JSX.Element => {
     const teams = getNonDeletedTeams(currentUser?.teams ?? []);
 
     return (
-      <div data-testid="greeting-text">
+      <div className="tw-max-w-xs" data-testid="greeting-text">
         <Link to={getUserPath(currentUser?.name as string)}>
           {' '}
-          <span className="tw-font-medium tw-cursor-pointer">{name}</span>
+          <Ellipses
+            tooltip
+            className="tw-font-medium tw-cursor-pointer"
+            rows={1}
+            style={{ color: '#7147E8' }}>
+            {name}
+          </Ellipses>
         </Link>
         <hr className="tw-my-1.5" />
         {roles.length > 0 ? getUsersRoles(roles, 'Roles') : null}
@@ -213,11 +220,11 @@ const Appbar: React.FC = (): JSX.Element => {
           <div>
             <span className="tw-text-grey-muted tw-text-xs">Teams</span>
             {teams.map((t, i) => (
-              <p key={i}>
+              <Ellipses tooltip className="tw-text-xs" key={i}>
                 <Link to={getTeamAndUserDetailsPath(t.name as string)}>
                   {t.displayName || t.name}
                 </Link>
-              </p>
+              </Ellipses>
             ))}
             <hr className="tw-mt-1.5" />
           </div>

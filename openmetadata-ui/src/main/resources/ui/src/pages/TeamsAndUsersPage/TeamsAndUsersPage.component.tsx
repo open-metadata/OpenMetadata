@@ -62,8 +62,7 @@ const TeamsAndUsersPage = () => {
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
-  const [isRightPannelLoading, setIsRightPannelLoading] =
-    useState<boolean>(true);
+  const [isRightPanelLoading, setIsRightPanelLoading] = useState<boolean>(true);
   const [isTeamMemberLoading, setIsTeamMemberLoading] = useState<boolean>(true);
   const [isTeamVisible, setIsTeamVisible] = useState<boolean>(true);
   const [isUsersLoading, setIsUsersLoading] = useState<boolean>(true);
@@ -196,7 +195,7 @@ const TeamsAndUsersPage = () => {
         });
       }
     }
-    setIsRightPannelLoading(false);
+    setIsRightPanelLoading(false);
   };
 
   const getSearchedUsers = (value: string, pageNumber: number) => {
@@ -282,7 +281,18 @@ const TeamsAndUsersPage = () => {
           if (!teamAndUser && res.data.data.length > 0) {
             getCurrentTeamUsers(res.data.data[0].name);
             setCurrentTeam(res.data.data[0]);
-            setIsRightPannelLoading(false);
+            setIsRightPanelLoading(false);
+          } else {
+            const team = res.data.data.find(
+              (t: Team) =>
+                t.name === teamAndUser || t.displayName === teamAndUser
+            );
+            if (!isUndefined(team)) {
+              getCurrentTeamUsers(team.name);
+              setCurrentTeam(team);
+            } else {
+              setCurrentTeam({} as Team);
+            }
           }
           setTeams(res.data.data);
           AppState.updateUserTeam(res.data.data);
@@ -302,6 +312,7 @@ const TeamsAndUsersPage = () => {
       })
       .finally(() => {
         setIsLoading(false);
+        setIsRightPanelLoading(false);
         setIsDataLoading(false);
       });
   };
@@ -341,10 +352,10 @@ const TeamsAndUsersPage = () => {
           setCurrentTeam({} as Team);
         })
         .finally(() => {
-          setIsRightPannelLoading(false);
+          setIsRightPanelLoading(false);
         });
     } else {
-      setIsRightPannelLoading(false);
+      setIsRightPanelLoading(false);
     }
   };
 
@@ -354,7 +365,7 @@ const TeamsAndUsersPage = () => {
       text,
       currentPage,
       PAGE_SIZE_MEDIUM,
-      `(teams:${currentTeam?.id})`,
+      `(teams.id:${currentTeam?.id})`,
       '',
       '',
       SearchIndex.USER
@@ -455,7 +466,7 @@ const TeamsAndUsersPage = () => {
   };
 
   const handleJoinTeamClick = (id: string, data: Operation[]) => {
-    setIsRightPannelLoading(true);
+    setIsRightPanelLoading(true);
     updateUserDetail(id, data)
       .then((res: AxiosResponse) => {
         if (res.data) {
@@ -471,12 +482,12 @@ const TeamsAndUsersPage = () => {
       })
       .catch((err: AxiosError) => {
         showErrorToast(err, jsonData['api-error-messages']['join-team-error']);
-        setIsRightPannelLoading(false);
+        setIsRightPanelLoading(false);
       });
   };
 
   const handleLeaveTeamClick = (id: string, data: Operation[]) => {
-    setIsRightPannelLoading(true);
+    setIsRightPanelLoading(true);
 
     return new Promise<void>((resolve) => {
       updateUserDetail(id, data)
@@ -498,7 +509,7 @@ const TeamsAndUsersPage = () => {
             err,
             jsonData['api-error-messages']['leave-team-error']
           );
-          setIsRightPannelLoading(false);
+          setIsRightPanelLoading(false);
         });
     });
   };
@@ -509,7 +520,7 @@ const TeamsAndUsersPage = () => {
    */
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
     if (name !== teamAndUser) {
-      setIsRightPannelLoading(true);
+      setIsRightPanelLoading(true);
       history.push(getTeamAndUserDetailsPath(name));
       if (isUsersCategory) {
         setIsTeamVisible(false);
@@ -758,7 +769,7 @@ const TeamsAndUsersPage = () => {
         isAddingTeam={isAddingTeam}
         isAddingUsers={isAddingUsers}
         isDescriptionEditable={isDescriptionEditable}
-        isRightPannelLoading={isRightPannelLoading}
+        isRightPannelLoading={isRightPanelLoading}
         isTeamMemberLoading={isTeamMemberLoading}
         isTeamVisible={isTeamVisible}
         isUsersLoading={isUsersLoading}

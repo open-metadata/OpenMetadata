@@ -26,6 +26,9 @@ import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Chart;
+import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.MlModel;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.UnhandledServerException;
@@ -85,13 +88,13 @@ public class UsageRepository {
 
   private RestUtil.PutResponse addUsage(String entityType, String entityId, DailyCount usage) throws IOException {
     Fields fields = new Fields(List.of("usageSummary"));
-    // Insert usage record
-    dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
-
     // If table usage was reported, add the usage count to schema and database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
       // we accept usage for deleted entities
       Table table = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
+      // Insert usage record
+      dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+      Table updated = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
       dao.usageDAO()
           .insertOrUpdateCount(
               usage.getDate(), table.getDatabaseSchema().getId().toString(), Entity.DATABASE_SCHEMA, usage.getCount());
@@ -99,7 +102,6 @@ public class UsageRepository {
           .insertOrUpdateCount(
               usage.getDate(), table.getDatabase().getId().toString(), Entity.DATABASE, usage.getCount());
       dao.usageDAO().computePercentile(entityType, usage.getDate());
-      Table updated = Entity.getEntity(Entity.TABLE, UUID.fromString(entityId), fields, Include.ALL);
       ChangeDescription change = new ChangeDescription().withPreviousVersion(table.getVersion());
       change
           .getFieldsUpdated()
@@ -116,11 +118,86 @@ public class UsageRepository {
               .withEntityType(entityType)
               .withEntityId(updated.getId())
               .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-              .withUserName(table.getUpdatedBy())
+              .withUserName(updated.getUpdatedBy())
               .withTimestamp(System.currentTimeMillis())
               .withCurrentVersion(updated.getVersion())
-              .withPreviousVersion(updated.getVersion());
+              .withPreviousVersion(table.getVersion());
 
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    } else if (entityType.equalsIgnoreCase(Entity.DASHBOARD)) {
+      Dashboard dashboard = Entity.getEntity(Entity.DASHBOARD, UUID.fromString(entityId), fields, Include.ALL);
+      dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+      Dashboard updated = Entity.getEntity(Entity.DASHBOARD, UUID.fromString(entityId), fields, Include.ALL);
+      ChangeDescription change = new ChangeDescription().withPreviousVersion(dashboard.getVersion());
+      change
+          .getFieldsUpdated()
+          .add(
+              new FieldChange()
+                  .withName(FIELD_USAGE_SUMMARY)
+                  .withNewValue(updated.getUsageSummary())
+                  .withOldValue(dashboard.getUsageSummary()));
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withEntity(updated)
+              .withChangeDescription(change)
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(dashboard.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withTimestamp(System.currentTimeMillis())
+              .withCurrentVersion(updated.getVersion())
+              .withPreviousVersion(dashboard.getVersion());
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    } else if (entityType.equalsIgnoreCase(Entity.CHART)) {
+      Chart chart = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
+      dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+      Chart updated = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
+      ChangeDescription change = new ChangeDescription().withPreviousVersion(chart.getVersion());
+      change
+          .getFieldsUpdated()
+          .add(
+              new FieldChange()
+                  .withName(FIELD_USAGE_SUMMARY)
+                  .withNewValue(updated.getUsageSummary())
+                  .withOldValue(chart.getUsageSummary()));
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withEntity(updated)
+              .withChangeDescription(change)
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withTimestamp(System.currentTimeMillis())
+              .withCurrentVersion(updated.getVersion())
+              .withPreviousVersion(chart.getVersion());
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    } else if (entityType.equalsIgnoreCase(Entity.MLMODEL)) {
+      MlModel mlModel = Entity.getEntity(Entity.MLMODEL, UUID.fromString(entityId), fields, Include.ALL);
+      dao.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+      MlModel updated = Entity.getEntity(Entity.CHART, UUID.fromString(entityId), fields, Include.ALL);
+      ChangeDescription change = new ChangeDescription().withPreviousVersion(mlModel.getVersion());
+      change
+          .getFieldsUpdated()
+          .add(
+              new FieldChange()
+                  .withName(FIELD_USAGE_SUMMARY)
+                  .withNewValue(updated.getUsageSummary())
+                  .withOldValue(mlModel.getUsageSummary()));
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withEntity(updated)
+              .withChangeDescription(change)
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withTimestamp(System.currentTimeMillis())
+              .withCurrentVersion(updated.getVersion())
+              .withPreviousVersion(mlModel.getVersion());
       return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
     }
     throw new UnhandledServerException(CatalogExceptionMessage.entityTypeNotSupported(entityType));

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Empty, Switch } from 'antd';
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -18,19 +19,19 @@ import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import AppState from '../../../AppState';
 import { getAllFeeds } from '../../../axiosAPIs/feedsAPI';
-import {
-  confirmStateInitialValue,
-  PanelTab,
-} from '../../../constants/feed.constants';
+import { confirmStateInitialValue } from '../../../constants/feed.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
-import { useAfterMount } from '../../../hooks/useAfterMount';
 import { useInfiniteScroll } from '../../../hooks/useInfiniteScroll';
 import jsonData from '../../../jsons/en';
 import { getEntityField } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -50,7 +51,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   className,
   showHeader = true,
   threadType,
-  onTabChange,
 }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -68,9 +68,20 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const [isThreadLoading, setIsThreadLoading] = useState(false);
 
+  const [taskStatus, setTaskStatus] = useState<ThreadTaskStatus>(
+    ThreadTaskStatus.Open
+  );
+
+  const isTaskType = isEqual(threadType, ThreadType.Task);
+
+  const isConversationType = isEqual(threadType, ThreadType.Conversation);
+
+  const isTaskClosed = isEqual(taskStatus, ThreadTaskStatus.Closed);
+
   const getThreads = (after?: string) => {
+    const status = isTaskType ? taskStatus : undefined;
     setIsThreadLoading(true);
-    getAllFeeds(threadLink, after, threadType)
+    getAllFeeds(threadLink, after, threadType, FeedFilter.ALL, status)
       .then((res: AxiosResponse) => {
         const { data, paging: pagingObj } = res.data;
         setThreads((prevData) => {
@@ -176,6 +187,14 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     }
   };
 
+  const onSwitchChange = (checked: boolean) => {
+    if (checked) {
+      setTaskStatus(ThreadTaskStatus.Closed);
+    } else {
+      setTaskStatus(ThreadTaskStatus.Open);
+    }
+  };
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -195,30 +214,20 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   useEffect(() => {
     getThreads();
-  }, [threadLink, threadType]);
+  }, [threadLink, threadType, taskStatus]);
 
   useEffect(() => {
     fetchMoreThread(isInView as boolean, paging, isThreadLoading);
   }, [paging, isThreadLoading, isInView]);
 
-  useAfterMount(() => {
-    if (threadType === ThreadType.Task && !isThreadLoading) {
-      isEqual(threads.length, 0) &&
-        onTabChange &&
-        onTabChange(PanelTab.CONVERSATIONS);
-    }
-  }, [threads, isThreadLoading]);
-
   return (
     <Fragment>
       <div id="thread-panel-body">
-        {showHeader && threadType === ThreadType.Conversation ? (
+        {showHeader && isConversationType ? (
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
             entityField={entityField as string}
-            noun={
-              threadType === ThreadType.Conversation ? 'Conversations' : 'Tasks'
-            }
+            noun={isConversationType ? 'Conversations' : 'Tasks'}
             onCancel={() => onCancel && onCancel()}
             onShowNewConversation={
               threads.length > 0 && isUndefined(selectedThread)
@@ -226,7 +235,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 : undefined
             }
           />
-        ) : null}
+        ) : (
+          <div className="tw-flex tw-justify-end tw-mr-2 tw-mt-2">
+            <Switch onChange={onSwitchChange} />
+            <span className="tw-ml-1">Closed Tasks</span>
+          </div>
+        )}
 
         {!isUndefined(selectedThread) ? (
           <Fragment>
@@ -245,9 +259,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           </Fragment>
         ) : (
           <Fragment>
-            {showNewConversation || threads.length === 0 ? (
+            {showNewConversation || isEqual(threads.length, 0) ? (
               <Fragment>
-                {threadType === ThreadType.Conversation ? (
+                {isConversationType ? (
                   <Fragment>
                     <p className="tw-ml-9 tw-mr-2 tw-mb-2 tw-mt-1">
                       You are starting a new conversation
@@ -260,7 +274,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                     />
                   </Fragment>
                 ) : (
-                  <ErrorPlaceHolder>No tasks yet</ErrorPlaceHolder>
+                  <Empty
+                    className="ant-empty-tasks"
+                    description={
+                      isTaskClosed ? 'No Closed Tasks' : 'No Open Tasks'
+                    }
+                  />
                 )}
               </Fragment>
             ) : null}

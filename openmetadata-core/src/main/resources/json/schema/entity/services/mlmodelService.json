@@ -5,7 +5,7 @@
   "description": "MlModel Service Entity, such as MlFlow.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.services.MlModelService",
-  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.core.entity.interfaces.EntityInterface", "org.openmetadata.core.entity.interfaces.ServiceEntityInterface"],
   "definitions": {
     "mlModelServiceType": {
       "description": "Type of MlModel service",
@@ -24,6 +24,7 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MlModelConnection",
       "description": "MlModel Connection.",
+      "javaInterfaces": ["org.openmetadata.core.entity.interfaces.ServiceConnectionEntityInterface"],
       "properties": {
         "config": {
           "oneOf": [

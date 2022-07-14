@@ -5,7 +5,10 @@
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.services.PipelineService",
-  "javaInterfaces": ["org.openmetadata.catalog.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.catalog.EntityInterface",
+    "org.openmetadata.catalog.ServiceEntityInterface"
+  ],
   "definitions": {
     "pipelineServiceType": {
       "description": "Type of pipeline service - Airflow or Prefect.",
@@ -27,6 +30,9 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.PipelineConnection",
       "description": "Pipeline Connection.",
+      "javaInterfaces": [
+        "org.openmetadata.catalog.ServiceConnectionEntityInterface"
+      ],
       "properties": {
         "config": {
           "oneOf": [

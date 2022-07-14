@@ -1,19 +1,59 @@
-UPDATE dashboard_service_entity
+DELETE from ingestion_pipeline_entity where 1=1;
+DELETE from entity_relationship where toEntity = 'ingestionPipeline';
+
+-- 0.10 had empty FQNs for services, users and teams
+UPDATE dbservice_entity
 SET json = JSON_INSERT(
-        JSON_REMOVE(json, '$.connection.config.username'),
-        '$.connection.config.clientId',
-        JSON_EXTRACT(json, '$.connection.config.username')
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
     )
-WHERE serviceType = 'Looker';
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
 
 UPDATE dashboard_service_entity
 SET json = JSON_INSERT(
-        JSON_REMOVE(json, '$.connection.config.password'),
-        '$.connection.config.clientSecret',
-        JSON_EXTRACT(json, '$.connection.config.password')
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
     )
-WHERE serviceType = 'Looker';
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
 
-UPDATE dashboard_service_entity
-SET json = JSON_REMOVE(json, '$.connection.config.env')
-WHERE serviceType = 'Looker';
+UPDATE messaging_service_entity
+SET json = JSON_INSERT(
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
+    )
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
+
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
+    )
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
+
+UPDATE storage_service_entity
+SET json = JSON_INSERT(
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
+    )
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
+
+UPDATE team_entity
+SET json = JSON_INSERT(
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
+    )
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;
+
+UPDATE user_entity
+SET json = JSON_INSERT(
+         json,
+        '$.fullyQualifiedName',
+        JSON_EXTRACT(json, '$.name')
+    )
+WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') is NULL;

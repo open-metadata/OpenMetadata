@@ -16,13 +16,14 @@ import { LoadingState } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getServiceDetailsPath, ROUTES } from '../../constants/constants';
+import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
 import { STEPS_FOR_ADD_SERVICE } from '../../constants/services.const';
 import { FormSubmitType } from '../../enums/form.enum';
 import { PageLayoutType } from '../../enums/layout.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ConfigData, DataObj } from '../../interface/service.interface';
-import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getCurrentUserId, isUrlFriendlyName } from '../../utils/CommonUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
   getServiceCreatedLabel,
@@ -59,6 +60,12 @@ const AddService = ({
     serviceType: false,
     name: false,
     duplicateName: false,
+    nameWithSpace: false,
+    delimit: false,
+    specialChar: false,
+    nameLength: false,
+    allowChar: false,
+    isError: false,
   });
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
@@ -104,10 +111,41 @@ const AddService = ({
 
   const handleConfigureServiceNextClick = (descriptionValue: string) => {
     setDescription(descriptionValue);
-    if (serviceName.trim()) {
+
+    if (!serviceName.trim()) {
+      setShowErrorMessage({ ...showErrorMessage, name: true, isError: true });
+    } else if (nameWithSpace.test(serviceName)) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        nameWithSpace: true,
+        isError: true,
+      });
+    } else if (delimiterRegex.test(serviceName)) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        delimit: true,
+        isError: true,
+      });
+    } else if (nameWithSpace.test(serviceName)) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        nameWithSpace: true,
+        isError: true,
+      });
+    } else if (!isUrlFriendlyName(serviceName.trim())) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        specialChar: true,
+        isError: true,
+      });
+    } else if (serviceName.length < 1 || serviceName.length > 128) {
+      setShowErrorMessage({
+        ...showErrorMessage,
+        nameLength: true,
+        isError: true,
+      });
+    } else if (!showErrorMessage.isError) {
       setActiveServiceStep(3);
-    } else {
-      setShowErrorMessage({ ...showErrorMessage, name: true });
     }
   };
 
@@ -173,7 +211,14 @@ const AddService = ({
     const value = event.target.value.trim();
     setServiceName(value);
     if (value) {
-      setShowErrorMessage({ ...showErrorMessage, name: false });
+      setShowErrorMessage({
+        ...showErrorMessage,
+        name: false,
+        isError: false,
+        delimit: false,
+        specialChar: false,
+        nameLength: false,
+      });
     }
   };
 
@@ -209,6 +254,11 @@ const AddService = ({
               showError={{
                 name: showErrorMessage.name,
                 duplicateName: showErrorMessage.duplicateName,
+                nameWithSpace: showErrorMessage.nameWithSpace,
+                delimit: showErrorMessage.delimit,
+                specialChar: showErrorMessage.specialChar,
+                nameLength: showErrorMessage.nameLength,
+                allowChar: showErrorMessage.allowChar,
               }}
               onBack={handleConfigureServiceBackClick}
               onNext={handleConfigureServiceNextClick}

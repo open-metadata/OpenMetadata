@@ -47,7 +47,8 @@ public class OpenMetadata {
   public OpenMetadata(OpenMetadataServerConnection config) {
     serverConfig = config;
     apiClient = new ApiClient();
-    Feign.Builder builder = Feign.builder()
+    Feign.Builder builder =
+        Feign.builder()
             .encoder(new FormEncoder(new JacksonEncoder(apiClient.getObjectMapper())))
             .decoder(new JacksonDecoder(apiClient.getObjectMapper()))
             .logger(new Slf4jLogger())

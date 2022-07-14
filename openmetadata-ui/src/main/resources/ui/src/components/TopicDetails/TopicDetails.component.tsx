@@ -48,6 +48,7 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import Loader from '../Loader/Loader';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import RequestDescriptionModal from '../Modals/RequestDescriptionModal/RequestDescriptionModal';
@@ -95,6 +96,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   sampleData,
   updateThreadHandler,
   entityFieldTaskCount,
+  lineageTabData,
 }: TopicDetailsProps) => {
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -175,7 +177,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Task',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -209,6 +211,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       position: 4,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+        selectedName: 'icon-lineagecolor',
+      },
+      isProtected: false,
+      position: 5,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -218,7 +231,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 5,
+      position: 6,
     },
   ];
   const extraInfo: Array<ExtraInfo> = [
@@ -377,6 +390,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
           entityFieldThreads={getEntityFieldThreadCounts(
             EntityField.TAGS,
             entityFieldThreadCount
@@ -485,6 +502,24 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 </div>
               )}
               {activeTab === 5 && (
+                <div
+                  className="tw-px-2 tw-h-full"
+                  data-testid="lineage-details">
+                  <EntityLineageComponent
+                    addLineageHandler={lineageTabData.addLineageHandler}
+                    deleted={deleted}
+                    entityLineage={lineageTabData.entityLineage}
+                    entityLineageHandler={lineageTabData.entityLineageHandler}
+                    isLoading={lineageTabData.isLineageLoading}
+                    isNodeLoading={lineageTabData.isNodeLoading}
+                    isOwner={hasEditAccess()}
+                    lineageLeafNodes={lineageTabData.lineageLeafNodes}
+                    loadNodeHandler={lineageTabData.loadNodeHandler}
+                    removeLineageHandler={lineageTabData.removeLineageHandler}
+                  />
+                </div>
+              )}
+              {activeTab === 6 && (
                 <div>
                   <ManageTabComponent
                     allowDelete

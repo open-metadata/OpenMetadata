@@ -17,6 +17,7 @@ import { capitalize } from 'lodash';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import Ellipses from '../../components/common/Ellipses/Ellipses';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import ProfilePicture from '../../components/common/ProfilePicture/ProfilePicture';
 import { AssetsType, FqnPart } from '../../enums/entity.enum';
@@ -187,7 +188,7 @@ const UserCard = ({
               <span
                 className={classNames(
                   'tw-font-normal',
-                  isActionVisible ? 'tw-truncate tw-w-32' : null,
+                  isActionVisible ? 'tw-w-32' : 'tw-w-52',
                   {
                     'tw-cursor-pointer hover:tw-underline':
                       Boolean(onTitleClick),
@@ -197,15 +198,17 @@ const UserCard = ({
                 onClick={() => {
                   onTitleClick?.(item.fqn);
                 }}>
-                {item.displayName}
+                <Ellipses tooltip>{item.displayName}</Ellipses>
               </span>
               {item.name && item.name !== item.displayName && (
                 <span
                   className={classNames(
-                    isActionVisible ? 'tw-truncate tw-w-32' : null
+                    isActionVisible ? 'tw-w-32' : 'tw-w-52'
                   )}
                   title={isIconVisible ? item.name : capitalize(item.name)}>
-                  {isIconVisible ? item.name : capitalize(item.name)}
+                  <Ellipses tooltip>
+                    {isIconVisible ? item.name : capitalize(item.name)}
+                  </Ellipses>
                 </span>
               )}
             </Fragment>

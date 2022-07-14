@@ -95,11 +95,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
   void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     DashboardConnection dashboardConnection =
         new DashboardConnection()
-            .withConfig(
-                new SupersetConnection()
-                    .withHostPort(new URI("http://localhost:8080"))
-                    .withUsername("user")
-                    .withPassword("password"));
+            .withConfig(new SupersetConnection().withHostPort(new URI("http://localhost:8080")).withUsername("user"));
     DashboardService service =
         createAndCheckEntity(
             createRequest(test).withDescription(null).withConnection(dashboardConnection), ADMIN_AUTH_HEADERS);
@@ -107,11 +103,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     // Update dashboard description and ingestion service that are null
     DashboardConnection dashboardConnection1 =
         new DashboardConnection()
-            .withConfig(
-                new SupersetConnection()
-                    .withHostPort(new URI("http://localhost:9000"))
-                    .withUsername("user1")
-                    .withPassword("password1"));
+            .withConfig(new SupersetConnection().withHostPort(new URI("http://localhost:9000")).withUsername("user1"));
 
     CreateDashboardService update =
         createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
@@ -132,10 +124,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
     updatedService = getEntity(service.getId(), TEST_AUTH_HEADERS);
     assertNull(updatedService.getConnection());
     SupersetConnection supersetConnection =
-        new SupersetConnection()
-            .withHostPort(new URI("http://localhost:8080"))
-            .withUsername("user")
-            .withPassword("password123");
+        new SupersetConnection().withHostPort(new URI("http://localhost:8080")).withUsername("user");
     DashboardConnection dashboardConnection2 = new DashboardConnection().withConfig(supersetConnection);
     update = createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
 

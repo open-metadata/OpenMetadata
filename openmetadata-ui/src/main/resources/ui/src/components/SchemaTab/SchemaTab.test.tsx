@@ -19,9 +19,9 @@ import {
   Column,
   DataType,
   LabelType,
-  Source,
   State,
   Table,
+  TagSource,
 } from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab.component';
 const mockColumns: Column[] = [
@@ -34,13 +34,13 @@ const mockColumns: Column[] = [
       {
         tagFQN: 'string',
         labelType: LabelType.Manual,
-        source: Source.Tag,
+        source: TagSource.Tag,
         state: State.Confirmed,
       },
       {
         tagFQN: 'string2',
         labelType: LabelType.Derived,
-        source: Source.Tag,
+        source: TagSource.Tag,
         state: State.Confirmed,
       },
     ],

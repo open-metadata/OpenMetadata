@@ -12,9 +12,19 @@
 """
 Test Metrics behavior
 """
+import datetime
 from unittest import TestCase
 
-from sqlalchemy import TEXT, Column, Integer, String, create_engine
+from sqlalchemy import (
+    TEXT,
+    Column,
+    Date,
+    DateTime,
+    Integer,
+    String,
+    Time,
+    create_engine,
+)
 from sqlalchemy.orm import declarative_base
 
 from metadata.orm_profiler.metrics.core import add_props
@@ -33,6 +43,9 @@ class User(Base):
     nickname = Column(String(256))
     comments = Column(TEXT)
     age = Column(Integer)
+    dob = Column(DateTime)  # date of birth
+    tob = Column(Time)  # time of birth
+    doe = Column(Date)  # date of employment
 
 
 class MetricsTest(TestCase):
@@ -57,6 +70,9 @@ class MetricsTest(TestCase):
                 nickname="johnny b goode",
                 comments="no comments",
                 age=30,
+                dob=datetime.datetime(1992, 5, 17),
+                tob=datetime.time(11, 2, 32),
+                doe=datetime.date(2020, 1, 12),
             ),
             User(
                 name="Jane",
@@ -64,6 +80,9 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments="maybe some comments",
                 age=31,
+                dob=datetime.datetime(1991, 4, 4),
+                tob=datetime.time(10, 1, 31),
+                doe=datetime.date(2009, 11, 11),
             ),
             User(
                 name="John",
@@ -71,6 +90,9 @@ class MetricsTest(TestCase):
                 nickname=None,
                 comments=None,
                 age=None,
+                dob=datetime.datetime(1982, 2, 2),
+                tob=datetime.time(9, 3, 25),
+                doe=datetime.date(2012, 12, 1),
             ),
         ]
         cls.session.add_all(data)
@@ -114,6 +136,42 @@ class MetricsTest(TestCase):
         # SQLITE STD custom implementation returns the squared STD.
         # Only useful for testing purposes
         assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+
+    def test_earliest_time(self):
+        """
+        Check Earliest Time Metric
+        """
+        earliest_time = Metrics.MIN.value
+        profiler = Profiler(
+            earliest_time,
+            session=self.session,
+            table=User,
+            use_cols=[User.dob, User.tob, User.doe],
+        )
+        res = profiler.execute()._column_results
+        assert (
+            res.get(User.dob.name).get(Metrics.MIN.name) == "1982-02-02 00:00:00.000000"
+        )
+        assert res.get(User.tob.name).get(Metrics.MIN.name) == "09:03:25.000000"
+        assert res.get(User.doe.name).get(Metrics.MIN.name) == "2009-11-11"
+
+    def test_latest_time(self):
+        """
+        Check Latest Time Metric
+        """
+        latest_time = Metrics.MAX.value
+        profiler = Profiler(
+            latest_time,
+            session=self.session,
+            table=User,
+            use_cols=[User.dob, User.tob, User.doe],
+        )
+        res = profiler.execute()._column_results
+        assert (
+            res.get(User.dob.name).get(Metrics.MAX.name) == "1992-05-17 00:00:00.000000"
+        )
+        assert res.get(User.tob.name).get(Metrics.MAX.name) == "11:02:32.000000"
+        assert res.get(User.doe.name).get(Metrics.MAX.name) == "2020-01-12"
 
     def test_null_count(self):
         """
@@ -167,7 +225,7 @@ class MetricsTest(TestCase):
         col_count = add_props(table=User)(Metrics.COLUMN_COUNT.value)
         profiler = Profiler(col_count, session=self.session, table=User)
         res = profiler.execute()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 6
+        assert res.get(Metrics.COLUMN_COUNT.name) == 9
 
     def test_avg(self):
         """
@@ -599,3 +657,46 @@ class MetricsTest(TestCase):
         )
 
         assert res.get(User.age.name).get(Metrics.HISTOGRAM.name) is None
+
+    def test_not_like_count(self):
+        """
+        Check NOT_LIKE count
+        """
+        # In sqlite, LIKE is insensitive by default, so we just check here
+        # that the metrics runs correctly rather than the implementation logic.
+
+        test_cases = [
+            ("b%", 0),
+            ("Jo%", 2),
+            ("Ja%", 1),
+            ("J%", 3),
+        ]
+
+        for expression, expected in test_cases:
+            with self.subTest(expression=expression, expected=expected):
+                not_like = add_props(expression=expression)(
+                    Metrics.NOT_LIKE_COUNT.value
+                )
+                res = (
+                    Profiler(
+                        not_like, session=self.session, table=User, use_cols=[User.name]
+                    )
+                    .execute()
+                    ._column_results
+                )
+
+                assert res.get(User.name.name)[Metrics.NOT_LIKE_COUNT.name] == expected
+
+    def test_median(self):
+        """
+        Check MEDIAN
+        """
+
+        median = Metrics.MEDIAN.value
+        res = (
+            Profiler(median, session=self.session, table=User, use_cols=[User.age])
+            .execute()
+            ._column_results
+        )
+
+        assert res.get(User.age.name)[Metrics.MEDIAN.name] == 30

@@ -60,7 +60,7 @@ const EntityDeleteModal: FC<Prop> = ({
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-w-120">
         <div className={classNames('tw-modal-header')}>
-          <p className="tw-modal-title" data-testid="modal-header">
+          <p className="tw-modal-title tw-break-all" data-testid="modal-header">
             {softDelete ? (
               <span>
                 Soft delete <strong>{entityName}</strong>
@@ -73,7 +73,7 @@ const EntityDeleteModal: FC<Prop> = ({
           </p>
         </div>
         <div className={classNames('tw-modal-body')} data-testid="body-text">
-          <p className="tw-mb-2">
+          <p className="tw-mb-2 tw-break-all">
             {bodyText ||
               `Once you delete this ${getTitleCase(
                 entityType

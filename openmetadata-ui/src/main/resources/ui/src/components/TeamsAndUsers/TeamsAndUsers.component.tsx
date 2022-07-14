@@ -17,14 +17,18 @@ import { capitalize } from 'lodash';
 import React from 'react';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
 import { UserType } from '../../enums/user.enum';
+import { Team } from '../../generated/entity/teams/team';
 import { TeamsAndUsersProps } from '../../interface/teamsAndUsers.interface';
 import AddUsersModal from '../../pages/teams/AddUsersModal';
 import { getActiveCatClass, getCountBadge } from '../../utils/CommonUtils';
 import { getActiveUsers } from '../../utils/TeamUtils';
 import { Button } from '../buttons/Button/Button';
+import Ellipses from '../common/Ellipses/Ellipses';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PageLayout, { leftPanelAntCardStyle } from '../containers/PageLayout';
 import Loader from '../Loader/Loader';
+import FormModal from '../Modals/FormModal';
+import Form from '../TeamDetails/Form';
 import TeamDetails from '../TeamDetails/TeamDetails';
 import UserDetails from '../UserDetails/UserDetails';
 
@@ -130,13 +134,14 @@ const TeamsAndUsers = ({
                   className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-flex tw-justify-between ${getActiveCatClass(
                     team.name,
                     currentTeam?.name
-                  )}`}>
-                  <p
-                    className="tag-category label-category tw-self-center tw-truncate"
-                    data-testid="team-name"
-                    title={team.displayName ?? team.name}>
+                  )}`}
+                  data-testid="team-name">
+                  <Ellipses
+                    tooltip
+                    className="tag-category label-category tw-self-center tw-w-32"
+                    rows={1}>
                     {team.displayName ?? team.name}
-                  </p>
+                  </Ellipses>
                 </div>
                 {getCountBadge(
                   getActiveUsers(team.users).length,
@@ -145,6 +150,7 @@ const TeamsAndUsers = ({
                 )}
               </div>
             ))}
+            {!teams.length && <>No teams found</>}
           </>
         </Card>
         {hasAccess && (
@@ -194,6 +200,8 @@ const TeamsAndUsers = ({
                 {getCountBadge(user.count, '', activeUserTab === user.name)}
               </div>
             ))}
+
+            {!usersData.length && <>No user found</>}
           </Card>
         )}
       </>
@@ -223,19 +231,16 @@ const TeamsAndUsers = ({
           ) : (
             <TeamDetails
               afterDeleteAction={afterDeleteAction}
-              createNewTeam={createNewTeam}
               currentTeam={currentTeam}
               currentTeamUserPage={currentTeamUserPage}
               currentTeamUsers={currentTeamUsers}
               descriptionHandler={descriptionHandler}
-              errorNewTeamData={errorNewTeamData}
               handleAddTeam={handleAddTeam}
               handleAddUser={handleAddUser}
               handleJoinTeamClick={handleJoinTeamClick}
               handleLeaveTeamClick={handleLeaveTeamClick}
               handleTeamUsersSearchAction={handleTeamUsersSearchAction}
               hasAccess={hasAccess}
-              isAddingTeam={isAddingTeam}
               isDescriptionEditable={isDescriptionEditable}
               isTeamMemberLoading={isTeamMemberLoading}
               removeUserFromTeam={removeUserFromTeam}
@@ -245,7 +250,6 @@ const TeamsAndUsers = ({
               teams={teams}
               updateTeamHandler={updateTeamHandler}
               onDescriptionUpdate={onDescriptionUpdate}
-              onNewTeamDataChange={onNewTeamDataChange}
             />
           )}
         </div>
@@ -259,6 +263,22 @@ const TeamsAndUsers = ({
           list={getUniqueUserList()}
           onCancel={() => handleAddUser(false)}
           onSave={(data) => addUsersToTeam(data)}
+        />
+      )}
+
+      {isAddingTeam && (
+        <FormModal
+          errorData={errorNewTeamData}
+          form={Form}
+          header="Adding new team"
+          initialData={{
+            name: '',
+            description: '',
+            displayName: '',
+          }}
+          onCancel={() => handleAddTeam(false)}
+          onChange={(data) => onNewTeamDataChange(data as Team)}
+          onSave={(data) => createNewTeam(data as Team)}
         />
       )}
     </PageLayout>

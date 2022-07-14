@@ -80,11 +80,13 @@ class MetadataUsageBulkSink(BulkSink):
         Method to ingest lineage by sql queries
         """
 
-        create_queries = [
-            query.query for query in queries if "create" in query.query.lower()
+        create_or_insert_queries = [
+            query.query
+            for query in queries
+            if "create" in query.query.lower() or "insert" in query.query.lower()
         ]
 
-        for query in create_queries:
+        for query in create_or_insert_queries:
             lineages = get_lineage_by_query(
                 self.metadata,
                 query=query,

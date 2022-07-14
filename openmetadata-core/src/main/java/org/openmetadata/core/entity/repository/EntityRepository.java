@@ -69,7 +69,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.core.TypeRegistry;
 import org.openmetadata.core.entity.Entity;
 import org.openmetadata.core.entity.interfaces.EntityDAO;
@@ -737,7 +737,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Get tags associated with a given set of tags */
   private List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == Source.GLOSSARY) { // Related tags are only supported for Glossary
+    if (tagLabel.getSource() == TagSource.GLOSSARY) { // Related tags are only supported for Glossary
       List<TagLabel> derivedTags = daoCollection.tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(LabelType.DERIVED));
       return derivedTags;
@@ -755,14 +755,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (tagLabel.getSource() == Source.TAG) {
+      if (tagLabel.getSource() == TagSource.TAG) {
         Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
         tagLabel.withDescription(tag.getDescription());
-        tagLabel.setSource(Source.TAG);
-      } else if (tagLabel.getSource() == Source.GLOSSARY) {
+        tagLabel.setSource(TagSource.TAG);
+      } else if (tagLabel.getSource() == TagSource.GLOSSARY) {
         GlossaryTerm term = daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), NON_DELETED);
         tagLabel.withDescription(term.getDescription());
-        tagLabel.setSource(Source.GLOSSARY);
+        tagLabel.setSource(TagSource.GLOSSARY);
       }
 
       // Apply tagLabel to targetFQN that identifies an entity or field

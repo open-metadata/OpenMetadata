@@ -215,7 +215,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       position: 1,
     },
     {
-      name: 'Activity Feed & Task',
+      name: 'Activity Feed & Tasks',
       icon: {
         alt: 'activity_feed',
         name: 'activity_feed',
@@ -585,8 +585,12 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         <EntityPageInfo
           isTagEditable
           deleted={deleted}
+          entityFieldTasks={getEntityFieldThreadCounts(
+            EntityField.TAGS,
+            entityFieldTaskCount
+          )}
           entityFieldThreads={getEntityFieldThreadCounts(
-            'tags',
+            EntityField.TAGS,
             entityFieldThreadCount
           )}
           entityFqn={datasetFQN}
