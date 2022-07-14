@@ -357,3 +357,16 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
 """
+
+
+TRINO_GET_COLUMNS = """
+    SELECT
+        "column_name",
+        "data_type",
+        "column_default",
+        UPPER("is_nullable") AS "is_nullable"
+    FROM "information_schema"."columns"
+    WHERE "table_schema" = :schema
+        AND "table_name" = :table
+    ORDER BY "ordinal_position" ASC
+"""

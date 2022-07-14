@@ -17,7 +17,7 @@ Min Metric definition
 from sqlalchemy import column, func
 
 from metadata.orm_profiler.metrics.core import StaticMetric, _label
-from metadata.orm_profiler.orm.registry import is_quantifiable
+from metadata.orm_profiler.orm.registry import is_date_time, is_quantifiable
 
 
 class Min(StaticMetric):
@@ -33,6 +33,6 @@ class Min(StaticMetric):
 
     @_label
     def fn(self):
-        if not is_quantifiable(self.col.type):
+        if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
         return func.min(column(self.col.name))

@@ -185,7 +185,7 @@
           "type": "integer"
         },
         "dataTypeDisplay": {
-          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
           "type": "string"
         },
         "description": {
@@ -402,11 +402,11 @@
         },
         "min": {
           "description": "Minimum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "max": {
           "description": "Maximum value in a column.",
-          "type": ["number", "integer", "string"]
+          "oneOf": [{ "type": "number"}, { "type": "integer"}, { "type": "string"}]
         },
         "minLength": {
           "description": "Minimum string length in a column.",

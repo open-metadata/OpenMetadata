@@ -28,10 +28,12 @@ import org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.fernet.FernetConfiguration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
+import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
 public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("database")
@@ -103,6 +105,16 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private boolean sandboxModeEnabled;
+
+  @JsonProperty("slackChat")
+  @Getter
+  @Setter
+  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+
+  @JsonProperty("secretsManagerConfiguration")
+  @Getter
+  @Setter
+  private SecretsManagerConfiguration secretsManagerConfiguration;
 
   @Override
   public String toString() {

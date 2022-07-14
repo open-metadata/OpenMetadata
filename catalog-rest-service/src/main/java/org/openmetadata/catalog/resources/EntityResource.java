@@ -133,6 +133,21 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response deleteByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      boolean recursive,
+      boolean hardDelete,
+      int checkFlags)
+      throws IOException {
+    SecurityUtil.authorizeAdmin(authorizer, securityContext, checkFlags);
+    DeleteResponse<T> response =
+        dao.deleteByName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
+  }
+
   public T copy(T entity, CreateEntity request, String updatedBy) {
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());

@@ -30,6 +30,7 @@ import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWKSResponse;
 import org.openmetadata.catalog.security.jwt.JWTTokenGenerator;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
 @Path("/v1/config")
 @Api(value = "Get configuration")
@@ -109,6 +110,29 @@ public class ConfigResource {
       sandboxConfiguration.setSandboxModeEnabled(true);
     }
     return sandboxConfiguration;
+  }
+
+  @GET
+  @Path(("/slackChat"))
+  @Operation(
+      operationId = "getSlackChatConfiguration",
+      summary = "Get Slack Chat Configuration",
+      tags = "config",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Get Slack Chat Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SlackChatConfiguration.class)))
+      })
+  public SlackChatConfiguration getSlackChatConfiguration() {
+    SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+    if (catalogApplicationConfig.getSlackChatConfiguration() != null) {
+      slackChatConfiguration = catalogApplicationConfig.getSlackChatConfiguration();
+    }
+    return slackChatConfiguration;
   }
 
   @GET

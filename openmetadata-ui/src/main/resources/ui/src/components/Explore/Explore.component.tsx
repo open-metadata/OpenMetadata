@@ -18,12 +18,12 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, lowerCase } from 'lodash';
 import {
   AggregationType,
   Bucket,
   FilterObject,
-  FormatedTableData,
+  FormattedTableData,
   SearchResponse,
 } from 'Models';
 import React, {
@@ -102,7 +102,7 @@ const Explore: React.FC<ExploreProps> = ({
     ...INITIAL_FILTERS,
     ...initialFilter,
   };
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [filters, setFilters] = useState<FilterObject>({
     ...filterObject,
     ...searchFilter,
@@ -131,6 +131,9 @@ const Explore: React.FC<ExploreProps> = ({
   const [selectedAdvancedFields, setSelectedAdvancedField] = useState<
     Array<AdvanceField>
   >([]);
+  const [isInitialFilterSet, setIsInitialFilterSet] = useState<boolean>(
+    !isEmpty(initialFilter)
+  );
 
   const onAdvancedFieldSelect = (value: string) => {
     const flag = selectedAdvancedFields.some((field) => field.key === value);
@@ -505,7 +508,11 @@ const Explore: React.FC<ExploreProps> = ({
 
   const getData = () => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = !isFilterSet;
+      if (isInitialFilterSet) {
+        forceSetAgg.current = isInitialFilterSet;
+      } else {
+        forceSetAgg.current = !isFilterSet;
+      }
       fetchTableData();
     }
   };
@@ -565,7 +572,7 @@ const Explore: React.FC<ExploreProps> = ({
     if (searchResult) {
       updateSearchResults(searchResult.resSearchResults);
       setCount(searchResult.resSearchResults.data.hits.total.value);
-      if (forceSetAgg.current || !isUndefined(initialFilter)) {
+      if (forceSetAgg.current) {
         setAggregations(
           searchResult.resSearchResults.data.hits.hits.length > 0
             ? getAggregationList(
@@ -573,6 +580,7 @@ const Explore: React.FC<ExploreProps> = ({
               )
             : getAggregationListFromQS(location.search)
         );
+        setIsInitialFilterSet(false);
       } else {
         const aggServiceType = getAggregationList(
           searchResult.resAggServiceType.data.aggregations,

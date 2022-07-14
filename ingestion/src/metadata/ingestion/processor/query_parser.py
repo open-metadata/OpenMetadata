@@ -18,7 +18,6 @@ from collections import defaultdict
 from logging.config import DictConfigurator
 from typing import Dict, List, Optional, Tuple
 
-from sqllineage.exceptions import SQLLineageException
 from sqlparse.sql import Comparison, Identifier, Statement
 
 from metadata.config.common import ConfigModel
@@ -37,6 +36,7 @@ from metadata.utils.logger import ingestion_logger
 configure = DictConfigurator.configure
 DictConfigurator.configure = lambda _: None
 from sqllineage.core import models
+from sqllineage.exceptions import SQLLineageException
 from sqllineage.runner import LineageRunner
 
 # Reverting changes after import is done

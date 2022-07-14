@@ -12,7 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -29,7 +29,7 @@ import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 type SearchedDataProp = {
   children?: ReactNode;
-  data: Array<FormatedTableData>;
+  data: Array<FormattedTableData>;
   currentPage: number;
   isLoading?: boolean;
   paginate: (value: string | number) => void;

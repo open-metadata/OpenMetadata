@@ -50,12 +50,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -72,9 +72,9 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "dashboardServices")
 public class DashboardServiceResource extends EntityResource<DashboardService, DashboardServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-
   static final String FIELDS = FIELD_OWNER;
-  private final Fernet fernet;
+
+  private final SecretsManager secretsManager;
 
   @Override
   public DashboardService addHref(UriInfo uriInfo, DashboardService service) {
@@ -83,9 +83,9 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
     return service;
   }
 
-  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DashboardService.class, new DashboardServiceRepository(dao), authorizer);
-    this.fernet = Fernet.getInstance();
+  public DashboardServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(DashboardService.class, new DashboardServiceRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -374,8 +374,8 @@ public class DashboardServiceResource extends EntityResource<DashboardService, D
     } catch (AuthorizationException e) {
       return dashboardService.withConnection(null);
     }
-    fernet.encryptOrDecryptDashboardConnection(
-        dashboardService.getConnection(), dashboardService.getServiceType(), false);
+    secretsManager.encryptOrDecryptServiceConnection(
+        dashboardService.getConnection(), dashboardService.getServiceType().value(), dashboardService.getName(), false);
     return dashboardService;
   }
 }

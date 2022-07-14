@@ -22,7 +22,6 @@ import com.macasaet.fernet.Key;
 import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
 import com.macasaet.fernet.Validator;
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
@@ -31,14 +30,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.DatabaseConnection;
-import org.openmetadata.catalog.exception.InvalidServiceConnectionException;
-import org.openmetadata.catalog.type.DashboardConnection;
-import org.openmetadata.catalog.type.PipelineConnection;
-import org.openmetadata.catalog.util.JsonUtils;
 
 public class Fernet {
   private static Fernet instance;
@@ -70,11 +61,6 @@ public class Fernet {
   }
 
   @VisibleForTesting
-  public Fernet(String fernetKey) {
-    this.setFernetKey(fernetKey);
-  }
-
-  @VisibleForTesting
   public void setFernetKey(String fernetKey) {
     if (fernetKey != null) {
       // convert base64 to base64url
@@ -82,11 +68,6 @@ public class Fernet {
     } else {
       this.fernetKey = null;
     }
-  }
-
-  @VisibleForTesting
-  public String getFernetKey() {
-    return this.fernetKey;
   }
 
   public boolean isKeyDefined() {
@@ -119,106 +100,5 @@ public class Fernet {
       return token.validateAndDecrypt(keys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
-  }
-
-  public String decryptIfTokenized(String tokenized) {
-    if (tokenized == null) {
-      return null;
-    }
-    Fernet fernet = Fernet.getInstance();
-    if (fernet.isKeyDefined() && isTokenized(tokenized)) {
-      return fernet.decrypt(tokenized);
-    }
-    return tokenized;
-  }
-
-  public void encryptOrDecryptDatabaseConnection(
-      DatabaseConnection databaseConnection,
-      CreateDatabaseService.DatabaseServiceType databaseServiceType,
-      Boolean encrypt) {
-    try {
-      Object connectionConfig = databaseConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.database." + databaseServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      Object object = JsonUtils.convertValue(connectionConfig, clazz);
-      Method getPasswordMethod = clazz.getMethod("getPassword");
-      Method setPasswordMethod = clazz.getMethod("setPassword", String.class);
-      String password = (String) getPasswordMethod.invoke(object);
-      if (password != null) {
-        if (!isTokenized(password) && encrypt) {
-          password = encrypt(password);
-        } else if (isTokenized(password) && !encrypt) {
-          password = decrypt(password);
-        }
-        setPasswordMethod.invoke(object, password);
-      }
-      databaseConnection.setConfig(object);
-    } catch (NoSuchMethodException ignored) {
-    } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(
-          databaseServiceType.value(),
-          String.format("Failed to construct connection instance of %s", databaseServiceType.value()));
-    }
-  }
-
-  public void encryptOrDecryptDashboardConnection(
-      DashboardConnection dashboardConnection,
-      CreateDashboardService.DashboardServiceType dashboardServiceType,
-      Boolean encrypt) {
-    try {
-      Object connectionConfig = dashboardConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.dashboard." + dashboardServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      Object object = JsonUtils.convertValue(connectionConfig, clazz);
-      Method getPasswordMethod = clazz.getMethod("getPassword");
-      Method setPasswordMethod = clazz.getMethod("setPassword", String.class);
-      String password = (String) getPasswordMethod.invoke(object);
-      if (password != null) {
-        if (!isTokenized(password) && encrypt) {
-          password = encrypt(password);
-        } else if (isTokenized(password) && !encrypt) {
-          password = decrypt(password);
-        }
-        setPasswordMethod.invoke(object, password);
-      }
-      dashboardConnection.setConfig(object);
-    } catch (NoSuchMethodException ignored) {
-    } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(
-          dashboardServiceType.value(),
-          String.format("Failed to construct connection instance of %s", dashboardServiceType.value()));
-    }
-  }
-
-  public void encryptOrDecryptPipelineConnection(
-      PipelineConnection pipelineConnection,
-      CreatePipelineService.PipelineServiceType pipelineServiceType,
-      Boolean encrypt) {
-    try {
-      Object connectionConfig = pipelineConnection.getConfig();
-      String clazzName =
-          "org.openmetadata.catalog.services.connections.pipeline." + pipelineServiceType.value() + "Connection";
-      Class<?> clazz = Class.forName(clazzName);
-      Object object = JsonUtils.convertValue(connectionConfig, clazz);
-      Method getPasswordMethod = clazz.getMethod("getPassword");
-      Method setPasswordMethod = clazz.getMethod("setPassword", String.class);
-      String password = (String) getPasswordMethod.invoke(object);
-      if (password != null) {
-        if (!isTokenized(password) && encrypt) {
-          password = encrypt(password);
-        } else if (isTokenized(password) && !encrypt) {
-          password = decrypt(password);
-        }
-        setPasswordMethod.invoke(object, password);
-      }
-      pipelineConnection.setConfig(object);
-    } catch (NoSuchMethodException ignored) {
-    } catch (Exception e) {
-      throw InvalidServiceConnectionException.byMessage(
-          pipelineServiceType.value(),
-          String.format("Failed to construct connection instance of %s", pipelineServiceType.value()));
-    }
   }
 }
