@@ -116,7 +116,6 @@ public class CatalogApplicationConfig extends Configuration {
   @Setter
   private SecretsManagerConfiguration secretsManagerConfiguration;
 
-
   @Override
   public String toString() {
     return "catalogConfig{"
