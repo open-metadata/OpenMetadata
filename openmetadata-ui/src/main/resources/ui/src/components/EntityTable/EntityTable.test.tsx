@@ -286,9 +286,32 @@ jest.mock('../../utils/TagsUtils', () => ({
   }),
 }));
 
-jest.mock('./EntityTable.constant', () => ({
-  TABLE_HEADERS: [...mockTableheader],
-}));
+jest.mock('./EntityTable.constant', () => {
+  return {
+    TABLE_HEADERS: [
+      {
+        Header: 'Name',
+        accessor: 'name',
+      },
+      {
+        Header: 'Type',
+        accessor: 'dataTypeDisplay',
+      },
+      {
+        Header: 'Data Quality',
+        accessor: 'columnTests',
+      },
+      {
+        Header: 'Description',
+        accessor: 'description',
+      },
+      {
+        Header: 'Tags',
+        accessor: 'tags',
+      },
+    ],
+  };
+});
 
 describe('Test EntityTable Component', () => {
   it('Check if it has all child elements', async () => {

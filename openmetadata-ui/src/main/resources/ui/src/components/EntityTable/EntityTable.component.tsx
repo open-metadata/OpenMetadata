@@ -86,6 +86,7 @@ const EntityTable = ({
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
+  const columns = TABLE_HEADERS;
 
   const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
     []
@@ -105,7 +106,7 @@ const EntityTable = ({
     toggleAllRowsExpanded,
   } = useTable(
     {
-      TABLE_HEADERS,
+      columns,
       data,
       autoResetExpanded: false,
     },
