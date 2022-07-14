@@ -346,13 +346,21 @@ site_menu:
 
   - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT
     url: /openmetadata/ingestion/workflows/metadata/dbt
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT UI
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-ui
+  - category: OpenMetadata / Ingestion / Workflows/ Metadata / DBT / Ingest DBT CLI
+    url: /openmetadata/ingestion/workflows/metadata/dbt/ingest-dbt-cli
 
   - category: OpenMetadata / Ingestion / Workflows / Usage
     url: /openmetadata/ingestion/workflows/usage
+  - category: OpenMetadata / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
+    url: /openmetadata/ingestion/workflows/usage/usage-workflow-query-logs
   - category: OpenMetadata / Ingestion / Workflows / Profiler
     url: /openmetadata/ingestion/workflows/profiler
   - category: OpenMetadata / Ingestion / Lineage
     url: /openmetadata/ingestion/lineage
+  - category: OpenMetadata / Ingestion / Lineage / Edit Data Lineage Manually
+    url: /openmetadata/ingestion/lineage/edit-lineage-manually
   - category: OpenMetadata / Ingestion / Versioning
     url: /openmetadata/ingestion/versioning
   - category: OpenMetadata / Ingestion / Versioning / Change Feeds
