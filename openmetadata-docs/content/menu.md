@@ -377,10 +377,13 @@ site_menu:
 
   - category: OpenMetadata / Integrations
     url: /openmetadata/integrations
-  - category: OpenMetadata / Integrations / Great Expectations & OpenMetadata
+  - category: OpenMetadata / Integrations / Great Expectations
     url: /openmetadata/integrations/great-expectations
   - category: OpenMetadata / Integrations / Prefect
     url: /openmetadata/integrations/prefect
+
+  - category: OpenMetadata / Glossaries
+    url: /openmetadata/glossaries
 
   - category: Main Concepts
     url: /main-concepts

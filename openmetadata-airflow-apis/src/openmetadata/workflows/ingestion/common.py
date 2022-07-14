@@ -17,6 +17,7 @@ from typing import Callable, Optional, Union
 
 import airflow
 from airflow import DAG
+from openmetadata.helpers import clean_dag_id
 
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -170,7 +171,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :return: dict to use as kwargs
     """
     return {
-        "dag_id": ingestion_pipeline.name.__root__,
+        "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
         "description": ingestion_pipeline.description,
         "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
         if ingestion_pipeline.airflowConfig.startDate

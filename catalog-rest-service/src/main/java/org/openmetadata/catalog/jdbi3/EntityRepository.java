@@ -81,7 +81,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
-import org.openmetadata.catalog.type.TagLabel.Source;
+import org.openmetadata.catalog.type.TagLabel.TagSource;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.FullyQualifiedName;
@@ -517,20 +517,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  public final DeleteResponse<T> deleteByName(String updatedBy, String name, boolean recursive, boolean hardDelete)
+      throws IOException {
+    DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+    postDelete(response.getEntity());
+    return response;
+  }
+
   protected void postDelete(T entity) {
     // Override this method to perform any operation required after deletion.
     // For example ingestion pipeline deletes a pipeline in AirFlow.
   }
 
-  @Transaction
-  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+  private DeleteResponse<T> delete(String updatedBy, String json, String id, boolean recursive, boolean hardDelete)
       throws IOException {
-    // Validate entity
-    String json = dao.findJsonById(id, ALL);
-    if (json == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
-
     T original = JsonUtils.readValue(json, entityClass);
     setFields(original, putFields); // TODO why this?
 
@@ -552,6 +552,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteInternalByName(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) throws IOException {
+    // Validate entity
+    String json = dao.findJsonByFqn(name, ALL);
+    if (json == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, name));
+    }
+    String id = String.valueOf(JsonUtils.readValue(json, entityClass).getId());
+    return delete(updatedBy, json, id, recursive, hardDelete);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteInternal(String updatedBy, String id, boolean recursive, boolean hardDelete)
+      throws IOException {
+    // Validate entity
+    String json = dao.findJsonById(id, ALL);
+    if (json == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
+    }
+    return delete(updatedBy, json, id, recursive, hardDelete);
   }
 
   private void deleteChildren(String id, boolean recursive, boolean hardDelete, String updatedBy) throws IOException {
@@ -741,7 +764,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /** Get tags associated with a given set of tags */
   private List<TagLabel> getDerivedTags(TagLabel tagLabel) {
-    if (tagLabel.getSource() == Source.GLOSSARY) { // Related tags are only supported for Glossary
+    if (tagLabel.getSource() == TagSource.GLOSSARY) { // Related tags are only supported for Glossary
       List<TagLabel> derivedTags = daoCollection.tagUsageDAO().getTags(tagLabel.getTagFQN());
       derivedTags.forEach(tag -> tag.setLabelType(LabelType.DERIVED));
       return derivedTags;
@@ -759,14 +782,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      if (tagLabel.getSource() == Source.TAG) {
+      if (tagLabel.getSource() == TagSource.TAG) {
         Tag tag = daoCollection.tagDAO().findEntityByName(tagLabel.getTagFQN());
         tagLabel.withDescription(tag.getDescription());
-        tagLabel.setSource(Source.TAG);
-      } else if (tagLabel.getSource() == Source.GLOSSARY) {
+        tagLabel.setSource(TagSource.TAG);
+      } else if (tagLabel.getSource() == TagSource.GLOSSARY) {
         GlossaryTerm term = daoCollection.glossaryTermDAO().findEntityByName(tagLabel.getTagFQN(), NON_DELETED);
         tagLabel.withDescription(term.getDescription());
-        tagLabel.setSource(Source.GLOSSARY);
+        tagLabel.setSource(TagSource.GLOSSARY);
       }
 
       // Apply tagLabel to targetFQN that identifies an entity or field

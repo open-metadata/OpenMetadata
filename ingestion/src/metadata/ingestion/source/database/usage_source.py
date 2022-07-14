@@ -60,6 +60,12 @@ class UsageSource(Source[TableQuery], ABC):
         """
         return data.get("database_name")
 
+    def get_schema_name(self, data: dict) -> str:
+        """
+        Method to get schema name
+        """
+        return data.get("schema_name")
+
     def get_aborted_status(self, data: dict) -> bool:
         """
         Method to get aborted status of query
@@ -119,10 +125,11 @@ class UsageSource(Source[TableQuery], ABC):
                     )
                     queries = []
                     for row in rows:
+                        row = dict(row)
                         try:
                             if filter_by_database(
                                 self.source_config.databaseFilterPattern,
-                                self.get_database_name(dict(row)),
+                                self.get_database_name(row),
                             ) or filter_by_schema(
                                 self.source_config.schemaFilterPattern,
                                 schema_name=row["schema_name"],
@@ -135,10 +142,10 @@ class UsageSource(Source[TableQuery], ABC):
                                     startTime=str(row["start_time"]),
                                     endTime=str(row["end_time"]),
                                     analysisDate=row["start_time"],
-                                    aborted=self.get_aborted_status(dict(row)),
-                                    databaseName=self.get_database_name(dict(row)),
+                                    aborted=self.get_aborted_status(row),
+                                    databaseName=self.get_database_name(row),
                                     serviceName=self.config.serviceName,
-                                    databaseSchema=row["schema_name"],
+                                    databaseSchema=self.get_schema_name(row),
                                 )
                             )
                         except Exception as err:
