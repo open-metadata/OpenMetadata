@@ -365,7 +365,7 @@ const TeamsAndUsersPage = () => {
       text,
       currentPage,
       PAGE_SIZE_MEDIUM,
-      `(teams:${currentTeam?.id})`,
+      `(teams.id:${currentTeam?.id})`,
       '',
       '',
       SearchIndex.USER

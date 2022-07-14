@@ -71,6 +71,8 @@ import org.openmetadata.catalog.migration.Migration;
 import org.openmetadata.catalog.migration.MigrationConfiguration;
 import org.openmetadata.catalog.resources.CollectionRegistry;
 import org.openmetadata.catalog.resources.search.SearchResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
+import org.openmetadata.catalog.secrets.SecretsManagerFactory;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
@@ -96,6 +98,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
           InvocationTargetException, IOException {
     final Jdbi jdbi = new JdbiFactory().build(environment, catalogConfig.getDataSourceFactory(), "database");
     jdbi.setTimingCollector(new MicrometerJdbiTimingCollector());
+
+    final SecretsManager secretsManager =
+        SecretsManagerFactory.createSecretsManager(catalogConfig.getSecretsManagerConfiguration());
 
     SqlLogger sqlLogger =
         new SqlLogger() {
@@ -143,7 +148,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("OpenMetadataServerHealthCheck", new OpenMetadataServerHealthCheck());
-    registerResources(catalogConfig, environment, jdbi);
+    registerResources(catalogConfig, environment, jdbi, secretsManager);
     RoleEvaluator.getInstance().load();
     PolicyEvaluator.getInstance().load();
 
@@ -262,8 +267,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     }
   }
 
-  private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
+  private void registerResources(
+      CatalogApplicationConfig config, Environment environment, Jdbi jdbi, SecretsManager secretsManager) {
+    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, secretsManager);
     if (config.getElasticSearchConfiguration() != null) {
       environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
     }

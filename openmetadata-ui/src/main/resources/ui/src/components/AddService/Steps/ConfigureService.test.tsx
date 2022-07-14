@@ -27,6 +27,11 @@ const mockConfigureServiceProps: ConfigureServiceProps = {
   showError: {
     name: false,
     duplicateName: false,
+    nameWithSpace: false,
+    delimit: false,
+    specialChar: false,
+    nameLength: false,
+    allowChar: false,
   },
   handleValidation: jest.fn(),
   onBack: jest.fn(),

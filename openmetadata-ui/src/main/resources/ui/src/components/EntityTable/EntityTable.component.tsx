@@ -15,7 +15,7 @@ import { faCaretDown, faCaretRight } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Popover } from 'antd';
 import classNames from 'classnames';
-import { cloneDeep, isNil, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
 import { EntityFieldThreads, EntityTags, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
@@ -27,10 +27,8 @@ import { EntityField } from '../../constants/feed.constants';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   Column,
-  ColumnJoins,
   ColumnTest,
   JoinedWith,
-  Table,
 } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -53,6 +51,7 @@ import {
 } from '../../utils/TableUtils';
 import {
   getRequestDescriptionPath,
+  getRequestTagsPath,
   getUpdateDescriptionPath,
 } from '../../utils/TasksUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -61,23 +60,8 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import TagsViewer from '../tags-viewer/tags-viewer';
-
-interface Props {
-  owner: Table['owner'];
-  tableColumns: ModifiedTableColumn[];
-  joins: Array<ColumnJoins>;
-  columnName: string;
-  hasEditAccess: boolean;
-  tableConstraints: Table['tableConstraints'];
-  searchText?: string;
-  isReadOnly?: boolean;
-  entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
-  onUpdate?: (columns: ModifiedTableColumn[]) => void;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  onEntityFieldSelect?: (value: string) => void;
-}
+import { TABLE_HEADERS } from './EntityTable.constant';
+import { EntityTableProps } from './EntityTable.interface';
 
 const EntityTable = ({
   tableColumns,
@@ -92,35 +76,11 @@ const EntityTable = ({
   entityFqn,
   tableConstraints,
   entityFieldTasks,
-}: Props) => {
+}: EntityTableProps) => {
   const { isAdminUser, userPermissions } = useAuth();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
-  const columns = React.useMemo(
-    () => [
-      {
-        Header: 'Name',
-        accessor: 'name',
-      },
-      {
-        Header: 'Type',
-        accessor: 'dataTypeDisplay',
-      },
-      {
-        Header: 'Data Quality',
-        accessor: 'columnTests',
-      },
-      {
-        Header: 'Description',
-        accessor: 'description',
-      },
-      {
-        Header: 'Tags',
-        accessor: 'tags',
-      },
-    ],
-    []
-  );
+  const columns = TABLE_HEADERS;
 
   const [searchedColumns, setSearchedColumns] = useState<ModifiedTableColumn[]>(
     []
@@ -351,6 +311,15 @@ const EntityTable = ({
     );
   };
 
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const onRequestTagsHandler = (cell: any) => {
+    const field = EntityField.COLUMNS;
+    const value = getColumnName(cell);
+    history.push(
+      getRequestTagsPath(EntityType.TABLE, entityFqn as string, field, value)
+    );
+  };
+
   const prepareConstraintIcon = (
     columnName: string,
     columnConstraint?: string
@@ -404,6 +373,27 @@ const EntityTable = ({
         </Popover>
       </button>
     );
+  };
+
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const getRequestTagsElement = (cell: any) => {
+    const hasTags = !isEmpty(cell.value || []);
+
+    return !hasTags ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-align-top"
+        data-testid="request-tags"
+        onClick={() => onRequestTagsHandler(cell)}>
+        <Popover
+          destroyTooltipOnHide
+          content="Request tags"
+          overlayClassName="ant-popover-request-description"
+          trigger="hover"
+          zIndex={9999}>
+          <SVGIcons alt="request-tags" icon={Icons.REQUEST} width="16px" />
+        </Popover>
+      </button>
+    ) : null;
   };
 
   useEffect(() => {
@@ -614,6 +604,7 @@ const EntityTable = ({
                                 />
                               </NonAdminAction>
                               <div className="tw-mt-1">
+                                {getRequestTagsElement(cell)}
                                 {getFieldThreadElement(
                                   getColumnName(cell),
                                   'tags',
@@ -625,6 +616,23 @@ const EntityTable = ({
                                     cell
                                   )}${ENTITY_LINK_SEPARATOR}tags`,
                                   Boolean(cell.value.length)
+                                )}
+                                {getFieldThreadElement(
+                                  getColumnName(cell),
+                                  EntityField.TAGS,
+                                  entityFieldTasks as EntityFieldThreads[],
+                                  onThreadLinkSelect,
+                                  EntityType.TABLE,
+                                  entityFqn,
+                                  `${
+                                    EntityField.COLUMNS
+                                  }${ENTITY_LINK_SEPARATOR}${getColumnName(
+                                    cell
+                                  )}${ENTITY_LINK_SEPARATOR}${
+                                    EntityField.TAGS
+                                  }`,
+                                  Boolean(cell.value),
+                                  ThreadType.Task
                                 )}
                               </div>
                             </div>

@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -121,7 +122,11 @@ public final class CollectionRegistry {
 
   /** Register resources from CollectionRegistry */
   public void registerResources(
-      Jdbi jdbi, Environment environment, CatalogApplicationConfig config, Authorizer authorizer) {
+      Jdbi jdbi,
+      Environment environment,
+      CatalogApplicationConfig config,
+      Authorizer authorizer,
+      SecretsManager secretsManager) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -129,7 +134,7 @@ public final class CollectionRegistry {
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
         Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer);
+        Object resource = createResource(daoObject, resourceClass, config, authorizer, secretsManager);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
@@ -188,7 +193,11 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject, String resourceClass, CatalogApplicationConfig config, Authorizer authorizer)
+      CollectionDAO daoObject,
+      String resourceClass,
+      CatalogApplicationConfig config,
+      Authorizer authorizer,
+      SecretsManager secretsManager)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
@@ -199,9 +208,15 @@ public final class CollectionRegistry {
       resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
     } catch (NoSuchMethodException e) {
       try {
-        resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+        resource =
+            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, SecretsManager.class)
+                .newInstance(daoObject, authorizer, secretsManager);
       } catch (NoSuchMethodException ex) {
-        resource = Class.forName(resourceClass).getConstructor().newInstance();
+        try {
+          resource = clz.getDeclaredConstructor(CatalogApplicationConfig.class).newInstance(config);
+        } catch (NoSuchMethodException exc) {
+          resource = Class.forName(resourceClass).getConstructor().newInstance();
+        }
       }
     }
 

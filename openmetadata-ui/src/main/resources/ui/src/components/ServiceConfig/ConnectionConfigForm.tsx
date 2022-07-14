@@ -14,7 +14,14 @@
 import { ISubmitEvent } from '@rjsf/core';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { Fragment, FunctionComponent, useMemo } from 'react';
+import React, {
+  Fragment,
+  FunctionComponent,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { checkAirflowStatus } from '../../axiosAPIs/ingestionPipelineAPI';
 import { TestConnection } from '../../axiosAPIs/serviceAPI';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -76,6 +83,8 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   onCancel,
   onSave,
 }: Props) => {
+  const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
+
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceType);
   }, [serviceType]);
@@ -165,10 +174,27 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         uiSchema={connSch.uiSchema}
         onCancel={onCancel}
         onSubmit={handleSave}
-        onTestConnection={allowTestConn ? handleTestConnection : undefined}
+        onTestConnection={
+          allowTestConn && isAirflowAvailable ? handleTestConnection : undefined
+        }
       />
     );
   };
+
+  useEffect(() => {
+    checkAirflowStatus()
+      .then((res) => {
+        if (res.status === 200) {
+          setIsAirflowAvailable(true);
+        } else {
+          setIsAirflowAvailable(false);
+        }
+      })
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log(error);
+      });
+  }, []);
 
   return <Fragment>{getDatabaseFields()}</Fragment>;
 };

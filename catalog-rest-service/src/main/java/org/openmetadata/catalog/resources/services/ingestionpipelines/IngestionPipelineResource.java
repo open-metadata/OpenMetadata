@@ -66,6 +66,7 @@ import org.openmetadata.catalog.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManagerConfiguration;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.services.connections.metadata.OpenMetadataServerConnection;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -85,6 +86,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private AirflowConfiguration airflowConfiguration;
+  private SecretsManagerConfiguration secretsManagerConfiguration;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -99,6 +101,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
 
   public void initialize(CatalogApplicationConfig config) {
     this.airflowConfiguration = config.getAirflowConfiguration();
+    this.secretsManagerConfiguration = config.getSecretsManagerConfiguration();
     this.pipelineServiceClient = new AirflowRESTClient(config.getAirflowConfiguration());
     dao.setPipelineServiceClient(pipelineServiceClient);
   }
@@ -525,9 +528,10 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataServerConnection openMetadataServerConnection =
         OpenMetadataClientSecurityUtil.buildOpenMetadataServerConfig(airflowConfiguration);
+    openMetadataServerConnection.setSecretsManagerProvider(this.secretsManagerConfiguration.getSecretsManager());
     return copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
