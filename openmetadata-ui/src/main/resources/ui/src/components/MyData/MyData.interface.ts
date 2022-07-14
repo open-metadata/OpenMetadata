@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FormatedTableData, SearchDataFunctionType } from 'Models';
+import { FormattedTableData, SearchDataFunctionType } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
@@ -34,8 +34,8 @@ export interface MyDataProps {
   ownedDataCount: number;
   countPipelines: number;
   userDetails?: User;
-  ownedData: Array<FormatedTableData>;
-  followedData: Array<FormatedTableData>;
+  ownedData: Array<FormattedTableData>;
+  followedData: Array<FormattedTableData>;
   feedData: Thread[];
   paging: Paging;
   isFeedLoading: boolean;
