@@ -21,6 +21,8 @@ You can check the definition of the `columnProfile` [here](https://github.com/op
 
 </Note>
 
+We will base all the namings on the definitions on the JSON Schemas.
+
 ## Table Metrics
 
 Those are the metrics computed at the Table level.

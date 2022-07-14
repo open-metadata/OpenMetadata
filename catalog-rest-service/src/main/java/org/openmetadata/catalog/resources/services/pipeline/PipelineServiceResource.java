@@ -49,12 +49,12 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.fernet.Fernet;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ListFilter;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.EntityResource;
+import org.openmetadata.catalog.secrets.SecretsManager;
 import org.openmetadata.catalog.security.AuthorizationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -71,9 +71,9 @@ import org.openmetadata.catalog.util.ResultList;
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource extends EntityResource<PipelineService, PipelineServiceRepository> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-
   static final String FIELDS = "pipelines,owner";
-  private final Fernet fernet;
+
+  private final SecretsManager secretsManager;
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -83,9 +83,9 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     return service;
   }
 
-  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer);
-    fernet = Fernet.getInstance();
+  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer, SecretsManager secretsManager) {
+    super(PipelineService.class, new PipelineServiceRepository(dao, secretsManager), authorizer);
+    this.secretsManager = secretsManager;
   }
 
   public static class PipelineServiceList extends ResultList<PipelineService> {
@@ -376,7 +376,8 @@ public class PipelineServiceResource extends EntityResource<PipelineService, Pip
     } catch (AuthorizationException e) {
       return pipelineService.withConnection(null);
     }
-    fernet.encryptOrDecryptPipelineConnection(pipelineService.getConnection(), pipelineService.getServiceType(), false);
+    secretsManager.encryptOrDecryptServiceConnection(
+        pipelineService.getConnection(), pipelineService.getServiceType().value(), pipelineService.getName(), false);
     return pipelineService;
   }
 }
