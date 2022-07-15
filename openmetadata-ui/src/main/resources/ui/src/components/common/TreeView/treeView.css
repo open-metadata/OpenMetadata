@@ -40,6 +40,7 @@
   margin-left: 8px !important;
   display: flex !important;
   align-items: center;
+  overflow: hidden;
 }
 
 .rc-tree-node-content-wrapper:hover {
@@ -48,4 +49,9 @@
 
 .rc-tree-node-content-wrapper:not(.rc-tree-node-selected):hover .rc-tree-title {
   text-decoration: underline !important;
+}
+
+.rc-tree-title {
+  overflow: auto;
+  text-overflow: ellipsis;
 }

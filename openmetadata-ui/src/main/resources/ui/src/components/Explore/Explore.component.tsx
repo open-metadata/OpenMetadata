@@ -23,7 +23,7 @@ import {
   AggregationType,
   Bucket,
   FilterObject,
-  FormatedTableData,
+  FormattedTableData,
   SearchResponse,
 } from 'Models';
 import React, {
@@ -102,7 +102,7 @@ const Explore: React.FC<ExploreProps> = ({
     ...INITIAL_FILTERS,
     ...initialFilter,
   };
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [filters, setFilters] = useState<FilterObject>({
     ...filterObject,
     ...searchFilter,
