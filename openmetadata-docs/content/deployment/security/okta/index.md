@@ -17,19 +17,19 @@ This document will explain how to create an Okta app and configure it for OAuth.
 
 ### Step 2: Create the OIDC App Integration.
 - Once done with **Signup/Sign** in, you will be redirected to the **Getting Started** page in Okta.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/create-oidc-app-integration.png" alt="create-oidc-app-integration"/>
 
 - Click on **Applications -> Applications** in the left navigation panel.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-applications.png" alt="click-applications"/>
 
 - Click on the **Create App Integration** button.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/create-app-integration.png" alt="create-app-integration"/>
 
 ### Step 3: Configuring the App
 - Once you are in the **Create a new app integration** page, select **OIDC - OpenID Connect**.
 - Next, select the **Application type -> Single-Page Application**.
 - Once selected, click **Next**.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/configuring-the-app.png" alt="configuring-the-app"/>
 
 - From the **General Settings** page,
   * Enter an **App integration name**
@@ -44,75 +44,75 @@ This document will explain how to create an Okta app and configure it for OAuth.
   * Enter the **Base URIs**
   * Select the required option for **Controlled access**
 - Click **Save**.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/general-settings-click-save.png" alt="general-settings-click-save"/>
 
 - The app is now configured.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/app-is-configured.png" alt="app-is-configured"/>
 
 ### Step 4: Add Authorization Server to get the Issuer URL
 It is recommended to create a separate authorization server for different applications. The authorization server needs an endpoint, which'll be the Issuer URL.
 - Click on **Security -> API** in the left navigation panel.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-security-api.png" alt="click-security-api"/>
 
 - From the **Authorization Servers** tab, click on **Add Authorization Server** button.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-add-authorization-server.png" alt="click-add-authorization-server"/>
 
 - Enter a Name and Description.
 - While creating the authorization server, an **Audience** must be provided for the server. The Audience is the **Client ID** of the single page application that was created. Refer the next Step 7 to locate the Client ID.
 - **Save** the changes.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/add-auth-server-save-changes.png" alt="add-auth-server-save-changes"/>
 
 This will generate the Issuer URL.
 
 ### Step 5: Change the Issuer URL from Dynamic to Okta URL
 Once the Authorization Server has been added, navigate to Security >> API >> Authorization Servers and click on the authorization server created in the previous step.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-auth-server-from-prev-step.png" alt="click-auth-server-from-prev-step"/>
 
 The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL and save the changes.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/change-issuer-url.png" alt="change-issuer-url"/>
 
 ### Step 6: Create a Default Scope
 - To create a default scope from **Security -> API**, click on the required **Authorization Server**.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-req-auth-server.png" alt="click-req-auth-server"/>
 
 - In the resulting page, click on the **Scopes** tab
 - Click on **Add Scope**
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/add-scope.png" alt="add-scope"/>
 
 - Set as a **Default Scope**.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/set-default-scope.png" alt="set-default-scope"/>
 
 ## Step 7: Add New Access Policy and Rule
 - From **Security -> API**, click on the required **Authorization Server**
 - Navigate to the **Access Policies Tab**
 - Click on **Add New Access Policy**
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/add-new-access-policy.png" alt="add-new-access-policy"/>
 
 - To create a policy, add a Name and Description.
 - Assign the policy to the required clients.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/assign-policy.png" alt=""/>
 
 - Add a new **Rule** inside the policy as required. Rules can be created with just a few grant type details, such as Client Credentials, Authorization Code, Device Authorization, and Token Exchange.
 - Click on **Create Rule** to save the changes.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/add-rule.png" alt="add-rule"/>
 
 ### Step 8: Where to Find the Credentials
 - Once the app is configured, the **Client ID** can be used.
 - You can also go to **Application -> Application** as in step 2.
 - You should be able to see your application in the list.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/see-your-application.png" alt="see-your-application"/>
 
 - Click on your application.
 - You will find your **Client ID** and **Okta domain**.
 - The **Client authentication** is enabled by default.
 - By clicking on the Edit **** option for General Settings, you can deselect the option for **User consent**. Save the changes.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/deselect-user-consent.png" alt="deselect-user-consent"/>
 
 - Click on the **Sign On** tab from the top navigation bar.
 - Click on Edit for **OpenID Connect ID Token**.
 - For **Issuer**, change from the Dynamic (based on request domain) option to the **Okta URL** option.
 - The **Audience** is the same as the Client ID.
-<Image src="/images/deployment/security/okta/.png" alt=""/>
+<Image src="/images/deployment/security/okta/click-edit-token.png" alt="click-edit-token"/>
 
 </Collapse>
 
@@ -128,7 +128,7 @@ This is a guide to create ingestion bot service app.
 - Clone the repository using `git clone https://github.com/mitreid-connect/mkjwk.org.git`.
 - Use `mvn package -DskipTests && java -jar target/ROOT.war` to run the above repo.
 - Go to `http:localhost:8080` to generate **public/private key** pairs.
-ONKAR
+<Image src="/images/deployment/security/okta/generate-keys.png" alt="generate-keys"/>
 
 - Enter the following values to generate a **public/private key pair**:
   * Key size - 2048
@@ -136,11 +136,11 @@ ONKAR
   * Algorithm — RSA256
   * Key ID — Enter the Key ID that is fetched from the issuer_url/v1/keys. Fetch the kid as the key ID
 
-ONKAR
-ONKAR
+<Image src="/images/deployment/security/okta/see-key-ids.png" alt="see-key-ids"/>
+<Image src="/images/deployment/security/okta/enter-key-ids-from-issuer.png" alt="enter-key-ids-from-issuer"/>
 
 - Once you provide the input, click **Generate**. You will get the **Public/Private Keypair**, **Public/Private Keypair Set**, and **Public Key**
-ONKAR
+<Image src="/images/deployment/security/okta/get-keys.png" alt="get-keys"/>
 
 ### Step 2: Create a Token
 While creating the service application, an authorization token will be needed. To create a token:
@@ -181,19 +181,19 @@ curl --location --request POST '<domain-url>/oauth2/v1/clients' \
 - To check if the service app is created navigate to your **Okta Dashboard**.
 - Click on **Applications -> Applications** in the left navigation bar.
 - You should see your service account in the list.
-ONKAR
+<Image src="/images/deployment/security/okta/view-service-account.png" alt="view-service-account"/>
 
 ### Step 4: Grant Allowed Scopes
 - To add scopes, navigate to your **Okta Dashboard**. Click on **Applications -> Applications** as in step 2.
 - Click on your service app.
-ONKAR
+<Image src="/images/deployment/security/okta/select-the-service-app.png" alt="select-the-service-app"/>
 
 - Now click on **Okta API Scopes** from the top nav bar.
 - Grant the scopes by clicking on **Grant**. Ensure that the following scopes are granted:
   * okta.users.read
   * okta.users.manage
   * okta.clients.read
-ONKAR
+<Image src="/images/deployment/security/okta/ensure-scopes-are-granted.png" alt="ensure-scopes-are-granted"/>
 
 - To get more information on the Scopes. Visit the [Doc](https://developer.okta.com/docs/guides/implement-oauth-for-okta/scopes/).
 
@@ -238,10 +238,13 @@ When setting up the YAML config for the connector, update the `workflowConfig` a
 ```yaml
 workflowConfig:
   openMetadataServerConfig:
-    hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
+    hostPort: http://localhost:8585/api
+    authProvider: okta
     securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
+      clientId: "{CLIENT_ID - SPA APP}"
+      orgURL: "{ISSUER_URL}/v1/token"
+      privateKey: "{public/private keypair}"
+      email: "{email}"
+      scopes:
+      - token
 ```
