@@ -349,7 +349,7 @@ const EntityPageInfo = ({
           onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
         }>
         <span className="tw-flex">
-          <SVGIcons alt="comments" icon={Icons.TASK_ICON} />
+          <SVGIcons alt="comments" icon={Icons.TASK_ICON} width="16px" />
           <span className="tw-ml-1" data-testid="tag-task-count">
             {tagTask.count}
           </span>
