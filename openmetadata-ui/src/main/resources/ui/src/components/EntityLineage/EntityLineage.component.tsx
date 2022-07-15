@@ -60,7 +60,10 @@ import {
 } from '../../generated/api/lineage/addLineage';
 import { Column } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { EntityLineage } from '../../generated/type/entityLineage';
+import {
+  EntityLineage,
+  LineageDetails,
+} from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { withLoader } from '../../hoc/withLoader';
 import { useAuth } from '../../hooks/authHooks';
@@ -1365,8 +1368,10 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
         (d) => d.id === selectedPipelineId
       );
 
-      const updatedLineageDetails = {
+      const updatedLineageDetails: LineageDetails = {
         ...selectedEdgeValue?.lineageDetails,
+        sqlQuery: selectedEdgeValue?.lineageDetails?.sqlQuery || '',
+        columnsLineage: selectedEdgeValue?.lineageDetails?.columnsLineage || [],
         pipeline: isUndefined(selectedPipelineId)
           ? undefined
           : {
@@ -1404,7 +1409,8 @@ const Entitylineage: FunctionComponent<EntityLineageProp> = ({
                 ...updatedLineageDetails,
                 pipeline: !isUndefined(updatedLineageDetails.pipeline)
                   ? {
-                      ...(pipelineDetail || {}),
+                      displayName: pipelineDetail?.displayName,
+                      name: pipelineDetail?.name,
                       ...updatedLineageDetails.pipeline,
                     }
                   : undefined,

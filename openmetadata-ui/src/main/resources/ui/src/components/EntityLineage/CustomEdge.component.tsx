@@ -109,7 +109,11 @@ export const CustomEdge = ({
             width={pipelineEdgeWidth}
             x={edgeCenterX - pipelineEdgeWidth / 2}
             y={edgeCenterY - foreignObjectSize / 2}>
-            <body>
+            <body
+              onClick={(event) =>
+                data.isEditMode &&
+                addPipelineClick?.(event, rest as CustomEdgeData)
+              }>
               <div className="tw-flex-center tw-bg-body-main tw-gap-2 tw-border tw-rounded tw-p-2">
                 <div className="tw-flex tw-items-center tw-gap-2">
                   <SVGIcons
@@ -120,11 +124,7 @@ export const CustomEdge = ({
                   <span>{data.label}</span>
                 </div>
                 {data.isEditMode && (
-                  <button
-                    className="tw-cursor-pointer tw-flex tw-z-9999"
-                    onClick={(event) =>
-                      addPipelineClick?.(event, rest as CustomEdgeData)
-                    }>
+                  <button className="tw-cursor-pointer tw-flex tw-z-9999">
                     <SVGIcons
                       alt="times-circle"
                       icon={Icons.EDIT_OUTLINE_PRIMARY}
