@@ -180,7 +180,7 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getDefaultRole() throws IOException {
     // TODO multiple default roleIds?
     List<UUID> defaultRoleIds = toIds(daoCollection.roleDAO().getDefaultRolesIds());
-    List<EntityReference> refs = toEntityReferences(defaultRoleIds, Entity.ROLE);
+    List<EntityReference> refs = EntityUtil.toEntityReferences(defaultRoleIds, Entity.ROLE);
     return EntityUtil.populateEntityReferences(refs);
   }
 

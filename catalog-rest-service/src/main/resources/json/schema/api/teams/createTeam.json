@@ -29,7 +29,6 @@
     },
     "parents" : {
       "description" : "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
-      "$ref" : "../../type/entityReference.json#/definitions/entityReferenceList",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"

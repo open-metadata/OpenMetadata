@@ -9,9 +9,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# Required configuration for organization and team hierarchy.
+# Uncomment the following section and set the name to the company name or legal entity name
+
+organization:
+#  name:
+
 swagger:
   resourcePackage: org.openmetadata.catalog.resources
-
 
 server:
   rootPath: '/api/*'

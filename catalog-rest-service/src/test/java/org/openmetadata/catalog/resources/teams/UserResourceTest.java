@@ -826,7 +826,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedList, actualList);
+      assertEntityReferences(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

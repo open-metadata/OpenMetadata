@@ -60,6 +60,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 @Path("/v1/teams")
@@ -86,7 +87,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Add a default team called organization
-    dao.initOrganization();
+    OrganizationConfiguration org = config.getOrganizationConfiguration();
+    System.out.println("XXX orgname " + org.getName());
+    dao.initOrganization(org.getName());
   }
 
   public static class TeamList extends ResultList<Team> {
@@ -356,8 +359,10 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
-        .withUsers(dao.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(dao.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
-        .withTeamType(ct.getTeamType());
+        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withTeamType(ct.getTeamType())
+        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM));
   }
 }
