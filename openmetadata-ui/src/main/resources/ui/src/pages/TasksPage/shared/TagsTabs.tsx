@@ -13,9 +13,10 @@
 
 import { Tabs, Tag } from 'antd';
 import { ArrayChange, diffArrays } from 'diff';
-import { isEqual, uniqueId } from 'lodash';
+import { uniqueId } from 'lodash';
 import React, { useState } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { TaskTabs } from '../TasksPage.interface';
 import { TagsDiffView } from './TagsDiffView';
 import TagSuggestion from './TagSuggestion';
 
@@ -29,11 +30,11 @@ export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
   const { TabPane } = Tabs;
 
   const [diffs, setDiffs] = useState<ArrayChange<TagLabel>[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('3');
+  const [activeTab, setActiveTab] = useState<string>(TaskTabs.NEW);
 
   const onTabChange = (key: string) => {
     setActiveTab(key);
-    if (isEqual(key, '2')) {
+    if (key === TaskTabs.DIFF) {
       setDiffs(diffArrays(tags, suggestedTags));
     } else {
       setDiffs([]);
@@ -47,17 +48,17 @@ export const TagsTabs = ({ tags, suggestedTags, onChange }: Props) => {
       size="small"
       type="card"
       onChange={onTabChange}>
-      <TabPane key="1" tab="Current">
-        <div className="tw-my-2">
+      <TabPane key={TaskTabs.CURRENT} tab="Current">
+        <div className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1">
           {tags.map((tag) => (
             <Tag key={uniqueId()}>{tag.tagFQN}</Tag>
           ))}
         </div>
       </TabPane>
-      <TabPane key="2" tab="Diff">
+      <TabPane key={TaskTabs.DIFF} tab="Diff">
         <TagsDiffView diffArr={diffs} />
       </TabPane>
-      <TabPane key="3" tab="New">
+      <TabPane key={TaskTabs.NEW} tab="New">
         <TagSuggestion selectedTags={suggestedTags} onChange={onChange} />
       </TabPane>
     </Tabs>

@@ -114,7 +114,11 @@ const UpdateTag = () => {
             <span className="tw-text-grey-muted">Type:</span>{' '}
             <span>{columnObject.dataTypeDisplay}</span>
           </p>
-          <p>{columnObject?.tags?.map((tag) => `#${tag.tagFQN}`)?.join(' ')}</p>
+          <p>
+            {columnObject?.tags
+              ?.map((tag: TagLabel) => `#${tag.tagFQN}`)
+              ?.join(' ')}
+          </p>
         </div>
       );
     } else {
@@ -160,7 +164,7 @@ const UpdateTag = () => {
           })),
           suggestion: JSON.stringify(suggestion),
           type: TaskType.UpdateTag,
-          oldValue: '[]',
+          oldValue: JSON.stringify(currentTags),
         },
         type: ThreadType.Task,
       };

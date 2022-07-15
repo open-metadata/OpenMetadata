@@ -28,7 +28,9 @@ export const TagsDiffView = ({
   const elements = diffArr.map((diff) => {
     if (diff.added) {
       return (
-        <div className="tw-my-2" key={uniqueId()}>
+        <div
+          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          key={uniqueId()}>
           {diff.value.map((tag) => (
             <Tag
               key={uniqueId()}
@@ -44,7 +46,9 @@ export const TagsDiffView = ({
     }
     if (diff.removed) {
       return (
-        <div className="tw-my-2" key={uniqueId()}>
+        <div
+          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          key={uniqueId()}>
           {diff.value.map((tag) => (
             <Tag
               key={uniqueId()}
@@ -57,7 +61,7 @@ export const TagsDiffView = ({
     }
 
     return (
-      <div className="tw-my-2" key={uniqueId()}>
+      <div className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1" key={uniqueId()}>
         {diff.value.length ? (
           diff.value.map((tag) => <Tag key={uniqueId()}>{tag.tagFQN}</Tag>)
         ) : (
@@ -69,13 +73,5 @@ export const TagsDiffView = ({
     );
   });
 
-  return (
-    <div
-      className={classNames(
-        'tw-w-full tw-max-h-52 tw-overflow-y-auto',
-        className
-      )}>
-      {elements}
-    </div>
-  );
+  return <div className={classNames('tw-w-full', className)}>{elements}</div>;
 };
