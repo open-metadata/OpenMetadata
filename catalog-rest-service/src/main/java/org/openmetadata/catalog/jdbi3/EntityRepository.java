@@ -1069,17 +1069,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return uuids;
   }
 
-  public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
-    if (ids == null) {
-      return null;
-    }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id).withType(entityType));
-    }
-    return entityReferences;
-  }
-
   protected List<EntityReference> getIngestionPipelines(T service) throws IOException {
     List<EntityRelationshipRecord> records =
         findTo(service.getId(), entityType, Relationship.CONTAINS, Entity.INGESTION_PIPELINE);

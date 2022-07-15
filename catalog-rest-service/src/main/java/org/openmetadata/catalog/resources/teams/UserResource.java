@@ -70,6 +70,7 @@ import org.openmetadata.catalog.teams.authn.JWTAuthMechanism;
 import org.openmetadata.catalog.teams.authn.JWTTokenExpiry;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -555,7 +556,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(dao.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(dao.toEntityReferences(create.getRoles(), Entity.ROLE));
+        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 }

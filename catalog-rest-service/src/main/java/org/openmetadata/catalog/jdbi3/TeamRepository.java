@@ -38,11 +38,13 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles";
   static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles";
+  Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
@@ -170,7 +172,11 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private void populateParents(Team team) throws IOException {
     List<EntityReference> parentRefs = team.getParents();
+    // By default, all the teams created without parents has the top Organization as the parent
+    System.out.println("XXX parenRefs " + team.getParents());
     if (parentRefs == null) {
+      System.out.println("XXX defaulting to org parent");
+      team.setParents(List.of(organization.getEntityReference()));
       return;
     }
     List<Team> parents = getTeams(parentRefs);
@@ -226,26 +232,28 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  public void initOrganization() throws IOException {
+  public void initOrganization(String orgName) throws IOException {
     String json = dao.findJsonByFqn("Organization", Include.ALL);
     if (json == null) {
-      LOG.info("Organization is not initialized");
-      Team org =
+      LOG.info("Organization {} is not initialized", orgName);
+      organization =
           new Team()
               .withId(UUID.randomUUID())
-              .withName("Organization")
-              .withDisplayName("Organization")
+              .withName(orgName)
+              .withDisplayName(orgName)
               .withDescription("Organization under which all the other team hierarchy is created")
+              .withTeamType(ORGANIZATION)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis());
       // Teams
       try {
-        create(null, org);
+        create(null, organization);
       } catch (Exception e) {
         LOG.info("Failed to initialize organization", e);
         throw e;
       }
     } else {
+      organization = JsonUtils.readValue(json, Team.class);
       LOG.info("Organization is already initialized");
     }
   }

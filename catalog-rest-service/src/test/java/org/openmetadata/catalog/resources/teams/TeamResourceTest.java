@@ -47,6 +47,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.api.teams.CreateRole;
 import org.openmetadata.catalog.api.teams.CreateTeam;
+import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.policies.accessControl.Rule;
@@ -66,6 +67,7 @@ import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.type.PolicyType;
 import org.openmetadata.catalog.type.Profile;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -83,12 +85,14 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
+
+    ORGANIZATION = teamResourceTest.getEntityByName("openMetadata", "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void test_initialization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    getEntityByName("Organization", "", ADMIN_AUTH_HEADERS);
+    getEntityByName("openMetadata", "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -218,7 +222,54 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void test_hierarchicalTeams() {}
+  void test_hierarchicalTeams() throws HttpResponseException {
+    // Ensure teams created without any parent has Organization as the parent
+    Team team = getEntity(TEAM1.getId(), "parents", ADMIN_AUTH_HEADERS);
+    assertParents(team, List.of(ORGANIZATION.getEntityReference()));
+
+    // Create hierarchy of business unit, division, and department under organization:
+    // Organization -- has children --> [ bu1, div2, dep3]
+    Team bu1 = createHierarchy("bu1", TeamType.BUSINESS_UNIT, ORGANIZATION.getEntityReference());
+    Team div2 = createHierarchy("div2", TeamType.DIVISION, ORGANIZATION.getEntityReference());
+    Team dep3 = createHierarchy("dep3", TeamType.DEPARTMENT, ORGANIZATION.getEntityReference());
+
+    // Create hierarchy of business unit, division, and department under business unit
+    // bu1 -- has children --> [ bu11, div12, dep13]
+    Team bu11 = createHierarchy("bu11", TeamType.BUSINESS_UNIT, bu1.getEntityReference());
+    Team div11 = createHierarchy("div12", TeamType.DIVISION, bu1.getEntityReference());
+    Team dep11 = createHierarchy("dep13", TeamType.DEPARTMENT, bu1.getEntityReference());
+
+    // Create hierarchy of division, and department under division
+    // div2 -- has children --> [ div21, dep22]
+    Team div21 = createHierarchy("div21", TeamType.DIVISION, bu1.getEntityReference());
+    Team dep22 = createHierarchy("dep22", TeamType.DEPARTMENT, bu1.getEntityReference());
+
+    // Create hierarchy of department under department
+    // dep3 -- has children --> [ dep31]
+    Team dep31 = createHierarchy("dep31", TeamType.DEPARTMENT, dep3.getEntityReference());
+  }
+
+  private Team createHierarchy(String teamName, TeamType teamType, EntityReference... parents)
+      throws HttpResponseException {
+    List<EntityReference> parentList = List.of(parents);
+    List<UUID> parentIds = EntityUtil.toIds(parentList);
+    Team team = createEntity(createRequest(teamName).withParents(parentIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
+    assertParents(team, parentList);
+    return team;
+  }
+
+  private void assertParents(Team team, List<EntityReference> expectedParents) throws HttpResponseException {
+    assertEquals(team.getParents().size(), expectedParents.size());
+    System.out.println("XXX expected " + expectedParents);
+    System.out.println("XXX actual " + team.getParents());
+    assertEntityReferences(expectedParents, team.getParents());
+
+    for (EntityReference expectedParent : expectedParents) {
+      // Ensure parents have the given team as a child
+      Team parent = getEntity(expectedParent.getId(), "children", ADMIN_AUTH_HEADERS);
+      assertEntityReferencesContain(parent.getChildren(), team.getEntityReference());
+    }
+  }
 
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
@@ -438,7 +489,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedRefs = (List<EntityReference>) expected;
       List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedRefs, actualRefs);
+      assertEntityReferences(expectedRefs, actualRefs);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

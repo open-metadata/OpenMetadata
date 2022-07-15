@@ -173,6 +173,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER_OWNER2;
 
   public static Team ORGANIZATION;
+  public static EntityReference ORGANIZATION_REF;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
 
@@ -1958,13 +1959,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferencesFieldChange(
-      List<EntityReference> expectedList, List<EntityReference> actualList) {
+  protected void assertEntityReferences(List<EntityReference> expectedList, List<EntityReference> actualList) {
     for (EntityReference expected : expectedList) {
       EntityReference actual =
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
       assertNotNull(actual, "Expected entity reference " + expected.getId() + " not found");
     }
+  }
+
+  protected void assertEntityReferencesContain(List<EntityReference> list, EntityReference reference) {
+    EntityReference actual =
+        list.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, reference)).findAny().orElse(null);
+    assertNotNull(actual, "Expected entity reference " + reference.getId() + " not found");
   }
 
   protected void assertStrings(List<String> expectedList, List<String> actualList) {
