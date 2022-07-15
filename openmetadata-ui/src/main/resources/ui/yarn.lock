@@ -12816,7 +12816,7 @@ react-select@^5.2.2:
 
 "react-slack-chat@https://github.com/vivekratnavel/react-slack-chat.git":
   version "1.15.1"
-  resolved "https://github.com/vivekratnavel/react-slack-chat.git#3d660511816451051e4d5b65f8b5c6bdfac9360a"
+  resolved "https://github.com/vivekratnavel/react-slack-chat.git#79722903faa74d86012347af3c611a4342c5b02c"
   dependencies:
     "@babel/runtime" "^7.4.4"
     "@fortawesome/fontawesome-free" "^6.1.1"
