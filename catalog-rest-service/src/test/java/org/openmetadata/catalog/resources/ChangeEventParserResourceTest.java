@@ -145,6 +145,41 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void testUpdateOfStringSlack() {
+    ChangeDescription changeDescription = new ChangeDescription();
+    // Simulate a change of description in table
+    FieldChange updateDescription = new FieldChange();
+    updateDescription.withName("description").withNewValue("new description").withOldValue("old description");
+
+    changeDescription.withFieldsUpdated(List.of(updateDescription)).withPreviousVersion(1.0);
+
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    assertEquals(1, messages.size());
+
+    assertEquals("Updated *description* : ~old~ *new*  description", messages.values().iterator().next());
+
+    // test if it updates correctly with one add and one delete change
+    changeDescription = new ChangeDescription();
+    FieldChange addDescription = new FieldChange();
+    FieldChange deleteDescription = new FieldChange();
+    addDescription.withName("description").withNewValue("new description");
+    deleteDescription.withName("description").withOldValue("old description");
+    changeDescription
+        .withFieldsAdded(List.of(addDescription))
+        .withFieldsDeleted(List.of(deleteDescription))
+        .withPreviousVersion(1.0);
+
+    // now test if both the type of updates give the same message
+    Map<EntityLink, String> updatedMessages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    assertEquals(1, updatedMessages.size());
+
+    assertEquals(messages.keySet().iterator().next(), updatedMessages.keySet().iterator().next());
+    assertEquals(messages.values().iterator().next(), updatedMessages.values().iterator().next());
+  }
+
+  @Test
   void testMajorSchemaChange() {
     ChangeDescription changeDescription = new ChangeDescription();
     // Simulate a change of column name in table
@@ -208,5 +243,74 @@ class ChangeEventParserResourceTest extends CatalogApplicationTest {
     assertEquals(
         "Updated **columns**: lo_orderpriority<span class=\"diff-added\">, newColumn</span>",
         messages.values().iterator().next());
+  }
+
+  @Test
+  void testMajorSchemaChangeSlack() {
+    ChangeDescription changeDescription = new ChangeDescription();
+    // Simulate a change of column name in table
+    FieldChange addColumn = new FieldChange();
+    addColumn
+        .withName("columns")
+        .withNewValue(
+            "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+
+    FieldChange deleteColumn = new FieldChange();
+    deleteColumn
+        .withName("columns")
+        .withOldValue(
+            "[{\"name\":\"lo_order\",\"displayName\":\"lo_order\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_order\",\"constraint\":\"NOT_NULL\"}]");
+
+    changeDescription
+        .withFieldsAdded(List.of(addColumn))
+        .withFieldsDeleted(List.of(deleteColumn))
+        .withPreviousVersion(1.3);
+
+    Map<EntityLink, String> messages =
+        ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    assertEquals(1, messages.size());
+
+    assertEquals(
+        "Updated *columns.lo_orderpriority* :\n"
+            + "name: ~\"lo_order\"~ *\"lo_orderpriority\"* \n"
+            + "displayName: ~\"lo_order\"~ *\"lo_orderpriority\"* \n"
+            + "fullyQualifiedName: \"local_mysql.sample_db.lineorder.~lo_order\"~ *lo_orderpriority\"* ",
+        messages.values().iterator().next());
+
+    // Simulate a change of datatype change in column
+    addColumn.withNewValue(
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"constraint\":\"NOT_NULL\"}]");
+    deleteColumn.withOldValue(
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\",\"tags\":[],\"constraint\":\"NOT_NULL\"}]");
+
+    changeDescription
+        .withFieldsAdded(List.of(addColumn))
+        .withFieldsDeleted(List.of(deleteColumn))
+        .withPreviousVersion(1.3);
+
+    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    assertEquals(1, messages.size());
+
+    assertEquals(
+        "Updated *columns.lo_orderpriority* :\n"
+            + "dataType: ~\"BLOB\"~ *\"INT\"* \n"
+            + "dataTypeDisplay: ~\"blob\"~ *\"int\"* ",
+        messages.values().iterator().next());
+
+    // Simulate multiple changes to columns
+    addColumn.withNewValue(
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"},{\"name\":\"newColumn\",\"displayName\":\"newColumn\",\"dataType\":\"INT\",\"dataLength\":1,\"dataTypeDisplay\":\"int\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.newColumn\"}]");
+    deleteColumn.withOldValue(
+        "[{\"name\":\"lo_orderpriority\",\"displayName\":\"lo_orderpriority\",\"dataType\":\"BLOB\",\"dataLength\":1,\"dataTypeDisplay\":\"blob\",\"fullyQualifiedName\":\"local_mysql.sample_db.lineorder.lo_orderpriority\"}]");
+
+    changeDescription
+        .withFieldsAdded(List.of(addColumn))
+        .withFieldsDeleted(List.of(deleteColumn))
+        .withPreviousVersion(1.4);
+
+    messages = ChangeEventParser.getFormattedMessages(ChangeEventParser.PUBLISH_TO.SLACK, changeDescription, TABLE);
+    assertEquals(1, messages.size());
+
+    assertEquals("Updated *columns* : lo_orderpriority*, newColumn* ", messages.values().iterator().next());
   }
 }
