@@ -11,8 +11,10 @@
 """
 Airbyte source to extract metadata
 """
-from dataclasses import dataclass
+
 from typing import Iterable, List, Optional
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -55,8 +57,7 @@ STATUS_MAP = {
 }
 
 
-@dataclass
-class AirbytePipelineDetails:
+class AirbytePipelineDetails(BaseModel):
     """
     Wrapper Class to combine the workspace with connection
     """
