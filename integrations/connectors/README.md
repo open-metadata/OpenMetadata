@@ -17,6 +17,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 * [ClickHouse](clickhouse/)
 * [ClickHouse Usage](clickhouse/)
 * [Databricks](databricks/)
+* [Data Lake](data-lake/)
 * [Delta Lake](delta-lake/)
 * [DynamoDB](dynamodb/)
 * [Glue Catalog](glue-catalog/)
