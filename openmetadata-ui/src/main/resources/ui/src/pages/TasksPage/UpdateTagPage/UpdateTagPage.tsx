@@ -245,7 +245,7 @@ const UpdateTag = () => {
           {currentTags.length ? (
             <Fragment>
               <p data-testid="tags-label">
-                <span>Suggest tags:</span>{' '}
+                <span>Update tags:</span>{' '}
               </p>
               <TagsTabs
                 suggestedTags={suggestion}
