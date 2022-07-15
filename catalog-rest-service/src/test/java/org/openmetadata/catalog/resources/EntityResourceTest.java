@@ -166,12 +166,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
 
+  // Users
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static User USER2;
   public static EntityReference USER_OWNER2;
+
+  public static Team ORGANIZATION;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
+
   public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REFERENCE;
@@ -267,6 +271,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     new RoleResourceTest().setupRoles(test);
     new UserResourceTest().setupUsers(test);
+    new TeamResourceTest().setupTeams(test);
 
     new TagResourceTest().setupTags();
     new GlossaryResourceTest().setupGlossaries();

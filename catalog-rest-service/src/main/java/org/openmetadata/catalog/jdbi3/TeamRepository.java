@@ -26,16 +26,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.Relationship;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 
+@Slf4j
 public class TeamRepository extends EntityRepository<Team> {
   static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles";
   static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles";
@@ -219,6 +223,30 @@ public class TeamRepository extends EntityRepository<Team> {
   private void validateSingleParent(List<EntityReference> parentRefs) {
     if (parentRefs.size() != 1) {
       throw new IllegalArgumentException(String.format("Team can have only %s parents", 1));
+    }
+  }
+
+  public void initOrganization() throws IOException {
+    String json = dao.findJsonByFqn("Organization", Include.ALL);
+    if (json == null) {
+      LOG.info("Organization is not initialized");
+      Team org =
+          new Team()
+              .withId(UUID.randomUUID())
+              .withName("Organization")
+              .withDisplayName("Organization")
+              .withDescription("Organization under which all the other team hierarchy is created")
+              .withUpdatedBy("admin")
+              .withUpdatedAt(System.currentTimeMillis());
+      // Teams
+      try {
+        create(null, org);
+      } catch (Exception e) {
+        LOG.info("Failed to initialize organization", e);
+        throw e;
+      }
+    } else {
+      LOG.info("Organization is already initialized");
     }
   }
 
