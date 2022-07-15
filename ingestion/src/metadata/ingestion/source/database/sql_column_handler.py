@@ -213,7 +213,7 @@ class SqlColumnHandlerMixin:
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
-                        name=column["name"],
+                        name=column["name"] if column["name"] else " ",
                         description=column.get("comment", None),
                         dataType=col_type,
                         dataTypeDisplay=dataTypeDisplay,
