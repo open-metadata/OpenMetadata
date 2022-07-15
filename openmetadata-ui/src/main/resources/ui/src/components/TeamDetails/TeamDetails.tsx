@@ -640,7 +640,7 @@ const TeamDetails = ({
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
                     manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.TEAM}
-                    // onSave={handleManageSave}
+                    onSave={updateOwner}
                   />
                 </div>
               )}

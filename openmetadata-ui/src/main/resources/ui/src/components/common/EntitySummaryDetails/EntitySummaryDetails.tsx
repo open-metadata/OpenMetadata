@@ -10,7 +10,7 @@ import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import TierCard from '../TierCard/TierCard';
 
-interface GetInfoElementsProps {
+export interface GetInfoElementsProps {
   data: ExtraInfo;
   updateOwner?: (value: Table['owner']) => void;
   updateTier?: (value: string) => void;
@@ -67,18 +67,18 @@ const EntitySummaryDetails = ({
             <>
               No Tier
               <Popover
-                content={
-                  <TierCard hasEditAccess visible updateTier={updateTier} />
-                }
+                content={<TierCard visible updateTier={updateTier} />}
                 placement="leftBottom"
                 trigger="click">
                 <span style={{ marginLeft: '5px' }}>
-                  <SVGIcons
-                    alt="edit"
-                    icon={Icons.EDIT}
-                    title="Edit"
-                    width="15px"
-                  />
+                  {updateTier ? (
+                    <SVGIcons
+                      alt="edit"
+                      icon={Icons.EDIT}
+                      title="Edit"
+                      width="15px"
+                    />
+                  ) : null}
                 </span>
               </Popover>
             </>
@@ -181,7 +181,48 @@ const EntitySummaryDetails = ({
                   </span>
                 </>
               ) : (
-                <span>{displayVal}</span>
+                <>
+                  {data.key === 'Tier' ? (
+                    <>
+                      <span
+                        className={classNames(
+                          'tw-mr-1 tw-inline-block tw-truncate tw-align-middle',
+                          { 'tw-w-52': (displayVal as string).length > 32 }
+                        )}
+                        data-testid="tier-name"
+                        title={displayVal as string}>
+                        <Button
+                          data-testid="tier-dropdown"
+                          size="custom"
+                          theme="primary"
+                          variant="text">
+                          {displayVal}
+                        </Button>
+                        <span>
+                          <Popover
+                            content={
+                              <TierCard visible updateTier={updateTier} />
+                            }
+                            placement="bottomRight"
+                            trigger="click">
+                            <span style={{ marginLeft: '5px' }}>
+                              {updateTier ? (
+                                <SVGIcons
+                                  alt="edit"
+                                  icon={Icons.EDIT}
+                                  title="Edit"
+                                  width="15px"
+                                />
+                              ) : null}
+                            </span>
+                          </Popover>
+                        </span>
+                      </span>
+                    </>
+                  ) : (
+                    <span>{displayVal}</span>
+                  )}
+                </>
               )}
             </>
           )}

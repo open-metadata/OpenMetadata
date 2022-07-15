@@ -14,10 +14,10 @@ import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.
 import Loader from '../../Loader/Loader';
 import { Status } from '../../ManageTab/ManageTab.interface';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
+import './TierCard.css';
 
 export interface TierCardProps {
   visible: boolean;
-  hasEditAccess: boolean;
   currentUser?: EntityReference;
   currentTier?: string;
   hideTier?: boolean;
@@ -30,7 +30,6 @@ export interface TierCardProps {
 }
 
 const TierCard = ({
-  hasEditAccess,
   currentUser,
   currentTier,
   hideTier,
@@ -41,9 +40,7 @@ const TierCard = ({
   const [activeTier, setActiveTier] = useState(currentTier);
   const [statusTier, setStatusTier] = useState<Status>('initial');
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
-  useEffect(() => {
-    setOwner(currentUser);
-  }, [currentUser]);
+
   const handleCardSelection = (cardId: string) => {
     setActiveTier(cardId);
   };
@@ -97,24 +94,6 @@ const TierCard = ({
     const newTier = prepareTier(updatedTier);
     updateTier?.(newTier as string);
   };
-
-  useEffect(() => {
-    if (!hideTier) {
-      getTierData();
-    }
-  }, []);
-
-  useEffect(() => {
-    setActiveTier(currentTier);
-  }, [currentTier]);
-  useEffect(() => {
-    if (statusTier === 'waiting') {
-      setStatusTier('success');
-      setTimeout(() => {
-        setInitialTierLoadingState();
-      }, 300);
-    }
-  }, [currentTier]);
   const getTierCards = () => {
     return (
       <div className="tw-flex tw-flex-col tw-mb-7" data-testid="cards">
@@ -126,7 +105,7 @@ const TierCard = ({
                 <p>Claim ownership from above </p>
               </Fragment>
             }
-            isOwner={hasEditAccess || Boolean(owner && !currentUser)}
+            isOwner={Boolean(owner && !currentUser)}
             key={i}
             permission={Operation.EditTags}
             position="left">
@@ -152,6 +131,7 @@ const TierCard = ({
       </div>
     );
   };
+
   const getTierWidget = () => {
     if (hideTier) {
       return null;
@@ -159,6 +139,27 @@ const TierCard = ({
       return isLoadingTierData ? <Loader /> : getTierCards();
     }
   };
+
+  useEffect(() => {
+    if (!hideTier) {
+      getTierData();
+    }
+  }, []);
+  useEffect(() => {
+    setActiveTier(currentTier);
+  }, [currentTier]);
+  useEffect(() => {
+    setOwner(currentUser);
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (statusTier === 'waiting') {
+      setStatusTier('success');
+      setTimeout(() => {
+        setInitialTierLoadingState();
+      }, 300);
+    }
+  }, [currentTier]);
 
   return (
     <Popover placement="bottom" trigger="click">

@@ -39,7 +39,6 @@ const OwnerWidgetWrapper = ({
 }: OwnerWidgetWrapperProps) => {
   const [statusOwner, setStatusOwner] = useState<Status>('initial');
 
-  const [listVisible, setListVisible] = useState(false);
   const [listOwners, setListOwners] = useState(getOwnerList());
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [owner, setOwner] = useState(currentUser);
@@ -162,7 +161,6 @@ const OwnerWidgetWrapper = ({
       }
     }
     hideWidget();
-    setListVisible(false);
   };
 
   const setInitialOwnerLoadingState = () => {
@@ -175,10 +173,11 @@ const OwnerWidgetWrapper = ({
   };
 
   useEffect(() => {
-    if (!listVisible) {
+    if (!visible) {
       handleOwnerSearch('');
     }
-  }, [listVisible]);
+  }, [visible]);
+
   useEffect(() => {
     setOwner(currentUser);
   }, [currentUser]);
