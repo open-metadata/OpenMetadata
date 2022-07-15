@@ -66,8 +66,7 @@
     "queryTag": {
       "title": "Query Tag",
       "description": "Session query tag used to monitor usage on snoflake",
-      "type": "string",
-      "default": "OpenMetadata"
+      "type": "string"
     },
     "privateKey": {
       "title": "Private Key",
