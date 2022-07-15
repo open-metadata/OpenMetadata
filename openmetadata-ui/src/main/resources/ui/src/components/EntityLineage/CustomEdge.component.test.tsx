@@ -20,6 +20,7 @@ import {
 import React from 'react';
 import { EdgeProps, Position } from 'react-flow-renderer';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../enums/entity.enum';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('../../constants/Lineage.constants', () => ({
@@ -39,10 +40,14 @@ const mockCustomEdgeProp = {
   data: {
     source: 'node1',
     target: 'node2',
+    sourceType: EntityType.TABLE,
+    targetType: EntityType.DASHBOARD,
     onEdgeClick: jest.fn(),
     selectedNode: {
       id: 'node1',
     },
+    isColumnLineage: false,
+    isEditMode: true,
   },
   selected: true,
 } as EdgeProps;

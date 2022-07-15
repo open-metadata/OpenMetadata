@@ -48,7 +48,7 @@ const AddPipeLineModal = ({
       <div className="tw-justify-end" data-testid="footer">
         <Button
           className="tw-mr-2"
-          data-testid="discard-button"
+          data-testid="remove-edge-button"
           size="regular"
           theme="primary"
           variant="text"
@@ -58,7 +58,7 @@ const AddPipeLineModal = ({
 
         <Button
           className="tw-h-8 tw-px-3 tw-py-2 tw-rounded-md"
-          data-testid="confirm-button"
+          data-testid="save-button"
           size="custom"
           theme="primary"
           variant="contained"
@@ -72,6 +72,7 @@ const AddPipeLineModal = ({
   return (
     <Modal
       destroyOnClose
+      data-testid="add-pipeline-modal"
       footer={Footer()}
       title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
       visible={showAddPipelineModal}
