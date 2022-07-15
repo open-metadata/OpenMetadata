@@ -37,3 +37,9 @@ export enum TaskActionMode {
   VIEW = 'view',
   EDIT = 'edit',
 }
+
+export enum TaskTabs {
+  CURRENT = 'current',
+  DIFF = 'diff',
+  NEW = 'new',
+}

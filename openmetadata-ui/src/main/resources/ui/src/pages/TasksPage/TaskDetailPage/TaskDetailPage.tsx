@@ -396,6 +396,15 @@ const TaskDetailPage = () => {
     }
   };
 
+  // prepare current tags for update tags task
+  const getCurrentTags = () => {
+    if (!isEmpty(columnObject) && entityField) {
+      return columnObject.tags ?? [];
+    } else {
+      return entityData.tags ?? [];
+    }
+  };
+
   // handle assignees search
   const onSearch = (query: string) => {
     fetchOptions(query, setOptions);
@@ -624,9 +633,12 @@ const TaskDetailPage = () => {
 
               {isTaskTags && (
                 <TagsTask
+                  currentTags={getCurrentTags()}
+                  hasEditAccess={hasEditAccess()}
                   isTaskActionEdit={isTaskActionEdit}
                   setSuggestion={setTagsSuggestion}
                   suggestions={tagsSuggestion}
+                  task={taskDetail.task}
                 />
               )}
               {hasEditAccess() && !isTaskClosed && (
