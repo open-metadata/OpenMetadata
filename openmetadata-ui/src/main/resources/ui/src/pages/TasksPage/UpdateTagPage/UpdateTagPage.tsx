@@ -263,7 +263,7 @@ const UpdateTag = () => {
               className="ant-btn-primary-custom"
               type="primary"
               onClick={onCreateTask}>
-              {suggestion ? 'Suggest' : 'Submit'}
+              Submit
             </Button>
           </div>
         </Card>
