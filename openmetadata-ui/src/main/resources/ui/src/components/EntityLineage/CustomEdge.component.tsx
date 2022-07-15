@@ -121,7 +121,7 @@ export const CustomEdge = ({
                     icon={Icons.PIPELINE_GREY}
                     width="14px"
                   />
-                  <span>{data.label}</span>
+                  <span data-testid="pipeline-name">{data.label}</span>
                 </div>
                 {data.isEditMode && (
                   <button className="tw-cursor-pointer tw-flex tw-z-9999">
