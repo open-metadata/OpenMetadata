@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 
-import { Tag } from 'antd';
-import { uniqueId } from 'lodash';
-import React, { FC } from 'react';
+import { diffArrays } from 'diff';
+import React, { FC, Fragment } from 'react';
+import {
+  TaskType,
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagsDiffView } from './TagsDiffView';
+import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
 
 interface TagsTaskProps {
+  task: Thread['task'];
   isTaskActionEdit: boolean;
+  hasEditAccess: boolean;
+  currentTags: TagLabel[];
   suggestions: TagLabel[];
   setSuggestion: (value: TagLabel[]) => void;
 }
@@ -27,19 +36,93 @@ const TagsTask: FC<TagsTaskProps> = ({
   suggestions,
   setSuggestion,
   isTaskActionEdit,
+  hasEditAccess,
+  task,
+  currentTags,
 }) => {
+  const isRequestTag = task?.type === TaskType.RequestTag;
+
+  const isUpdateTag = task?.type === TaskType.UpdateTag;
+
+  const isTaskClosed = task?.status === ThreadTaskStatus.Closed;
+
+  const getDiffView = () => {
+    const oldValue = task?.oldValue;
+    const newValue = task?.newValue;
+    if (!oldValue && !newValue) {
+      return (
+        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
+          <span className="tw-p-2 tw-text-grey-muted">No Tags</span>
+        </div>
+      );
+    } else {
+      return (
+        <TagsDiffView
+          diffArr={diffArrays(
+            JSON.parse(oldValue ?? '[]'),
+            JSON.parse(newValue ?? '[]')
+          )}
+        />
+      );
+    }
+  };
+
+  /**
+   *
+   * @returns Suggested tags diff
+   */
+  const getSuggestedTagDiff = () => {
+    const newTags = task?.suggestion;
+    const oldTags = task?.oldValue;
+
+    return !newTags && !oldTags ? (
+      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
+    ) : (
+      <TagsDiffView
+        diffArr={diffArrays(
+          JSON.parse(oldTags ?? '[]'),
+          JSON.parse(newTags ?? '[]')
+        )}
+      />
+    );
+  };
+
   return (
     <div data-testid="task-tags-tabs">
       <p className="tw-text-grey-muted">Tags:</p>{' '}
-      {isTaskActionEdit ? (
-        <TagSuggestion selectedTags={suggestions} onChange={setSuggestion} />
-      ) : (
-        <div className="tw-flex tw-flex-wrap tw-mt-2">
-          {suggestions.map((suggestion) => (
-            <Tag key={uniqueId()}>{suggestion.tagFQN}</Tag>
-          ))}
-        </div>
-      )}
+      <Fragment>
+        {isTaskClosed ? (
+          getDiffView()
+        ) : (
+          <div data-testid="tags-task">
+            {isRequestTag && (
+              <div data-testid="request-tags">
+                {isTaskActionEdit && hasEditAccess ? (
+                  <TagSuggestion
+                    selectedTags={suggestions}
+                    onChange={setSuggestion}
+                  />
+                ) : (
+                  getSuggestedTagDiff()
+                )}
+              </div>
+            )}
+            {isUpdateTag && (
+              <div data-testid="update-tags">
+                {isTaskActionEdit && hasEditAccess ? (
+                  <TagsTabs
+                    suggestedTags={suggestions}
+                    tags={currentTags}
+                    onChange={setSuggestion}
+                  />
+                ) : (
+                  getSuggestedTagDiff()
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Fragment>
     </div>
   );
 };
