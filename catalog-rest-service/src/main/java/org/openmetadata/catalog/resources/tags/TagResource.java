@@ -512,9 +512,7 @@ public class TagResource {
   }
 
   private TagCategory addHref(UriInfo uriInfo, TagCategory category) {
-    String tagName = category.getName();
-    tagName = tagName.replace(" ", "%20");
-    category.setHref(RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, tagName));
+    category.setHref(RestUtil.getHref(uriInfo, TAG_COLLECTION_PATH, category.getName()));
     addHref(category.getHref(), category.getChildren());
     return category;
   }
@@ -526,9 +524,7 @@ public class TagResource {
   }
 
   private Tag addHref(URI parentHref, Tag tag) {
-    String tagName = tag.getName();
-    tagName = tagName.replace(" ", "%20");
-    tag.setHref(RestUtil.getHref(parentHref, tagName));
+    tag.setHref(RestUtil.getHref(parentHref, tag.getName()));
     addHref(tag.getHref(), tag.getChildren());
     return tag;
   }
