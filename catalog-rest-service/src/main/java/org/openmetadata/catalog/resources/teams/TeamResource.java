@@ -48,6 +48,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -80,6 +81,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   public TeamResource(CollectionDAO dao, Authorizer authorizer) {
     super(Team.class, new TeamRepository(dao), authorizer);
+  }
+
+  @SuppressWarnings("unused") // Method used for reflection
+  public void initialize(CatalogApplicationConfig config) throws IOException {
+    // Add a default team called organization
+    dao.initOrganization();
   }
 
   public static class TeamList extends ResultList<Team> {

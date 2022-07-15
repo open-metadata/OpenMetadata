@@ -79,6 +79,18 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     this.supportsAuthorizedMetadataOperations = false;
   }
 
+  public void setupTeams(TestInfo test) throws HttpResponseException {
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
+    TEAM_OWNER1 = TEAM1.getEntityReference();
+  }
+
+  @Test
+  void test_initialization() throws HttpResponseException {
+    // Ensure getting organization from team hierarchy is successful
+    getEntityByName("Organization", "", ADMIN_AUTH_HEADERS);
+  }
+
   @Test
   void post_validTeams_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
@@ -204,6 +216,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         MINOR_UPDATE,
         change);
   }
+
+  @Test
+  void test_hierarchicalTeams() {}
 
   private User createTeamManager(TestInfo testInfo) throws HttpResponseException {
     // Create a rule that can update team
