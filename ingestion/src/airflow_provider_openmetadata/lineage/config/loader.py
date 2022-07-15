@@ -15,7 +15,7 @@ OpenMetadata Airflow Lineage Backend
 import json
 import os
 
-from airflow.configuration import conf
+from airflow.configuration import AirflowConfigParser
 from pydantic import BaseModel
 
 from airflow_provider_openmetadata.lineage.config.commons import LINEAGE
@@ -34,7 +34,9 @@ class AirflowLineageConfig(BaseModel):
     metadata_config: OpenMetadataConnection
 
 
-def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
+def parse_airflow_config(
+    airflow_service_name: str, conf: AirflowConfigParser
+) -> AirflowLineageConfig:
     """
     Get airflow config from airflow.cfg and parse it
     to the config model
@@ -53,7 +55,7 @@ def parse_airflow_config(airflow_service_name: str) -> AirflowLineageConfig:
             raise InvalidAirflowProviderException(
                 f"Cannot find {auth_provider_type} in airflow providers registry."
             )
-        security_config = load_security_config_fn()
+        security_config = load_security_config_fn(conf)
 
     return AirflowLineageConfig(
         airflow_service_name=airflow_service_name,
@@ -75,9 +77,11 @@ def get_lineage_config() -> AirflowLineageConfig:
     a JSON file path configures as env in OPENMETADATA_LINEAGE_CONFIG
     or return a default config.
     """
+    from airflow.configuration import conf
+
     airflow_service_name = conf.get(LINEAGE, "airflow_service_name", fallback=None)
     if airflow_service_name:
-        return parse_airflow_config(airflow_service_name)
+        return parse_airflow_config(airflow_service_name, conf=conf)
 
     openmetadata_config_file = os.getenv("OPENMETADATA_LINEAGE_CONFIG")
 

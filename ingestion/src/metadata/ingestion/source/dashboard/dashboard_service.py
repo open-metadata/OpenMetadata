@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Base class for ingesting database services
+Base class for ingesting dashboard services
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

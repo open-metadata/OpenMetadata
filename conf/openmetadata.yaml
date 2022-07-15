@@ -258,3 +258,7 @@ health:
         successAttempts: 1
 
 sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
+slackChat:
+  apiToken: ${SLACK_CHAT_API_TOKEN:-""}
+  botName: ${SLACK_CHAT_BOT_NAME:-""}
+  channels: ${SLACK_CHAT_CHANNELS:-[]}

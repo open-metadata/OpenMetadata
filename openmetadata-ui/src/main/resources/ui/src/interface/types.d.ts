@@ -201,7 +201,13 @@ declare module 'Models' {
     href: string;
   };
 
-  export type FormatedTableData = {
+  export type SlackChatConfig = {
+    apiToken: string;
+    botName: string;
+    channels: string[];
+  };
+
+  export type FormattedTableData = {
     id: string;
     name: string;
     displayName: string;
@@ -286,7 +292,7 @@ declare module 'Models' {
   }
 
   export interface GlossaryTermAssets {
-    data: FormatedTableData[];
+    data: FormattedTableData[];
     total: number;
     currPage: number;
   }
@@ -357,7 +363,7 @@ declare module 'Models' {
     _type?: string;
     _id?: string;
     _score?: number;
-    _source: FormatedTableData;
+    _source: FormattedTableData;
   };
 
   export type SearchResponse = {

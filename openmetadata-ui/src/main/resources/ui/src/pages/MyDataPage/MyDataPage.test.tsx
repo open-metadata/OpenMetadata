@@ -57,6 +57,15 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
       },
     })
   ),
+  fetchSlackConfig: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        apiToken: '',
+        botName: '',
+        channels: [],
+      },
+    })
+  ),
 }));
 
 jest.mock('../../axiosAPIs/tableAPI', () => ({
@@ -205,8 +214,11 @@ describe('Test MyData page component', () => {
       /GithubStarButton.component/i
     );
 
+    const slackChat = await queryByText(container, /SlackChat.component/i);
+
     expect(myData).toBeInTheDocument();
     expect(githubStarButton).not.toBeInTheDocument();
+    expect(slackChat).not.toBeInTheDocument();
   });
 
   it('Component should render in sandbox mode', async () => {

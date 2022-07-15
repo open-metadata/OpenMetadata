@@ -34,6 +34,7 @@ import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
 public class CatalogApplicationConfig extends Configuration {
   @JsonProperty("database")
@@ -110,6 +111,11 @@ public class CatalogApplicationConfig extends Configuration {
   @Getter
   @Setter
   private SamlSSOClientConfig samlConfiguration;
+
+  @JsonProperty("slackChat")
+  @Getter
+  @Setter
+  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
 
   @JsonProperty("secretsManagerConfiguration")
   @Getter
