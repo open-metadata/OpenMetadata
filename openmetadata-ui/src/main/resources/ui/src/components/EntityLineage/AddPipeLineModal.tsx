@@ -73,7 +73,7 @@ const AddPipeLineModal = ({
     <Modal
       destroyOnClose
       data-testid="add-pipeline-modal"
-      footer={Footer()}
+      footer={<Footer />}
       title={isUndefined(selectedPipelineId) ? 'Add Pipeline' : 'Edit Pipeline'}
       visible={showAddPipelineModal}
       onCancel={handleModalCancel}>
