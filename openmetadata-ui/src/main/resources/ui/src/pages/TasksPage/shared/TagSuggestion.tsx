@@ -29,7 +29,7 @@ const { Option } = Select;
 interface SelectOption {
   label: string;
   value: string;
-  'data-sourceType': string;
+  'data-sourcetype': string;
 }
 
 interface Props {
@@ -42,7 +42,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     selectedTags.map((tag) => ({
       label: tag.tagFQN,
       value: tag.tagFQN,
-      'data-sourceType': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
+      'data-sourcetype': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
     }));
 
   const [options, setOptions] = useState<SelectOption[]>([]);
@@ -63,7 +63,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
           uniqueOptions.map((op: any) => ({
             label: op.fullyQualifiedName as string,
             value: op.fullyQualifiedName as string,
-            'data-sourceType': op.entityType,
+            'data-sourcetype': op.entityType,
           }))
         );
       })
@@ -83,7 +83,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
     const newTags = (option as SelectOption[]).map((value) => ({
       labelType: LabelType.Manual,
       state: State.Suggested,
-      source: isEqual(value['data-sourceType'], 'tag')
+      source: isEqual(value['data-sourcetype'], 'tag')
         ? TagSource.Tag
         : TagSource.Glossary,
       tagFQN: value.value,
@@ -111,7 +111,7 @@ const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
       onSearch={handleSearch}>
       {options.map((d) => (
         <Option
-          data-sourceType={d['data-sourceType']}
+          data-sourcetype={d['data-sourcetype']}
           data-testid="tag-option"
           key={d.value}>
           {d.label}
