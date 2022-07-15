@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/elasticSearchConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearchConfiguration",
+  "description": "This schema defines the Elastic Search Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.elasticsearch.ElasticSearchConfiguration",
+  "properties": {
+    "host": {
+      "description": "Elastic Search Host",
+      "type": "string"
+    },
+    "port": {
+      "description": "Elastic Search port",
+      "type": "integer"
+    },
+    "scheme": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "username": {
+      "description": "Elastic Search Host",
+      "type": "string"
+    },
+    "password": {
+      "description": "Elastic Search port",
+      "type": "string"
+    },
+    "truststorePath": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "truststorePassword": {
+      "description": "Http/Https connection scheme",
+      "type": "string"
+    },
+    "connectionTimeoutSecs": {
+      "description": "Elastic Search Host",
+      "type": "integer",
+      "default": 5
+    },
+    "socketTimeoutSecs": {
+      "description": "Elastic Search port",
+      "type": "integer",
+      "default": 60
+    },
+    "batchSize": {
+      "description": "Http/Https connection scheme",
+      "type": "integer",
+      "default": 10
+    }
+  },
+  "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize"],
+  "additionalProperties": false
+}
