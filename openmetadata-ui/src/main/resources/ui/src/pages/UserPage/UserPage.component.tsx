@@ -109,48 +109,47 @@ const UserPage = () => {
     );
   };
 
-  const getFeedData = (
-    threadType: ThreadType,
-    after?: string,
-    feedFilter?: FeedFilter
-  ) => {
-    const status = isTaskType ? taskStatus : undefined;
-    setIsFeedLoading(true);
-    getFeedsWithFilter(
-      userData.id,
-      feedFilter || FeedFilter.ALL,
-      after,
-      threadType,
-      status
-    )
-      .then((res: AxiosResponse) => {
-        const { data, paging: pagingObj } = res.data;
-        setPaging(pagingObj);
-        setEntityThread((prevData) => {
-          if (after) {
-            return [...prevData, ...data];
-          } else {
-            return [...data];
-          }
+  const getFeedData = useCallback(
+    (threadType: ThreadType, after?: string, feedFilter?: FeedFilter) => {
+      const status = isTaskType ? taskStatus : undefined;
+      setIsFeedLoading(true);
+      getFeedsWithFilter(
+        userData.id,
+        feedFilter || FeedFilter.ALL,
+        after,
+        threadType,
+        status
+      )
+        .then((res: AxiosResponse) => {
+          const { data, paging: pagingObj } = res.data;
+          setPaging(pagingObj);
+          setEntityThread((prevData) => {
+            if (after) {
+              return [...prevData, ...data];
+            } else {
+              return [...data];
+            }
+          });
+        })
+        .catch((err: AxiosError) => {
+          showErrorToast(
+            err,
+            jsonData['api-error-messages']['fetch-activity-feed-error']
+          );
+        })
+        .finally(() => {
+          setIsFeedLoading(false);
         });
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-activity-feed-error']
-        );
-      })
-      .finally(() => {
-        setIsFeedLoading(false);
-      });
-  };
+    },
+    [taskStatus]
+  );
 
   const handleFeedFetchFromFeedList = useCallback(
     (threadType: ThreadType, after?: string, feedFilter?: FeedFilter) => {
       !after && setEntityThread([]);
       getFeedData(threadType, after, feedFilter);
     },
-    [getFeedData, setEntityThread]
+    [getFeedData, setEntityThread, getFeedData]
   );
 
   const postFeedHandler = (value: string, id: string) => {

@@ -311,6 +311,10 @@
     @apply tw-list-disc;
   }
 
+  body .content-container p {
+    word-break: break-word;
+  }
+
   .signin-box {
     @apply tw-m-auto tw-h-100 tw-w-120 tw-bg-white tw-shadow-modal;
   }

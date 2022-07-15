@@ -13,7 +13,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import { capitalize } from 'lodash';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData } from 'Models';
 import React, { FC, HTMLAttributes, useEffect, useState } from 'react';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -35,7 +35,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
   onSelectHandler,
 }) => {
-  const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [data, setData] = useState<Array<FormattedTableData>>([]);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
 

@@ -159,3 +159,8 @@ airflowConfiguration:
   password: "admin"
   metadataApiEndpoint: "http://localhost:8585/api"
   authProvider: "no-auth"
+
+slackChat:
+  apiToken: "token"
+  botName: "bot"
+  channels: ["support"]
