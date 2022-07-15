@@ -39,11 +39,12 @@ import { useAuth } from '../../hooks/authHooks';
 import { TeamDetailsProp } from '../../interface/teamsAndUsers.interface';
 import UserCard from '../../pages/teams/UserCard';
 import { hasEditAccess } from '../../utils/CommonUtils';
-import { filterEntityAssets, getInfoElements } from '../../utils/EntityUtils';
+import { filterEntityAssets } from '../../utils/EntityUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import Description from '../common/description/Description';
 import Ellipses from '../common/Ellipses/Ellipses';
+import EntitySummaryDetails from '../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../common/next-previous/NextPrevious';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
@@ -238,7 +239,7 @@ const TeamDetails = ({
     }
   };
 
-  const handleManageSave = (owner?: EntityReference) => {
+  const updateOwner = (owner?: EntityReference) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
@@ -594,7 +595,7 @@ const TeamDetails = ({
             </div>
           </div>
           <div className="tw-flex tw-items-center tw-gap-1 tw-mb-2">
-            <span>{getInfoElements(extraInfo)}</span>
+            <EntitySummaryDetails data={extraInfo} updateOwner={updateOwner} />
           </div>
           <div className="tw-mb-3 tw--ml-5" data-testid="description-container">
             <Description
@@ -639,7 +640,7 @@ const TeamDetails = ({
                     handleIsJoinable={handleOpenToJoinToggle}
                     isJoinable={currentTeam.isJoinable}
                     manageSectionType={ADMIN_ONLY_ACCESSIBLE_SECTION.TEAM}
-                    onSave={handleManageSave}
+                    // onSave={handleManageSave}
                   />
                 </div>
               )}

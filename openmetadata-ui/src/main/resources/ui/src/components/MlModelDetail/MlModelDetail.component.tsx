@@ -270,6 +270,21 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     }
   };
 
+  const onOwnerUpdate = (newOwner?: Mlmodel['owner']) => {
+    if (newOwner) {
+      const updatedMlModelDetails = {
+        ...mlModelDetail,
+        owner: newOwner
+          ? {
+              ...mlModelDetail.owner,
+              ...newOwner,
+            }
+          : mlModelDetail.owner,
+      };
+      settingsUpdateHandler(updatedMlModelDetails);
+    }
+  };
+
   const onSettingsUpdate = (newOwner?: Mlmodel['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Mlmodel['tags'] = newTier
@@ -436,6 +451,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           tagsHandler={onTagUpdate}
           tier={mlModelTier}
           titleLinks={slashedMlModelName}
+          updateOwner={onOwnerUpdate}
         />
 
         <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">

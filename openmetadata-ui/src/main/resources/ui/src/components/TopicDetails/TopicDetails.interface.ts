@@ -20,6 +20,7 @@ import {
 } from 'Models';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { Table } from '../../generated/entity/data/table';
 import { Topic, TopicSampleData } from '../../generated/entity/data/topic';
 import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { EntityLineage } from '../../generated/type/entityLineage';
@@ -31,6 +32,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 import { Edge, EdgeData } from '../EntityLineage/EntityLineage.interface';
 
 export interface TopicDetailsProps {
+  tableDetails: Table;
   topicFQN: string;
   version?: string;
   schemaText: string;

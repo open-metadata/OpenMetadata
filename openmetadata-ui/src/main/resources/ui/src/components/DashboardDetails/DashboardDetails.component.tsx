@@ -254,6 +254,18 @@ const DashboardDetails = ({
     }
   };
 
+  const onOwnerUpdate = (newOwner?: Dashboard['owner']) => {
+    if (newOwner) {
+      const updatedDashboardDetails = {
+        ...dashboardDetails,
+        owner: newOwner
+          ? { ...dashboardDetails.owner, ...newOwner }
+          : dashboardDetails.owner,
+      };
+      settingsUpdateHandler(updatedDashboardDetails);
+    }
+  };
+
   const onSettingsUpdate = (
     newOwner?: Dashboard['owner'],
     newTier?: string
@@ -484,6 +496,7 @@ const DashboardDetails = ({
           tagsHandler={onTagUpdate}
           tier={tier || ''}
           titleLinks={slashedDashboardName}
+          updateOwner={onOwnerUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}

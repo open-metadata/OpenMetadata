@@ -275,7 +275,20 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       setIsEdit(false);
     }
   };
-
+  const onOwnerUpdate = (newOwner?: Topic['owner']) => {
+    if (newOwner) {
+      const updatedTopicDetails = {
+        ...topicDetails,
+        owner: newOwner
+          ? {
+              ...topicDetails.owner,
+              ...newOwner,
+            }
+          : topicDetails.owner,
+      };
+      settingsUpdateHandler(updatedTopicDetails);
+    }
+  };
   const onSettingsUpdate = (newOwner?: Topic['owner'], newTier?: string) => {
     if (newOwner || newTier) {
       const tierTag: Topic['tags'] = newTier
@@ -408,6 +421,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
           titleLinks={slashedTopicName}
+          updateOwner={onOwnerUpdate}
           version={version}
           versionHandler={versionHandler}
           onThreadLinkSelect={onThreadLinkSelect}

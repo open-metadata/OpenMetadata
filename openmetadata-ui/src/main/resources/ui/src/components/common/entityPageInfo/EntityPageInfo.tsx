@@ -17,24 +17,29 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
+import { Tooltip } from 'react-tippy';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { useAfterMount } from '../../../hooks/useAfterMount';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
-import { getEntityFeedLink, getInfoElements } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   fetchGlossaryTerms,
   getGlossaryTermlist,
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import { Button } from '../../buttons/Button/Button';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
 import Tags from '../../tags/tags';
+import DeleteWidgetModal from '../DeleteWidget/DeleteWidgetModal';
+import EntitySummaryDetails from '../EntitySummaryDetails/EntitySummaryDetails';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -55,6 +60,7 @@ interface Props {
   hasEditAccess?: boolean;
   followersList: Array<EntityReference>;
   entityName: string;
+  entityId?: string;
   entityType?: string;
   entityFqn?: string;
   version?: string;
@@ -64,6 +70,8 @@ interface Props {
   followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
+  updateOwner?: (value: Table['owner']) => void;
+  updateTier?: (value: string) => void;
 }
 
 const EntityPageInfo = ({
@@ -81,6 +89,7 @@ const EntityPageInfo = ({
   tagsHandler,
   followersList = [],
   entityName,
+  entityId,
   version,
   isVersionSelected,
   versionHandler,
@@ -88,6 +97,8 @@ const EntityPageInfo = ({
   onThreadLinkSelect,
   entityFqn,
   entityType,
+  updateOwner,
+  updateTier,
 }: Props) => {
   const tagThread = entityFieldThreads?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
@@ -96,10 +107,12 @@ const EntityPageInfo = ({
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const [tagList, setTagList] = useState<Array<TagOption>>([]);
   const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const [showActions, setShowActions] = useState(false);
   const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
   const [versionFollowButtonWidth, setVersionFollowButtonWidth] = useState(
     document.getElementById('version-and-follow-section')?.offsetWidth
   );
+  const [isDelete, setIsDelete] = useState<boolean>(false);
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -308,6 +321,32 @@ const EntityPageInfo = ({
     );
   });
 
+  const manageButtonContent = () => {
+    return (
+      <>
+        <div
+          className="tw-flex tw-items-center tw-gap-5 tw-p-1.5 tw-cursor-pointer"
+          id="manage-button"
+          onClick={() => setIsDelete(true)}>
+          <div>
+            <SVGIcons
+              alt="Delete"
+              className="tw-w-12"
+              icon={Icons.DELETE_GRADIANT}
+            />
+          </div>
+          <div className="tw-text-left" data-testid="delete-button">
+            <p className="tw-font-medium">Delete table {entityName}</p>
+            <p className="tw-text-grey-muted tw-text-xs">
+              Deleting this Glossary Term will permanently remove its metadata
+              from OpenMetadata.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div data-testid="entity-page-info">
       <div className="tw-flex tw-flex-col">
@@ -334,7 +373,7 @@ const EntityPageInfo = ({
             )}
           </div>
           <div
-            className="tw-flex tw-py-1 tw-mt-1"
+            className="tw-flex tw-py-1 tw-mt-1 tw-mr-4"
             id="version-and-follow-section">
             {!isUndefined(version) ? (
               <>
@@ -399,6 +438,26 @@ const EntityPageInfo = ({
                 </span>
               </div>
             ) : null}
+            <Button
+              className="tw-rounded tw-mb-1 tw-flex bg-[#D9CEEE] tw-ml-2"
+              data-testid="manage-button"
+              size="small"
+              theme="primary"
+              variant="outlined"
+              onClick={() => setShowActions(true)}>
+              <Tooltip
+                arrow
+                arrowSize="big"
+                html={manageButtonContent()}
+                open={showActions}
+                position="bottom-end"
+                theme="light"
+                onRequestClose={() => setShowActions(false)}>
+                <span>
+                  <FontAwesomeIcon icon="ellipsis-vertical" />
+                </span>
+              </Tooltip>
+            </Button>
           </div>
         </div>
       </div>
@@ -410,7 +469,11 @@ const EntityPageInfo = ({
             className="tw-flex tw-items-center"
             data-testid={info.key || `info${index}`}
             key={index}>
-            {getInfoElements(info)}
+            <EntitySummaryDetails
+              data={info}
+              updateOwner={updateOwner}
+              updateTier={updateTier}
+            />
             {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
               <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">
                 |
@@ -516,6 +579,13 @@ const EntityPageInfo = ({
           onCancel={() => setIsViewMore(false)}
         />
       )}
+      <DeleteWidgetModal
+        entityId={entityId || ''}
+        entityName={entityName || ''}
+        entityType={entityType || ''}
+        visible={isDelete}
+        onCancel={() => setIsDelete(false)}
+      />
     </div>
   );
 };
