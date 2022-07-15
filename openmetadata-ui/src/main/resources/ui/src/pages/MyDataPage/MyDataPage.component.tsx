@@ -15,7 +15,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData } from 'Models';
+import { FormattedTableData } from 'Models';
 import React, {
   Fragment,
   useCallback,
@@ -73,8 +73,8 @@ const MyDataPage = () => {
   const [countUsers, setCountUsers] = useState<number>();
   const [countTeams, setCountTeams] = useState<number>();
 
-  const [ownedData, setOwnedData] = useState<Array<FormatedTableData>>();
-  const [followedData, setFollowedData] = useState<Array<FormatedTableData>>();
+  const [ownedData, setOwnedData] = useState<Array<FormattedTableData>>();
+  const [followedData, setFollowedData] = useState<Array<FormattedTableData>>();
   const [ownedDataCount, setOwnedDataCount] = useState(0);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
@@ -411,7 +411,7 @@ const MyDataPage = () => {
     updateThreadData(threadId, postId, isThread, data, setEntityThread);
   };
 
-  const fetchOMDMode = () => {
+  const fetchSandboxMode = () => {
     fetchSandboxConfig()
       .then((res) => {
         if (res.data) {
@@ -446,7 +446,7 @@ const MyDataPage = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    fetchOMDMode();
+    fetchSandboxMode();
     fetchData(true);
     fetchMyTaskData();
   }, []);

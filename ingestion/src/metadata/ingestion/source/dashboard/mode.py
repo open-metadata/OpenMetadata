@@ -11,9 +11,8 @@
 """Mode source module"""
 
 import traceback
+from logging.config import DictConfigurator
 from typing import Iterable, List, Optional
-
-from sqllineage.runner import LineageRunner
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -37,9 +36,17 @@ from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.utils import fqn, mode_client
 from metadata.utils.filters import filter_by_chart
-from metadata.utils.helpers import get_chart_entities_from_id
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sql_lineage import search_table_entities
+
+# Prevent sqllineage from modifying the logger config
+# Disable the DictConfigurator.configure method while importing LineageRunner
+configure = DictConfigurator.configure
+DictConfigurator.configure = lambda _: None
+from sqllineage.runner import LineageRunner
+
+# Reverting changes after import is done
+DictConfigurator.configure = configure
 
 logger = ingestion_logger()
 
