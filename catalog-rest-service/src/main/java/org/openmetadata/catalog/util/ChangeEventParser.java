@@ -37,11 +37,24 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.slack.SlackAttachment;
+import org.openmetadata.catalog.slack.SlackMessage;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 
 public final class ChangeEventParser {
+  public static final String FEED_ADD_MARKER = "<!add>";
+  public static final String FEED_REMOVE_MARKER = "<!remove>";
+  public static final String SLACK_STRIKE_MARKER = "~%s~ ";
+  public static final String FEED_BOLD = "**%s**";
+  public static final String SLACK_BOLD = "*%s* ";
+  public static final String FEED_SPAN_ADD = "<span class=\"diff-added\">";
+  public static final String FEED_SPAN_REMOVE = "<span class=\"diff-removed\">";
+  public static final String FEED_SPAN_CLOSE = "</span>";
+  public static final String FEED_LINE_BREAK = " <br/> ";
+  public static final String SLACK_LINE_BREAK = "\n";
 
   private ChangeEventParser() {}
 
@@ -51,25 +64,53 @@ public final class ChangeEventParser {
     DELETE
   }
 
+  public enum PUBLISH_TO {
+    FEED,
+    SLACK
+  }
+
+  public static SlackMessage buildSlackMessage(ChangeEvent event, String omdurl) {
+    SlackMessage slackMessage = new SlackMessage();
+    slackMessage.setUsername(event.getUserName());
+    if (event.getEntity() != null) {
+      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
+      String headerText = String.format(headerTxt, event.getUserName(), omdurl);
+      slackMessage.setText(headerText);
+    }
+    Map<EntityLink, String> messages =
+        getFormattedMessages(PUBLISH_TO.SLACK, event.getChangeDescription(), (EntityInterface) event.getEntity());
+    List<SlackAttachment> attachmentList = new ArrayList<>();
+    for (var entryset : messages.entrySet()) {
+      SlackAttachment attachment = new SlackAttachment();
+      List<String> mark = new ArrayList<>();
+      mark.add("text");
+      attachment.setMarkdownIn(mark);
+      attachment.setText(entryset.getValue());
+      attachmentList.add(attachment);
+    }
+    slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+    return slackMessage;
+  }
+
   public static Map<EntityLink, String> getFormattedMessages(
-      ChangeDescription changeDescription, EntityInterface entity) {
+      PUBLISH_TO publishTo, ChangeDescription changeDescription, EntityInterface entity) {
     // Store a map of entityLink -> message
     Map<EntityLink, String> messages;
 
     List<FieldChange> fieldsUpdated = changeDescription.getFieldsUpdated();
-    messages = getFormattedMessages(entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
+    messages = getFormattedMessagesForAllFieldChange(publishTo, entity, fieldsUpdated, CHANGE_TYPE.UPDATE);
 
     // fieldsAdded and fieldsDeleted need special handling since
     // there is a possibility to merge them as one update message.
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     List<FieldChange> fieldsDeleted = changeDescription.getFieldsDeleted();
-    messages.putAll(getFormattedMessages(entity, fieldsAdded, fieldsDeleted));
+    messages.putAll(mergeAddtionsDeletion(publishTo, entity, fieldsAdded, fieldsDeleted));
 
     return messages;
   }
 
-  private static Map<EntityLink, String> getFormattedMessages(
-      EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
+  private static Map<EntityLink, String> getFormattedMessagesForAllFieldChange(
+      PUBLISH_TO publishTo, EntityInterface entity, List<FieldChange> fields, CHANGE_TYPE changeType) {
     Map<EntityLink, String> messages = new HashMap<>();
 
     for (var field : fields) {
@@ -80,7 +121,7 @@ public final class ChangeEventParser {
       String oldFieldValue = getFieldValue(field.getOldValue());
       EntityLink link = getEntityLink(fieldName, entity);
       if (!fieldName.equals("failureDetails")) {
-        String message = getFormattedMessage(link, changeType, fieldName, oldFieldValue, newFieldValue);
+        String message = createMessageForField(publishTo, link, changeType, fieldName, oldFieldValue, newFieldValue);
         messages.put(link, message);
       }
     }
@@ -135,8 +176,8 @@ public final class ChangeEventParser {
   }
 
   /** Tries to merge additions and deletions into updates and returns a map of formatted messages. */
-  private static Map<EntityLink, String> getFormattedMessages(
-      EntityInterface entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
+  private static Map<EntityLink, String> mergeAddtionsDeletion(
+      PUBLISH_TO publishTo, EntityInterface entity, List<FieldChange> addedFields, List<FieldChange> deletedFields) {
     // Major schema version changes such as renaming a column from colA to colB
     // will be recorded as "Removed column colA" and "Added column colB"
     // This method will try to detect such changes and combine those events into one update.
@@ -146,9 +187,9 @@ public final class ChangeEventParser {
     // if there is only added fields or only deleted fields, we cannot merge
     if (addedFields.isEmpty() || deletedFields.isEmpty()) {
       if (!addedFields.isEmpty()) {
-        messages = getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD);
+        messages = getFormattedMessagesForAllFieldChange(publishTo, entity, addedFields, CHANGE_TYPE.ADD);
       } else if (!deletedFields.isEmpty()) {
-        messages = getFormattedMessages(entity, deletedFields, CHANGE_TYPE.DELETE);
+        messages = getFormattedMessagesForAllFieldChange(publishTo, entity, deletedFields, CHANGE_TYPE.DELETE);
       }
       return messages;
     }
@@ -160,19 +201,21 @@ public final class ChangeEventParser {
         EntityLink link = getEntityLink(fieldName, entity);
         // convert the added field and deleted field into one update message
         String message =
-            getFormattedMessage(
-                link, CHANGE_TYPE.UPDATE, fieldName, field.getOldValue(), addedField.get().getNewValue());
+            createMessageForField(
+                publishTo, link, CHANGE_TYPE.UPDATE, fieldName, field.getOldValue(), addedField.get().getNewValue());
         messages.put(link, message);
         // Remove the field from addedFields list to avoid double processing
         addedFields = addedFields.stream().filter(f -> !f.equals(addedField.get())).collect(Collectors.toList());
       } else {
         // process the deleted field
-        messages.putAll(getFormattedMessages(entity, Collections.singletonList(field), CHANGE_TYPE.DELETE));
+        messages.putAll(
+            getFormattedMessagesForAllFieldChange(
+                publishTo, entity, Collections.singletonList(field), CHANGE_TYPE.DELETE));
       }
     }
     // process the remaining added fields
     if (!addedFields.isEmpty()) {
-      messages.putAll(getFormattedMessages(entity, addedFields, CHANGE_TYPE.ADD));
+      messages.putAll(getFormattedMessagesForAllFieldChange(publishTo, entity, addedFields, CHANGE_TYPE.ADD));
     }
     return messages;
   }
@@ -199,8 +242,13 @@ public final class ChangeEventParser {
     return new EntityLink(entityType, entityFQN, fieldName, arrayFieldName, arrayFieldValue);
   }
 
-  private static String getFormattedMessage(
-      EntityLink link, CHANGE_TYPE changeType, String fieldName, Object oldFieldValue, Object newFieldValue) {
+  private static String createMessageForField(
+      PUBLISH_TO publishTo,
+      EntityLink link,
+      CHANGE_TYPE changeType,
+      String fieldName,
+      Object oldFieldValue,
+      Object newFieldValue) {
     String arrayFieldName = link.getArrayFieldName();
     String arrayFieldValue = link.getArrayFieldValue();
 
@@ -216,19 +264,27 @@ public final class ChangeEventParser {
       case ADD:
         String fieldValue = getFieldValue(newFieldValue);
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
-          message = String.format("Followed **%s** `%s`", link.getEntityType(), link.getEntityFQN());
+          message =
+              String.format(
+                  ("Followed " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " `%s`"),
+                  link.getEntityType(),
+                  link.getEntityFQN());
         } else if (fieldValue != null && !fieldValue.isEmpty()) {
-          message = String.format("Added **%s**: `%s`", updatedField, fieldValue);
+          message =
+              String.format(
+                  ("Added " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": `%s`"),
+                  updatedField,
+                  fieldValue);
         }
         break;
       case UPDATE:
-        message = getUpdateMessage(updatedField, oldFieldValue, newFieldValue);
+        message = getUpdateMessage(publishTo, updatedField, oldFieldValue, newFieldValue);
         break;
       case DELETE:
         if (Entity.FIELD_FOLLOWERS.equals(updatedField)) {
           message = String.format("Unfollowed %s `%s`", link.getEntityType(), link.getEntityFQN());
         } else {
-          message = String.format("Deleted **%s**", updatedField);
+          message = String.format(("Deleted " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)), updatedField);
         }
         break;
       default:
@@ -237,40 +293,56 @@ public final class ChangeEventParser {
     return message;
   }
 
-  private static String getPlainTextUpdateMessage(String updatedField, String oldValue, String newValue) {
+  private static String getPlainTextUpdateMessage(
+      PUBLISH_TO publishTo, String updatedField, String oldValue, String newValue) {
     // Get diff of old value and new value
-    String diff = getPlaintextDiff(oldValue, newValue);
-    return nullOrEmpty(diff) ? StringUtils.EMPTY : String.format("Updated **%s**: %s", updatedField, diff);
+    String diff = getPlaintextDiff(publishTo, oldValue, newValue);
+    return nullOrEmpty(diff)
+        ? StringUtils.EMPTY
+        : String.format(
+            "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + ": %s", updatedField, diff);
   }
 
-  private static String getObjectUpdateMessage(String updatedField, JsonObject oldJson, JsonObject newJson) {
+  private static String getObjectUpdateMessage(
+      PUBLISH_TO publishTo, String updatedField, JsonObject oldJson, JsonObject newJson) {
     List<String> labels = new ArrayList<>();
     Set<String> keys = newJson.keySet();
     // check if each key's value is the same
     for (var key : keys) {
       if (!newJson.get(key).equals(oldJson.get(key))) {
         labels.add(
-            String.format("%s: %s", key, getPlaintextDiff(oldJson.get(key).toString(), newJson.get(key).toString())));
+            String.format(
+                "%s: %s", key, getPlaintextDiff(publishTo, oldJson.get(key).toString(), newJson.get(key).toString())));
       }
     }
-    String updates = String.join(" <br/> ", labels);
+    String updates = String.join((publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK), labels);
     // Include name of the field if the json contains "name" key
     if (newJson.containsKey("name")) {
       updatedField = String.format("%s.%s", updatedField, newJson.getString("name"));
     }
-    return String.format("Updated **%s**: <br/> %s", updatedField, updates);
+    return String.format(
+        "Updated "
+            + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD)
+            + ":"
+            + (publishTo == PUBLISH_TO.FEED ? FEED_LINE_BREAK : SLACK_LINE_BREAK)
+            + "%s",
+        updatedField,
+        updates);
   }
 
-  private static String getUpdateMessage(String updatedField, Object oldValue, Object newValue) {
+  private static String getUpdateMessage(PUBLISH_TO publishTo, String updatedField, Object oldValue, Object newValue) {
     // New value should not be null in any case for an update
     if (newValue == null) {
       return StringUtils.EMPTY;
     }
 
     if (oldValue == null || oldValue.toString().isEmpty()) {
-      return String.format("Updated **%s** to %s", updatedField, getFieldValue(newValue));
+      return String.format(
+          "Updated " + (publishTo == PUBLISH_TO.FEED ? FEED_BOLD : SLACK_BOLD) + " to %s",
+          updatedField,
+          getFieldValue(newValue));
     } else if (updatedField.contains("tags") || updatedField.contains(FIELD_OWNER)) {
-      return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
+      return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
     }
     // if old value is not empty, and is of type array or object, the updates can be across multiple keys
     // Example: [{name: "col1", dataType: "varchar", dataLength: "20"}]
@@ -290,30 +362,31 @@ public final class ChangeEventParser {
             if (newItem.getValueType() == ValueType.OBJECT) {
               JsonObject newJsonItem = newItem.asJsonObject();
               JsonObject oldJsonItem = oldItem.asJsonObject();
-              return getObjectUpdateMessage(updatedField, oldJsonItem, newJsonItem);
+              return getObjectUpdateMessage(publishTo, updatedField, oldJsonItem, newJsonItem);
             } else {
-              return getPlainTextUpdateMessage(updatedField, newItem.toString(), oldItem.toString());
+              return getPlainTextUpdateMessage(publishTo, updatedField, newItem.toString(), oldItem.toString());
             }
           } else {
-            return getPlainTextUpdateMessage(updatedField, getFieldValue(oldValue), getFieldValue(newValue));
+            return getPlainTextUpdateMessage(publishTo, updatedField, getFieldValue(oldValue), getFieldValue(newValue));
           }
         } else if (newJson.getValueType() == ValueType.OBJECT) {
           JsonObject newJsonObject = newJson.asJsonObject();
           JsonObject oldJsonObject = oldJson.asJsonObject();
-          return getObjectUpdateMessage(updatedField, oldJsonObject, newJsonObject);
+          return getObjectUpdateMessage(publishTo, updatedField, oldJsonObject, newJsonObject);
         }
       } catch (JsonParsingException ex) {
         // update is of type String
         // ignore this exception and process update message for plain text
       }
     }
-    return getPlainTextUpdateMessage(updatedField, oldValue.toString(), newValue.toString());
+    return getPlainTextUpdateMessage(publishTo, updatedField, oldValue.toString(), newValue.toString());
   }
 
-  public static String getPlaintextDiff(String oldValue, String newValue) {
+  public static String getPlaintextDiff(PUBLISH_TO publishTo, String oldValue, String newValue) {
     // create a configured DiffRowGenerator
-    String addMarker = "<!add>";
-    String removeMarker = "<!remove>";
+    String addMarker = FEED_ADD_MARKER;
+    String removeMarker = FEED_REMOVE_MARKER;
+
     DiffRowGenerator generator =
         DiffRowGenerator.create()
             .showInlineDiffs(true)
@@ -339,17 +412,29 @@ public final class ChangeEventParser {
     // Replace them with html tags to render nicely in the UI
     // Example: This is a test <!remove>sentence<!remove><!add>line<!add>
     // This is a test <span class="diff-removed">sentence</span><span class="diff-added">line</span>
-    String spanAdd = "<span class=\"diff-added\">";
-    String spanRemove = "<span class=\"diff-removed\">";
-    String spanClose = "</span>";
+    String spanAdd;
+    String spanAddClose;
+    String spanRemove;
+    String spanRemoveClose;
+    if (publishTo == PUBLISH_TO.FEED) {
+      spanAdd = FEED_SPAN_ADD;
+      spanAddClose = FEED_SPAN_CLOSE;
+      spanRemove = FEED_SPAN_REMOVE;
+      spanRemoveClose = FEED_SPAN_CLOSE;
+    } else {
+      spanAdd = "*";
+      spanAddClose = "* ";
+      spanRemove = "~";
+      spanRemoveClose = "~ ";
+    }
     if (diff != null) {
-      diff = replaceWithHtml(diff, addMarker, spanAdd, spanClose);
-      diff = replaceWithHtml(diff, removeMarker, spanRemove, spanClose);
+      diff = replaceMarkers(diff, addMarker, spanAdd, spanAddClose);
+      diff = replaceMarkers(diff, removeMarker, spanRemove, spanRemoveClose);
     }
     return diff;
   }
 
-  private static String replaceWithHtml(String diff, String marker, String openTag, String closeTag) {
+  private static String replaceMarkers(String diff, String marker, String openTag, String closeTag) {
     int index = 0;
     while (diff.contains(marker)) {
       String replacement = index % 2 == 0 ? openTag : closeTag;
