@@ -172,7 +172,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static User USER2;
   public static EntityReference USER_OWNER2;
 
-  public static Team ORGANIZATION;
+  public static Team ORG_TEAM;
   public static EntityReference ORGANIZATION_REF;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;

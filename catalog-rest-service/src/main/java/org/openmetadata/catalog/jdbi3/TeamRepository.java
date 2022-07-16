@@ -19,6 +19,8 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UN
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam.TeamType;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.type.EntityReference;
@@ -42,8 +45,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 @Slf4j
 public class TeamRepository extends EntityRepository<Team> {
-  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles";
-  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles";
+  static final String TEAM_UPDATE_FIELDS = "owner,profile,users,defaultRoles,parents,children";
+  static final String TEAM_PATCH_FIELDS = "owner,profile,users,defaultRoles,parents,children";
   Team organization = null;
 
   public TeamRepository(CollectionDAO dao) {
@@ -171,12 +174,11 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private void populateParents(Team team) throws IOException {
+    // All the teams created without parents has the top Organization as the default parent
     List<EntityReference> parentRefs = team.getParents();
-    // By default, all the teams created without parents has the top Organization as the parent
-    System.out.println("XXX parenRefs " + team.getParents());
     if (parentRefs == null) {
-      System.out.println("XXX defaulting to org parent");
-      team.setParents(List.of(organization.getEntityReference()));
+      team.setParents(new ArrayList<>());
+      team.getParents().add(organization.getEntityReference());
       return;
     }
     List<Team> parents = getTeams(parentRefs);
@@ -185,15 +187,15 @@ public class TeamRepository extends EntityRepository<Team> {
         validateTeams(team, "parent", parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
       case DIVISION:
-        validateSingleParent(parentRefs);
+        validateSingleParent(team, parentRefs);
         validateTeams(team, "parent", parents, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
       case BUSINESS_UNIT:
-        validateSingleParent(parentRefs);
+        validateSingleParent(team, parentRefs);
         validateTeams(team, "parent", parents, BUSINESS_UNIT, ORGANIZATION);
         break;
       case ORGANIZATION:
-        throw new IllegalArgumentException("Team of type Organization can't have a parent team");
+        throw new IllegalArgumentException(CatalogExceptionMessage.unexpectedParent());
     }
     populateTeamRefs(parentRefs, parents);
   }
@@ -218,17 +220,18 @@ public class TeamRepository extends EntityRepository<Team> {
     List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
     for (Team relatedTeam : relatedTeams) {
       if (!allowed.contains(relatedTeam.getTeamType())) {
-        throw new IllegalArgumentException(
-            String.format(
-                "For table of type %s invalid %s team %s of type %s",
-                team.getTeamType(), relation, relatedTeam.getName(), relatedTeam.getTeamType()));
+        String message =
+            relation.equals("child")
+                ? invalidParent(team, relatedTeam.getName(), relatedTeam.getTeamType())
+                : invalidParent(relatedTeam, team.getName(), team.getTeamType());
+        throw new IllegalArgumentException(message);
       }
     }
   }
 
-  private void validateSingleParent(List<EntityReference> parentRefs) {
+  private void validateSingleParent(Team team, List<EntityReference> parentRefs) {
     if (parentRefs.size() != 1) {
-      throw new IllegalArgumentException(String.format("Team can have only %s parents", 1));
+      throw new IllegalArgumentException(invalidParentCount(1, team.getTeamType()));
     }
   }
 
@@ -270,6 +273,8 @@ public class TeamRepository extends EntityRepository<Team> {
       recordChange("isJoinable", original.getIsJoinable(), updated.getIsJoinable());
       updateUsers(original, updated);
       updateDefaultRoles(original, updated);
+      updateParents(original, updated);
+      updateChildren(original, updated);
     }
 
     private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
@@ -291,6 +296,22 @@ public class TeamRepository extends EntityRepository<Team> {
           origDefaultRoles,
           updatedDefaultRoles,
           false);
+    }
+
+    private void updateParents(Team original, Team updated) throws JsonProcessingException {
+      List<EntityReference> origParents = listOrEmpty(original.getParents());
+      List<EntityReference> updatedParents = listOrEmpty(updated.getParents());
+      System.out.println("XXX original parents " + origParents);
+      System.out.println("XXX updated parents " + updatedParents);
+      updateFromRelationships(
+          "parents", TEAM, origParents, updatedParents, Relationship.PARENT_OF, TEAM, original.getId());
+    }
+
+    private void updateChildren(Team original, Team updated) throws JsonProcessingException {
+      List<EntityReference> origParents = listOrEmpty(original.getChildren());
+      List<EntityReference> updatedParents = listOrEmpty(updated.getChildren());
+      updateToRelationships(
+          "parents", TEAM, original.getId(), Relationship.PARENT_OF, TEAM, origParents, updatedParents, false);
     }
   }
 }
