@@ -44,7 +44,7 @@ import ConfirmationModal from '../../components/Modals/ConfirmationModal/Confirm
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
+import { delimiterRegex } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -153,8 +153,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
@@ -314,8 +312,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
