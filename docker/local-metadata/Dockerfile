@@ -12,7 +12,7 @@
 FROM alpine:3.15
 
 EXPOSE 8585
-
+VOLUME openmetadata-secure-volume:/security
 RUN  apk update \
   && apk upgrade \
   && apk add --update wget curl bash openjdk11 \
