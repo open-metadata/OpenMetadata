@@ -11,11 +11,11 @@ Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `o
 
 ```yaml
 authenticationConfiguration:
-  provider: "azure"
+  provider: "google"
   publicKeyUrls:
-    - "https://login.microsoftonline.com/common/discovery/keys"
-  authority: "https://login.microsoftonline.com/{Tenant ID}"
-  clientId: "{Client ID}"
+    - "https://www.googleapis.com/oauth2/v3/certs"
+  authority: "https://accounts.google.com"
+  clientId: "{client id}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
@@ -44,11 +44,9 @@ airflowConfiguration:
   username: ${AIRFLOW_USERNAME:-admin}
   password: ${AIRFLOW_PASSWORD:-admin}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  authProvider: azure
+  authProvider: google
   authConfig:
-    azure:
-      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
-      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      clientId: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+    google:
+      secretKey: ${OM_AUTH_AIRFLOW_GOOGLE_SECRET_KEY_PATH:- ""}
+      audience: ${OM_AUTH_AIRFLOW_GOOGLE_AUDIENCE:-"https://www.googleapis.com/oauth2/v4/token"}
 ```

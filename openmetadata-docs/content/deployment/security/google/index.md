@@ -178,9 +178,7 @@ When setting up the YAML config for the connector, update the `workflowConfig` a
 workflowConfig:
   openMetadataServerConfig:
     hostPort: 'http://localhost:8585/api'
-    authProvider: auth0
+    authProvider: google
     securityConfig:
-      clientId: '{your_client_id}'
-      secretKey: '{your_client_secret}'
-      domain: '{your_domain}'
+      secretKey: '{path-to-json-creds}'
 ```
