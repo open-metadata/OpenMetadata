@@ -179,8 +179,8 @@ class OMetaServiceTest(TestCase):
             "serviceConnection": {
                 "config": {
                     "type": "Looker",
-                    "username": "looker_user",
-                    "password": "looker_pwd",
+                    "clientId": "id",
+                    "clientSecret": "secret",
                     "hostPort": "http://random:1234",
                 }
             },
