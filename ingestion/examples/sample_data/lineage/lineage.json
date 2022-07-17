@@ -1,25 +1,26 @@
 [{
     "from": { "fqn":"sample_data.ecommerce_db.shopify.raw_customer", "type": "table"},
-    "to": { "fqn":"sample_airflow.dim_address_etl", "type": "pipeline"}
-  },
-  {
-      "from": {"fqn":"sample_airflow.dim_address_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.dim_address", "type": "table"}
+    "to": {"fqn":"sample_data.ecommerce_db.shopify.dim_address", "type": "table"},
+    "edge_meta": { "fqn":"sample_airflow.dim_address_etl", "type": "pipeline"}
   },
   {
     "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_order", "type": "table"},
-    "to": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
+    "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product\"", "type": "table"},
+    "edge_meta": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
+  },
+  {
+    "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_order", "type": "table"},
+    "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product.variant\"", "type": "table"},
+    "edge_meta": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
   },
   {
       "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_customer", "type": "table"},
-      "to": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
+      "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product\"", "type": "table"},
+      "edge_meta": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
   },
   {
-      "from": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product\"", "type": "table"}
-  },
-  {
-      "from": {"fqn": "sample_airflow.dim_product_etl", "type": "pipeline"},
-      "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product.variant\"", "type": "table"}
+    "from": {"fqn":"sample_data.ecommerce_db.shopify.raw_customer", "type": "table"},
+    "to": {"fqn":"sample_data.ecommerce_db.shopify.\"dim.product.variant\"", "type": "table"},
+    "edge_meta": {"fqn":"sample_airflow.dim_product_etl", "type": "pipeline"}
   }
 ]
