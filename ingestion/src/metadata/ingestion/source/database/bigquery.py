@@ -29,6 +29,7 @@ from metadata.generated.schema.api.tags.createTag import CreateTagRequest
 from metadata.generated.schema.api.tags.createTagCategory import (
     CreateTagCategoryRequest,
 )
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -181,7 +182,7 @@ class BigquerySource(CommonDbSourceService):
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == "View":
+        if table_type == TableType.View:
             view_definition = ""
             try:
                 view_definition = inspector.get_view_definition(
