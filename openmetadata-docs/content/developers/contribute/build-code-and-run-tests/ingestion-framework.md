@@ -12,7 +12,14 @@ The Ingestion Framework is a Python module that wraps the OpenMetadata API and b
 To do so, you can either build and run the [OpenMetadata Server](/developers/contribute/build-code-and-run-tests/openmetadata-server) locally as well, or use the `metadata` CLI to spin up the Docker containers as explained in the [Tooling Status](/developers/contribute/build-code-and-run-tests/ingestion-framework#tooling-status) section of this page.
 
 ## Python Setup
-We recommend using pyenv to properly install and manage different Python versions in your system. Note that OpenMetadata requires Python version +3.8. This [doc](https://python-docs.readthedocs.io/en/latest/dev/virtualenvs.html) might be helpful to set up the environment virtualization.
+We recommend using pyenv to properly install and manage different Python versions in your system. Note that OpenMetadata requires Python version +3.7. This [doc](https://python-docs.readthedocs.io/en/latest/dev/virtualenvs.html) might be helpful to set up the environment virtualization.
+
+<Note>
+
+Using an M1 Mac? To ensure compatibility with the different dependencies, use Python version 3.9.8 or higher. Note that the code
+has not been tested with Python 3.10 due to some libraries not supporting that already.
+
+</Note>
 
 ### Generated Sources
 The backbone of OpenMetadata is the series of JSON schemas defining the Entities and their properties.
