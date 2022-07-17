@@ -16,6 +16,6 @@ OpenMetadata depends on following components to build a metadata platform:
 
 <Image src="/images/developers/architecture/architecture.png" alt="OpenMetadata architecture" caption=" "/>
 
-To understand the OpenMetadata Architecture and how everything fits together please go through [Design page](/developers/architecture/design).
+To understand the OpenMetadata Architecture and how everything fits together please go through [Design page](/main-concepts/high-level-design).
 
 For Schema design and how our API works here is an example of ML [Model entity page](/sdk/python/entities/ml-model)

@@ -863,8 +863,6 @@ site_menu:
     icon: developer_mode
   - category: Developers / Architecture
     url: /developers/architecture
-  - category: Developers / Architecture / Design
-    url: /developers/architecture/design
   - category: Developers / Architecture / Understand Code Layout
     url: /developers/architecture/code-layout
   - category: Developers / Open Source Community
