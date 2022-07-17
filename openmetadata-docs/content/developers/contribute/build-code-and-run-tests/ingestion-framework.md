@@ -56,7 +56,7 @@ At least once, build the images fully:
 sh docker/run_local_docker.sh
 ```
 
-Which will package the server code. Afterward, if the modifications only impact the ingestion code and you need to refresh the ingestion container, you can run:
+Which will package the server code. Afterward, if the modifications only impact the ingestion code and need to refresh the ingestion container, you can run:
 
 ```shell
 cd docker/local-metadata
@@ -64,4 +64,8 @@ docker compose down -v && docker compose up --build
 ```
 
 ## Running tests
-You can validate the environment by running make coverage from the root directory. Note that from some of the tests, having the OpenMetadata server instance up is required as they interact with the API.
+
+To run the tests, you'll to install some packages via `make install_test`.
+
+You can validate the environment by running `make coverage` from the root directory. Note that from some tests, having 
+the OpenMetadata server instance up is required as they interact with the API.
