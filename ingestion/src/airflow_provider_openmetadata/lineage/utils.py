@@ -43,7 +43,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
@@ -351,31 +351,27 @@ def parse_lineage(
             airflow_service_entity=airflow_service_entity,
             metadata=metadata,
         )
+        lineage_details = LineageDetails(
+            pipeline=EntityReference(id=pipeline.id, type="pipeline")
+        )
 
         operator.log.info("Parsing Lineage")
-        for table in inlets if inlets else []:
-            table_entity = metadata.get_by_name(entity=Table, fqn=table)
-            operator.log.debug(f"from entity {table_entity}")
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=table_entity.id, type="table"),
-                    toEntity=EntityReference(id=pipeline.id, type="pipeline"),
+        for from_table in inlets if inlets else []:
+            from_entity = metadata.get_by_name(entity=Table, fqn=from_table)
+            operator.log.debug(f"from entity {from_entity}")
+            for to_table in outlets if outlets else []:
+                to_entity = metadata.get_by_name(entity=Table, fqn=to_table)
+                operator.log.debug(f"To entity {to_entity}")
+                lineage = AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=from_entity.id, type="table"),
+                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                    )
                 )
-            )
-            operator.log.debug(f"From lineage {lineage}")
-            metadata.add_lineage(lineage)
-
-        for table in outlets if outlets else []:
-            table_entity = metadata.get_by_name(entity=Table, fqn=table)
-            operator.log.debug(f"To entity {table_entity}")
-            lineage = AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
-                    toEntity=EntityReference(id=table_entity.id, type="table"),
-                )
-            )
-            operator.log.debug(f"To lineage {lineage}")
-            metadata.add_lineage(lineage)
+                if lineage_details:
+                    lineage.edge.lineageDetails = lineage_details
+                operator.log.debug(f"Lineage {lineage}")
+                metadata.add_lineage(lineage)
 
         return pipeline
 
