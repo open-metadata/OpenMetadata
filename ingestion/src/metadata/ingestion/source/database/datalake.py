@@ -13,7 +13,6 @@
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import traceback
-import urllib.parse
 from typing import Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -324,7 +323,7 @@ class DatalakeSource(DatabaseServiceSource):
         pass
 
     def standardize_table_name(self, schema: str, table: str) -> str:
-        return urllib.parse.quote(table)
+        return table
 
     def check_valid_file_type(self, key_name):
         if key_name.endswith(DATALAKE_SUPPORTED_FILE_TYPES):

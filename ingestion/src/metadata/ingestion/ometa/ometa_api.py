@@ -24,9 +24,8 @@ try:
 except ImportError:
     from typing_compat import get_args
 
-import urllib.parse
-
 from pydantic import BaseModel
+from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
@@ -462,7 +461,7 @@ class OpenMetadata(
 
         return self._get(
             entity=entity,
-            path=f"name/{urllib.parse.quote_plus(model_str(fqn))}",
+            path=f"name/{quote(model_str(fqn), safe='')}",
             fields=fields,
         )
 

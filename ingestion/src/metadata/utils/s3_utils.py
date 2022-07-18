@@ -16,16 +16,16 @@ import pandas as pd
 from pandas import DataFrame
 
 
-def read_csv_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
-    csv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_csv_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    csv_obj = client.get_object(Bucket=bucket_name, Key=key)
     body = csv_obj["Body"]
     csv_string = body.read().decode("utf-8")
     df = pd.read_csv(StringIO(csv_string))
     return df
 
 
-def read_tsv_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
-    tsv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_tsv_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    tsv_obj = client.get_object(Bucket=bucket_name, Key=key)
     body = tsv_obj["Body"]
     tsv_string = body.read().decode("utf-8")
     df = pd.read_csv(StringIO(tsv_string), sep="\t")
@@ -33,8 +33,8 @@ def read_tsv_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
     return df
 
 
-def read_json_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
-    obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_json_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    obj = client.get_object(Bucket=bucket_name, Key=key)
     json_text = obj["Body"].read().decode("utf-8")
     data = json.loads(json_text)
     if isinstance(data, list):
@@ -44,7 +44,7 @@ def read_json_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
     return df
 
 
-def read_parquet_from_s3(client: Any, key: dict, bucket_name: str) -> DataFrame:
-    obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    obj = client.get_object(Bucket=bucket_name, Key=key)
     df = pd.read_parquet(BytesIO(obj["Body"].read()))
     return df
