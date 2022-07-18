@@ -103,7 +103,7 @@ const IngestionLogsModal: FC<IngestionLogsModalProps> = ({
       footer={null}
       title={modalTitle}
       visible={isModalOpen}
-      width={1000}
+      width={1200}
       onCancel={onClose}>
       {isLoading ? (
         <Loader />
