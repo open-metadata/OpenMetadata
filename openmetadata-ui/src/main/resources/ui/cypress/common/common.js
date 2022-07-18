@@ -171,6 +171,8 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('be.visible')
     .click();
   cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
+  cy.wait(500);
+  cy.get('[data-testid="Manage"]').click();
   cy.get('[data-testid="delete-button"]')
     .should('exist')
     .should('be.visible')
