@@ -29,9 +29,15 @@ interface CustomOption extends SelectableOption {
 
 interface Props {
   onSelectionChange: (teams: string[]) => void;
+  filterJoinable?: boolean;
+  placeholder?: string;
 }
 
-const TeamsSelectable = ({ onSelectionChange }: Props) => {
+const TeamsSelectable = ({
+  onSelectionChange,
+  filterJoinable,
+  placeholder = 'Type to search for teams',
+}: Props) => {
   const [teamSearchText, setTeamSearchText] = useState<string>('');
 
   const handleSelectionChange = (selectedOptions: SelectableOption[]) => {
@@ -39,12 +45,14 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
   };
 
   const getOptions = (teams: Team[]) => {
-    return teams
-      .filter((team) => team.isJoinable)
-      .map((team) => ({
-        label: getEntityName(team as EntityReference),
-        value: team.id,
-      }));
+    const filteredTeams = filterJoinable
+      ? teams.filter((team) => team.isJoinable)
+      : teams;
+
+    return filteredTeams.map((team) => ({
+      label: getEntityName(team as EntityReference),
+      value: team.id,
+    }));
   };
 
   const loadOptions = (text: string) => {
@@ -58,9 +66,9 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
         });
       } else {
         getTeams('', PAGE_SIZE).then((res) => {
-          const teams: Team[] = res.data.data || [];
-          resolve(getOptions(teams));
-        });
+            const teams: Team[] = res.data.data || [];
+            resolve(getOptions(teams));
+          });
       }
     });
   };
@@ -78,7 +86,7 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
       inputValue={teamSearchText}
       isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
       loadOptions={loadOptions}
-      placeholder="Teams..."
+      placeholder={placeholder}
       styles={reactSingleSelectCustomStyle}
       onChange={(value) => handleSelectionChange(value as SelectableOption[])}
       onInputChange={(newText) => {

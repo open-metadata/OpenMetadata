@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityName } from '../../utils/CommonUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import Ellipses from '../common/Ellipses/Ellipses';
 import { leftPanelAntCardStyle } from '../containers/PageLayout';
 interface Prop {
   entityList: Array<FormattedTableData>;
@@ -113,7 +114,9 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
-                      {getEntityName(item as unknown as EntityReference)}
+                      <Ellipses className="tw-w-2/5">
+                        {getEntityName(item as unknown as EntityReference)}
+                      </Ellipses>
                     </Button>
                   </Link>
                 </div>
