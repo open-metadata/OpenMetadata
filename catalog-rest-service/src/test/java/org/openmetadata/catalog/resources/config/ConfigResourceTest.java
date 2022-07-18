@@ -58,14 +58,26 @@ class ConfigResourceTest extends CatalogApplicationTest {
   void get_auth_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth = TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthenticationConfiguration().toString(), auth.toString());
+    assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
+    assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
+    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
+    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+    assertEquals(config.getAuthenticationConfiguration().getJwtPrincipalClaims(), auth.getJwtPrincipalClaims());
+    assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
   }
 
   @Test
   void get_authorizer_configs_200_OK() throws IOException {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth = TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthorizerConfiguration().toString(), auth.toString());
+    assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
+    assertEquals(config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
+    assertEquals(config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
+    assertEquals(config.getAuthorizerConfiguration().getBotPrincipals(), auth.getBotPrincipals());
+    assertEquals(config.getAuthorizerConfiguration().getContainerRequestFilter(), auth.getContainerRequestFilter());
+    assertEquals(
+        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(), auth.getEnableSecureSocketConnection());
+    assertEquals(config.getAuthorizerConfiguration().getEnforcePrincipalDomain(), auth.getEnforcePrincipalDomain());
   }
 
   @Test
