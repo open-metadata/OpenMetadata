@@ -135,11 +135,12 @@ class SnowflakeSource(CommonDbSourceService):
         """
         Method to set query tag for current session
         """
-        self.engine.execute(
-            SNOWFLAKE_SESSION_TAG_QUERY.format(
-                query_tag=self.service_connection.queryTag
+        if self.service_connection.queryTag:
+            self.engine.execute(
+                SNOWFLAKE_SESSION_TAG_QUERY.format(
+                    query_tag=self.service_connection.queryTag
+                )
             )
-        )
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.__root__.config.database

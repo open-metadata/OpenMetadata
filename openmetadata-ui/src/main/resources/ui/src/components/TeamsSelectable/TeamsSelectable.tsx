@@ -78,6 +78,7 @@ const TeamsSelectable = ({ onSelectionChange }: Props) => {
       inputValue={teamSearchText}
       isOptionDisabled={(option) => !!(option as CustomOption).isDisabled}
       loadOptions={loadOptions}
+      maxMenuHeight={200}
       placeholder="Teams..."
       styles={reactSingleSelectCustomStyle}
       onChange={(value) => handleSelectionChange(value as SelectableOption[])}
