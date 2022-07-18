@@ -48,6 +48,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
@@ -63,6 +65,7 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.ResultList;
 
+@Slf4j
 @Path("/v1/teams")
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
@@ -88,7 +91,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   public void initialize(CatalogApplicationConfig config) throws IOException {
     // Add a default team called organization
     OrganizationConfiguration org = config.getOrganizationConfiguration();
-    System.out.println("XXX orgname " + org.getName());
+    LOG.info("Initializing organization {} ", org.getName());
     dao.initOrganization(org.getName());
   }
 
