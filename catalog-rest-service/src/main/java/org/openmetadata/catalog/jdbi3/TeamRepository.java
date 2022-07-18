@@ -232,9 +232,7 @@ public class TeamRepository extends EntityRepository<Team> {
   // Validate if the team can given type of parents
   private void validateParents(Team team, List<Team> relatedTeams, TeamType... allowedTeamTypes) {
     List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
-    System.out.println("XXX allowedTeamTypes " + allowed);
     for (Team relatedTeam : relatedTeams) {
-      System.out.println("XXX " + relatedTeam.getTeamType());
       if (!allowed.contains(relatedTeam.getTeamType())) {
         throw new IllegalArgumentException(invalidParent(relatedTeam, team.getName(), team.getTeamType()));
       }
@@ -244,9 +242,7 @@ public class TeamRepository extends EntityRepository<Team> {
   // Validate if the team can given type of children
   private void validateChildren(Team team, List<Team> children, TeamType... allowedTeamTypes) {
     List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
-    System.out.println("XXX allowedTeamTypes " + allowed);
     for (Team child : children) {
-      System.out.println("XXX " + child.getTeamType());
       if (!allowed.contains(child.getTeamType())) {
         throw new IllegalArgumentException(invalidChild(team.getName(), team.getTeamType(), child));
       }
@@ -325,8 +321,6 @@ public class TeamRepository extends EntityRepository<Team> {
     private void updateParents(Team original, Team updated) throws JsonProcessingException {
       List<EntityReference> origParents = listOrEmpty(original.getParents());
       List<EntityReference> updatedParents = listOrEmpty(updated.getParents());
-      System.out.println("XXX original parents " + origParents);
-      System.out.println("XXX updated parents " + updatedParents);
       updateFromRelationships(
           "parents", TEAM, origParents, updatedParents, Relationship.PARENT_OF, TEAM, original.getId());
     }
