@@ -25,6 +25,7 @@ from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -270,3 +271,12 @@ def find_in_list(element: Any, container: Iterable[Any]) -> Optional[Any]:
     :return: element or None
     """
     return next(iter([elem for elem in container if elem == element]), None)
+
+
+def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
+    """
+    If the column exists in the table, return it
+    """
+    return next(
+        iter([col for col in table.columns if col.name.__root__ == column_name]), None
+    )
