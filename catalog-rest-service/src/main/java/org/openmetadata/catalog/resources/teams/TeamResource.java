@@ -48,7 +48,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
@@ -89,10 +88,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   @SuppressWarnings("unused") // Method used for reflection
   public void initialize(CatalogApplicationConfig config) throws IOException {
-    // Add a default team called organization
-    OrganizationConfiguration org = config.getOrganizationConfiguration();
-    LOG.info("Initializing organization {} ", org.getName());
-    dao.initOrganization(org.getName());
+    dao.initOrganization("organization");
   }
 
   public static class TeamList extends ResultList<Team> {
