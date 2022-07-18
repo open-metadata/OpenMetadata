@@ -114,7 +114,7 @@ export const EntityListWithAntd: FunctionComponent<AntdEntityListProp> = ({
                       className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline"
                       title={getEntityName(item as unknown as EntityReference)}
                       type="text">
-                      <Ellipses className="tw-w-2/5">
+                      <Ellipses className="tw-w-48 tw-text-left">
                         {getEntityName(item as unknown as EntityReference)}
                       </Ellipses>
                     </Button>
