@@ -11,9 +11,8 @@
 
 # Required configuration for organization and team hierarchy.
 # Uncomment the following section and set the name to the company name or legal entity name
-
 organization:
-#  name:
+  name: ${ORGANIZATION_NAME}
 
 swagger:
   resourcePackage: org.openmetadata.catalog.resources
