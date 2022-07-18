@@ -22,7 +22,6 @@ import {
   getPartialNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
@@ -31,6 +30,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   createdBy,
   entityFQN,
   entityType,
+  icon,
   feedType,
   taskDetails,
 }) => {
@@ -93,7 +93,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 
   return (
     <div className="tw-flex tw-leading-4 tw-items-start">
-      <SVGIcons alt="" className="tw-mr-2" icon={Icons.TASK} width="14px" />
+      {icon}
       <span>
         <span>{createdBy}</span>
         {feedType === ThreadType.Conversation ? (

@@ -15,7 +15,6 @@ import React from 'react';
 import Icon from '@ant-design/icons';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as AllApplication } from '../../assets/svg/ic-all-application.svg';
 
 export const tabsInfo = [
   {
@@ -32,22 +31,10 @@ export const tabsInfo = [
   },
   {
     name: 'Mention',
-    key: 'Mention',
-    icon: (
-      <Icon
-        component={IconMentions}
-        style={{
-          marginRight: '8px',
-        }}
-      />
-    ),
-  },
-  {
-    name: 'Conversation',
     key: 'Conversation',
     icon: (
       <Icon
-        component={AllApplication}
+        component={IconMentions}
         style={{
           marginRight: '8px',
         }}

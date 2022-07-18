@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { Badge, Dropdown, Space } from 'antd';
 import { debounce } from 'lodash';
-import { Dropdown } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import AppState from '../../AppState';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, SOCKET_EVENTS } from '../../constants/constants';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -29,8 +29,9 @@ import Avatar from '../common/avatar/Avatar';
 import PopOver from '../common/popover/PopOver';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
-import { NavBarProps } from './NavBar.interface';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import { NavBarProps } from './NavBar.interface';
 
 const NavBar = ({
   settingDropdown,
@@ -42,7 +43,6 @@ const NavBar = ({
   pathname,
   username,
   isSearchBoxOpen,
-  hasNotification,
   handleSearchBoxOpen,
   handleFeatureModal,
   handleSearchChange,
@@ -51,6 +51,13 @@ const NavBar = ({
 }: NavBarProps) => {
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
+  const [hasTaskNotification, setHasTaskNotification] =
+    useState<boolean>(false);
+  const [hasMentionNotification, setHasMentionNotification] =
+    useState<boolean>(false);
+
+  const { socket } = useWebSocketConnector();
+
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -68,6 +75,45 @@ const NavBar = ({
     debouncedOnChange,
   ]);
 
+  const handleBellClick = (visible: boolean) => {
+    if (visible) {
+      if (hasTaskNotification) {
+        setTimeout(() => {
+          setHasTaskNotification(false);
+        }, 5000);
+      }
+    }
+  };
+
+  const handleTaskNotificationRead = () => {
+    setHasTaskNotification(false);
+  };
+
+  const handleMentionsNotificationRead = () => {
+    setHasMentionNotification(false);
+  };
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setHasTaskNotification(true);
+        }
+      });
+
+      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          setHasMentionNotification(true);
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+    };
+  }, [socket]);
+
   return (
     <>
       <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator">
@@ -78,7 +124,7 @@ const NavBar = ({
             </NavLink>
             <div className="tw-ml-5">
               <NavLink
-                className="tw-nav focus:tw-no-underline"
+                className="focus:tw-no-underline"
                 data-testid="appbar-item"
                 id="explore"
                 style={navStyle(pathname.startsWith('/explore'))}
@@ -144,93 +190,93 @@ const NavBar = ({
               ))}
           </div>
           <div className="tw-flex tw-ml-auto tw-pl-36">
-            <button className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 tw-relative tw-inline-block tw-flex tw-items-center">
-              <Dropdown
-                overlay={<NotificationBox />}
-                overlayStyle={{
-                  width: '373px',
-                  height: '368px',
-                }}
-                placement="bottomRight"
-                trigger={['click']}>
-                <div>
-                  <SVGIcons
-                    alt="Alert bell icon"
-                    className="tw-align-middle tw-mr-2"
-                    icon={Icons.ALERT_BELL}
-                    width="20"
-                  />
-                  {hasNotification ? <span className="tw-bell-badge" /> : null}
-                </div>
-              </Dropdown>
-            </button>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-              data-testid="whatsnew-modal"
-              onClick={() => handleFeatureModal(true)}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="20"
-              />
-            </button>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
-              data-testid="tour">
-              <Link to={ROUTES.TOUR}>
-                <SVGIcons
-                  alt="tour icon"
-                  className="tw-align-middle tw-mr-0.5"
-                  icon={Icons.TOUR}
-                  width="20"
+            <Space size={24}>
+              <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
+                <Dropdown
+                  overlay={
+                    <NotificationBox
+                      hasMentionNotification={hasMentionNotification}
+                      hasTaskNotification={hasTaskNotification}
+                      onMarkMentionsNotificationRead={
+                        handleMentionsNotificationRead
+                      }
+                      onMarkTaskNotificationRead={handleTaskNotificationRead}
+                    />
+                  }
+                  overlayStyle={{
+                    width: '373px',
+                    height: '368px',
+                  }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onVisibleChange={handleBellClick}>
+                  <Badge dot={hasTaskNotification || hasMentionNotification}>
+                    <SVGIcons
+                      alt="Alert bell icon"
+                      icon={Icons.ALERT_BELL}
+                      width="20"
+                    />
+                  </Badge>
+                </Dropdown>
+              </button>
+              <button
+                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
+                data-testid="whatsnew-modal"
+                onClick={() => handleFeatureModal(true)}>
+                <SVGIcons alt="Doc icon" icon={Icons.WHATS_NEW} width="20" />
+              </button>
+              <button
+                className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0"
+                data-testid="tour">
+                <Link to={ROUTES.TOUR}>
+                  <SVGIcons alt="tour icon" icon={Icons.TOUR} width="20" />
+                </Link>
+              </button>
+              <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
+                <DropDown
+                  dropDownList={supportDropdown}
+                  icon={
+                    <SVGIcons
+                      alt="Doc icon"
+                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
+                      icon={Icons.HELP_CIRCLE}
+                      width="20"
+                    />
+                  }
+                  isDropDownIconVisible={false}
+                  isLableVisible={false}
+                  label="Need Help"
+                  type="link"
                 />
-              </Link>
-            </button>
-            <div className="tw-flex-shrink-0">
+              </div>
+            </Space>
+            <div data-testid="dropdown-profile">
               <DropDown
-                dropDownList={supportDropdown}
+                dropDownList={profileDropdown}
                 icon={
-                  <SVGIcons
-                    alt="Doc icon"
-                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                    icon={Icons.HELP_CIRCLE}
-                    width="20"
-                  />
+                  <>
+                    <PopOver
+                      position="bottom"
+                      title="Profile"
+                      trigger="mouseenter">
+                      {AppState?.userDetails?.profile?.images?.image512 ? (
+                        <div className="profile-image square tw--mr-2">
+                          <img
+                            alt="user"
+                            referrerPolicy="no-referrer"
+                            src={AppState.userDetails.profile.images.image512}
+                          />
+                        </div>
+                      ) : (
+                        <Avatar name={username} width="30" />
+                      )}
+                    </PopOver>
+                  </>
                 }
                 isDropDownIconVisible={false}
-                isLableVisible={false}
-                label="Need Help"
                 type="link"
               />
             </div>
-          </div>
-          <div data-testid="dropdown-profile">
-            <DropDown
-              dropDownList={profileDropdown}
-              icon={
-                <>
-                  <PopOver
-                    position="bottom"
-                    title="Profile"
-                    trigger="mouseenter">
-                    {AppState?.userDetails?.profile?.images?.image512 ? (
-                      <div className="profile-image square tw--mr-2">
-                        <img
-                          alt="user"
-                          referrerPolicy="no-referrer"
-                          src={AppState.userDetails.profile.images.image512}
-                        />
-                      </div>
-                    ) : (
-                      <Avatar name={username} width="30" />
-                    )}
-                  </PopOver>
-                </>
-              }
-              isDropDownIconVisible={false}
-              type="link"
-            />
           </div>
         </div>
         {isFeatureModalOpen && (

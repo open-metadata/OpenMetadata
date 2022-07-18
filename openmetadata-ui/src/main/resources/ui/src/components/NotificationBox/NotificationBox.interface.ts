@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import { HTMLAttributes, ReactNode } from 'react';
-import { ActivityFeedCardProp } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
-
-export interface NotificationFeedProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'feedType' | 'taskDetails'> {
-  createdBy: string;
-  entityType: string;
-  entityFQN: string;
-  icon: ReactNode;
+export interface NotificationBoxProp {
+  hasMentionNotification: boolean;
+  hasTaskNotification: boolean;
+  onMarkMentionsNotificationRead: () => void;
+  onMarkTaskNotificationRead: () => void;
 }
