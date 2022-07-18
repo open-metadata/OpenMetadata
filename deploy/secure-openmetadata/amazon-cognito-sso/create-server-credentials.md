@@ -33,8 +33,7 @@
 
 ## Step 3: Where to find the Credentials
 
-* The `User Pool ID` can be found in the User Pool summary page as seen in the screen-shot below\
-
+* The `User Pool ID` can be found in the User Pool summary page as seen in the screen-shot below
 
 ![User Pool ID](<../../../.gitbook/assets/Screen Shot 2022-07-17 at 11.57.47 PM.png>)
 
