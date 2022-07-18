@@ -701,6 +701,7 @@ const TaskDetailPage = () => {
           <Sider
             className="ant-layout-sider-task-detail"
             data-testid="task-right-sider"
+            theme="light"
             width={600}>
             <Tabs className="ant-tabs-custom-line" onChange={onTabChange}>
               <TabPane key={PanelTab.TASKS} tab="Task">

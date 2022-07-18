@@ -105,6 +105,26 @@ module.exports = {
         // May need to handle files outside the source code
         // (from node_modules)
       },
+      // .less files to be handled by sass-loader
+      {
+        test: /\.less$/,
+        use: [
+          {
+            loader: 'style-loader',
+          },
+          {
+            loader: 'css-loader', // translates CSS into CommonJS
+          },
+          {
+            loader: 'less-loader', // compiles Less to CSS
+            options: {
+              lessOptions: {
+                javascriptEnabled: true,
+              },
+            },
+          },
+        ],
+      },
       // .svg files to be handled by @svgr/webpack
       {
         test: /\.svg$/,

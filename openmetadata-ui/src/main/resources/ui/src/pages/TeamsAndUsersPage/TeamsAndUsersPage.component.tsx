@@ -80,7 +80,7 @@ const TeamsAndUsersPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [errorNewTeamData, setErrorNewTeamData] = useState<FormErrorData>();
-  const [activeUserTab, setactiveUserTab] = useState<UserType>();
+  const [activeUserTab, setActiveUserTab] = useState<UserType>();
   const [userList, setUserList] = useState<Array<User>>([]);
   const [usersCount, setUsersCount] = useState<number>(0);
   const [adminsCount, setAdminsCount] = useState<number>(0);
@@ -100,13 +100,16 @@ const TeamsAndUsersPage = () => {
   };
 
   const activeUserTabHandler = (data: UserType | undefined) => {
-    setactiveUserTab(data);
+    setActiveUserTab(data);
   };
 
   const isIncludes = (name: string, term: string) => {
     return toLower(name).includes(toLower(term));
   };
 
+  const resetCurrentUserTeamPage = () => {
+    setCurrentTeamUserPage(INITIAL_PAGIN_VALUE);
+  };
   /**
    * Make API call to fetch all the users
    */
@@ -400,7 +403,7 @@ const TeamsAndUsersPage = () => {
 
   const handleTeamUsersSearchAction = (text: string) => {
     setTeamUsersSearchText(text);
-    setCurrentTeamUserPage(INITIAL_PAGIN_VALUE);
+    resetCurrentUserTeamPage();
     if (text) {
       searchUsers(text, INITIAL_PAGIN_VALUE);
     } else {
@@ -521,13 +524,14 @@ const TeamsAndUsersPage = () => {
   const changeCurrentTeam = (name: string, isUsersCategory: boolean) => {
     if (name !== teamAndUser) {
       setIsRightPanelLoading(true);
+      resetCurrentUserTeamPage();
       history.push(getTeamAndUserDetailsPath(name));
       if (isUsersCategory) {
         setIsTeamVisible(false);
         setCurrentTeam({} as Team);
       } else {
         setIsTeamVisible(true);
-        setactiveUserTab(undefined);
+        setActiveUserTab(undefined);
       }
     }
   };
@@ -702,7 +706,7 @@ const TeamsAndUsersPage = () => {
           (isAdminUser || isAuthDisabled)
         ) {
           setIsTeamVisible(false);
-          setactiveUserTab(teamAndUser as UserType);
+          setActiveUserTab(teamAndUser as UserType);
           setCurrentTeam({} as Team);
           setCurrentUserPage(INITIAL_PAGIN_VALUE);
           setAllTabList(teamAndUser as UserType);
@@ -711,7 +715,7 @@ const TeamsAndUsersPage = () => {
           fetchCurrentTeam(teamAndUser);
         }
       } else {
-        setactiveUserTab('' as UserType);
+        setActiveUserTab('' as UserType);
         setIsTeamVisible(true);
       }
       setUserSearchTerm('');
