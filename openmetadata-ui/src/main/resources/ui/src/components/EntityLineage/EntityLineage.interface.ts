@@ -64,6 +64,8 @@ export interface EdgeData {
 export interface CustomEdgeData {
   id: string;
   source: string;
+  label?: string;
+  pipeline?: EntityReference;
   target: string;
   sourceType: string;
   targetType: string;
