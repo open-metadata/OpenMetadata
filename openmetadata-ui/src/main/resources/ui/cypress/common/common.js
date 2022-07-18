@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+/// <reference types="cypress" />
+
 export const uuid = () => Cypress._.random(0, 1e6);
 
 const isDatabaseService = (type) => type === 'database';
@@ -154,6 +156,8 @@ export const testServiceCreationAndIngestion = (
 
 export const deleteCreatedService = (typeOfService, service_Name) => {
   cy.goToHomePage();
+
+  cy.intercept('GET', '/api/v1/*').as('getServices');
   cy.get(
     '.tw-ml-5 > [data-testid="dropdown-item"] > div > [data-testid="menu-button"]'
   )
@@ -170,9 +174,8 @@ export const deleteCreatedService = (typeOfService, service_Name) => {
     .should('exist')
     .should('be.visible')
     .click();
+  cy.wait('@getServices');
   cy.get('[data-testid="Manage"]').should('exist').should('be.visible').click();
-  cy.wait(500);
-  cy.get('[data-testid="Manage"]').click();
   cy.get('[data-testid="delete-button"]')
     .should('exist')
     .should('be.visible')
