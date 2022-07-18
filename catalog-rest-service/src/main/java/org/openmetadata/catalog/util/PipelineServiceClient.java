@@ -92,5 +92,5 @@ public abstract class PipelineServiceClient {
   public abstract IngestionPipeline toggleIngestion(IngestionPipeline ingestionPipeline);
 
   /* Get the all last run logs of a deployed pipeline */
-  public abstract Map<String, String> getLastIngestionLogs(String pipelineName);
+  public abstract Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline);
 }
