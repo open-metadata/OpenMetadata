@@ -40,7 +40,7 @@ public class AirflowRESTClientIntegrationTest {
   public static final IngestionPipeline INGESTION_PIPELINE =
       new IngestionPipeline()
           .withName(DAG_NAME)
-          .withId(UUID.fromString("2004514B-A800-4D92-8442-14B2796F712E"))
+          .withId(UUID.randomUUID())
           .withPipelineType(PipelineType.METADATA)
           .withSourceConfig(DATABASE_METADATA_CONFIG)
           .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
