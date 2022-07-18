@@ -14,8 +14,7 @@
 import { SelectableOption } from 'Models';
 import React, { useState } from 'react';
 import AsyncSelect from 'react-select/async';
-import { getSuggestedTeams } from '../../axiosAPIs/miscAPI';
-import { getTeams } from '../../axiosAPIs/teamsAPI';
+import { getSuggestedTeams, getTeamsByQuery } from '../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -65,10 +64,16 @@ const TeamsSelectable = ({
           resolve(getOptions(teams));
         });
       } else {
-        getTeams('', PAGE_SIZE).then((res) => {
-            const teams: Team[] = res.data.data || [];
-            resolve(getOptions(teams));
-          });
+        getTeamsByQuery({
+          q: '*',
+          from: 0,
+          size: PAGE_SIZE,
+          isJoinable: filterJoinable,
+        }).then((res) => {
+          const teams: Team[] =
+            res.hits.hits.map((t: { _source: Team }) => t._source) || [];
+          resolve(getOptions(teams));
+        });
       }
     });
   };
