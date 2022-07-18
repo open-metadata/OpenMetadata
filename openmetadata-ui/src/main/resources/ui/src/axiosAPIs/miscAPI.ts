@@ -133,6 +133,17 @@ export const getSuggestedTeams = (term: string): Promise<AxiosResponse> => {
   return APIClient.get(`/search/suggest?q=${term}&index=${SearchIndex.TEAM}`);
 };
 
+export const getUserSuggestions: Function = (
+  term: string
+): Promise<AxiosResponse> => {
+  const params = {
+    q: term,
+    index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
+  };
+
+  return APIClient.get(`/search/suggest`, { params });
+};
+
 export const getTeamsByQuery = async (params: {
   q: string;
   from?: number;
