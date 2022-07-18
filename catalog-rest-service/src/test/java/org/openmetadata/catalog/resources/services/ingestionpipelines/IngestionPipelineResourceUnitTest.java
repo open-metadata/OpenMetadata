@@ -69,7 +69,7 @@ public class IngestionPipelineResourceUnitTest {
         mockConstruction(AirflowRESTClient.class, this::preparePipelineServiceClient)) {
       ingestionPipelineResource.initialize(catalogApplicationConfig);
       assertEquals(
-          expectedMap, ingestionPipelineResource.getLastIngestionLogs(uriInfo, securityContext, DAG_NAME).getEntity());
+          expectedMap, ingestionPipelineResource.getLastIngestionLogs(uriInfo, securityContext, INGESTION_PIPELINE.getId().toString()).getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
       verify(client).getLastIngestionLogs(INGESTION_PIPELINE);
     }
