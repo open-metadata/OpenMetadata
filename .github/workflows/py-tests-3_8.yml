@@ -65,7 +65,7 @@ jobs:
       run: ./docker/run_local_docker.sh
       timeout-minutes: 30
 
-    - name: Run Python Tests & record coverage
+    - name: Run Python Tests
       run: |
         source env/bin/activate
-        make coverage
+        make run_python_tests
