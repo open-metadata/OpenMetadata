@@ -65,7 +65,7 @@
     },
     "queryTag": {
       "title": "Query Tag",
-      "description": "Session query tag used to monitor usage on snoflake",
+      "description": "Session query tag used to monitor usage on snoflake. To use a query tag snowflake user should have enough privileges to alter the session.",
       "type": "string"
     },
     "privateKey": {
