@@ -95,13 +95,13 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     TEAM_OWNER1 = TEAM1.getEntityReference();
 
-    ORG_TEAM = teamResourceTest.getEntityByName("openMetadata", "", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = teamResourceTest.getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
   void test_initialization() throws HttpResponseException {
     // Ensure getting organization from team hierarchy is successful
-    getEntityByName("openMetadata", "", ADMIN_AUTH_HEADERS);
+    getEntityByName("organization", "", ADMIN_AUTH_HEADERS);
   }
 
   @Test
