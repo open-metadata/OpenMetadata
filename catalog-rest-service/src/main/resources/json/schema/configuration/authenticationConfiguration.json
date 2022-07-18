@@ -15,7 +15,7 @@
       "type": "string"
     },
     "publicKeyUrls": {
-      "description": "Display Name that identifies this Chart. It could be title or label from the source services.",
+      "description": "List of Public Key URLs",
       "type": "array",
       "items": {
         "type": "string"

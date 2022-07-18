@@ -29,15 +29,15 @@
       }
     },
     "principalDomain": {
-      "description": "Authentication Authority",
+      "description": "Principal Domain",
       "type": "string"
     },
     "enforcePrincipalDomain": {
-      "description": "Client ID",
+      "description": "Enable Enforce Principal Domain",
       "type": "boolean"
     },
     "enableSecureSocketConnection": {
-      "description": "Callback URL",
+      "description": "Enable Secure Socket Connection",
       "type": "boolean"
     }
   },

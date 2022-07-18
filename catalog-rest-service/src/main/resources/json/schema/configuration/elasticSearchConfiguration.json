@@ -19,33 +19,33 @@
       "type": "string"
     },
     "username": {
-      "description": "Elastic Search Host",
+      "description": "Elastic Search Username for Login",
       "type": "string"
     },
     "password": {
-      "description": "Elastic Search port",
+      "description": "Elastic Search Password for Login",
       "type": "string"
     },
     "truststorePath": {
-      "description": "Http/Https connection scheme",
+      "description": "Truststore Path",
       "type": "string"
     },
     "truststorePassword": {
-      "description": "Http/Https connection scheme",
+      "description": "Truststore Password",
       "type": "string"
     },
     "connectionTimeoutSecs": {
-      "description": "Elastic Search Host",
+      "description": "Connection Timeout in Seconds",
       "type": "integer",
       "default": 5
     },
     "socketTimeoutSecs": {
-      "description": "Elastic Search port",
+      "description": "Socket Timeout in Seconds",
       "type": "integer",
       "default": 60
     },
     "batchSize": {
-      "description": "Http/Https connection scheme",
+      "description": "Batch Size for Requests",
       "type": "integer",
       "default": 10
     }
