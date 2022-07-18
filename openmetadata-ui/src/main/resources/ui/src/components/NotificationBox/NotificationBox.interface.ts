@@ -16,4 +16,5 @@ export interface NotificationBoxProp {
   hasTaskNotification: boolean;
   onMarkMentionsNotificationRead: () => void;
   onMarkTaskNotificationRead: () => void;
+  onTabChange: (key: string) => void;
 }

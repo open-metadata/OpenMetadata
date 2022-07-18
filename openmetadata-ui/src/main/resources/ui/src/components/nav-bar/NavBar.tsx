@@ -55,6 +55,7 @@ const NavBar = ({
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('Task');
 
   const { socket } = useWebSocketConnector();
 
@@ -77,10 +78,22 @@ const NavBar = ({
 
   const handleBellClick = (visible: boolean) => {
     if (visible) {
-      if (hasTaskNotification) {
-        setTimeout(() => {
-          setHasTaskNotification(false);
-        }, 5000);
+      switch (activeTab) {
+        case 'Task':
+          hasTaskNotification &&
+            setTimeout(() => {
+              setHasTaskNotification(false);
+            }, 5000);
+
+          break;
+
+        case 'Conversation':
+          hasMentionNotification &&
+            setTimeout(() => {
+              setHasMentionNotification(false);
+            }, 5000);
+
+          break;
       }
     }
   };
@@ -91,6 +104,10 @@ const NavBar = ({
 
   const handleMentionsNotificationRead = () => {
     setHasMentionNotification(false);
+  };
+
+  const handleActiveTab = (key: string) => {
+    setActiveTab(key);
   };
 
   useEffect(() => {
@@ -201,6 +218,7 @@ const NavBar = ({
                         handleMentionsNotificationRead
                       }
                       onMarkTaskNotificationRead={handleTaskNotificationRead}
+                      onTabChange={handleActiveTab}
                     />
                   }
                   overlayStyle={{

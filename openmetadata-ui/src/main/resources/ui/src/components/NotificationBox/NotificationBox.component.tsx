@@ -34,6 +34,7 @@ const NotificationBox = ({
   hasTaskNotification,
   onMarkTaskNotificationRead,
   onMarkMentionsNotificationRead,
+  onTabChange,
 }: NotificationBoxProp) => {
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -58,8 +59,8 @@ const NotificationBox = ({
         id: feed.id,
         reactions: feed.reactions,
       } as Post;
-      const entityType = getEntityType(feed.about as string);
-      const entityFQN = getEntityFQN(feed.about as string);
+      const entityType = getEntityType(feed.about);
+      const entityFQN = getEntityFQN(feed.about);
 
       return (
         <NotificationFeedCard
@@ -105,6 +106,7 @@ const NotificationBox = ({
 
   const updateActiveTab = useCallback(
     (key: string) => {
+      onTabChange(key);
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
       getNotificationData(threadType, feedFilter);
@@ -130,24 +132,25 @@ const NotificationBox = ({
         }, 4000);
       }
     },
-    [currentUser]
+    [currentUser, hasTaskNotification, hasMentionNotification]
   );
 
   useEffect(() => {
     getNotificationData(ThreadType.Task, FeedFilter.ASSIGNED_TO);
   }, []);
 
-  const getTabTitle = (key: string) => {
+  const getTabTitle = (name: string, key: string) => {
     return (
       <Badge
-        dot={key === 'Task' ? hasTaskNotification : hasMentionNotification}>
+        dot={key === 'Task' ? hasTaskNotification : hasMentionNotification}
+        offset={[5, 0]}>
         <SVGIcons
           alt=""
           className="tw-mr-2"
           icon={key === 'Task' ? Icons.TASK : Icons.MENTIONS}
           width="14px"
         />
-        {key}
+        {name}
       </Badge>
     );
   };
@@ -177,7 +180,7 @@ const NotificationBox = ({
         }}
         onTabClick={updateActiveTab}>
         {tabsInfo.map(({ name, key }) => (
-          <Tabs.TabPane key={key} tab={getTabTitle(key)}>
+          <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
               <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
                 <Loader size="small" />
