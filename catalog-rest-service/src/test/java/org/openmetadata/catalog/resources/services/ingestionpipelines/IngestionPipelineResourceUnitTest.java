@@ -14,10 +14,10 @@
 package org.openmetadata.catalog.resources.services.ingestionpipelines;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
+import static org.openmetadata.catalog.airflow.AirflowRESTClientIntegrationTest.INGESTION_PIPELINE;
 
 import java.io.IOException;
 import java.util.Map;
@@ -71,11 +71,11 @@ public class IngestionPipelineResourceUnitTest {
       assertEquals(
           expectedMap, ingestionPipelineResource.getLastIngestionLogs(uriInfo, securityContext, DAG_NAME).getEntity());
       PipelineServiceClient client = mocked.constructed().get(0);
-      verify(client).getLastIngestionLogs(DAG_NAME);
+      verify(client).getLastIngestionLogs(INGESTION_PIPELINE);
     }
   }
 
   private void preparePipelineServiceClient(AirflowRESTClient mockPipelineServiceClient, Context context) {
-    doReturn(Map.of("task", "log")).when(mockPipelineServiceClient).getLastIngestionLogs(anyString());
+    doReturn(Map.of("task", "log")).when(mockPipelineServiceClient).getLastIngestionLogs(INGESTION_PIPELINE);
   }
 }

@@ -216,10 +216,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public Map<String, String> getLastIngestionLogs(String pipelineName) {
+  public Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline) {
     try {
       HttpResponse<String> response =
-          requestAuthenticatedForJsonContent("%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, pipelineName);
+          requestAuthenticatedForJsonContent(
+              "%s/rest_api/api?api=last_dag_logs&dag_id=%s", serviceURL, ingestionPipeline.getName());
       if (response.statusCode() == 200) {
         return JsonUtils.readValue(response.body(), new TypeReference<>() {});
       }
