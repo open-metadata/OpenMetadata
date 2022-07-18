@@ -365,7 +365,8 @@ class CommonDbSourceService(
                 ) or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error("Could not parse query: Ingesting lineage failed")
+            logger.debug(f"Query : {view_definition}")
+            logger.warning("Could not parse query: Ingesting lineage failed")
 
     def test_connection(self) -> None:
         """
