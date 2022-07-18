@@ -75,12 +75,9 @@ import org.openmetadata.catalog.type.TaskDetails;
 import org.openmetadata.catalog.type.TaskStatus;
 import org.openmetadata.catalog.type.TaskType;
 import org.openmetadata.catalog.type.ThreadType;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.*;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
 import org.openmetadata.catalog.util.RestUtil.PatchResponse;
-import org.openmetadata.catalog.util.ResultList;
 
 @Slf4j
 public class FeedRepository {
@@ -367,7 +364,9 @@ public class FeedRepository {
           oldValue = task.getOldValue();
         }
         message =
-            String.format("Resolved the Task with Description - %s", getPlaintextDiff(oldValue, task.getNewValue()));
+            String.format(
+                "Resolved the Task with Description - %s",
+                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, task.getNewValue()));
       } else if (List.of(TaskType.RequestTag, TaskType.UpdateTag).contains(type)) {
         List<TagLabel> tags;
         if (task.getOldValue() != null) {
@@ -376,7 +375,10 @@ public class FeedRepository {
         }
         tags = JsonUtils.readObjects(task.getNewValue(), TagLabel.class);
         String newValue = getTagFQNs(tags);
-        message = String.format("Resolved the Task with Tag(s) - %s", getPlaintextDiff(oldValue, newValue));
+        message =
+            String.format(
+                "Resolved the Task with Tag(s) - %s",
+                getPlaintextDiff(ChangeEventParser.PUBLISH_TO.FEED, oldValue, newValue));
       } else {
         message = "Resolved the Task.";
       }
