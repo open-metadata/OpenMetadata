@@ -19,12 +19,12 @@ echo "Starting Local Docker Containers"
 
 docker compose down && docker compose up --build -d
 
-until curl -s -f -o /dev/null "http://localhost:9200/_cat/indices/team_search_index"; do
-  printf '.'
+until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
+  printf 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
-until curl -s -f -o /dev/null --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
-  printf '.'
+until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
+  printf 'Checking if Sample Data DAG is reachable...\n'
   sleep 5
 done
 curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
@@ -33,9 +33,16 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
   --data-raw '{
         "is_paused": false
       }'
-until curl -s -f -o /dev/null "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
-  printf '.'
-  sleep 2
+
+cd ../
+printf 'Validate sample data DAG...'
+sleep 5
+python validate_compose.py
+
+until curl -s -f "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
+  printf 'Waiting on Sample Data Ingestion to complete...\n'
+  curl -v "http://localhost:8585/api/v1/tables"
+  sleep 5
 done
 sleep 5
 curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_usage' \
