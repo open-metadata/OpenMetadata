@@ -29,7 +29,6 @@ def read_tsv_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
     body = tsv_obj["Body"]
     tsv_string = body.read().decode("utf-8")
     df = pd.read_csv(StringIO(tsv_string), sep="\t")
-
     return df
 
 
