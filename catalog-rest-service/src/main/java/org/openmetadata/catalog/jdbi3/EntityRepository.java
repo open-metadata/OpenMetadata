@@ -596,7 +596,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void cleanup(EntityInterface entityInterface) throws JsonProcessingException {
+  protected void cleanup(T entityInterface) throws IOException {
     String id = entityInterface.getId().toString();
 
     // Delete all the relationships to other entities

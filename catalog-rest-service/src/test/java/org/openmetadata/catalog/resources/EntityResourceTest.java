@@ -57,6 +57,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponseContains;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReferences;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -173,7 +174,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static EntityReference USER_OWNER2;
 
   public static Team ORG_TEAM;
-  public static EntityReference ORGANIZATION_REF;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
 
@@ -1968,9 +1968,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void assertEntityReferencesContain(List<EntityReference> list, EntityReference reference) {
+    assertFalse(listOrEmpty(list).isEmpty());
     EntityReference actual =
         list.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, reference)).findAny().orElse(null);
     assertNotNull(actual, "Expected entity reference " + reference.getId() + " not found");
+  }
+
+  protected void assertEntityReferencesDoesNotContain(List<EntityReference> list, EntityReference reference) {
+    if (listOrEmpty(list).isEmpty()) {
+      return; // Empty list does not contain the reference we are looking for
+    }
+    EntityReference actual =
+        list.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, reference)).findAny().orElse(null);
+    assertNull(actual, "Expected entity reference " + reference.getId() + " is still found");
   }
 
   protected void assertStrings(List<String> expectedList, List<String> actualList) {

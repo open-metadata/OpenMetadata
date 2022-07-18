@@ -140,6 +140,12 @@ public final class CatalogExceptionMessage {
         parent.getName(), parent.getTeamType(), child, childType);
   }
 
+  public static String invalidChild(String parent, TeamType parentType, Team child) {
+    return String.format(
+        "Team %s of type %s can't have child team %s of type %s",
+        parent, parentType, child.getName(), child.getTeamType());
+  }
+
   public static String unexpectedParent() {
     return "Team of type Organization can't have a parent team";
   }
