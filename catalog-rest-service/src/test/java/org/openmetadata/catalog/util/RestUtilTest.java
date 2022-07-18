@@ -49,6 +49,11 @@ class RestUtilTest {
     assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection", "/path"));
     assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection/", "path/"));
     assertEquals(URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "/collection/", "/path/"));
+
+    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "collection", "path 1"));
+    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "/collection", "/path 1"));
+    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "collection/", "path 1/"));
+    assertEquals(URI.create("http://base/collection/path%201"), RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
   }
 
   private UriInfo mockUriInfo(String uri) throws URISyntaxException {
