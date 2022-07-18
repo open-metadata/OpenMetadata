@@ -25,11 +25,10 @@ const mockProps = {
 };
 
 jest.mock('../../../axiosAPIs/ingestionPipelineAPI', () => ({
-  getIngestionPipelineLogById: jest
-    .fn()
-    .mockImplementation(() =>
-      Promise.resolve({ data: { ingestion_task: 'logs' } })
-    ),
+  getIngestionPipelineLogById: jest.fn().mockImplementation(() =>
+    // eslint-disable-next-line @typescript-eslint/camelcase
+    Promise.resolve({ data: { ingestion_task: 'logs' } })
+  ),
 }));
 
 jest.mock('../../buttons/CopyToClipboardButton/CopyToClipboardButton', () =>
