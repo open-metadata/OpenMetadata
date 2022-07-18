@@ -19,6 +19,7 @@ import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.BUSINESS_UN
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.catalog.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.invalidParentCount;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -124,6 +125,21 @@ public class TeamRepository extends EntityRepository<Team> {
     return new TeamUpdater(original, updated, operation);
   }
 
+  @Override
+  protected void cleanup(Team team) throws IOException {
+    // When a parent team is deleted, if the children team don't have a parent, set Organization as the parent
+    getParents(team);
+    for (EntityReference child : listOrEmpty(team.getChildren())) {
+      Team childTeam = dao.findEntityById(child.getId());
+      getParents(childTeam);
+      if (childTeam.getParents().size() == 1) { // Only parent is being deleted, move the parent to Organization
+        addRelationship(organization.getId(), childTeam.getId(), TEAM, TEAM, Relationship.PARENT_OF);
+        LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
+      }
+    }
+    super.cleanup(team);
+  }
+
   private List<EntityReference> getUsers(Team team) throws IOException {
     List<EntityRelationshipRecord> userIds = findTo(team.getId(), TEAM, Relationship.HAS, Entity.USER);
     return EntityUtil.populateEntityReferences(userIds, Entity.USER);
@@ -158,16 +174,14 @@ public class TeamRepository extends EntityRepository<Team> {
     List<Team> children = getTeams(childrenRefs);
     switch (team.getTeamType()) {
       case DEPARTMENT:
-        validateTeams(team, "child", children, DEPARTMENT);
+        validateChildren(team, children, DEPARTMENT);
         break;
       case DIVISION:
-        validateTeams(team, "child", children, DEPARTMENT, DIVISION);
+        validateChildren(team, children, DEPARTMENT, DIVISION);
         break;
       case BUSINESS_UNIT:
-        validateTeams(team, "child", children, BUSINESS_UNIT, DIVISION);
-        break;
       case ORGANIZATION:
-        validateTeams(team, "child", children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
+        validateChildren(team, children, BUSINESS_UNIT, DIVISION, DEPARTMENT);
         break;
     }
     populateTeamRefs(childrenRefs, children);
@@ -184,15 +198,15 @@ public class TeamRepository extends EntityRepository<Team> {
     List<Team> parents = getTeams(parentRefs);
     switch (team.getTeamType()) {
       case DEPARTMENT:
-        validateTeams(team, "parent", parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
+        validateParents(team, parents, DEPARTMENT, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
       case DIVISION:
         validateSingleParent(team, parentRefs);
-        validateTeams(team, "parent", parents, DIVISION, BUSINESS_UNIT, ORGANIZATION);
+        validateParents(team, parents, DIVISION, BUSINESS_UNIT, ORGANIZATION);
         break;
       case BUSINESS_UNIT:
         validateSingleParent(team, parentRefs);
-        validateTeams(team, "parent", parents, BUSINESS_UNIT, ORGANIZATION);
+        validateParents(team, parents, BUSINESS_UNIT, ORGANIZATION);
         break;
       case ORGANIZATION:
         throw new IllegalArgumentException(CatalogExceptionMessage.unexpectedParent());
@@ -215,16 +229,26 @@ public class TeamRepository extends EntityRepository<Team> {
     return teams;
   }
 
-  // Validate given list of teams are of team types in allowedTeamTypes list
-  private void validateTeams(Team team, String relation, List<Team> relatedTeams, TeamType... allowedTeamTypes) {
+  // Validate if the team can given type of parents
+  private void validateParents(Team team, List<Team> relatedTeams, TeamType... allowedTeamTypes) {
     List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
+    System.out.println("XXX allowedTeamTypes " + allowed);
     for (Team relatedTeam : relatedTeams) {
+      System.out.println("XXX " + relatedTeam.getTeamType());
       if (!allowed.contains(relatedTeam.getTeamType())) {
-        String message =
-            relation.equals("child")
-                ? invalidParent(team, relatedTeam.getName(), relatedTeam.getTeamType())
-                : invalidParent(relatedTeam, team.getName(), team.getTeamType());
-        throw new IllegalArgumentException(message);
+        throw new IllegalArgumentException(invalidParent(relatedTeam, team.getName(), team.getTeamType()));
+      }
+    }
+  }
+
+  // Validate if the team can given type of children
+  private void validateChildren(Team team, List<Team> children, TeamType... allowedTeamTypes) {
+    List<TeamType> allowed = Arrays.asList(allowedTeamTypes);
+    System.out.println("XXX allowedTeamTypes " + allowed);
+    for (Team child : children) {
+      System.out.println("XXX " + child.getTeamType());
+      if (!allowed.contains(child.getTeamType())) {
+        throw new IllegalArgumentException(invalidChild(team.getName(), team.getTeamType(), child));
       }
     }
   }

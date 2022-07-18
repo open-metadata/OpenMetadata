@@ -231,81 +231,158 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void post_hierarchicalTeams() throws HttpResponseException {
+  void post_hierarchicalTeamsWithParents() throws HttpResponseException {
     // Ensure teams created without any parent has Organization as the parent
     Team team = getEntity(TEAM1.getId(), "parents", ADMIN_AUTH_HEADERS);
     assertParents(team, List.of(ORG_TEAM.getEntityReference()));
 
+    //
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [ bu1, div2, dep3]
-    Team bu1 = createHierarchy("bu1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
-    Team div2 = createHierarchy("div2", DIVISION, ORG_TEAM.getEntityReference());
-    Team dep3 = createHierarchy("dep3", DEPARTMENT, ORG_TEAM.getEntityReference());
+    Team bu1 = createWithParents("bu1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team div2 = createWithParents("div2", DIVISION, ORG_TEAM.getEntityReference());
+    Team dep3 = createWithParents("dep3", DEPARTMENT, ORG_TEAM.getEntityReference());
 
-    // Create hierarchy of business unit, division, and department under business unit
-    // bu1 -- has children --> [ bu11, div12, dep13]
-    Team bu11 = createHierarchy("bu11", BUSINESS_UNIT, bu1.getEntityReference());
-    Team div11 = createHierarchy("div12", DIVISION, bu1.getEntityReference());
-    Team dep11 = createHierarchy("dep13", DEPARTMENT, bu1.getEntityReference());
-
-    // Create hierarchy of division, and department under division
-    // div2 -- has children --> [ div21, dep22]
-    Team div21 = createHierarchy("div21", DIVISION, bu1.getEntityReference());
-    Team dep22 = createHierarchy("dep22", DEPARTMENT, bu1.getEntityReference());
-
-    // Create hierarchy of department under department
-    // dep3 -- has children --> [ dep31]
-    Team dep31 = createHierarchy("dep31", DEPARTMENT, dep3.getEntityReference());
+    // Ensure parent has all the newly created children
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(
+        new ArrayList<>(List.of(bu1.getEntityReference(), div2.getEntityReference(), dep3.getEntityReference())),
+        ORG_TEAM.getChildren());
 
     //
-    // Test incorrect hierarchy results in failure
+    // Create hierarchy of business unit, division, and department under business unit
+    // bu1 -- has children --> [ bu11, div12, dep13]
+    Team bu11 = createWithParents("bu11", BUSINESS_UNIT, bu1.getEntityReference());
+    Team div12 = createWithParents("div12", DIVISION, bu1.getEntityReference());
+    Team dep13 = createWithParents("dep13", DEPARTMENT, bu1.getEntityReference());
+
+    // Ensure parent has all the newly created children
+    bu1 = getEntity(bu1.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(
+        new ArrayList<>(List.of(bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference())),
+        bu1.getChildren());
+
+    //
+    // Create hierarchy of division, and department under division
+    // div2 -- has children --> [ div21, dep22]
+    Team div21 = createWithParents("div21", DIVISION, div2.getEntityReference());
+    Team dep22 = createWithParents("dep22", DEPARTMENT, div2.getEntityReference());
+
+    // Ensure parent has all the newly created children
+    div2 = getEntity(div2.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(
+        new ArrayList<>(List.of(div21.getEntityReference(), dep22.getEntityReference())), div2.getChildren());
+
+    //
+    // Create hierarchy of department under department
+    // dep3 -- has children --> [ dep31]
+    Team dep31 = createWithParents("dep31", DEPARTMENT, dep3.getEntityReference());
+
+    // Ensure parent has all the newly created children
+    dep3 = getEntity(dep3.getId(), "children,parents", ADMIN_AUTH_HEADERS);
+    assertEntityReferences(new ArrayList<>(List.of(dep31.getEntityReference())), dep3.getChildren());
+
+    //
+    // Test incorrect hierarchy is not allowed and results in failure
     // Department can't be the parent of Division
     assertResponse(
-        () -> createHierarchy("divInvalid", DIVISION, dep22.getEntityReference()),
+        () -> createWithParents("divInvalid", DIVISION, dep22.getEntityReference()),
         BAD_REQUEST,
         invalidParent(dep22, "divInvalid", DIVISION));
 
     // Division or Department can't be the parent of Business Unit
     assertResponse(
-        () -> createHierarchy("buInvalid", BUSINESS_UNIT, dep22.getEntityReference()),
+        () -> createWithParents("buInvalid", BUSINESS_UNIT, dep22.getEntityReference()),
         BAD_REQUEST,
         invalidParent(dep22, "buInvalid", BUSINESS_UNIT));
     assertResponse(
-        () -> createHierarchy("buInvalid", BUSINESS_UNIT, div21.getEntityReference()),
+        () -> createWithParents("buInvalid", BUSINESS_UNIT, div21.getEntityReference()),
         BAD_REQUEST,
         invalidParent(div21, "buInvalid", BUSINESS_UNIT));
 
     // There can be no parent for organization
+    EntityReference bu11Ref = bu11.getEntityReference();
     assertResponse(
-        () -> createHierarchy("orgInvalid", ORGANIZATION, dep22.getEntityReference()), BAD_REQUEST, unexpectedParent());
+        () -> createWithParents("orgInvalid", ORGANIZATION, dep22.getEntityReference()),
+        BAD_REQUEST,
+        unexpectedParent());
     assertResponse(
-        () -> createHierarchy("orgInvalid", ORGANIZATION, div21.getEntityReference()), BAD_REQUEST, unexpectedParent());
-    assertResponse(
-        () -> createHierarchy("orgInvalid", ORGANIZATION, bu11.getEntityReference()), BAD_REQUEST, unexpectedParent());
+        () -> createWithParents("orgInvalid", ORGANIZATION, div21.getEntityReference()),
+        BAD_REQUEST,
+        unexpectedParent());
+    assertResponse(() -> createWithParents("orgInvalid", ORGANIZATION, bu11Ref), BAD_REQUEST, unexpectedParent());
 
     // Business Unit can have only one parent
     assertResponse(
-        () -> createHierarchy("buInvalid", BUSINESS_UNIT, bu1.getEntityReference(), ORG_TEAM.getEntityReference()),
+        () -> createWithParents("buInvalid", BUSINESS_UNIT, bu11Ref, ORG_TEAM.getEntityReference()),
         BAD_REQUEST,
         invalidParentCount(1, BUSINESS_UNIT));
 
     // Division can have only one parent
     assertResponse(
-        () -> createHierarchy("divInvalid", DIVISION, dep22.getEntityReference(), ORG_TEAM.getEntityReference()),
+        () -> createWithParents("divInvalid", DIVISION, dep22.getEntityReference(), ORG_TEAM.getEntityReference()),
         BAD_REQUEST,
         invalidParentCount(1, DIVISION));
 
     // Department can have more than one parent
-    createHierarchy(
-        "dep", DEPARTMENT, div11.getEntityReference(), div21.getEntityReference(), ORG_TEAM.getEntityReference());
+    createWithParents(
+        "dep", DEPARTMENT, div12.getEntityReference(), div21.getEntityReference(), ORG_TEAM.getEntityReference());
+
+    //
+    // Deletion tests to ensure no dangling parent/children relationship
+    // Delete bu1 and ensure Organization does not have it a child and bu11, div12, dep13 don't change Org to parent
+    deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
+    bu11 = getEntity(bu11.getId(), "parents", ADMIN_AUTH_HEADERS);
+    div12 = getEntity(div12.getId(), "parents", ADMIN_AUTH_HEADERS);
+    dep13 = getEntity(dep13.getId(), "parents", ADMIN_AUTH_HEADERS);
+
+    assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
+    assertEntityReferencesDoesNotContain(bu11.getParents(), bu1.getEntityReference());
+    assertEntityReferencesDoesNotContain(div12.getParents(), bu1.getEntityReference());
+    assertEntityReferencesDoesNotContain(dep13.getParents(), bu1.getEntityReference());
+    assertEntityReferencesContain(bu11.getParents(), ORG_TEAM.getEntityReference());
+    assertEntityReferencesContain(div12.getParents(), ORG_TEAM.getEntityReference());
+    assertEntityReferencesContain(dep13.getParents(), ORG_TEAM.getEntityReference());
+  }
+
+  @Test
+  void post_hierarchicalTeamsWithChildren() throws HttpResponseException {
+    Team bu11 = createEntity(createRequest("t11").withTeamType(BUSINESS_UNIT), ADMIN_AUTH_HEADERS);
+    Team div12 = createEntity(createRequest("t12").withTeamType(DIVISION), ADMIN_AUTH_HEADERS);
+    Team dep13 = createEntity(createRequest("t13").withTeamType(DEPARTMENT), ADMIN_AUTH_HEADERS);
+
+    // Create a parent team with children t11, t12, t13 and verify parent and child relationships
+    Team t1 =
+        createWithChildren(
+            "t1", BUSINESS_UNIT, bu11.getEntityReference(), div12.getEntityReference(), dep13.getEntityReference());
+    assertEntityReferencesContain(t1.getParents(), ORG_TEAM.getEntityReference());
+
+    //
+    // Creating a parent with invalid children type is not allowed
+    // Department can't have Business unit as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DEPARTMENT, bu11.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, bu11));
+    // Department can't have Division as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DEPARTMENT, div12.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DEPARTMENT, div12));
+    // Division can't have BU as a child
+    assertResponse(
+        () -> createWithChildren("invalidTeam", DIVISION, bu11.getEntityReference()),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidChild("invalidTeam", DIVISION, bu11));
   }
 
   @Test
   void put_patch_hierarchicalTeams() throws IOException {
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [ bu1, bu2]
-    Team bu1 = createHierarchy("put1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
-    Team bu2 = createHierarchy("put2", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team bu1 = createWithParents("put1", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team bu2 = createWithParents("put2", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
 
     // Change bu2 parent from Organization to bu1 using PUT operation
     CreateTeam create = createRequest("put2").withTeamType(BUSINESS_UNIT).withParents(List.of(bu1.getId()));
@@ -319,7 +396,6 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Remove bu2 parent. Default parent organization replaces it
     create = createRequest("put2").withTeamType(BUSINESS_UNIT).withParents(null);
     ChangeDescription change2 = getChangeDescription(bu2.getVersion());
-    change2 = getChangeDescription(bu2.getVersion());
     change2
         .getFieldsDeleted()
         .add(new FieldChange().withName("parents").withOldValue(List.of(bu1.getEntityReference())));
@@ -340,12 +416,21 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
   }
 
-  private Team createHierarchy(String teamName, TeamType teamType, EntityReference... parents)
+  private Team createWithParents(String teamName, TeamType teamType, EntityReference... parents)
       throws HttpResponseException {
     List<EntityReference> parentList = List.of(parents);
     List<UUID> parentIds = EntityUtil.toIds(parentList);
     Team team = createEntity(createRequest(teamName).withParents(parentIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
     assertParents(team, parentList);
+    return team;
+  }
+
+  private Team createWithChildren(String teamName, TeamType teamType, EntityReference... children)
+      throws HttpResponseException {
+    List<EntityReference> childrenList = List.of(children);
+    List<UUID> childIds = EntityUtil.toIds(childrenList);
+    Team team = createEntity(createRequest(teamName).withChildren(childIds).withTeamType(teamType), ADMIN_AUTH_HEADERS);
+    assertChildren(team, childrenList);
     return team;
   }
 
@@ -357,6 +442,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       // Ensure parents have the given team as a child
       Team parent = getEntity(expectedParent.getId(), "children", ADMIN_AUTH_HEADERS);
       assertEntityReferencesContain(parent.getChildren(), team.getEntityReference());
+    }
+  }
+
+  private void assertChildren(Team team, List<EntityReference> expectedChildren) throws HttpResponseException {
+    assertEquals(team.getChildren().size(), expectedChildren.size());
+    assertEntityReferences(expectedChildren, team.getChildren());
+
+    for (EntityReference expectedChild : expectedChildren) {
+      // Ensure children have the given team as a parent
+      Team child = getEntity(expectedChild.getId(), "parents", ADMIN_AUTH_HEADERS);
+      assertEntityReferencesContain(child.getParents(), team.getEntityReference());
     }
   }
 
