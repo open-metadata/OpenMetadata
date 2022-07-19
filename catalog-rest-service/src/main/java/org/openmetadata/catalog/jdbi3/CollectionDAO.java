@@ -1697,7 +1697,7 @@ public interface CollectionDAO {
         isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isAdmin}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean)  = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
@@ -1705,21 +1705,23 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ue.json#>'{isAdmin}' = FALSE ) ", postgresCondition);
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
         }
       }
       if (isBotStr != null) {
         isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isBot}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
                   "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
                   mySqlCondition);
           postgresCondition =
-              String.format("%s AND ue.json#>'{isBot}' IS NULL OR ue.json#>'{isBot}' = FALSE ) ", postgresCondition);
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
@@ -1742,7 +1744,7 @@ public interface CollectionDAO {
         isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isAdmin}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
@@ -1750,21 +1752,23 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ue.json#>'{isAdmin}' = FALSE ) ", postgresCondition);
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
         }
       }
       if (isBotStr != null) {
         isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isBot}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
                   "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
                   mySqlCondition);
           postgresCondition =
-              String.format("%s AND ue.json#>'{isBot}' IS NULL OR ue.json#>'{isBot}' = FALSE ) ", postgresCondition);
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
@@ -1794,7 +1798,7 @@ public interface CollectionDAO {
         isAdmin = Boolean.parseBoolean(isAdminStr);
         if (isAdmin) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isAdmin}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
@@ -1802,21 +1806,23 @@ public interface CollectionDAO {
                   mySqlCondition);
           postgresCondition =
               String.format(
-                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ue.json#>'{isAdmin}' = FALSE ) ", postgresCondition);
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
         }
       }
       if (isBotStr != null) {
         isBot = Boolean.parseBoolean(isBotStr);
         if (isBot) {
           mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
-          postgresCondition = String.format("%s AND ue.json#>'{isBot}' = TRUE ", postgresCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
         } else {
           mySqlCondition =
               String.format(
                   "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
                   mySqlCondition);
           postgresCondition =
-              String.format("%s AND ue.json#>'{isBot}' IS NULL OR ue.json#>'{isBot}' = FALSE ) ", postgresCondition);
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
         }
       }
       if (team == null && isAdmin == null && isBot == null) {
