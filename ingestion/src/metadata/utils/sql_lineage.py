@@ -162,7 +162,7 @@ def get_column_lineage(
     return column_lineage
 
 
-def _create_lineage_by_table_name(
+def _create_lineage_by_table_name(  # pylint: disable=too-many-locals
     metadata: OpenMetadata,
     from_table: str,
     to_table: str,
@@ -223,7 +223,7 @@ def _create_lineage_by_table_name(
                         lineage.edge.lineageDetails = lineage_details
                     yield lineage
 
-    except Exception as err:
+    except Exception:
         logger.debug(traceback.format_exc())
         logger.error(f"Error creating lineage - {err}")
 

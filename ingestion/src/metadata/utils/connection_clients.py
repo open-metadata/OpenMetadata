@@ -12,7 +12,7 @@
 from dataclasses import dataclass
 
 """
-Creating client for non-sqlalchemy package is neccessary, 
+Creating client for non-sqlalchemy package is neccessary,
 Importing a Class directly in connection.py will break the ingestion,
 if non-sqlalchemy package is not installed
 """

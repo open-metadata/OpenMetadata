@@ -99,5 +99,5 @@ class Neo4jHelper:
         """
         try:
             self.driver.close()
-        except Exception as e:
-            logger.error("Exception encountered while closing the graph driver", e)
+        except Exception as err:
+            logger.error("Exception encountered while closing the graph driver", err)

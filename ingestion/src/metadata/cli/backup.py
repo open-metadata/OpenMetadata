@@ -91,7 +91,7 @@ def upload_backup(endpoint: str, bucket: str, key: str, file: Path) -> None:
         raise err
 
 
-def run_backup(
+def run_backup(  # pylint: disable=too-many-locals
     host: str,
     user: str,
     password: str,
