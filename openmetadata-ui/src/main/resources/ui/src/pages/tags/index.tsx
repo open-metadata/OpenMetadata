@@ -411,6 +411,7 @@ const TagsPage = () => {
     return (
       <Card
         data-testid="data-summary-container"
+        size="small"
         style={leftPanelAntCardStyle}
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
@@ -423,7 +424,7 @@ const TagsPage = () => {
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames('tw-h-7 tw-px-2 tw-my-2', {
+                className={classNames('tw-px-2 ', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
                 data-testid="add-category"

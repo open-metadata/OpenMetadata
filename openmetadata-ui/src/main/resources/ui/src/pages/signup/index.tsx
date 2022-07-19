@@ -220,7 +220,10 @@ const Signup = () => {
                     <label className="tw-block tw-text-body tw-text-grey-body tw-mb-2">
                       Select teams
                     </label>
-                    <TeamsSelectable onSelectionChange={setSelectedTeams} />
+                    <TeamsSelectable
+                      filterJoinable
+                      onSelectionChange={setSelectedTeams}
+                    />
 
                     {countTeams === 0 ? (
                       <div

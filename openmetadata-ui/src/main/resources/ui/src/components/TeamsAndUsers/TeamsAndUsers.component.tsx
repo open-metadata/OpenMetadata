@@ -96,18 +96,19 @@ const TeamsAndUsers = ({
       <>
         <Card
           data-testid="data-summary-container"
+          size="small"
           style={leftPanelAntCardStyle}
           title={
             <div
               className="tw-flex tw-justify-between tw-items-center"
               data-testid="add-team-container">
-              <p className="tw-heading tw-my-2">Teams</p>
+              <p className="tw-heading tw-mb-0">Teams</p>
               {hasAccess && (
                 <NonAdminAction
                   position="bottom"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
-                    className="tw-h-7 tw-px-2"
+                    className="tw-px-2"
                     data-testid="add-team-button"
                     size="small"
                     theme="primary"
@@ -156,16 +157,17 @@ const TeamsAndUsers = ({
         {hasAccess && (
           <Card
             data-testid="data-summary-container"
+            size="small"
             style={{ ...leftPanelAntCardStyle, marginTop: '10px' }}
             title={
               <div className="tw-flex tw-justify-between tw-items-center">
-                <p className="tw-heading tw-heading tw-my-2">All Users</p>
+                <p className="tw-heading tw-mb-0">All Users</p>
                 {hasAccess && (
                   <NonAdminAction
                     position="bottom"
                     title={TITLE_FOR_NON_ADMIN_ACTION}>
                     <Button
-                      className="tw-h-7 tw-px-2"
+                      className="tw-px-2"
                       data-testid="add-user-button"
                       size="small"
                       theme="primary"
