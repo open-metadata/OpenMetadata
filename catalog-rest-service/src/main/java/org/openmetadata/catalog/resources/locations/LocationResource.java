@@ -60,6 +60,7 @@ import org.openmetadata.catalog.resources.EntityResource;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -290,6 +291,33 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           Include include)
       throws IOException {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+  }
+
+  @GET
+  @Path("/association/{id}")
+  @Operation(
+      operationId = "getEntityByLocation",
+      summary = "Get a table associated with location",
+      tags = "locations",
+      description = "Get a table associated with location by given `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "location",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Location.class))),
+        @ApiResponse(responseCode = "404", description = "Location for instance {id} is not found")
+      })
+  public List<EntityReference> getTableFromLocation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "location Id", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(
+              description = "location version number in the form `major`.`minor`",
+              schema = @Schema(type = "string", example = "0.1 or 1.1"))
+          @PathParam("version")
+          String version)
+      throws IOException {
+    return dao.getEntityDetails(id);
   }
 
   @GET

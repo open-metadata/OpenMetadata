@@ -223,7 +223,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   return (
     <Fragment>
       <div id="thread-panel-body">
-        {showHeader && isConversationType ? (
+        {showHeader && isConversationType && (
           <FeedPanelHeader
             className="tw-px-4 tw-shadow-sm"
             entityField={entityField as string}
@@ -235,7 +235,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 : undefined
             }
           />
-        ) : (
+        )}
+        {isTaskType && (
           <div className="tw-flex tw-justify-end tw-mr-2 tw-mt-2">
             <Switch onChange={onSwitchChange} />
             <span className="tw-ml-1">Closed Tasks</span>

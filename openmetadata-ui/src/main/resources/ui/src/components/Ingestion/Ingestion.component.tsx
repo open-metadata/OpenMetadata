@@ -43,6 +43,7 @@ import Searchbar from '../common/searchbar/Searchbar';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import IngestionLogsModal from '../Modals/IngestionLogsModal/IngestionLogsModal';
 import { IngestionProps } from './ingestion.interface';
 
 const Ingestion: React.FC<IngestionProps> = ({
@@ -68,6 +69,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
   const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
   const [deleteSelection, setDeleteSelection] = useState({
     id: '',
     name: '',
@@ -271,6 +274,10 @@ const Ingestion: React.FC<IngestionProps> = ({
       : ingestionList;
   }, [searchText, ingestionList]);
 
+  const separator = (
+    <span className="tw-mx-1.5 tw-inline-block tw-text-gray-400">|</span>
+  );
+
   const getStatuses = (ingestion: IngestionPipeline) => {
     const lastFiveIngestions = ingestion.pipelineStatuses
       ?.sort((a, b) => {
@@ -326,7 +333,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     if (ingestion.deployed) {
       return (
         <button
-          className="link-text tw-mr-2"
+          className="link-text"
           data-testid="run"
           onClick={() =>
             handleTriggerIngestion(ingestion.id as string, ingestion.name)
@@ -475,8 +482,9 @@ const Ingestion: React.FC<IngestionProps> = ({
                           {ingestion.enabled ? (
                             <Fragment>
                               {getTriggerDeployButton(ingestion)}
+                              {separator}
                               <button
-                                className="link-text tw-mr-2"
+                                className="link-text"
                                 data-testid="pause"
                                 disabled={!isRequiredDetailsAvailable}
                                 onClick={() =>
@@ -498,15 +506,17 @@ const Ingestion: React.FC<IngestionProps> = ({
                               Unpause
                             </button>
                           )}
+                          {separator}
                           <button
-                            className="link-text tw-mr-2"
+                            className="link-text"
                             data-testid="edit"
                             disabled={!isRequiredDetailsAvailable}
                             onClick={() => handleUpdate(ingestion)}>
                             Edit
                           </button>
+                          {separator}
                           <button
-                            className="link-text tw-mr-2"
+                            className="link-text"
                             data-testid="delete"
                             onClick={() =>
                               ConfirmDelete(
@@ -524,8 +534,33 @@ const Ingestion: React.FC<IngestionProps> = ({
                               'Delete'
                             )}
                           </button>
+                          {separator}
+                          <button
+                            className="link-text"
+                            data-testid="logs"
+                            disabled={!isRequiredDetailsAvailable}
+                            onClick={() => {
+                              setIsLogsModalOpen(true);
+                              setSelectedPipeline(ingestion);
+                            }}>
+                            Logs
+                          </button>
                         </div>
                       </NonAdminAction>
+                      {isLogsModalOpen &&
+                        selectedPipeline &&
+                        ingestion.id === selectedPipeline?.id && (
+                          <IngestionLogsModal
+                            isModalOpen={isLogsModalOpen}
+                            pipelinName={selectedPipeline.name}
+                            pipelineId={selectedPipeline.id as string}
+                            pipelineType={selectedPipeline.pipelineType}
+                            onClose={() => {
+                              setIsLogsModalOpen(false);
+                              setSelectedPipeline(undefined);
+                            }}
+                          />
+                        )}
                     </td>
                   </tr>
                 ))}

@@ -69,7 +69,13 @@ public final class RestUtil {
 
   public static URI getHref(URI parent, String child) {
     child = removeSlashes(child);
+    child = replaceSpaces(child);
     return URI.create(parent.toString() + "/" + child);
+  }
+
+  public static String replaceSpaces(String s) {
+    s = s.replaceAll(" ", "%20");
+    return s;
   }
 
   public static URI getHref(UriInfo uriInfo, String collectionPath, String resourcePath) {

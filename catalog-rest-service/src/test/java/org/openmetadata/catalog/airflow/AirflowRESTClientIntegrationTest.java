@@ -14,15 +14,21 @@ package org.openmetadata.catalog.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.openmetadata.catalog.resources.services.ingestionpipelines.IngestionPipelineResourceTest.DATABASE_METADATA_CONFIG;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.SneakyThrows;
+import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.catalog.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.catalog.exception.PipelineServiceClientException;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +36,14 @@ public class AirflowRESTClientIntegrationTest {
 
   private static final String DAG_NAME = "test_dag";
   private static final String URI_TO_HANDLE_REQUEST = "/";
+
+  public static final IngestionPipeline INGESTION_PIPELINE =
+      new IngestionPipeline()
+          .withName(DAG_NAME)
+          .withId(UUID.randomUUID())
+          .withPipelineType(PipelineType.METADATA)
+          .withSourceConfig(DATABASE_METADATA_CONFIG)
+          .withAirflowConfig(new AirflowConfig().withStartDate(new DateTime("2022-06-10T15:06:47+00:00").toDate()));
 
   @RegisterExtension private static final HttpServerExtension httpServerExtension = new HttpServerExtension();
 
@@ -48,7 +62,7 @@ public class AirflowRESTClientIntegrationTest {
 
     registerMockedEndpoints(200, 200);
 
-    assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(DAG_NAME));
+    assertEquals(expectedMap, airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
   }
 
   @Test
@@ -56,7 +70,8 @@ public class AirflowRESTClientIntegrationTest {
     registerMockedEndpoints(404, 200);
 
     Exception exception =
-        assertThrows(PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(DAG_NAME));
+        assertThrows(
+            PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
 
     String expectedMessage = "Failed to get last ingestion logs.";
     String actualMessage = exception.getMessage();
@@ -69,7 +84,8 @@ public class AirflowRESTClientIntegrationTest {
     registerMockedEndpoints(200, 404);
 
     Exception exception =
-        assertThrows(PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(DAG_NAME));
+        assertThrows(
+            PipelineServiceClientException.class, () -> airflowRESTClient.getLastIngestionLogs(INGESTION_PIPELINE));
 
     String expectedMessage = "Failed to get last ingestion logs.";
     String actualMessage = exception.getMessage();

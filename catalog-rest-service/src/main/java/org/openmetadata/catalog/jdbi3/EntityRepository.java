@@ -897,6 +897,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .findFrom(toId.toString(), toEntityType, relationship.ordinal(), fromEntityType);
   }
 
+  public List<EntityRelationshipRecord> findFrom(String toId) {
+    return daoCollection.relationshipDAO().findFrom(toId);
+  }
+
   public EntityReference getContainer(UUID toId) throws IOException {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
   }

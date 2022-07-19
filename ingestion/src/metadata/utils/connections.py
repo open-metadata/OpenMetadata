@@ -280,6 +280,10 @@ def _(connection: DeltaLakeConnection, verbose: bool = False) -> DeltaLakeClient
     elif connection.metastoreFilePath:
         builder.config("spark.sql.warehouse.dir", f"{connection.metastoreFilePath}")
 
+    if connection.connectionArguments:
+        for key, value in connection.connectionArguments:
+            builder.config(key, value)
+
     deltalake_connection = DeltaLakeClient(
         configure_spark_with_delta_pip(builder).getOrCreate()
     )
