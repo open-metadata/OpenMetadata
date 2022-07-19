@@ -47,6 +47,14 @@
       "description": "Atlas Host of the data source.",
       "type": "string"
     },
+    "dbService": {
+      "description": "source database of the data source.",
+      "type": "string"
+    },
+    "messagingService": {
+      "description": "messaging service source of the data source.",
+      "type": "string"
+    },
     "database": {
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank , OpenMetadata Ingestion attempts to scan all the databases in Atlas.",
       "type": "string"

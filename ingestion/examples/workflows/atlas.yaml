@@ -8,6 +8,8 @@ source:
       username: username
       password: password
       serviceType: Hive
+      dbService: name of database service
+      messagingService: name of messaging service
       hostPort: localhost:10000
       entityTypes: examples/workflows/atlas_mapping.yaml
   sourceConfig:
