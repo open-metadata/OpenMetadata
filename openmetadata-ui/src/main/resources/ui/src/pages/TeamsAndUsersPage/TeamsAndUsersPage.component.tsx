@@ -33,7 +33,6 @@ import Loader from '../../components/Loader/Loader';
 import TeamsAndUsers from '../../components/TeamsAndUsers/TeamsAndUsers.component';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
-  API_RES_MAX_SIZE,
   getTeamAndUserDetailsPath,
   INITIAL_PAGIN_VALUE,
   PAGE_SIZE_BASE,
@@ -103,23 +102,41 @@ const TeamsAndUsersPage = () => {
     setactiveUserTab(data);
   };
 
-  const isIncludes = (name: string, term: string) => {
-    return toLower(name).includes(toLower(term));
+  const fetchUserCount = (isAdmin: boolean | undefined) => {
+    return new Promise<number>((resolve) => {
+      getUsers('', 0, undefined, isAdmin, false)
+        .then((res: AxiosResponse) => {
+          if (res.data) {
+            resolve(res.data.paging.total);
+          } else {
+            throw jsonData['api-error-messages']['unexpected-server-response'];
+          }
+        })
+        .catch((err: AxiosError) => {
+          const errMsg = getErrorText(
+            err,
+            jsonData['api-error-messages']['fetch-user-count-error']
+          );
+          showErrorToast(errMsg);
+          resolve(0);
+        });
+    });
   };
 
   /**
    * Make API call to fetch all the users
    */
   const fetchUsers = (
-    limit = API_RES_MAX_SIZE,
-    paging = {} as Record<string, string>
+    limit = PAGE_SIZE_BASE,
+    paging = {} as Record<string, string>,
+    isAdmin = undefined as boolean | undefined
   ) => {
     return new Promise<Array<User>>((resolve) => {
-      getUsers('profile,teams,roles', limit, paging)
+      getUsers('profile,teams,roles', limit, paging, isAdmin, false)
         .then((res: AxiosResponse) => {
           if (res.data) {
             const resUsers = res.data.data;
-            if (limit !== API_RES_MAX_SIZE) {
+            if (res.data.paging.total > limit) {
               setUserPaging(res.data.paging);
             }
             resolve(resUsers);
@@ -138,13 +155,22 @@ const TeamsAndUsersPage = () => {
     });
   };
 
-  const userQuerySearch = (text = WILD_CARD_CHAR, currentPage = 1) => {
+  const userQuerySearch = (
+    text = WILD_CARD_CHAR,
+    currentPage = 1,
+    isAdmin = false
+  ) => {
+    let filters = '';
+    if (isAdmin) {
+      filters = '(isAdmin:true)';
+    }
+
     return new Promise<Array<FormattedUsersData>>((resolve) => {
       searchData(
         text,
         currentPage,
         PAGE_SIZE_BASE,
-        '',
+        filters,
         '',
         '',
         SearchIndex.USER
@@ -166,50 +192,29 @@ const TeamsAndUsersPage = () => {
     });
   };
 
-  const getAdmins = (text?: string) => {
-    let admins = userList.filter((user) => user.isAdmin);
-    if (text) {
-      admins = admins.filter((user) =>
-        isIncludes(user.displayName || user.name, text)
-      );
-    }
-
-    return admins;
-  };
-
   const setAllTabList = (type: string, cursorValue?: string | number) => {
     setIsUsersLoading(true);
 
     if (type) {
-      if (type === UserType.ADMINS) {
-        const dAdmins = getAdmins();
-        setSelectedUserList(dAdmins);
+      const isAdmin = type === UserType.ADMINS ? true : undefined;
+      const paging = cursorValue
+        ? { [cursorValue]: userPaging[cursorValue as keyof Paging] as string }
+        : {};
+      fetchUsers(PAGE_SIZE_BASE, paging, isAdmin).then((res) => {
+        setSelectedUserList(res);
         setIsUsersLoading(false);
-      } else {
-        const paging = cursorValue
-          ? { [cursorValue]: userPaging[cursorValue as keyof Paging] as string }
-          : {};
-        fetchUsers(PAGE_SIZE_BASE, paging).then((res) => {
-          setSelectedUserList(res);
-          setIsUsersLoading(false);
-        });
-      }
+      });
     }
     setIsRightPanelLoading(false);
   };
 
   const getSearchedUsers = (value: string, pageNumber: number) => {
     setIsUsersLoading(true);
-    if (activeUserTab === UserType.ADMINS) {
-      const updatedList = getAdmins(value);
-      setSelectedUserList(updatedList);
+    const isAdmin = activeUserTab === UserType.ADMINS;
+    userQuerySearch(value, pageNumber, isAdmin).then((resUsers) => {
+      setSelectedUserList(resUsers as unknown as User[]);
       setIsUsersLoading(false);
-    } else {
-      userQuerySearch(value, pageNumber).then((resUsers) => {
-        setSelectedUserList(resUsers as unknown as User[]);
-        setIsUsersLoading(false);
-      });
-    }
+    });
   };
 
   const handleUserSearchTerm = (value: string) => {
@@ -720,10 +725,14 @@ const TeamsAndUsersPage = () => {
   }, [teamAndUser, isDataLoading]);
 
   useEffect(() => {
+    fetchUserCount(undefined).then((count) => {
+      setUsersCount(count);
+    });
+    fetchUserCount(true).then((count) => {
+      setAdminsCount(count);
+    });
     fetchUsers()
       .then((resUsers) => {
-        setUsersCount(resUsers.filter((user) => !user.isBot).length);
-        setAdminsCount(resUsers.filter((user) => user.isAdmin).length);
         setUserList(resUsers);
         if (teams.length <= 0) {
           fetchTeams();
