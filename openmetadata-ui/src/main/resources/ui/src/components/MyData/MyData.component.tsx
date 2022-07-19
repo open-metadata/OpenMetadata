@@ -256,6 +256,8 @@ const MyData: React.FC<MyDataProps> = ({
             ref={elementRef as RefObject<HTMLDivElement>}>
             {getLoader()}
           </div>
+          {/* Add spacer to work infinite scroll smoothly */}
+          <div className="tw-p-4" />
         </Fragment>
       )}
     </PageLayout>
