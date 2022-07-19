@@ -81,7 +81,7 @@ run_python_tests:  ## Run all Python tests with coverage
 	coverage report || true
 
 .PHONY: coverage
-coverage:  ## Run all Python tests and generate the coverage report
+coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml -o ingestion/coverage.xml
 	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
