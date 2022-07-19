@@ -55,7 +55,6 @@ class SQAProfilerInterfaceTest(TestCase):
 
         assert self.sqa_profiler_interface._sampler == None
         assert self.sqa_profiler_interface._runner == None
-        assert self.sqa_profiler_interface._sample == None
         assert isinstance(self.sqa_profiler_interface.session, Session)
 
 

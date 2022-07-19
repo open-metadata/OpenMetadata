@@ -17,10 +17,12 @@ supporting sqlalchemy abstraction layer
 from tkinter.messagebox import NO
 from typing import Optional, List, Dict, Union
 from metadata.orm_profiler.profiler.runner import QueryRunner
+from metadata.utils.constants import TEN_MIN
 from sqlalchemy import Column
 from sqlalchemy.orm import Session, DeclarativeMeta
 from sqlalchemy.engine.row import Row
 
+from metadata.utils.timeout import cls_timeout
 from metadata.utils.logger import sqa_interface_registry_logger
 from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.sampler import Sampler
@@ -39,7 +41,6 @@ class SQAProfilerInterface:
     """
     def __init__(self, service_connection_config):
         """Instantiate SQA Interface object"""
-        self._sample = None
         self._sampler = None
         self._runner = None
         self.session: Session = create_and_bind_session(
@@ -51,12 +52,9 @@ class SQAProfilerInterface:
         """Getter method for sample attribute"""
         if not self.sampler:
             raise RuntimeError("You must create a sampler first `<instance>.create_sampler(...)`.")
-        if not self._sample:
-            self._sample = self.sampler.random_sample()
 
-        return self._sample
+        return self.sampler.random_sample()
 
-    
     @property
     def runner(self):
         """Getter method for runner attribute"""
@@ -121,12 +119,14 @@ class SQAProfilerInterface:
             profile_sample_query: custom query used for table sampling
         """
 
-        self._runner = QueryRunner(
+        self._runner = cls_timeout(TEN_MIN)(
+                QueryRunner(
                         session=self.session,
                         table=table,
                         sample=self.sample,
                         partition_details=partition_details,
                         profile_sample_query=profile_sample_query
+                        )
                     )
 
 
@@ -142,14 +142,19 @@ class SQAProfilerInterface:
         Returns:
             dictionnary of results
         """
-        row = self.runner.select_all_from_table(
-            *[
-                metric().fn() for metric in metrics
-            ]
-        )
+        try:
+            row = self.runner.select_first_from_table(
+                *[
+                    metric().fn() for metric in metrics
+                ]
+            )
 
-        if row:
-            return dict(row)
+            if row:
+                return dict(row)
+
+        except Exception as err:
+            logger.error(err)
+            self.session.rollback()
 
 
     def get_static_metrics(
@@ -190,23 +195,25 @@ class SQAProfilerInterface:
         Returns:
             dictionnary of results
         """
-        col_metric = metric(column)
-        metric_query = col_metric.query(
-            sample=self.sample, session=self.session
-        )
+        try:
+            col_metric = metric(column)
+            metric_query = col_metric.query(
+                sample=self.sample, session=self.session
+            )
+            if not metric_query:
+                return
+            if col_metric.metric_type == dict:
+                results = self.runner.select_all_from_query(metric_query)
+                data = {
+                    k: [result[k] for result in results] for k in dict(results[0])
+                }
+                return {metric.name(): data}
 
-        if not metric_query:
-            return
-        if col_metric.metric_type == dict:
-            results = self.runner.select_all_from_query(metric_query)
-            data = {
-                k: [result[k] for result in results] for k in dict(results[0])
-            }
-            return {metric.name(): data}
-
-        else:
-            row = self.runner.select_first_from_query(metric_query)
-            return dict(row)
+            else:
+                row = self.runner.select_first_from_query(metric_query)
+                return dict(row)
+        except Exception:
+            self.session.rollback()
 
 
     def get_composed_metrics(
@@ -241,7 +248,10 @@ class SQAProfilerInterface:
         Returns:
             dictionnary of results
         """
-        row = self.runner.select_first_from_sample(metric(column).fn())
-        if not isinstance(row, Row):
-            return {metric.name(): row}
-        return dict(row)
+        try:
+            row = self.runner.select_first_from_sample(metric(column).fn())
+            if not isinstance(row, Row):
+                return {metric.name(): row}
+            return dict(row)
+        except Exception:
+            self.session.rollback()

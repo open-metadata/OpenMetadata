@@ -21,6 +21,11 @@ from metadata.orm_profiler.metrics.registry import Metrics
 from metadata.orm_profiler.profiler.core import Profiler
 from metadata.orm_profiler.profiler.sampler import Sampler
 from metadata.utils.connections import create_and_bind_session
+from metadata.orm_profiler.interfaces.sqa_profiler_interface import SQAProfilerInterface
+from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+    SQLiteConnection,
+    SQLiteScheme,
+)
 
 Base = declarative_base()
 
@@ -40,8 +45,10 @@ class SampleTest(TestCase):
     Run checks on different metrics
     """
 
-    engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
-    session = create_and_bind_session(engine)
+    sqlite_conn = SQLiteConnection(scheme=SQLiteScheme.sqlite_pysqlite)
+    sqa_profiler_interface = SQAProfilerInterface(sqlite_conn)
+    engine = sqa_profiler_interface.session.get_bind()
+    session = sqa_profiler_interface.session
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -96,7 +103,7 @@ class SampleTest(TestCase):
         # Randomly pick table_count to init the Profiler, we don't care for this test
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count, session=self.session, table=User, profile_sample=50.0
+            table_count, profiler_interface=self.sqa_profiler_interface, table=User, profile_sample=50.0
         )
 
         res = self.session.query(func.count()).select_from(profiler.sample).first()
@@ -108,7 +115,7 @@ class SampleTest(TestCase):
         """
         table_count = Metrics.ROW_COUNT.value
         profiler = Profiler(
-            table_count, session=self.session, table=User, profile_sample=50.0
+            table_count, profiler_interface=self.sqa_profiler_interface, table=User, profile_sample=50.0
         )
         res = profiler.execute()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
@@ -123,7 +130,7 @@ class SampleTest(TestCase):
         count = Metrics.COUNT.value
         profiler = Profiler(
             count,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=50.0,
             use_cols=[User.name],
@@ -133,7 +140,7 @@ class SampleTest(TestCase):
 
         profiler = Profiler(
             count,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=100.0,
             use_cols=[User.name],
@@ -148,7 +155,7 @@ class SampleTest(TestCase):
         hist = Metrics.HISTOGRAM.value
         profiler = Profiler(
             hist,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=50.0,
             use_cols=[User.id],
@@ -160,7 +167,7 @@ class SampleTest(TestCase):
 
         profiler = Profiler(
             hist,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=100.0,
             use_cols=[User.id],
@@ -177,7 +184,7 @@ class SampleTest(TestCase):
         hist = Metrics.UNIQUE_COUNT.value
         profiler = Profiler(
             hist,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=50.0,
             use_cols=[User.name],
@@ -190,7 +197,7 @@ class SampleTest(TestCase):
 
         profiler = Profiler(
             hist,
-            session=self.session,
+            profiler_interface=self.sqa_profiler_interface,
             table=User,
             profile_sample=100.0,
             use_cols=[User.name],
