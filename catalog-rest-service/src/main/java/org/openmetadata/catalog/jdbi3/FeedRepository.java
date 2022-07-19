@@ -18,6 +18,7 @@ import static org.openmetadata.catalog.Entity.PIPELINE;
 import static org.openmetadata.catalog.Entity.TABLE;
 import static org.openmetadata.catalog.Entity.TOPIC;
 import static org.openmetadata.catalog.Entity.getEntityRepository;
+import static org.openmetadata.catalog.type.Include.ALL;
 import static org.openmetadata.catalog.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.catalog.type.Relationship.CREATED;
 import static org.openmetadata.catalog.type.Relationship.IS_ABOUT;
@@ -25,6 +26,8 @@ import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
 import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.catalog.util.EntityUtil.populateEntityReferences;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_DISPLAY;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_NAME;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.jsonwebtoken.lang.Collections;
@@ -885,12 +888,21 @@ public class FeedRepository {
   private Thread populateAssignees(Thread thread) {
     if (thread.getType().equals(ThreadType.Task)) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
-      try {
-        assignees = EntityUtil.populateEntityReferences(assignees);
-        thread.getTask().setAssignees(assignees);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+      for (EntityReference ref : assignees) {
+        try {
+          EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+          EntityUtil.copy(ref2, ref);
+        } catch (EntityNotFoundException exception) {
+          // mark the not found user as deleted user since
+          // user will not be found in case of permanent deletion of user or team
+          ref.setName(DELETED_USER_NAME);
+          ref.setDisplayName(DELETED_USER_DISPLAY);
+        } catch (IOException ioException) {
+          throw new RuntimeException(ioException);
+        }
       }
+      assignees.sort(compareEntityReference);
+      thread.getTask().setAssignees(assignees);
     }
     return thread;
   }
