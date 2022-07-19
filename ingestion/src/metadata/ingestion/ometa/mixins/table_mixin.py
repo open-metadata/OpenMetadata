@@ -123,7 +123,7 @@ class OMetaTableMixin:
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add
         """
-        resp = self.client.post(
+        resp = self.client.put(
             f"/usage/table/{table.id.__root__}", data=table_usage_request.json()
         )
         logger.debug("published table usage %s", resp)
