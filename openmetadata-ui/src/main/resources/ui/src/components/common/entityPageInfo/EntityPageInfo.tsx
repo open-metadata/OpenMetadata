@@ -71,7 +71,7 @@ interface Props {
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
   updateOwner?: (value: Table['owner']) => void;
-  updateTier?: (value: string) => Promise<void>;
+  updateTier?: (value: string) => void;
 }
 
 const EntityPageInfo = ({

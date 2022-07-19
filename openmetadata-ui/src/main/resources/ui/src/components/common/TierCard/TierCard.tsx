@@ -20,7 +20,7 @@ export interface TierCardProps {
   currentUser?: EntityReference;
   currentTier?: string;
   hideTier?: boolean;
-  updateTier?: (value: string) => Promise<void>;
+  updateTier?: (value: string) => void;
   onSave?: (
     owner?: EntityReference,
     tier?: TableDetail['tier'],
@@ -91,9 +91,7 @@ const TierCard = ({
     setStatusTier('waiting');
 
     const newTier = prepareTier(updatedTier);
-    updateTier?.(newTier as string).catch(() => {
-      setStatusTier('success');
-    });
+    updateTier?.(newTier as string);
   };
   const getTierCards = () => {
     return (

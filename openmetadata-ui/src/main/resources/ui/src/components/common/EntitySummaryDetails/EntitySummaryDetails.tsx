@@ -16,7 +16,7 @@ export interface GetInfoElementsProps {
   updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  updateTier?: (value: string) => Promise<void>;
+  updateTier?: (value: string) => void;
 }
 
 const EntitySummaryDetails = ({
