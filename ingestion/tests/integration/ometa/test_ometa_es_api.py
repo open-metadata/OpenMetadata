@@ -11,6 +11,7 @@
 """
 OMeta ES Mixin integration tests. The API needs to be up
 """
+import time
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -99,6 +100,9 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
+        # Leave some time for indexes to get updated, otherwise this happens to fast
+        time.sleep(5)
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -131,7 +135,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         # We get the created table back
@@ -149,7 +152,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -166,7 +168,6 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
-            retries=10,
         )
 
         self.assertIsNotNone(res)
@@ -179,7 +180,6 @@ class OMetaESTest(TestCase):
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string="random",
-            retries=1,
         )
 
         self.assertIsNone(res)
