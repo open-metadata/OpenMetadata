@@ -317,7 +317,7 @@ public class LocationResource extends EntityResource<Location, LocationRepositor
           @PathParam("version")
           String version)
       throws IOException {
-    return dao.getTableDetails(id);
+    return dao.getEntityDetails(id);
   }
 
   @GET

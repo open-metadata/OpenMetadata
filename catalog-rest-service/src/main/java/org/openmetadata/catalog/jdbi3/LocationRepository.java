@@ -210,15 +210,9 @@ public class LocationRepository extends EntityRepository<Location> {
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.LOCATION, STORAGE_SERVICE));
   }
 
-  public List<EntityReference> getTableDetails(String id) throws IOException {
+  public List<EntityReference> getEntityDetails(String id) throws IOException {
     List<CollectionDAO.EntityRelationshipRecord> records = findFrom(id);
-    List<CollectionDAO.EntityRelationshipRecord> tableRecords = new ArrayList<>();
-    for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : records) {
-      if (entityRelationshipRecord.getType().equals("table")) {
-        tableRecords.add(entityRelationshipRecord);
-      }
-    }
-    return EntityUtil.populateEntityReferences(tableRecords, Entity.TABLE);
+    return EntityUtil.getEntityReferences(records);
   }
 
   public void setService(Location location, EntityReference service) throws IOException {
