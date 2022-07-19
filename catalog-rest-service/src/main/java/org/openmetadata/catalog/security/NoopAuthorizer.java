@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -27,13 +28,10 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-
-import javax.ws.rs.core.SecurityContext;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
@@ -76,7 +74,7 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public boolean hasPermissions1(
-          SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
     return true;
   }
 

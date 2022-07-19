@@ -14,14 +14,12 @@
 package org.openmetadata.catalog.security;
 
 import java.util.List;
+import javax.ws.rs.core.SecurityContext;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
-
-import javax.ws.rs.core.SecurityContext;
 
 public interface Authorizer {
 
@@ -50,5 +48,5 @@ public interface Authorizer {
   boolean isOwner(AuthenticationContext ctx, EntityReference entityReference);
 
   boolean hasPermissions1(
-          SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext);
+      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext);
 }

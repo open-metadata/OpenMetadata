@@ -142,7 +142,7 @@ public class MessagingServiceResource extends EntityResource<MessagingService, M
       throws IOException {
     ListFilter filter = new ListFilter(include);
     ResultList<MessagingService> messagingServices =
-        super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
   }
 

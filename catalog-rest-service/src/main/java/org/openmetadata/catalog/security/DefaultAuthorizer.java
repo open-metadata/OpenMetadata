@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdbi.v3.core.Jdbi;
@@ -41,8 +42,6 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
-
-import javax.ws.rs.core.SecurityContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
@@ -192,7 +191,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public boolean hasPermissions1(
-          SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin() || subjectContext.isBot()) {
       return true;

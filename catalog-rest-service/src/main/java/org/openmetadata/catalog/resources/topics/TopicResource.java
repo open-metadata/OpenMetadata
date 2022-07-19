@@ -148,7 +148,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
-    return super.listInternal(uriInfo, null, fieldsParam, filter, limitParam, before, after);
+    return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

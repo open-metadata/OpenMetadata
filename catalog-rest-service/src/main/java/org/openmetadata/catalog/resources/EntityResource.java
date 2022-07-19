@@ -14,15 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
-import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.security.policyevaluator.OperationContext;
 import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
-import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
@@ -89,8 +86,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after)
       throws IOException {
-    authorizer.hasPermissions1(securityContext, listOperationContext, getResourceContext());
     RestUtil.validateCursors(before, after);
+    authorizer.hasPermissions1(securityContext, listOperationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
 
     ResultList<T> resultList;
@@ -104,7 +101,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
       throws IOException {
-    authorizer.hasPermissions1(securityContext, getOperationContext, null);
+    authorizer.hasPermissions1(securityContext, getOperationContext, getResourceContextById(id));
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -112,7 +109,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
-    authorizer.hasPermissions1(securityContext, getOperationContext, null);
+    authorizer.hasPermissions1(securityContext, getOperationContext, getResourceContextByName(name));
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
