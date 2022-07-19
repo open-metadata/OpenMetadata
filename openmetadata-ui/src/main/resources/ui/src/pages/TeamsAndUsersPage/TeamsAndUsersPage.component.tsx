@@ -196,7 +196,7 @@ const TeamsAndUsersPage = () => {
     setIsUsersLoading(true);
 
     if (type) {
-      const isAdmin = type === UserType.ADMINS ? true : undefined;
+      const isAdmin = type === UserType.ADMINS || undefined;
       const paging = cursorValue
         ? { [cursorValue]: userPaging[cursorValue as keyof Paging] as string }
         : {};
