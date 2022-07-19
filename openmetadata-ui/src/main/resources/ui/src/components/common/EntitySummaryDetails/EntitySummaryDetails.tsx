@@ -1,4 +1,4 @@
-import { Popover } from 'antd';
+import { Dropdown } from 'antd';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { ExtraInfo } from 'Models';
@@ -70,25 +70,14 @@ const EntitySummaryDetails = ({
           !displayVal || displayVal === '--' ? (
             <>
               No Tier
-              <Popover
-                className="rounded-[4px]"
-                content={
+              <Dropdown
+                overlay={
                   <TierCard
                     currentTier={tier?.tagFQN}
                     updateTier={updateTier}
                   />
                 }
-                placement="leftBottom"
-                title={
-                  <p
-                    style={{
-                      paddingBottom: '8px',
-                      paddingTop: '10px',
-                    }}>
-                    Edit Tier
-                  </p>
-                }
-                trigger="click">
+                trigger={['click']}>
                 <span style={{ marginLeft: '5px' }}>
                   {updateTier ? (
                     <SVGIcons
@@ -99,7 +88,7 @@ const EntitySummaryDetails = ({
                     />
                   ) : null}
                 </span>
-              </Popover>
+              </Dropdown>
             </>
           ) : (
             <></>
@@ -218,25 +207,14 @@ const EntitySummaryDetails = ({
                           {displayVal}
                         </Button>
                         <span>
-                          <Popover
-                            className="rounded-[4px]"
-                            content={
+                          <Dropdown
+                            overlay={
                               <TierCard
                                 currentTier={tier?.tagFQN}
                                 updateTier={updateTier}
                               />
                             }
-                            placement="bottomRight"
-                            title={
-                              <p
-                                style={{
-                                  paddingBottom: '8px',
-                                  paddingTop: '10px',
-                                }}>
-                                Edit Tier
-                              </p>
-                            }
-                            trigger="click">
+                            trigger={['click']}>
                             <span style={{ marginLeft: '5px' }}>
                               {updateTier ? (
                                 <SVGIcons
@@ -247,7 +225,7 @@ const EntitySummaryDetails = ({
                                 />
                               ) : null}
                             </span>
-                          </Popover>
+                          </Dropdown>
                         </span>
                       </span>
                     </>

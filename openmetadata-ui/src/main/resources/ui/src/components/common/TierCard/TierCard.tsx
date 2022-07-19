@@ -14,7 +14,6 @@ import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.
 import Loader from '../../Loader/Loader';
 import { Status } from '../../ManageTab/ManageTab.interface';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
-import './TierCard.css';
 
 export interface TierCardProps {
   currentUser?: EntityReference;
@@ -98,7 +97,7 @@ const TierCard = ({
       <div
         className="tw-flex tw-flex-col tw-mb-7 margin-[10px]"
         data-testid="cards"
-        style={{ margin: '10px' }}>
+        style={{ margin: '10px', width: '760px' }}>
         {tierData.map((card, i) => (
           <NonAdminAction
             html={
@@ -147,14 +146,10 @@ const TierCard = ({
       getTierData();
     }
   }, []);
-  useEffect(() => {
-    setActiveTier(currentTier);
-  }, [currentTier]);
-  useEffect(() => {
-    setOwner(currentUser);
-  }, [currentUser]);
 
   useEffect(() => {
+    setOwner(currentUser);
+    setActiveTier(currentTier);
     if (statusTier === 'waiting') {
       setStatusTier('success');
       setTimeout(() => {
@@ -163,11 +158,7 @@ const TierCard = ({
     }
   }, [currentTier]);
 
-  return (
-    <Popover className="rounded-[4px]" placement="bottom" trigger="click">
-      {getTierWidget()}
-    </Popover>
-  );
+  return <Popover trigger="click">{getTierWidget()}</Popover>;
 };
 
 export default TierCard;
