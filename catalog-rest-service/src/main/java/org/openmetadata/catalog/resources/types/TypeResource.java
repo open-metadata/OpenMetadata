@@ -114,6 +114,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               LOG.debug("Creating entity that does not exist ", e);
             }
             this.dao.createOrUpdate(null, type);
+            this.dao.addToRegistry(type);
           } catch (IOException e) {
             LOG.error("Error loading type {}", type.getName(), e);
           }
