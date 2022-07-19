@@ -25,6 +25,7 @@ except ImportError:
     from typing_compat import get_args
 
 from pydantic import BaseModel
+from requests.utils import quote
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
@@ -458,7 +459,11 @@ class OpenMetadata(
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{model_str(fqn)}", fields=fields)
+        return self._get(
+            entity=entity,
+            path=f"name/{quote(model_str(fqn), safe='')}",
+            fields=fields,
+        )
 
     def get_by_id(
         self,

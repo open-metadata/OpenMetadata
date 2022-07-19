@@ -113,7 +113,7 @@ const Users = ({
       }
       setShowFilterList(false);
     },
-    [threadType]
+    [threadType, fetchFeedHandler]
   );
 
   const fetchTeams = () => {

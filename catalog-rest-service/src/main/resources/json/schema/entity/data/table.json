@@ -185,7 +185,7 @@
           "type": "integer"
         },
         "dataTypeDisplay": {
-          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
           "type": "string"
         },
         "description": {

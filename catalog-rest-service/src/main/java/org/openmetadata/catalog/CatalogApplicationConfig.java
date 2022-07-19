@@ -33,79 +33,101 @@ import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import org.openmetadata.catalog.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.catalog.slack.SlackPublisherConfiguration;
+import org.openmetadata.catalog.slackChat.SlackChatConfiguration;
 
 public class CatalogApplicationConfig extends Configuration {
-  @JsonProperty("database")
+  private static final String DATABASE_CONFIG = "database";
+  private static final String SWAGGER_CONFIG = "swagger";
+  private static final String AUTHORIZER_CONFIG = "authorizerConfiguration";
+  private static final String AUTHENTICATION_CONFIG = "authenticationConfiguration";
+  private static final String JWT_CONFIG = "jwtTokenConfiguration";
+  private static final String ELASTIC_CONFIG = "elasticsearch";
+  private static final String EVENTHANDLER_CONFIG = "eventHandlerConfiguration";
+  private static final String AIRFLOW_CONFIG = "airflowConfiguration";
+  private static final String SLACK_CONFIG = "slackEventPublishers";
+  private static final String FERNET_CONFIG = "fernetConfiguration";
+  private static final String HEALTH_CONFIG = "health";
+  private static final String MIGRATION_CONFIG = "migrationConfiguration";
+  private static final String SANDBOXMODE_CONFIG = "sandboxModeEnabled";
+  private static final String SLACK_CHAT_CONFIG = "slackChat";
+  private static final String SECRET_MANAGER_CONFIG = "secretsManagerConfiguration";
+
+  @JsonProperty(DATABASE_CONFIG)
   @NotNull
   @Valid
   @Getter
   @Setter
   private DataSourceFactory dataSourceFactory;
 
-  @JsonProperty("swagger")
+  @JsonProperty(SWAGGER_CONFIG)
   @Getter
   @Setter
   private SwaggerBundleConfiguration swaggerBundleConfig;
 
-  @JsonProperty("authorizerConfiguration")
+  @JsonProperty(AUTHORIZER_CONFIG)
   @Getter
   @Setter
   private AuthorizerConfiguration authorizerConfiguration;
 
-  @JsonProperty("authenticationConfiguration")
+  @JsonProperty(AUTHENTICATION_CONFIG)
   @Getter
   @Setter
   private AuthenticationConfiguration authenticationConfiguration;
 
-  @JsonProperty("jwtTokenConfiguration")
+  @JsonProperty(JWT_CONFIG)
   @Getter
   @Setter
   private JWTTokenConfiguration jwtTokenConfiguration;
 
-  @JsonProperty("elasticsearch")
+  @JsonProperty(ELASTIC_CONFIG)
   @Getter
   @Setter
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
-  @JsonProperty("eventHandlerConfiguration")
+  @JsonProperty(EVENTHANDLER_CONFIG)
   @Getter
   @Setter
   private EventHandlerConfiguration eventHandlerConfiguration;
 
-  @JsonProperty("airflowConfiguration")
+  @JsonProperty(AIRFLOW_CONFIG)
   @Getter
   @Setter
   private AirflowConfiguration airflowConfiguration;
 
-  @JsonProperty("slackEventPublishers")
+  @JsonProperty(SLACK_CONFIG)
   @Getter
   @Setter
   private List<SlackPublisherConfiguration> slackEventPublishers;
 
-  @JsonProperty("migrationConfiguration")
+  @JsonProperty(MIGRATION_CONFIG)
   @NotNull
   @Getter
   @Setter
   private MigrationConfiguration migrationConfiguration;
 
-  @JsonProperty("fernetConfiguration")
+  @JsonProperty(FERNET_CONFIG)
   @Getter
   @Setter
   private FernetConfiguration fernetConfiguration;
 
-  @JsonProperty("health")
+  @JsonProperty(HEALTH_CONFIG)
   @NotNull
   @Valid
   @Getter
   @Setter
   private HealthConfiguration healthConfiguration = new HealthConfiguration();
 
-  @JsonProperty("sandboxModeEnabled")
+  @JsonProperty(SANDBOXMODE_CONFIG)
   @Getter
   @Setter
   private boolean sandboxModeEnabled;
 
-  @JsonProperty("secretsManagerConfiguration")
+  @JsonProperty(SLACK_CHAT_CONFIG)
+  @Getter
+  @Setter
+  private SlackChatConfiguration slackChatConfiguration = new SlackChatConfiguration();
+
+  @JsonProperty(SECRET_MANAGER_CONFIG)
   @Getter
   @Setter
   private SecretsManagerConfiguration secretsManagerConfiguration;

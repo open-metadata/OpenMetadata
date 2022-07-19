@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/authorizerConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthorizerConfiguration",
+  "description": "This schema defines the Authorization Configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.security.AuthorizerConfiguration",
+  "properties": {
+    "className": {
+      "description": "Class Name for authorizer.",
+      "type": "string"
+    },
+    "containerRequestFilter": {
+      "description": "Filter for the request authorization",
+      "type": "string"
+    },
+    "adminPrincipals": {
+      "description": "List of unique admin principals",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "botPrincipals": {
+      "description": "List of unique bot principals",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "principalDomain": {
+      "description": "Principal Domain",
+      "type": "string"
+    },
+    "enforcePrincipalDomain": {
+      "description": "Enable Enforce Principal Domain",
+      "type": "boolean"
+    },
+    "enableSecureSocketConnection": {
+      "description": "Enable Secure Socket Connection",
+      "type": "boolean"
+    }
+  },
+  "required": ["className", "containerRequestFilter", "adminPrincipals", "botPrincipals", "principalDomain", "enforcePrincipalDomain", "enableSecureSocketConnection"],
+  "additionalProperties": false
+}

@@ -11,11 +11,11 @@ Once the `Client Id` and `Client Secret` are generated add the `Client Id` in `o
 
 ```yaml
 authenticationConfiguration:
-  provider: "azure"
+  provider: "okta"
   publicKeyUrls:
-    - "https://login.microsoftonline.com/common/discovery/keys"
-  authority: "https://login.microsoftonline.com/{Tenant ID}"
-  clientId: "{Client ID}"
+    - "{ISSUER_URL}/v1/keys"
+  authority: "{ISSUER_URL}"
+  clientId: "{CLIENT_ID - SPA APP}"
   callbackUrl: "http://localhost:8585/callback"
 ```
 
@@ -46,9 +46,10 @@ airflowConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   authProvider: azure
   authConfig:
-    azure:
-      clientSecret: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_SECRET:-""}
-      authority: ${OM_AUTH_AIRFLOW_AZURE_AUTHORITY_URL:-""}
-      scopes: ${OM_AUTH_AIRFLOW_AZURE_SCOPES:-[]}
-      clientId: ${OM_AUTH_AIRFLOW_AZURE_CLIENT_ID:-""}
+    okta:
+      clientId: ${OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
+      orgURL: ${OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
+      privateKey: ${OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY:-""}
+      email: ${OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
+      scopes: ${OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
 ```

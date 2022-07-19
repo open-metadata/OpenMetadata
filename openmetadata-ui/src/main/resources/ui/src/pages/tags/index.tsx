@@ -44,7 +44,7 @@ import ConfirmationModal from '../../components/Modals/ConfirmationModal/Confirm
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { TITLE_FOR_NON_ADMIN_ACTION } from '../../constants/constants';
-import { delimiterRegex, nameWithSpace } from '../../constants/regex.constants';
+import { delimiterRegex } from '../../constants/regex.constants';
 import {
   CreateTagCategory,
   TagCategoryType,
@@ -143,6 +143,7 @@ const TagsPage = () => {
         );
         showErrorToast(errMsg);
         setError(errMsg);
+        setCurrentCategory({ name } as TagCategory);
         setIsLoading(false);
       }
     }
@@ -153,8 +154,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
@@ -163,8 +162,8 @@ const TagsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
-      } else if (data.name.length < 2 || data.name.length > 25) {
-        errData['name'] = 'Name size must be between 2 and 25';
+      } else if (data.name.length < 2 || data.name.length > 64) {
+        errData['name'] = 'Name size must be between 2 and 64';
       } else if (!isUrlFriendlyName(data.name.trim())) {
         errData['name'] = 'Special characters are not allowed';
       }
@@ -314,8 +313,6 @@ const TagsPage = () => {
       const errData: { [key: string]: string } = {};
       if (!data.name.trim()) {
         errData['name'] = 'Name is required';
-      } else if (nameWithSpace.test(data.name)) {
-        errData['name'] = 'Name with space is not allowed';
       } else if (delimiterRegex.test(data.name)) {
         errData['name'] = 'Name with delimiters are not allowed';
       } else if (
@@ -326,8 +323,8 @@ const TagsPage = () => {
         )
       ) {
         errData['name'] = 'Name already exists';
-      } else if (data.name.length < 2 || data.name.length > 25) {
-        errData['name'] = 'Name size must be between 2 and 25';
+      } else if (data.name.length < 2 || data.name.length > 64) {
+        errData['name'] = 'Name size must be between 2 and 64';
       }
       setErrorDataTag(errData);
 
@@ -410,6 +407,7 @@ const TagsPage = () => {
     return (
       <Card
         data-testid="data-summary-container"
+        size="small"
         style={leftPanelAntCardStyle}
         title={
           <div className="tw-flex tw-justify-between tw-items-center">
@@ -422,7 +420,7 @@ const TagsPage = () => {
               position="bottom"
               title={TITLE_FOR_NON_ADMIN_ACTION}>
               <Button
-                className={classNames('tw-h-7 tw-px-2 tw-my-2', {
+                className={classNames('tw-px-2 ', {
                   'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                 })}
                 data-testid="add-category"
@@ -474,309 +472,296 @@ const TagsPage = () => {
   };
 
   return (
-    <>
-      {error ? (
-        <ErrorPlaceHolder>
-          <p className="tw-text-center tw-m-auto">{error}</p>
-        </ErrorPlaceHolder>
-      ) : (
-        <PageContainerV1 className="tw-py-4">
-          <PageLayout leftPanel={fetchLeftPanel()}>
-            {isLoading ? (
-              <Loader />
-            ) : (
+    <PageContainerV1 className="tw-py-4">
+      <PageLayout leftPanel={fetchLeftPanel()}>
+        {isLoading ? (
+          <Loader />
+        ) : error ? (
+          <ErrorPlaceHolder>
+            <p className="tw-text-center tw-m-auto">{error}</p>
+          </ErrorPlaceHolder>
+        ) : (
+          <div
+            className="full-height"
+            data-testid="tags-container"
+            style={{ padding: '14px' }}>
+            {currentCategory && (
               <div
-                className="full-height"
-                data-testid="tags-container"
-                style={{ padding: '14px' }}>
-                {currentCategory && (
-                  <div
-                    className="tw-flex tw-justify-between tw-items-center"
-                    data-testid="header">
-                    <div
-                      className="tw-heading tw-text-link tw-text-base"
-                      data-testid="category-name">
-                      {currentCategory.displayName ?? currentCategory.name}
-                    </div>
-                    <div>
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames('tw-h-8 tw-rounded tw-mb-3', {
-                            'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                          })}
-                          data-testid="add-new-tag-button"
-                          size="small"
-                          theme="primary"
-                          variant="contained"
-                          onClick={() => {
-                            setIsAddingTag((prevState) => !prevState);
-                            setErrorDataTag(undefined);
-                          }}>
-                          Add new tag
-                        </Button>
-                      </NonAdminAction>
-                      <NonAdminAction
-                        position="bottom"
-                        title={TITLE_FOR_NON_ADMIN_ACTION}>
-                        <Button
-                          className={classNames(
-                            'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
-                            {
-                              'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                            }
-                          )}
-                          data-testid="delete-tag-category-button"
-                          size="small"
-                          theme="primary"
-                          variant="outlined"
-                          onClick={() => {
-                            deleteTagHandler();
-                          }}>
-                          Delete category
-                        </Button>
-                      </NonAdminAction>
-                    </div>
-                  </div>
-                )}
+                className="tw-flex tw-justify-between tw-items-center"
+                data-testid="header">
                 <div
-                  className="tw-mb-3 tw--ml-5"
-                  data-testid="description-container">
-                  <Description
-                    blurWithBodyBG
-                    description={currentCategory?.description || ''}
-                    entityName={
-                      currentCategory?.displayName ?? currentCategory?.name
-                    }
-                    isEdit={isEditCategory}
-                    onCancel={() => setIsEditCategory(false)}
-                    onDescriptionEdit={() => setIsEditCategory(true)}
-                    onDescriptionUpdate={UpdateCategory}
-                  />
+                  className="tw-heading tw-text-link tw-text-base"
+                  data-testid="category-name">
+                  {currentCategory.displayName ?? currentCategory.name}
                 </div>
-                <div className="tw-bg-white">
-                  <table className="tw-w-full" data-testid="table">
-                    <thead>
-                      <tr className="tableHead-row">
-                        <th
-                          className="tableHead-cell"
-                          data-testid="heading-name">
-                          Name
-                        </th>
-                        <th
-                          className="tableHead-cell"
-                          data-testid="heading-description">
-                          Description
-                        </th>
-                        <th
-                          className="tableHead-cell tw-w-10"
-                          data-testid="heading-actions">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="tw-text-sm" data-testid="table-body">
-                      {currentCategory?.children?.length ? (
-                        (currentCategory.children as TagClass[])?.map(
-                          (tag: TagClass, index: number) => {
-                            return (
-                              <tr
-                                className={`tableBody-row ${
-                                  !isEven(index + 1) && 'odd-row'
-                                }`}
-                                key={index}>
-                                <td className="tableBody-cell">
-                                  <p>{tag.name}</p>
-                                </td>
-                                <td className="tw-group tableBody-cell">
-                                  <div className="tw-cursor-pointer tw-flex">
-                                    <div>
-                                      {tag.description ? (
-                                        <RichTextEditorPreviewer
-                                          markdown={tag.description}
-                                        />
-                                      ) : (
-                                        <span className="tw-no-description">
-                                          No description
-                                        </span>
-                                      )}
-                                    </div>
-                                    <NonAdminAction
-                                      permission={Operation.EditDescription}
-                                      position="left"
-                                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                      <button
-                                        className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                                        onClick={() => {
-                                          setIsEditTag(true);
-                                          setEditTag(tag);
-                                        }}>
-                                        <SVGIcons
-                                          alt="edit"
-                                          data-testid="editTagDescription"
-                                          icon="icon-edit"
-                                          title="Edit"
-                                          width="16px"
-                                        />
-                                      </button>
-                                    </NonAdminAction>
-                                  </div>
-                                  <div className="tw-mt-1" data-testid="usage">
-                                    <span className="tw-text-grey-muted tw-mr-1">
-                                      Usage:
-                                    </span>
-                                    {tag.usageCount ? (
-                                      <Link
-                                        className="link-text tw-align-middle"
-                                        data-testid="usage-count"
-                                        to={getUsageCountLink(
-                                          tag.fullyQualifiedName || ''
-                                        )}>
-                                        {tag.usageCount}
-                                      </Link>
-                                    ) : (
-                                      <span
-                                        className="tw-no-description"
-                                        data-testid="usage-count">
-                                        Not used
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="tableBody-cell">
-                                  <div className="tw-text-center">
-                                    <NonAdminAction
-                                      position="bottom"
-                                      title={TITLE_FOR_NON_ADMIN_ACTION}>
-                                      <button
-                                        className="link-text"
-                                        data-testid="delete-tag"
-                                        onClick={() =>
-                                          setDeleteTags({
-                                            data: {
-                                              id: tag.id as string,
-                                              name: tag.name,
-                                              categoryName:
-                                                currentCategory.name,
-                                              isCategory: false,
-                                              status: 'waiting',
-                                            },
-                                            state: true,
-                                          })
-                                        }>
-                                        {deleteTags.data?.id === tag.id ? (
-                                          deleteTags.data?.status ===
-                                          'success' ? (
-                                            <FontAwesomeIcon icon="check" />
-                                          ) : (
-                                            <Loader
-                                              size="small"
-                                              type="default"
-                                            />
-                                          )
-                                        ) : (
-                                          <SVGIcons
-                                            alt="delete"
-                                            icon="icon-delete"
-                                            title="Delete"
-                                            width="16px"
-                                          />
-                                        )}
-                                      </button>
-                                    </NonAdminAction>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          }
-                        )
-                      ) : (
-                        <tr className="tableBody-row">
-                          <td
-                            className="tableBody-cell tw-text-center"
-                            colSpan={4}>
-                            No tags available.
-                          </td>
-                        </tr>
+                <div>
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className={classNames('tw-h-8 tw-rounded tw-mb-3', {
+                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                      })}
+                      data-testid="add-new-tag-button"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => {
+                        setIsAddingTag((prevState) => !prevState);
+                        setErrorDataTag(undefined);
+                      }}>
+                      Add new tag
+                    </Button>
+                  </NonAdminAction>
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className={classNames(
+                        'tw-h-8 tw-rounded tw-mb-3 tw-ml-2',
+                        {
+                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                        }
                       )}
-                    </tbody>
-                  </table>
+                      data-testid="delete-tag-category-button"
+                      size="small"
+                      theme="primary"
+                      variant="outlined"
+                      onClick={() => {
+                        deleteTagHandler();
+                      }}>
+                      Delete category
+                    </Button>
+                  </NonAdminAction>
                 </div>
-                {isEditTag && (
-                  <ModalWithMarkdownEditor
-                    header={`Edit description for ${editTag?.name}`}
-                    placeholder="Enter Description"
-                    value={editTag?.description as string}
-                    onCancel={() => {
-                      setIsEditTag(false);
-                      setEditTag(undefined);
-                    }}
-                    onSave={updatePrimaryTag}
-                  />
-                )}
-                {isAddingCategory && (
-                  <FormModal
-                    errorData={errorDataCategory}
-                    form={Form}
-                    header="Adding new category"
-                    initialData={{
-                      name: '',
-                      description: '',
-                      categoryType: TagCategoryType.Descriptive,
-                    }}
-                    isSaveButtonDisabled={!isEmpty(errorDataCategory)}
-                    onCancel={() => setIsAddingCategory(false)}
-                    onChange={(data) => {
-                      setErrorDataCategory({});
-                      onNewCategoryChange(data as TagCategory);
-                    }}
-                    onSave={(data) => createCategory(data as TagCategory)}
-                  />
-                )}
-                {isAddingTag && (
-                  <FormModal
-                    errorData={errorDataTag}
-                    form={Form}
-                    header={`Adding new tag on ${
-                      currentCategory?.displayName ?? currentCategory?.name
-                    }`}
-                    initialData={{
-                      name: '',
-                      description: '',
-                      categoryType: '',
-                    }}
-                    isSaveButtonDisabled={!isEmpty(errorDataTag)}
-                    onCancel={() => setIsAddingTag(false)}
-                    onChange={(data) => {
-                      setErrorDataTag({});
-                      onNewTagChange(data as TagCategory);
-                    }}
-                    onSave={(data) => createPrimaryTag(data as TagCategory)}
-                  />
-                )}
-                {deleteTags.state && (
-                  <ConfirmationModal
-                    bodyText={`Are you sure you want to delete the tag ${
-                      deleteTags.data?.isCategory ? 'category' : ''
-                    } "${deleteTags.data?.name}"?`}
-                    cancelText="Cancel"
-                    confirmText="Confirm"
-                    header={`Delete Tag ${
-                      deleteTags.data?.isCategory ? 'Category' : ''
-                    }`}
-                    onCancel={() =>
-                      setDeleteTags({ data: undefined, state: false })
-                    }
-                    onConfirm={handleConfirmClick}
-                  />
-                )}
               </div>
             )}
-          </PageLayout>
-        </PageContainerV1>
-      )}
-    </>
+            <div
+              className="tw-mb-3 tw--ml-5"
+              data-testid="description-container">
+              <Description
+                blurWithBodyBG
+                description={currentCategory?.description || ''}
+                entityName={
+                  currentCategory?.displayName ?? currentCategory?.name
+                }
+                isEdit={isEditCategory}
+                onCancel={() => setIsEditCategory(false)}
+                onDescriptionEdit={() => setIsEditCategory(true)}
+                onDescriptionUpdate={UpdateCategory}
+              />
+            </div>
+            <div className="tw-bg-white">
+              <table className="tw-w-full" data-testid="table">
+                <thead>
+                  <tr className="tableHead-row">
+                    <th className="tableHead-cell" data-testid="heading-name">
+                      Name
+                    </th>
+                    <th
+                      className="tableHead-cell"
+                      data-testid="heading-description">
+                      Description
+                    </th>
+                    <th
+                      className="tableHead-cell tw-w-10"
+                      data-testid="heading-actions">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="tw-text-sm" data-testid="table-body">
+                  {currentCategory?.children?.length ? (
+                    (currentCategory.children as TagClass[])?.map(
+                      (tag: TagClass, index: number) => {
+                        return (
+                          <tr
+                            className={`tableBody-row ${
+                              !isEven(index + 1) && 'odd-row'
+                            }`}
+                            key={index}>
+                            <td className="tableBody-cell">
+                              <p>{tag.name}</p>
+                            </td>
+                            <td className="tw-group tableBody-cell">
+                              <div className="tw-cursor-pointer tw-flex">
+                                <div>
+                                  {tag.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={tag.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description
+                                    </span>
+                                  )}
+                                </div>
+                                <NonAdminAction
+                                  permission={Operation.EditDescription}
+                                  position="left"
+                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                  <button
+                                    className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
+                                    onClick={() => {
+                                      setIsEditTag(true);
+                                      setEditTag(tag);
+                                    }}>
+                                    <SVGIcons
+                                      alt="edit"
+                                      data-testid="editTagDescription"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="16px"
+                                    />
+                                  </button>
+                                </NonAdminAction>
+                              </div>
+                              <div className="tw-mt-1" data-testid="usage">
+                                <span className="tw-text-grey-muted tw-mr-1">
+                                  Usage:
+                                </span>
+                                {tag.usageCount ? (
+                                  <Link
+                                    className="link-text tw-align-middle"
+                                    data-testid="usage-count"
+                                    to={getUsageCountLink(
+                                      tag.fullyQualifiedName || ''
+                                    )}>
+                                    {tag.usageCount}
+                                  </Link>
+                                ) : (
+                                  <span
+                                    className="tw-no-description"
+                                    data-testid="usage-count">
+                                    Not used
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="tableBody-cell">
+                              <div className="tw-text-center">
+                                <NonAdminAction
+                                  position="bottom"
+                                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                                  <button
+                                    className="link-text"
+                                    data-testid="delete-tag"
+                                    onClick={() =>
+                                      setDeleteTags({
+                                        data: {
+                                          id: tag.id as string,
+                                          name: tag.name,
+                                          categoryName: currentCategory.name,
+                                          isCategory: false,
+                                          status: 'waiting',
+                                        },
+                                        state: true,
+                                      })
+                                    }>
+                                    {deleteTags.data?.id === tag.id ? (
+                                      deleteTags.data?.status === 'success' ? (
+                                        <FontAwesomeIcon icon="check" />
+                                      ) : (
+                                        <Loader size="small" type="default" />
+                                      )
+                                    ) : (
+                                      <SVGIcons
+                                        alt="delete"
+                                        icon="icon-delete"
+                                        title="Delete"
+                                        width="16px"
+                                      />
+                                    )}
+                                  </button>
+                                </NonAdminAction>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )
+                  ) : (
+                    <tr className="tableBody-row">
+                      <td className="tableBody-cell tw-text-center" colSpan={4}>
+                        No tags available.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {isEditTag && (
+              <ModalWithMarkdownEditor
+                header={`Edit description for ${editTag?.name}`}
+                placeholder="Enter Description"
+                value={editTag?.description as string}
+                onCancel={() => {
+                  setIsEditTag(false);
+                  setEditTag(undefined);
+                }}
+                onSave={updatePrimaryTag}
+              />
+            )}
+            {isAddingCategory && (
+              <FormModal
+                errorData={errorDataCategory}
+                form={Form}
+                header="Adding new category"
+                initialData={{
+                  name: '',
+                  description: '',
+                  categoryType: TagCategoryType.Descriptive,
+                }}
+                isSaveButtonDisabled={!isEmpty(errorDataCategory)}
+                onCancel={() => setIsAddingCategory(false)}
+                onChange={(data) => {
+                  setErrorDataCategory({});
+                  onNewCategoryChange(data as TagCategory);
+                }}
+                onSave={(data) => createCategory(data as TagCategory)}
+              />
+            )}
+            {isAddingTag && (
+              <FormModal
+                errorData={errorDataTag}
+                form={Form}
+                header={`Adding new tag on ${
+                  currentCategory?.displayName ?? currentCategory?.name
+                }`}
+                initialData={{
+                  name: '',
+                  description: '',
+                  categoryType: '',
+                }}
+                isSaveButtonDisabled={!isEmpty(errorDataTag)}
+                onCancel={() => setIsAddingTag(false)}
+                onChange={(data) => {
+                  setErrorDataTag({});
+                  onNewTagChange(data as TagCategory);
+                }}
+                onSave={(data) => createPrimaryTag(data as TagCategory)}
+              />
+            )}
+            {deleteTags.state && (
+              <ConfirmationModal
+                bodyText={`Are you sure you want to delete the tag ${
+                  deleteTags.data?.isCategory ? 'category' : ''
+                } "${deleteTags.data?.name}"?`}
+                cancelText="Cancel"
+                confirmText="Confirm"
+                header={`Delete Tag ${
+                  deleteTags.data?.isCategory ? 'Category' : ''
+                }`}
+                onCancel={() =>
+                  setDeleteTags({ data: undefined, state: false })
+                }
+                onConfirm={handleConfirmClick}
+              />
+            )}
+          </div>
+        )}
+      </PageLayout>
+    </PageContainerV1>
   );
 };
 

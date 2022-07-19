@@ -13,15 +13,17 @@
 DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 """
 import traceback
-import uuid
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
-    Table,
     TableData,
     TableType,
 )
@@ -42,10 +44,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
-from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.common_db_source import SQLSourceStatus
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    SQLSourceStatus,
+)
 from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
 from metadata.utils.gcs_utils import (
@@ -66,10 +71,11 @@ logger = ingestion_logger()
 
 DATALAKE_INT_TYPES = {"int64", "INT"}
 
+DATALAKE_SUPPORTED_FILE_TYPES = (".csv", ".tsv", ".json", ".parquet")
 
-class DatalakeSource(Source[Entity]):
+
+class DatalakeSource(DatabaseServiceSource):
     def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__()
         self.status = SQLSourceStatus()
 
         self.config = config
@@ -84,8 +90,10 @@ class DatalakeSource(Source[Entity]):
         )
 
         self.connection = get_connection(self.service_connection)
-
         self.client = self.connection.client
+        self.table_constraints = None
+        self.database_source_state = set()
+        super().__init__()
 
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
@@ -97,146 +105,171 @@ class DatalakeSource(Source[Entity]):
             )
         return cls(config, metadata_config)
 
-    def prepare(self):
-        pass
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
 
-    def next_record(self) -> Iterable[Entity]:
-        try:
+        It might come informed - or not - from the source.
 
-            bucket_name = self.service_connection.bucketName
-            prefix = self.service_connection.prefix
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+        database_name = "default"
+        yield database_name
 
+    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+        """
+        From topology.
+        Prepare a database request and pass it to the sink
+        """
+        yield CreateDatabaseRequest(
+            name=database_name,
+            service=EntityReference(
+                id=self.context.database_service.id,
+                type="databaseService",
+            ),
+        )
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """
+        return schema names
+        """
+        bucket_name = self.service_connection.bucketName
+        if isinstance(self.service_connection.configSource, GCSConfig):
+            if bucket_name:
+                yield bucket_name
+            else:
+                for bucket in self.client.list_buckets():
+                    yield bucket.name
+
+        if isinstance(self.service_connection.configSource, S3Config):
+            if bucket_name:
+                yield bucket_name
+            else:
+                for bucket in self.client.list_buckets()["Buckets"]:
+                    yield bucket["Name"]
+
+    def yield_database_schema(
+        self, schema_name: str
+    ) -> Iterable[CreateDatabaseSchemaRequest]:
+        """
+        From topology.
+        Prepare a database schema request and pass it to the sink
+        """
+        yield CreateDatabaseSchemaRequest(
+            name=schema_name,
+            database=EntityReference(id=self.context.database.id, type="database"),
+        )
+
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        bucket_name = self.context.database_schema.name.__root__
+        prefix = self.service_connection.prefix
+        if self.source_config.includeTables:
             if isinstance(self.service_connection.configSource, GCSConfig):
-                if bucket_name:
-                    yield from self.get_gcs_files(bucket_name, prefix)
-                else:
-                    for bucket in self.client.list_buckets():
-                        yield from self.get_gcs_files(bucket.name, prefix)
-
+                bucket = self.client.get_bucket(bucket_name)
+                for key in bucket.list_blobs(prefix=prefix):
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, key.name
+                    ) or not self.check_valid_file_type(key.name):
+                        self.status.filter(
+                            "{}".format(key["Key"]),
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    table_name = self.standardize_table_name(bucket_name, key.name)
+                    yield table_name, TableType.Regular
             if isinstance(self.service_connection.configSource, S3Config):
-                if bucket_name:
-                    yield from self.get_s3_files(bucket_name, prefix)
-                else:
-                    for bucket in self.client.list_buckets()["Buckets"]:
-                        yield from self.get_s3_files(bucket["Name"], prefix)
+                kwargs = {"Bucket": bucket_name}
+                if prefix:
+                    kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
+                for key in self.client.list_objects(**kwargs)["Contents"]:
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, key["Key"]
+                    ) or not self.check_valid_file_type(key["Key"]):
+                        self.status.filter(
+                            "{}".format(key["Key"]),
+                            "Table pattern not allowed",
+                        )
+                        continue
+                    table_name = self.standardize_table_name(bucket_name, key["Key"])
+                    yield table_name, TableType.Regular
+
+    def yield_table(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Iterable[Optional[CreateTableRequest]]:
+        """
+        From topology.
+        Prepare a table request and pass it to the sink
+        """
+        table_name, table_type = table_name_and_type
+        schema_name = self.context.database_schema.name.__root__
+        try:
+            table_constraints = None
+            if isinstance(self.service_connection.configSource, GCSConfig):
+                df = self.get_gcs_files(key=table_name, bucket_name=schema_name)
+            if isinstance(self.service_connection.configSource, S3Config):
+                df = self.get_s3_files(key=table_name, bucket_name=schema_name)
+            columns = self.get_columns(df)
+            table_request = CreateTableRequest(
+                name=table_name,
+                tableType=table_type,
+                description="",
+                columns=columns,
+                tableConstraints=table_constraints if table_constraints else None,
+                databaseSchema=EntityReference(
+                    id=self.context.database_schema.id,
+                    type="databaseSchema",
+                ),
+            )
+            yield table_request
+            self.register_record(table_request=table_request)
 
         except Exception as err:
-            logger.error(traceback.format_exc())
+            logger.debug(traceback.format_exc())
+            logger.error(err)
+            self.status.failures.append(
+                "{}.{}".format(self.config.serviceName, table_name)
+            )
+
+    def get_gcs_files(self, key, bucket_name):
+        try:
+            if key.endswith(".csv"):
+                return read_csv_from_gcs(key, bucket_name)
+
+            if key.endswith(".tsv"):
+                return read_tsv_from_gcs(key, bucket_name)
+
+            if key.endswith(".json"):
+                return read_json_from_gcs(self.client, key, bucket_name)
+
+            if key.endswith(".parquet"):
+                return read_parquet_from_gcs(key, bucket_name)
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
             logger.error(err)
 
-    def get_gcs_files(self, bucket_name, prefix):
-
-        bucket = self.client.get_bucket(bucket_name)
-
-        for key in bucket.list_blobs(prefix=prefix):
-            try:
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern, key.name
-                ):
-                    self.status.filter(
-                        "{}".format(key["Key"]),
-                        "Table pattern not allowed",
-                    )
-                    continue
-
-                if key.name.endswith(".csv"):
-
-                    df = read_csv_from_gcs(key, bucket_name)
-
-                    yield from self.ingest_tables(key.name, df, bucket_name)
-
-                if key.name.endswith(".tsv"):
-
-                    df = read_tsv_from_gcs(key, bucket_name)
-
-                    yield from self.ingest_tables(key.name, df, bucket_name)
-
-                if key.name.endswith(".json"):
-
-                    df = read_json_from_gcs(key)
-
-                    yield from self.ingest_tables(key.name, df, bucket_name)
-
-                if key.name.endswith(".parquet"):
-
-                    df = read_parquet_from_gcs(key, bucket_name)
-
-                    yield from self.ingest_tables(key.name, df, bucket_name)
-
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(err)
-
-    def get_s3_files(self, bucket_name, prefix):
-        kwargs = {"Bucket": bucket_name}
-        if prefix:
-            kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
-        for key in self.client.list_objects(**kwargs)["Contents"]:
-            try:
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern, key["Key"]
-                ):
-                    self.status.filter(
-                        "{}".format(key["Key"]),
-                        "Table pattern not allowed",
-                    )
-                    continue
-                if key["Key"].endswith(".csv"):
-
-                    df = read_csv_from_s3(self.client, key, bucket_name)
-
-                    yield from self.ingest_tables(key["Key"], df, bucket_name)
-
-                if key["Key"].endswith(".tsv"):
-
-                    df = read_tsv_from_s3(self.client, key, bucket_name)
-
-                    yield from self.ingest_tables(key["Key"], df, bucket_name)
-
-                if key["Key"].endswith(".json"):
-
-                    df = read_json_from_s3(self.client, key, bucket_name)
-
-                    yield from self.ingest_tables(key["Key"], df, bucket_name)
-
-                if key["Key"].endswith(".parquet"):
-
-                    df = read_parquet_from_s3(self.client, key, bucket_name)
-
-                    yield from self.ingest_tables(key["Key"], df, bucket_name)
-
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(err)
-
-    def ingest_tables(self, key, df, bucket_name) -> Iterable[OMetaDatabaseAndTable]:
+    def get_s3_files(self, key, bucket_name):
         try:
-            table_columns = self.get_columns(df)
-            database_entity = Database(
-                id=uuid.uuid4(),
-                name="default",
-                service=EntityReference(id=self.service.id, type="databaseService"),
-            )
-            table_entity = Table(
-                id=uuid.uuid4(),
-                name=key,
-                description="",
-                columns=table_columns,
-                tableType=TableType.External,
-            )
-            schema_entity = DatabaseSchema(
-                id=uuid.uuid4(),
-                name=bucket_name,
-                database=EntityReference(id=database_entity.id, type="database"),
-                service=EntityReference(id=self.service.id, type="databaseService"),
-            )
-            table_and_db = OMetaDatabaseAndTable(
-                table=table_entity,
-                database=database_entity,
-                database_schema=schema_entity,
-            )
+            if key.endswith(".csv"):
+                return read_csv_from_s3(self.client, key, bucket_name)
 
-            yield table_and_db
+            if key.endswith(".tsv"):
+                return read_tsv_from_s3(self.client, key, bucket_name)
+
+            if key.endswith(".json"):
+                return read_json_from_s3(self.client, key, bucket_name)
+
+            if key.endswith(".parquet"):
+                return read_parquet_from_s3(self.client, key, bucket_name)
 
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -259,27 +292,43 @@ class DatalakeSource(Source[Entity]):
         return None
 
     def get_columns(self, df):
-        df_columns = list(df.columns)
-        for column in df_columns:
-            try:
+        if hasattr(df, "columns"):
+            df_columns = list(df.columns)
+            for column in df_columns:
+                try:
+                    if (
+                        hasattr(df[column], "dtypes")
+                        and df[column].dtypes.name in DATALAKE_INT_TYPES
+                    ):
+                        if df[column].dtypes.name == "int64":
+                            data_type = DataType.INT.value
+                    else:
+                        data_type = DataType.STRING.value
+                    parsed_string = {}
+                    parsed_string["dataTypeDisplay"] = data_type
+                    parsed_string["dataType"] = data_type
+                    parsed_string["name"] = column[:64]
+                    parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                    yield Column(**parsed_string)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.error(err)
 
-                if (
-                    hasattr(df[column], "dtypes")
-                    and df[column].dtypes.name in DATALAKE_INT_TYPES
-                ):
-                    if df[column].dtypes.name == "int64":
-                        data_type = DataType.INT.value
-                else:
-                    data_type = DataType.STRING.value
-                parsed_string = {}
-                parsed_string["dataTypeDisplay"] = data_type
-                parsed_string["dataType"] = data_type
-                parsed_string["name"] = column[:64]
-                parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-                yield Column(**parsed_string)
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(err)
+    def yield_view_lineage(
+        self, table_name_and_type: Tuple[str, str]
+    ) -> Optional[Iterable[AddLineageRequest]]:
+        pass
+
+    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndCategory]:
+        pass
+
+    def standardize_table_name(self, schema: str, table: str) -> str:
+        return table
+
+    def check_valid_file_type(self, key_name):
+        if key_name.endswith(DATALAKE_SUPPORTED_FILE_TYPES):
+            return True
+        return False
 
     def close(self):
         pass

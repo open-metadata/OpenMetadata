@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/tests/table/tablecolumncounttobeb
 - **`maxColValue`** *(integer)*: Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum number of column.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

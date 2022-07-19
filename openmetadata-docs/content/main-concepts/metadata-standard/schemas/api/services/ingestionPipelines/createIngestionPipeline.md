@@ -1,6 +1,6 @@
 ---
 title: createIngestionPipeline
-slug: /main-concepts/metadata-standard/schemas/api/services/ingestionPipelines/createingestionpipeline
+slug: /main-concepts/metadata-standard/schemas/api/services/ingestionpipelines/createingestionpipeline
 ---
 
 # CreateIngestionPipelineRequest
@@ -20,4 +20,4 @@ slug: /main-concepts/metadata-standard/schemas/api/services/ingestionPipelines/c
 - **`owner`**: Owner of this Pipeline. Refer to *../../../type/entityReference.json*. Default: `None`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

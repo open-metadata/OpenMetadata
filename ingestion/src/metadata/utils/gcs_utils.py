@@ -9,38 +9,42 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
+import traceback
 
-def read_csv_from_gcs(key, bucket_name):
-    import dask.dataframe as dd
+import dask.dataframe as dd
+import gcsfs
+import pandas as pd
+import pyarrow.parquet as pq
+from pandas import DataFrame
 
-    df = dd.read_csv(f"gs://{bucket_name}/{key.name}")
+from metadata.utils.logger import utils_logger
 
+logger = utils_logger()
+
+
+def read_csv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+    df = dd.read_csv(f"gs://{bucket_name}/{key}")
     return df
 
 
-def read_tsv_from_gcs(key, bucket_name):
-
-    import dask.dataframe as dd
-
-    df = dd.read_csv(f"gs://{bucket_name}/{key.name}", sep="\t")
-
+def read_tsv_from_gcs(key: str, bucket_name: str) -> DataFrame:
+    df = dd.read_csv(f"gs://{bucket_name}/{key}", sep="\t")
     return df
 
 
-def read_json_from_gcs(key):
-
-    import pandas as pd
-
-    from metadata.utils.logger import utils_logger
-
-    logger = utils_logger()
-    import json
-    import traceback
-
+def read_json_from_gcs(client, key: str, bucket_name: str) -> DataFrame:
     try:
-
-        data = key.download_as_string().decode()
-        df = pd.DataFrame.from_dict(json.loads(data))
+        bucket = client.get_bucket(bucket_name)
+        blob = bucket.get_blob(key)
+        data = blob.download_as_string().decode()
+        data = json.loads(data)
+        if isinstance(data, list):
+            df = pd.DataFrame.from_dict(data)
+        else:
+            df = pd.DataFrame.from_dict(
+                dict([(k, pd.Series(v)) for k, v in data.items()])
+            )
         return df
 
     except ValueError as verr:
@@ -48,11 +52,8 @@ def read_json_from_gcs(key):
         logger.error(verr)
 
 
-def read_parquet_from_gcs(key, bucket_name):
-    import gcsfs
-    import pyarrow.parquet as pq
-
+def read_parquet_from_gcs(key: str, bucket_name: str) -> DataFrame:
     gs = gcsfs.GCSFileSystem()
-    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key.name}", filesystem=gs)
+    arrow_df = pq.ParquetDataset(f"gs://{bucket_name}/{key}", filesystem=gs)
     df = arrow_df.read_pandas().to_pandas()
     return df

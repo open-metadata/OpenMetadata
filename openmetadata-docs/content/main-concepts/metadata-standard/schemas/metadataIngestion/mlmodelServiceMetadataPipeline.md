@@ -1,6 +1,6 @@
 ---
 title: mlmodelServiceMetadataPipeline
-slug: /main-concepts/metadata-standard/schemas/metadataIngestion/mlmodelservicemetadatapipeline
+slug: /main-concepts/metadata-standard/schemas/metadataingestion/mlmodelservicemetadatapipeline
 ---
 
 # MlModelServiceMetadataPipeline
@@ -15,4 +15,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataIngestion/mlmodelservicem
 - **`mlModelMetadataConfigType`** *(string)*: MlModel Source Config Metadata Pipeline type. Must be one of: `['MlModelMetadata']`. Default: `MlModelMetadata`.
 
 
-Documentation file automatically generated at 2022-07-13 15:15:58.612083.
+Documentation file automatically generated at 2022-07-14 10:51:34.749986.

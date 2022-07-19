@@ -53,6 +53,7 @@ import {
   getRequestDescriptionPath,
   getRequestTagsPath,
   getUpdateDescriptionPath,
+  getUpdateTagsPath,
 } from '../../utils/TasksUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
@@ -320,6 +321,15 @@ const EntityTable = ({
     );
   };
 
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const onUpdateTagsHandler = (cell: any) => {
+    const field = EntityField.COLUMNS;
+    const value = getColumnName(cell);
+    history.push(
+      getUpdateTagsPath(EntityType.TABLE, entityFqn as string, field, value)
+    );
+  };
+
   const prepareConstraintIcon = (
     columnName: string,
     columnConstraint?: string
@@ -378,22 +388,25 @@ const EntityTable = ({
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const getRequestTagsElement = (cell: any) => {
     const hasTags = !isEmpty(cell.value || []);
+    const text = hasTags ? 'Update request tags' : 'Request tags';
 
-    return !hasTags ? (
+    return (
       <button
         className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-opacity-0 group-hover:tw-opacity-100 tw-align-top"
         data-testid="request-tags"
-        onClick={() => onRequestTagsHandler(cell)}>
+        onClick={() =>
+          hasTags ? onUpdateTagsHandler(cell) : onRequestTagsHandler(cell)
+        }>
         <Popover
           destroyTooltipOnHide
-          content="Request tags"
+          content={text}
           overlayClassName="ant-popover-request-description"
           trigger="hover"
           zIndex={9999}>
           <SVGIcons alt="request-tags" icon={Icons.REQUEST} width="16px" />
         </Popover>
       </button>
-    ) : null;
+    );
   };
 
   useEffect(() => {

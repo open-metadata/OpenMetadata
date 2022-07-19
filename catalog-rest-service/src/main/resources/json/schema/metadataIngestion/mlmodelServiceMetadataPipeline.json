@@ -16,6 +16,10 @@
       "description": "Pipeline type",
       "$ref": "#/definitions/mlModelMetadataConfigType",
       "default": "MlModelMetadata"
+    },
+    "mlModelFilterPattern": {
+      "description": "Regex to only fetch MlModels with names matching the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
     }
   },
   "additionalProperties": false

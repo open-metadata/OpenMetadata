@@ -42,12 +42,10 @@ from openmetadata.operations.test_connection import test_source_connection
 from openmetadata.operations.trigger import trigger
 from pydantic.error_wrappers import ValidationError
 
-from metadata.generated.schema.api.services.ingestionPipelines.testServiceConnection import (
-    TestServiceConnectionRequest,
-)
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.ingestion.api.parser import parse_test_connection_request_gracefully
 
 
 class REST_API(AppBuilderBaseView):
@@ -199,7 +197,9 @@ class REST_API(AppBuilderBaseView):
         json_request = request.get_json()
 
         try:
-            test_service_connection = TestServiceConnectionRequest(**json_request)
+            test_service_connection = parse_test_connection_request_gracefully(
+                config_dict=json_request
+            )
             response = test_source_connection(test_service_connection)
 
             return response
