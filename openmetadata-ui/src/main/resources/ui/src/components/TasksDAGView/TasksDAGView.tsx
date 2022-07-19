@@ -38,11 +38,15 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
 
   const getNodeType = useCallback(
     (task: Task) => {
+      // check if current task is downstream task of other tasks
       const isDownStreamTask = tasks.some((taskData) =>
         taskData.downstreamTasks?.includes(task.name)
       );
 
-      if (isDownStreamTask) {
+      // check if current task has downstream task
+      const hasDownStreamTask = Boolean(task.downstreamTasks?.length);
+
+      if (isDownStreamTask && !hasDownStreamTask) {
         return EntityLineageNodeType.OUTPUT;
       } else {
         return EntityLineageNodeType.DEFAULT;

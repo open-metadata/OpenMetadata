@@ -152,6 +152,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Returns list of users after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Returns list of admin users if set to true", schema = @Schema(type = "boolean"))
+          @QueryParam("isAdmin")
+          Boolean isAdmin,
+      @Parameter(description = "Returns list of bot users if set to true", schema = @Schema(type = "boolean"))
+          @QueryParam("isBot")
+          Boolean isBot,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -160,6 +166,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
           Include include)
       throws IOException {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    if (isAdmin != null) {
+      filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
+    }
+    if (isBot != null) {
+      filter.addQueryParam("isBot", String.valueOf(isBot));
+    }
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
