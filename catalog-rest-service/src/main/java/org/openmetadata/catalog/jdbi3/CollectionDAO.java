@@ -1687,85 +1687,259 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String mySqlCondition = filter.getCondition("ue");
+      String postgresCondition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean)  = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isAdmin') IS NULL OR JSON_EXTRACT(ue.json, '$.isAdmin') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listCount(filter);
       }
-      return listCount(getTableName(), getNameColumn(), filter.getCondition("ue"), team, Relationship.HAS.ordinal());
+      return listCount(
+          getTableName(), getNameColumn(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String mySqlCondition = filter.getCondition("ue");
+      String postgresCondition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isAdmin') IS NULL OR JSON_EXTRACT(ue.json, '$.isAdmin') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
       return listBefore(
-          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
+          getTableName(),
+          getNameColumn(),
+          mySqlCondition,
+          postgresCondition,
+          team,
+          limit,
+          before,
+          Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String mySqlCondition = filter.getCondition("ue");
+      String postgresCondition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isAdmin') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isAdmin}')::boolean) = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isAdmin') IS NULL OR JSON_EXTRACT(ue.json, '$.isAdmin') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND (ue.json#>'{isAdmin}' IS NULL OR ((ue.json#>'{isAdmin}')::boolean) = FALSE ) ",
+                  postgresCondition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          mySqlCondition = String.format("%s AND JSON_EXTRACT(ue.json, '$.isBot') = TRUE ", mySqlCondition);
+          postgresCondition = String.format("%s AND ((ue.json#>'{isBot}')::boolean) = TRUE ", postgresCondition);
+        } else {
+          mySqlCondition =
+              String.format(
+                  "%s AND (JSON_EXTRACT(ue.json, '$.isBot') IS NULL OR JSON_EXTRACT(ue.json, '$.isBot') = FALSE ) ",
+                  mySqlCondition);
+          postgresCondition =
+              String.format(
+                  "%s AND ue.json#>'{isBot}' IS NULL OR ((ue.json#>'{isBot}')::boolean) = FALSE ) ", postgresCondition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
       return listAfter(
-          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, after, Relationship.HAS.ordinal());
+          getTableName(),
+          getNameColumn(),
+          mySqlCondition,
+          postgresCondition,
+          team,
+          limit,
+          after,
+          Relationship.HAS.ordinal());
     }
 
-    @SqlQuery(
-        "SELECT count(id) FROM ("
-            + "SELECT ue.id "
-            + "FROM user_entity ue "
-            + "LEFT JOIN entity_relationship er on ue.id = er.toId "
-            + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + " <cond> "
-            + " AND te.name = :team "
-            + "GROUP BY ue.id) subquery")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(id) FROM ("
+                + "SELECT ue.id "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <mysqlCond> "
+                + " AND (:team IS NULL OR te.name = :team) "
+                + "GROUP BY ue.id) subquery",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(id) FROM ("
+                + "SELECT ue.id "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <postgresCond> "
+                + " AND (:team IS NULL OR te.name = :team) "
+                + "GROUP BY ue.id) subquery",
+        connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("cond") String cond,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond,
         @Bind("team") String team,
         @Bind("relation") int relation);
 
-    @SqlQuery(
-        "SELECT json FROM ("
-            + "SELECT ue.<nameColumn>, ue.json "
-            + "FROM user_entity ue "
-            + "LEFT JOIN entity_relationship er on ue.id = er.toId "
-            + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + " <cond> "
-            + "AND te.name = :team "
-            + "AND ue.<nameColumn> < :before "
-            + "GROUP BY ue.<nameColumn>, ue.json "
-            + "ORDER BY ue.<nameColumn> DESC "
-            + "LIMIT :limit"
-            + ") last_rows_subquery ORDER BY <nameColumn>")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT ue.<nameColumn>, ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <mysqlCond> "
+                + "AND (:team IS NULL OR te.name = :team) "
+                + "AND ue.<nameColumn> < :before "
+                + "GROUP BY ue.<nameColumn>, ue.json "
+                + "ORDER BY ue.<nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT ue.<nameColumn>, ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <postgresCond> "
+                + "AND (:team IS NULL OR te.name = :team) "
+                + "AND ue.<nameColumn> < :before "
+                + "GROUP BY ue.<nameColumn>, ue.json "
+                + "ORDER BY ue.<nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("cond") String cond,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond,
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("before") String before,
         @Bind("relation") int relation);
 
-    @SqlQuery(
-        "SELECT ue.json "
-            + "FROM user_entity ue "
-            + "LEFT JOIN entity_relationship er on ue.id = er.toId "
-            + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
-            + " <cond> "
-            + "AND te.name = :team "
-            + "AND ue.<nameColumn> > :after "
-            + "GROUP BY ue.<nameColumn>, ue.json "
-            + "ORDER BY ue.<nameColumn> "
-            + "LIMIT :limit")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <mysqlCond> "
+                + "AND (:team IS NULL OR te.name = :team) "
+                + "AND ue.<nameColumn> > :after "
+                + "GROUP BY ue.<nameColumn>, ue.json "
+                + "ORDER BY ue.<nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er on ue.id = er.toId "
+                + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
+                + " <postgresCond> "
+                + "AND (:team IS NULL OR te.name = :team) "
+                + "AND ue.<nameColumn> > :after "
+                + "GROUP BY ue.<nameColumn>, ue.json "
+                + "ORDER BY ue.<nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
         @Define("nameColumn") String nameColumn,
-        @Define("cond") String cond,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("postgresCond") String postgresCond,
         @Bind("team") String team,
         @Bind("limit") int limit,
         @Bind("after") String after,
