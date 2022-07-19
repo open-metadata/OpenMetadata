@@ -25,10 +25,15 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+
+import javax.ws.rs.core.SecurityContext;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
@@ -66,6 +71,12 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public boolean isOwner(AuthenticationContext ctx, EntityReference entityReference) {
+    return true;
+  }
+
+  @Override
+  public boolean hasPermissions1(
+          SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
     return true;
   }
 

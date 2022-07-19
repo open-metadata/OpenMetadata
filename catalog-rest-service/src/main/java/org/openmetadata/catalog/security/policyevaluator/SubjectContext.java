@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import javax.annotation.CheckForNull;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -34,7 +35,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 
 /** Subject context used for Access Control Policies */
 public class SubjectContext {
-  // Cache used for caching subject context
+  // Cache used for caching subject context for a user
   private static final LoadingCache<String, SubjectContext> CACHE =
       CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.MINUTES).build(new SubjectLoader());
   private static final EntityRepository<User> USER_REPOSITORY = Entity.getEntityRepository(Entity.USER);
@@ -56,6 +57,10 @@ public class SubjectContext {
 
   public static void cleanup() {
     CACHE.invalidateAll();
+  }
+
+  public static void invalidateKey(String userName) {
+    CACHE.invalidate(userName);
   }
 
   public boolean isAdmin() {
@@ -88,7 +93,7 @@ public class SubjectContext {
 
   static class SubjectLoader extends CacheLoader<String, SubjectContext> {
     @Override
-    public SubjectContext load(String userName) throws IOException {
+    public SubjectContext load(@CheckForNull String userName) throws IOException {
       User user = USER_REPOSITORY.getByName(null, userName, SUBJECT_FIELDS);
       user.getRoles().forEach(r -> System.out.println("User " + user.getRoles() + " role " + r));
       return new SubjectContext(user);

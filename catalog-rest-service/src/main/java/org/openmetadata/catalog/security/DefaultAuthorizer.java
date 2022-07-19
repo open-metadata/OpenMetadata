@@ -32,6 +32,8 @@ import org.openmetadata.catalog.EntityInterface;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
 import org.openmetadata.catalog.security.policyevaluator.RoleEvaluator;
 import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
@@ -39,6 +41,8 @@ import org.openmetadata.catalog.type.Include;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
+
+import javax.ws.rs.core.SecurityContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
@@ -186,6 +190,22 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
+  @Override
+  public boolean hasPermissions1(
+          SecurityContext securityContext, OperationContext operationContext, ResourceContext resourceContext) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return true;
+    }
+
+    // TODO view is currently allowed for everyone
+    if (operationContext.getOperations().size() == 1
+        && operationContext.getOperations().get(0) == MetadataOperation.VIEW_ALL) {
+      return true;
+    }
+    return false;
+  }
+
   private void validate(AuthenticationContext ctx) {
     if (ctx == null || ctx.getPrincipal() == null) {
       throw new AuthenticationException("No principal in AuthenticationContext");
@@ -201,6 +221,18 @@ public class DefaultAuthorizer implements Authorizer {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception: {}", ExceptionUtils.getStackTrace(exception));
       LOG.debug("User entry: {} already exists.", user);
+    }
+  }
+
+  private SubjectContext getSubjectContext(SecurityContext securityContext) {
+    if (securityContext == null || securityContext.getUserPrincipal() == null) {
+      throw new AuthenticationException("No principal in security context");
+    }
+
+    try {
+      return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
+    } catch (EntityNotFoundException ex) {
+      throw new AuthenticationException("No principal in AuthenticationContext");
     }
   }
 }

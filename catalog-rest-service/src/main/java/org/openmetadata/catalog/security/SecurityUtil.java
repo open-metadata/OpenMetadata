@@ -25,6 +25,9 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.JsonPatchUtils;
@@ -127,7 +130,11 @@ public final class SecurityUtil {
   }
 
   public static String getUserName(AuthenticationContext context) {
-    return context.getPrincipal() == null ? null : context.getPrincipal().getName().split("[/@]")[0];
+    return getUserName(context.getPrincipal());
+  }
+
+  public static String getUserName(Principal principal) {
+    return principal == null ? null : principal.getName().split("[/@]")[0];
   }
 
   public static AuthenticationContext getAuthenticationContext(SecurityContext securityContext) {

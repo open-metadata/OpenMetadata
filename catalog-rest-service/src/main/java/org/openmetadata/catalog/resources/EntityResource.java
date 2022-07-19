@@ -14,12 +14,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.CreateEntity;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.EntityInterface;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.ListFilter;
+import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.Authorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.security.policyevaluator.OperationContext;
+import org.openmetadata.catalog.security.policyevaluator.ResourceContext;
+import org.openmetadata.catalog.security.policyevaluator.SubjectContext;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Include;
+import org.openmetadata.catalog.type.MetadataOperation;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.DeleteResponse;
@@ -30,17 +36,34 @@ import org.openmetadata.catalog.util.ResultList;
 @Slf4j
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
   protected final Class<T> entityClass;
+  protected final String entityType;
   protected final List<String> allowedFields;
   protected final K dao;
   protected final Authorizer authorizer;
   private final boolean supportsOwner;
+  private final OperationContext createOperationContext;
+  private final OperationContext deleteOperationContext;
+  private final OperationContext getOperationContext;
+  private final OperationContext listOperationContext;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
     this.entityClass = entityClass;
+    entityType = Entity.getEntityTypeFromClass(entityClass);
     allowedFields = Entity.getAllowedFields(entityClass);
     supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.dao = repository;
     this.authorizer = authorizer;
+
+    createOperationContext =
+        OperationContext.builder().resource("resource").operations(List.of(MetadataOperation.CREATE)).build();
+    deleteOperationContext =
+        OperationContext.builder().resource("resource").operations(List.of(MetadataOperation.DELETE)).build();
+
+    // TODO View_ALL vs view without test results, sample data, etc?
+    listOperationContext =
+        OperationContext.builder().resource(entityType).operations(List.of(MetadataOperation.VIEW_ALL)).build();
+    getOperationContext =
+        OperationContext.builder().resource(entityType).operations(List.of(MetadataOperation.VIEW_ALL)).build();
   }
 
   public final Fields getFields(String fields) {
@@ -66,6 +89,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after)
       throws IOException {
+    authorizer.hasPermissions1(securityContext, listOperationContext, getResourceContext());
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -80,6 +104,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public T getInternal(UriInfo uriInfo, SecurityContext securityContext, String id, String fieldsParam, Include include)
       throws IOException {
+    authorizer.hasPermissions1(securityContext, getOperationContext, null);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.get(uriInfo, id, fields, include));
   }
@@ -87,6 +112,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public T getByNameInternal(
       UriInfo uriInfo, SecurityContext securityContext, String name, String fieldsParam, Include include)
       throws IOException {
+    authorizer.hasPermissions1(securityContext, getOperationContext, null);
     Fields fields = getFields(fieldsParam);
     return addHref(uriInfo, dao.getByName(uriInfo, name, fields, include));
   }
@@ -158,5 +184,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
     return entity;
+  }
+
+  private ResourceContext getResourceContext() {
+    return ResourceContext.builder().resource(entityType).build();
+  }
+
+  private ResourceContext getResourceContextById(String id) throws IOException {
+    String fields = supportsOwner ? FIELD_OWNER : null;
+    return ResourceContext.builder().resource(entityType).id(id).fields(fields).build();
+  }
+
+  private ResourceContext getResourceContextByName(String name) throws IOException {
+    String fields = supportsOwner ? FIELD_OWNER : null;
+    return ResourceContext.builder().resource(entityType).name(name).fields(fields).build();
   }
 }
