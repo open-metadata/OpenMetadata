@@ -41,7 +41,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.tagLabel import LabelType, Source1, State, TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.database_service import (
@@ -360,7 +365,8 @@ class CommonDbSourceService(
                 ) or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.error("Could not parse query: Ingesting lineage failed")
+            logger.debug(f"Query : {view_definition}")
+            logger.warning("Could not parse query: Ingesting lineage failed")
 
     def test_connection(self) -> None:
         """

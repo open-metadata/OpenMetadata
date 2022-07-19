@@ -22,20 +22,21 @@ global:
       - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
-    provider: "azure"
+    provider: "okta"
     publicKeys:
-      - "https://login.microsoftonline.com/common/discovery/keys"
-    authority: "https://login.microsoftonline.com/{Tenant ID}"
-    clientId: "{Client ID}"
+      - "{ISSUER_URL}/v1/keys"
+    authority: "{ISSUER_URL}"
+    clientId: "{CLIENT_ID - SPA APP}"
     callbackUrl: "http://localhost:8585/callback"
   airflow:
     openmetadata:
-      authProvider: "azure"
-      azure:
-        clientSecret:
-          secretRef: azure-client-secret
-          secretKey: azure-client-secret
-        authority: ""
-        scopes: [ ]
+      authProvider: "okta"
+      okta:
         clientId: ""
+        orgUrl: ""
+        privateKey:
+          secretRef: okta-client-private-key-secret
+          secretKey: okta-client-private-key-secret
+        email: ""
+        scopes: [ ]
 ```

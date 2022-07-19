@@ -190,3 +190,18 @@ def filter_by_pipeline(
     :return: True for filtering, False otherwise
     """
     return _filter(pipeline_filter_pattern, pipeline_name)
+
+
+def filter_by_mlmodel(
+    mlmodel_filter_pattern: Optional[FilterPattern], mlmodel_name: str
+) -> bool:
+    """
+    Return True if the mlmodel needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param mlmodel_filter_pattern: Model defining the mlmodel filtering logic
+    :param mlmodel_name: mlmodel name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(mlmodel_filter_pattern, mlmodel_name)

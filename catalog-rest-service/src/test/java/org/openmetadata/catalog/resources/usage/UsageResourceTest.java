@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
@@ -58,6 +60,8 @@ import org.openmetadata.catalog.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class UsageResourceTest extends CatalogApplicationTest {
+  private static final String PUT = "PUT";
+  private static final String POST = "POST";
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
   public static final int DAYS_OF_USAGE = 32;
@@ -82,10 +86,27 @@ class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void put_usageWithNonExistentEntityId_4xx() {
+    assertResponse(
+        () -> reportUsagePut(TABLE, NON_EXISTENT_ENTITY, usageReport(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(TABLE, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
   void post_usageInvalidEntityName_4xx() {
     String invalidEntityType = "invalid";
     assertResponse(
         () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityTypeNotFound(invalidEntityType));
+  }
+
+  @Test
+  void put_usageInvalidEntityName_4xx() {
+    String invalidEntityType = "invalid";
+    assertResponse(
+        () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         entityTypeNotFound(invalidEntityType));
   }
@@ -100,6 +121,15 @@ class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void put_usageWithNegativeCountName_4xx() {
+    DailyCount dailyCount = usageReport().withCount(-1); // Negative usage count
+    assertResponse(
+        () -> reportUsagePut(TABLE, UUID.randomUUID(), dailyCount, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[count must be greater than or equal to 0]");
+  }
+
+  @Test
   void post_usageWithoutDate_4xx() {
     DailyCount usageReport = usageReport().withDate(null); // Negative usage count
     assertResponse(
@@ -109,16 +139,40 @@ class UsageResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  void put_usageWithoutDate_4xx() {
+    DailyCount usageReport = usageReport().withDate(null); // Negative usage count
+    assertResponse(
+        () -> reportUsagePut(TABLE, UUID.randomUUID(), usageReport, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "[date must not be null]");
+  }
+
+  @Test
   void post_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
+    testValidUsageByName(test, POST);
+  }
+
+  @Test
+  void put_validUsageByName_200_OK(TestInfo test) throws HttpResponseException {
+    testValidUsageByName(test, PUT);
+  }
+
+  @SneakyThrows
+  void testValidUsageByName(TestInfo test, String methodType) {
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
-    reportUsageByNameAndCheck(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, ADMIN_AUTH_HEADERS);
+    reportUsageByNameAndCheckPut(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, ADMIN_AUTH_HEADERS);
+    // a put request updates the data again
+    if (methodType.equals(PUT)) {
+      reportUsageByNamePut(TABLE, table.getFullyQualifiedName(), usageReport, ADMIN_AUTH_HEADERS);
+      checkUsageByName(usageReport.getDate(), TABLE, table.getFullyQualifiedName(), 200, 200, 200, ADMIN_AUTH_HEADERS);
+    }
   }
 
   @Order(1) // Run this method first before other usage records are created
   @Test
-  void post_validUsageForTables_200_OK() throws HttpResponseException {
+  void put_validUsageForTables_200_OK() throws HttpResponseException {
     // This test creates TABLE_COUNT of tables.
     // For these tables, publish usage data for DAYS_OF_USAGE number of days starting from today.
     // For 100 tables send usage report for last 30 days
@@ -150,7 +204,7 @@ class UsageResourceTest extends CatalogApplicationTest {
         // Report usage
         int weeklyCount = Math.min(day + 1, 7) * usageCount; // Expected cumulative weekly count
         int monthlyCount = Math.min(day + 1, 30) * usageCount; // Expected cumulative monthly count
-        reportUsageAndCheck(TABLE, id, usageReport, weeklyCount, monthlyCount, ADMIN_AUTH_HEADERS);
+        reportUsageAndCheckPut(TABLE, id, usageReport, weeklyCount, monthlyCount, ADMIN_AUTH_HEADERS);
 
         // Database has cumulative count of all the table usage
         databaseDailyCount += usageCount;
@@ -251,10 +305,24 @@ class UsageResourceTest extends CatalogApplicationTest {
     checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
+  public static void reportUsageByNameAndCheckPut(
+      String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    reportUsageByNamePut(entity, fqn, usage, authHeaders);
+    checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
+  }
+
   public static void reportUsageAndCheck(
       String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsage(entity, id, usage, authHeaders);
+    checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
+  }
+
+  public static void reportUsageAndCheckPut(
+      String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    reportUsagePut(entity, id, usage, authHeaders);
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
@@ -264,10 +332,22 @@ class UsageResourceTest extends CatalogApplicationTest {
     TestUtils.post(target, usage, authHeaders);
   }
 
+  public static void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("usage/" + entity + "/name/" + name);
+    TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
+  }
+
   public static void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("usage/" + entity + "/" + id);
     TestUtils.post(target, usage, authHeaders);
+  }
+
+  public static void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("usage/" + entity + "/" + id);
+    TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
   public static void computePercentile(String entity, String date, Map<String, String> authHeaders)

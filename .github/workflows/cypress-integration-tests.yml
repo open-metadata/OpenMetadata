@@ -17,8 +17,12 @@ name: Cypress Integration Tests
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'openmetadata-docs/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths-ignore:
+      - 'openmetadata-docs/**'
 
 concurrency:
   group: cypress-integration-tests-${{ github.head_ref || github.run_id }}
@@ -52,7 +56,7 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh
-        timeout-minutes: 20
+        timeout-minutes: 30
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v2

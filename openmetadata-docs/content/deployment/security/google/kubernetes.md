@@ -22,20 +22,17 @@ global:
       - "<service_application_client_id>"
     principalDomain: "open-metadata.org"
   authentication:
-    provider: "azure"
+    provider: "google"
     publicKeys:
-      - "https://login.microsoftonline.com/common/discovery/keys"
-    authority: "https://login.microsoftonline.com/{Tenant ID}"
-    clientId: "{Client ID}"
+      - "https://www.googleapis.com/oauth2/v3/certs"
+    authority: "https://accounts.google.com"
+    clientId: "{client id}"
     callbackUrl: "http://localhost:8585/callback"
   airflow:
     openmetadata:
-      authProvider: "azure"
-      azure:
-        clientSecret:
-          secretRef: azure-client-secret
-          secretKey: azure-client-secret
-        authority: ""
-        scopes: [ ]
-        clientId: ""
+      authProvider: "google"
+      google:
+        # absolute path of secret file on airflow instance
+        secretKeyPath: ""
+        audience: "https://www.googleapis.com/oauth2/v4/token"
 ```

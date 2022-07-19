@@ -304,17 +304,18 @@ CLICKHOUSE_SQL_USAGE_STATEMENT = """
         Select
           query_start_time start_time,
           DATEADD(query_duration_ms, query_start_time) end_time,
-          databases database_name,
+          'default' database_name,
           user user_name,
           FALSE aborted,
           query_id query_id,
           query query_text,
-          NULL schema_name,
+          databases schema_name,
           tables tables
         From system.query_log
         Where start_time between '{start_time}' and '{end_time}'
         and CAST(type,'Int8') <> 3
         and CAST(type,'Int8') <> 4
+        and (`type`='QueryFinish' or `type`='QueryStart')
 """
 
 
@@ -355,4 +356,17 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
   AND job_type = "QUERY"
   AND state = "DONE"
   AND IFNULL(statement_type, "NO") not in ("NO", "DROP_TABLE", "CREATE_TABLE")
+"""
+
+
+TRINO_GET_COLUMNS = """
+    SELECT
+        "column_name",
+        "data_type",
+        "column_default",
+        UPPER("is_nullable") AS "is_nullable"
+    FROM "information_schema"."columns"
+    WHERE "table_schema" = :schema
+        AND "table_name" = :table
+    ORDER BY "ordinal_position" ASC
 """

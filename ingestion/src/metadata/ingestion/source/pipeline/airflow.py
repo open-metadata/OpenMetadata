@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -60,6 +60,7 @@ from metadata.utils.connections import (
     test_connection,
 )
 from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -165,6 +166,9 @@ class AirflowSource(Source[CreatePipelineRequest]):
                     executionStatus=STATUS_MAP.get(
                         task.state, StatusType.Pending.value
                     ),
+                    startTime=datetime_to_ts(task.start_date),
+                    endTime=datetime_to_ts(task.end_date),
+                    logLink=task.log_url,
                 )
                 for task in tasks
             ]
@@ -286,46 +290,38 @@ class AirflowSource(Source[CreatePipelineRequest]):
         :return: Lineage from inlets and outlets
         """
         dag: SerializedDAG = serialized_dag.dag
-
+        lineage_details = LineageDetails(
+            pipeline=EntityReference(id=pipeline_entity.id, type="pipeline")
+        )
         for task in dag.tasks:
-            for table_fqn in self.get_inlets(task) or []:
-                table_entity: Table = self.metadata.get_by_name(
-                    entity=Table, fqn=table_fqn
-                )
-                if table_entity:
-                    yield AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=table_entity.id, type="table"
-                            ),
-                            toEntity=EntityReference(
-                                id=pipeline_entity.id, type="pipeline"
-                            ),
-                        )
-                    )
+            for from_fqn in self.get_inlets(task) or []:
+                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+                if from_entity:
+                    for to_fqn in self.get_outlets(task) or []:
+                        to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+                        if to_entity:
+                            lineage = AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id, type="table"
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_entity.id, type="table"
+                                    ),
+                                )
+                            )
+                            if lineage_details:
+                                lineage.edge.lineageDetails = lineage_details
+                            yield lineage
+                        else:
+                            logger.warn(
+                                f"Could not find Table [{to_fqn}] from "
+                                f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
+                            )
                 else:
                     logger.warn(
-                        f"Could not find Table [{table_fqn}] from "
+                        f"Could not find Table [{from_fqn}] from "
                         f"[{pipeline_entity.fullyQualifiedName.__root__}] inlets"
-                    )
-
-            for table_fqn in self.get_outlets(task) or []:
-                table_entity: Table = self.metadata.get_by_name(
-                    entity=Table, fqn=table_fqn
-                )
-                if table_entity:
-                    yield AddLineageRequest(
-                        edge=EntitiesEdge(
-                            fromEntity=EntityReference(
-                                id=pipeline_entity.id, type="pipeline"
-                            ),
-                            toEntity=EntityReference(id=table_entity.id, type="table"),
-                        )
-                    )
-                else:
-                    logger.warn(
-                        f"Could not find Table [{table_fqn}] from "
-                        f"[{pipeline_entity.fullyQualifiedName.__root__}] outlets"
                     )
 
     def next_record(self) -> Iterable[Entity]:

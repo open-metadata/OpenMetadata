@@ -39,7 +39,7 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.source import InvalidSourceException, Source, SourceStatus
@@ -150,21 +150,32 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         )
 
     def fetch_pipeline_status(
-        self, connection: dict, pipeline_fqn: str
+        self, workspace: dict, connection: dict, pipeline_fqn: str
     ) -> OMetaPipelineStatus:
         """
         Method to get task & pipeline status
         """
+
+        # Airbyte does not offer specific attempt link, just at pipeline level
+        log_link = (
+            f"{self.service_connection.hostPort}/workspaces/{workspace.get('workspaceId')}/connections/"
+            f"{connection.get('connectionId')}/status"
+        )
+
         for job in self.client.list_jobs(connection.get("connectionId")):
             if not job or not job.get("attempts"):
                 continue
             for attempt in job["attempts"]:
+
                 task_status = [
                     TaskStatus(
                         name=str(connection.get("connectionId")),
                         executionStatus=STATUS_MAP.get(
                             attempt["status"].lower(), StatusType.Pending
                         ).value,
+                        startTime=attempt.get("createdAt"),
+                        endTime=attempt.get("endedAt"),
+                        logLink=log_link,
                     )
                 ]
                 pipeline_status = PipelineStatus(
@@ -200,6 +211,10 @@ class AirbyteSource(Source[CreatePipelineRequest]):
         if not source_service or not destination_service:
             return
 
+        lineage_details = LineageDetails(
+            pipeline=EntityReference(id=pipeline_entity.id, type="pipeline")
+        )
+
         for task in connection.get("syncCatalog", {}).get("streams") or []:
             stream = task.get("stream")
             from_fqn = fqn.build(
@@ -220,23 +235,21 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                 service_name=destination_connection.get("name"),
             )
 
-            if not from_fqn and not to_fqn:
-                continue
-
             from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
             to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
-            yield AddLineageRequest(
+
+            if not from_entity or not to_entity:
+                continue
+
+            lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=from_entity.id, type="table"),
-                    toEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
-                )
-            )
-            yield AddLineageRequest(
-                edge=EntitiesEdge(
                     toEntity=EntityReference(id=to_entity.id, type="table"),
-                    fromEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
                 )
             )
+            if lineage_details:
+                lineage.edge.lineageDetails = lineage_details
+            yield lineage
 
     def next_record(self) -> Iterable[Entity]:
         """
@@ -259,7 +272,9 @@ class AirbyteSource(Source[CreatePipelineRequest]):
                         service_name=self.service.name.__root__,
                         pipeline_name=connection.get("connectionId"),
                     )
-                    yield from self.fetch_pipeline_status(connection, pipeline_fqn)
+                    yield from self.fetch_pipeline_status(
+                        workspace, connection, pipeline_fqn
+                    )
                     if self.source_config.includeLineage:
                         pipeline_entity: Pipeline = self.metadata.get_by_name(
                             entity=Pipeline,

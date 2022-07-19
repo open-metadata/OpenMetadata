@@ -13,15 +13,19 @@
 
 import { faExclamationCircle, faStar } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Popover } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityFieldThreads, EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { Tooltip } from 'react-tippy';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FOLLOWERS_VIEW_CAP } from '../../../constants/constants';
 import { SettledStatus } from '../../../enums/axios.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { ThreadType } from '../../../generated/entity/feed/thread';
 import { Operation } from '../../../generated/entity/policies/accessControl/rule';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
@@ -34,6 +38,11 @@ import {
 } from '../../../utils/GlossaryUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../../utils/TagsUtils';
+import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+  TASK_ENTITIES,
+} from '../../../utils/TasksUtils';
 import { Button } from '../../buttons/Button/Button';
 import TagsContainer from '../../tags-container/tags-container';
 import TagsViewer from '../../tags-viewer/tags-viewer';
@@ -66,7 +75,8 @@ interface Props {
   version?: string;
   isVersionSelected?: boolean;
   entityFieldThreads?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string) => void;
+  entityFieldTasks?: EntityFieldThreads[];
+  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<EntityTags>) => void;
   versionHandler?: () => void;
@@ -99,8 +109,11 @@ const EntityPageInfo = ({
   entityType,
   updateOwner,
   updateTier,
+  entityFieldTasks,
 }: Props) => {
+  const history = useHistory();
   const tagThread = entityFieldThreads?.[0];
+  const tagTask = entityFieldTasks?.[0];
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
     useState<Array<EntityReference>>(followersList);
@@ -113,6 +126,13 @@ const EntityPageInfo = ({
     document.getElementById('version-and-follow-section')?.offsetWidth
   );
   const [isDelete, setIsDelete] = useState<boolean>(false);
+
+  const handleRequestTags = () => {
+    history.push(getRequestTagsPath(entityType as string, entityFqn as string));
+  };
+  const handleUpdateTags = () => {
+    history.push(getUpdateTagsPath(entityType as string, entityFqn as string));
+  };
 
   const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags) {
@@ -282,34 +302,74 @@ const EntityPageInfo = ({
 
   const getThreadElements = () => {
     if (!isUndefined(entityFieldThreads)) {
-      return !isUndefined(tagThread) ? (
-        <p
-          className="link-text tw-m-0 tw-ml-1 tw-w-8 tw-flex-none"
+      return !isUndefined(tagThread) &&
+        TASK_ENTITIES.includes(entityType as EntityType) ? (
+        <button
+          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
           data-testid="tag-thread"
           onClick={() => onThreadLinkSelect?.(tagThread.entityLink)}>
           <span className="tw-flex">
-            <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />
+            <SVGIcons alt="comments" icon={Icons.COMMENT} />
             <span className="tw-ml-1" data-testid="tag-thread-count">
               {tagThread.count}
             </span>
           </span>
-        </p>
+        </button>
       ) : (
-        <p
-          className="link-text tw-self-start tw-w-8 tw-m-0 tw-ml-1  tw-flex-none"
+        <button
+          className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
           data-testid="start-tag-thread"
           onClick={() =>
             onThreadLinkSelect?.(
               getEntityFeedLink(entityType, entityFqn, 'tags')
             )
           }>
-          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} width="20px" />
-        </p>
+          <SVGIcons alt="comments" icon={Icons.COMMENT_PLUS} />
+        </button>
       );
     } else {
       return null;
     }
   };
+
+  const getRequestTagsElements = useCallback(() => {
+    const hasTags = !isEmpty(tags);
+    const text = hasTags ? 'Update request tags' : 'Request tags';
+
+    return onThreadLinkSelect ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none tw-align-top"
+        data-testid="request-description"
+        onClick={hasTags ? handleUpdateTags : handleRequestTags}>
+        <Popover
+          destroyTooltipOnHide
+          content={text}
+          overlayClassName="ant-popover-request-description"
+          trigger="hover"
+          zIndex={9999}>
+          <SVGIcons alt="request-tags" icon={Icons.REQUEST} />
+        </Popover>
+      </button>
+    ) : null;
+  }, [tags]);
+
+  const getTaskElement = useCallback(() => {
+    return !isUndefined(tagTask) ? (
+      <button
+        className="tw-w-8 tw-h-8 tw-mr-1 tw-flex-none link-text focus:tw-outline-none"
+        data-testid="tag-task"
+        onClick={() =>
+          onThreadLinkSelect?.(tagTask.entityLink, ThreadType.Task)
+        }>
+        <span className="tw-flex">
+          <SVGIcons alt="comments" icon={Icons.TASK_ICON} width="16px" />
+          <span className="tw-ml-1" data-testid="tag-task-count">
+            {tagTask.count}
+          </span>
+        </span>
+      </button>
+    ) : null;
+  }, [tagTask]);
 
   useEffect(() => {
     setEntityFollowers(followersList);
@@ -518,7 +578,7 @@ const EntityPageInfo = ({
               position="bottom"
               trigger="click">
               <div
-                className="tw-inline-block"
+                className="tw-inline-block tw-mr-1"
                 data-testid="tags-wrapper"
                 onClick={() => {
                   // Fetch tags and terms only once
@@ -543,14 +603,9 @@ const EntityPageInfo = ({
                   }}>
                   {tags.length || tier ? (
                     <button
-                      className=" tw-ml-1 focus:tw-outline-none"
+                      className="tw-w-auto tw-h-auto tw-flex-none focus:tw-outline-none"
                       data-testid="edit-button">
-                      <SVGIcons
-                        alt="edit"
-                        icon="icon-edit"
-                        title="Edit"
-                        width="16px"
-                      />
+                      <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
                     </button>
                   ) : (
                     <span>
@@ -565,7 +620,11 @@ const EntityPageInfo = ({
                 </TagsContainer>
               </div>
             </NonAdminAction>
-            {getThreadElements()}
+            <div className="tw--mt-1.5">
+              {getRequestTagsElements()}
+              {getTaskElement()}
+              {getThreadElements()}
+            </div>
           </Fragment>
         )}
       </div>

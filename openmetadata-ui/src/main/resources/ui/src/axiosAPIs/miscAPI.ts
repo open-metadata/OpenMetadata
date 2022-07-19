@@ -64,6 +64,10 @@ export const fetchSandboxConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/sandbox');
 };
 
+export const fetchSlackConfig = (): Promise<AxiosResponse> => {
+  return APIClient.get('/config/slackChat');
+};
+
 export const fetchAirflowConfig = (): Promise<AxiosResponse> => {
   return APIClient.get('/config/airflow');
 };
@@ -139,6 +143,20 @@ export const getUserSuggestions: Function = (
 
   return APIClient.get(`/search/suggest`, { params });
 };
+
+export const getTeamsByQuery = async (params: {
+  q: string;
+  from?: number;
+  size?: number;
+  isJoinable?: boolean;
+}) => {
+  const response = await APIClient.get(`/search/query`, {
+    params: { index: SearchIndex.TEAM, ...params },
+  });
+
+  return response.data;
+};
+
 export const getTagSuggestions: Function = (
   term: string
 ): Promise<AxiosResponse> => {

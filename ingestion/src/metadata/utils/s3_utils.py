@@ -8,50 +8,42 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
+from io import BytesIO, StringIO
+from typing import Any
+
+import pandas as pd
+from pandas import DataFrame
 
 
-def read_csv_from_s3(client, key, bucket_name):
-    from io import StringIO
-
-    import pandas as pd
-
-    csv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_csv_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    csv_obj = client.get_object(Bucket=bucket_name, Key=key)
     body = csv_obj["Body"]
     csv_string = body.read().decode("utf-8")
     df = pd.read_csv(StringIO(csv_string))
-
     return df
 
 
-def read_tsv_from_s3(client, key, bucket_name):
-    from io import StringIO
-
-    import pandas as pd
-
-    csv_obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
-    body = csv_obj["Body"]
-    csv_string = body.read().decode("utf-8")
-    df = pd.read_csv(StringIO(csv_string), sep="\t")
-
+def read_tsv_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    tsv_obj = client.get_object(Bucket=bucket_name, Key=key)
+    body = tsv_obj["Body"]
+    tsv_string = body.read().decode("utf-8")
+    df = pd.read_csv(StringIO(tsv_string), sep="\t")
     return df
 
 
-def read_json_from_s3(client, key, bucket_name):
-    import json
-
-    import pandas as pd
-
-    obj = client.get_object(Bucket=bucket_name, Key=key["Key"])
+def read_json_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    obj = client.get_object(Bucket=bucket_name, Key=key)
     json_text = obj["Body"].read().decode("utf-8")
     data = json.loads(json_text)
-    df = pd.DataFrame.from_dict(data)
-
+    if isinstance(data, list):
+        df = pd.DataFrame.from_dict(data)
+    else:
+        df = pd.DataFrame.from_dict(dict([(k, pd.Series(v)) for k, v in data.items()]))
     return df
 
 
-def read_parquet_from_s3(client, key, bucket_name):
-    import dask.dataframe as dd
-
-    df = dd.read_parquet(f"s3://{bucket_name}/{key['Key']}")
-
+def read_parquet_from_s3(client: Any, key: str, bucket_name: str) -> DataFrame:
+    obj = client.get_object(Bucket=bucket_name, Key=key)
+    df = pd.read_parquet(BytesIO(obj["Body"].read()))
     return df
