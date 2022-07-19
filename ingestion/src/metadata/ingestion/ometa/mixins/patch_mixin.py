@@ -73,13 +73,13 @@ class OMetaPatchMixin(Generic[T]):
             logger.warn(
                 f"Cannot find an instance of {entity.__class__.__name__} with the given ID."
             )
-            return
+            return None
 
         if instance.description and not force:
             logger.warn(
                 f"The Entity already has a description. To overwrite it, set `force` to True."
             )
-            return
+            return None
 
         return instance
 
@@ -106,7 +106,7 @@ class OMetaPatchMixin(Generic[T]):
             entity=entity, entity_id=entity_id, force=force
         )
         if not instance:
-            return
+            return None
 
         try:
             res = self.client.patch(
@@ -152,28 +152,26 @@ class OMetaPatchMixin(Generic[T]):
             entity=Table, entity_id=entity_id, force=force
         )
         if not table:
-            return
+            return None
 
         col_index, col = next(
-            iter(
-                [
-                    (col_index, col)
-                    for col_index, col in enumerate(table.columns)
-                    if col.name.__root__ == column_name
-                ]
+            (
+                (col_index, col)
+                for col_index, col in enumerate(table.columns)
+                if col.name.__root__ == column_name
             ),
             None,
         )
 
         if not col_index:
             logger.error(f"Cannot find column {column_name} in Table.")
-            return
+            return None
 
         if col.description and not force:
             logger.warn(
                 f"The Column already has a description. To overwrite it, set `force` to True."
             )
-            return
+            return None
 
         try:
             res = self.client.patch(

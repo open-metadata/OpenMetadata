@@ -278,5 +278,5 @@ def find_column_in_table(column_name: str, table: Table) -> Optional[Column]:
     If the column exists in the table, return it
     """
     return next(
-        iter([col for col in table.columns if col.name.__root__ == column_name]), None
+        (col for col in table.columns if col.name.__root__ == column_name), None
     )
