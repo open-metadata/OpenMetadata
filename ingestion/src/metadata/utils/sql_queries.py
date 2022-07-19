@@ -23,33 +23,38 @@ REDSHIFT_SQL_STATEMENT = """
       WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
     GROUP BY query
   ),
-  scans AS (
+  raw_scans AS (
     -- We have one row per table per slice so we need to get rid of the dupes
     SELECT distinct query, tbl
       FROM pg_catalog.stl_scan
+  ),
+  scans AS (
+  	SELECT DISTINCT
+  		query,
+  		sti.database AS database_name,
+      sti.schema AS schema_name
+  	  FROM raw_scans AS s
+          INNER JOIN pg_catalog.svv_table_info AS sti
+            ON (s.tbl)::oid = sti.table_id
   )
   SELECT DISTINCT
         q.userid,
         s.query AS query_id,
         RTRIM(u.usename) AS user_name,
-        s.tbl,
         fq.query_text,
-        sti.database AS database_name,
-        sti.schema AS schema_name,
-        sti.table,
+        s.database_name,
+        s.schema_name,
         q.starttime AS start_time,
         q.endtime AS end_time,
         q.aborted AS aborted
     FROM scans AS s
-        INNER JOIN pg_catalog.svv_table_info AS sti
-          ON (s.tbl)::oid = sti.table_id
         INNER JOIN queries AS q
           ON s.query = q.query
         INNER JOIN full_queries AS fq
           ON s.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
-    ORDER BY s.endtime DESC;
+    ORDER BY q.endtime DESC
 """
 
 REDSHIFT_GET_ALL_RELATION_INFO = """
