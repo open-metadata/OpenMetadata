@@ -84,7 +84,7 @@ run_python_tests:  ## Run all Python tests with coverage
 coverage:  ## Run all Python tests and generate the coverage report
 	$(MAKE) run_python_tests
 	coverage xml -o ingestion/coverage.xml
-	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/\/github\/workspace\/ingestion\/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
+	sed -e 's/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g' ingestion/coverage.xml >> ingestion/ci-coverage.xml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
