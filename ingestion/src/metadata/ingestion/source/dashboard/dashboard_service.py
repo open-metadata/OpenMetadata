@@ -273,7 +273,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_dashboard(self) -> Any:
         for dashboard in self.get_dashboards_list():
-            dashboard_details = self.get_dashboard_details(dashboard)
+
+            try:
+                dashboard_details = self.get_dashboard_details(dashboard)
+            except Exception:
+                logger.error(f"Cannot extract dashboard details from {dashboard}")
+                continue
+
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
                 self.get_dashboard_name(dashboard_details),
