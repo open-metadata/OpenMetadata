@@ -277,7 +277,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new StorageServiceResourceTest().setupStorageServices();
     new DashboardServiceResourceTest().setupDashboardServices(test);
     new MlModelServiceResourceTest().setupMlModelServices(test);
-
     new TableResourceTest().setupDatabaseSchemas(test);
   }
 
