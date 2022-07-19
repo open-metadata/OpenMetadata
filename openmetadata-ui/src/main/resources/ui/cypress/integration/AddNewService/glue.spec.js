@@ -14,7 +14,7 @@
 import { goToAddNewServicePage, testServiceCreationAndIngestion } from '../../common/common';
 
 describe('Glue Ingestion', () => {
-  it('add and ingest data', () => {
+  it.skip('add and ingest data', () => {
     goToAddNewServicePage();
     const connectionInput = () => {
       cy.get('#root_awsConfig_awsAccessKeyId')
