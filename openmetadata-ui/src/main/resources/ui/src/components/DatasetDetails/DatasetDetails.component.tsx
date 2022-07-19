@@ -486,7 +486,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
         tags: tierTag,
       };
 
-      settingsUpdateHandler(updatedTableDetails);
+      return settingsUpdateHandler(updatedTableDetails);
+    } else {
+      return Promise.reject();
     }
   };
 

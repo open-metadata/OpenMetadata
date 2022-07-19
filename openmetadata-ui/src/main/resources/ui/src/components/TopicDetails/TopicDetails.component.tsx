@@ -306,7 +306,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         tags: tierTag,
       };
 
-      settingsUpdateHandler(updatedTopicDetails);
+      return settingsUpdateHandler(updatedTopicDetails);
+    } else {
+      return Promise.reject();
     }
   };
   const onSettingsUpdate = (newOwner?: Topic['owner'], newTier?: string) => {

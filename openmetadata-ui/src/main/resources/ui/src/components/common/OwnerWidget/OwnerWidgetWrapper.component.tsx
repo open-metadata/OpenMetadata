@@ -1,15 +1,10 @@
-import { AxiosError } from 'axios';
-import { debounce, isEqual, lowerCase } from 'lodash';
+import { debounce, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import appState from '../../../AppState';
-import { getTeams } from '../../../axiosAPIs/teamsAPI';
-import { getUsers } from '../../../axiosAPIs/userAPI';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
-import jsonData from '../../../jsons/en';
 import { getOwnerList } from '../../../utils/ManageUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   isCurrentUserAdmin,
   searchFormattedUsersAndTeams,
@@ -30,7 +25,7 @@ interface OwnerWidgetWrapperProps {
 }
 
 const OwnerWidgetWrapper = ({
-  visible,
+  visible = false,
   currentOwner,
   updateUser,
   allowTeamOwner = true,
@@ -43,48 +38,7 @@ const OwnerWidgetWrapper = ({
   const [isUserLoading, setIsUserLoading] = useState<boolean>(false);
   const [owner, setOwner] = useState(currentUser);
 
-  const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
-  const [totalTeamsCount, setTotalTeamsCount] = useState<number>(0);
-
   const [searchText, setSearchText] = useState<string>('');
-
-  const fetchTeamsAndUsersCount = () => {
-    getUsers('', 0)
-      .then((res) => {
-        if (res.data) {
-          setTotalUsersCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setTotalTeamsCount(0);
-      });
-
-    getTeams('', 0)
-      .then((res) => {
-        if (res.data) {
-          setTotalTeamsCount(res.data.paging.total);
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['unexpected-server-response']
-        );
-        setTotalTeamsCount(0);
-      });
-  };
-
-  useEffect(() => {
-    fetchTeamsAndUsersCount();
-  }, []);
 
   const getOwnerSuggestion = useCallback(
     (qSearchText = '') => {
@@ -173,7 +127,7 @@ const OwnerWidgetWrapper = ({
   };
 
   useEffect(() => {
-    if (!visible) {
+    if (visible) {
       handleOwnerSearch('');
     }
   }, [visible]);
@@ -183,7 +137,7 @@ const OwnerWidgetWrapper = ({
   }, [currentUser]);
 
   useEffect(() => {
-    debounceOnSearch(searchText);
+    visible ? debounceOnSearch(searchText) : null;
   }, [appState.users, appState.userDetails, appState.userTeams]);
 
   const getOwnerGroup = () => {
@@ -193,16 +147,6 @@ const OwnerWidgetWrapper = ({
   const handleSearchOwnerDropdown = (text: string) => {
     setSearchText(text);
     debounceOnSearch(text);
-  };
-
-  const handleTotalCountForGroup = (groupName: string) => {
-    if (lowerCase(groupName) === 'users') {
-      return totalUsersCount;
-    } else if (lowerCase(groupName) === 'teams') {
-      return totalTeamsCount;
-    } else {
-      return 0;
-    }
   };
 
   useEffect(() => {
@@ -218,7 +162,6 @@ const OwnerWidgetWrapper = ({
     <DropDownList
       className="dropdown"
       dropDownList={listOwners}
-      getTotalCountForGroup={handleTotalCountForGroup}
       groupType="tab"
       isLoading={isUserLoading}
       listGroups={getOwnerGroup()}

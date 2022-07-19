@@ -17,11 +17,10 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import './TierCard.css';
 
 export interface TierCardProps {
-  visible: boolean;
   currentUser?: EntityReference;
   currentTier?: string;
   hideTier?: boolean;
-  updateTier?: (value: string) => void;
+  updateTier?: (value: string) => Promise<void>;
   onSave?: (
     owner?: EntityReference,
     tier?: TableDetail['tier'],
@@ -92,11 +91,16 @@ const TierCard = ({
     setStatusTier('waiting');
 
     const newTier = prepareTier(updatedTier);
-    updateTier?.(newTier as string);
+    updateTier?.(newTier as string).catch(() => {
+      setStatusTier('success');
+    });
   };
   const getTierCards = () => {
     return (
-      <div className="tw-flex tw-flex-col tw-mb-7" data-testid="cards">
+      <div
+        className="tw-flex tw-flex-col tw-mb-7 margin-[10px]"
+        data-testid="cards"
+        style={{ margin: '10px' }}>
         {tierData.map((card, i) => (
           <NonAdminAction
             html={
@@ -162,7 +166,7 @@ const TierCard = ({
   }, [currentTier]);
 
   return (
-    <Popover placement="bottom" trigger="click">
+    <Popover className="rounded-[4px]" placement="bottom" trigger="click">
       {getTierWidget()}
     </Popover>
   );

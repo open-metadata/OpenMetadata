@@ -4,6 +4,7 @@ import { isString } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useState } from 'react';
 import { Table } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 import OwnerWidgetWrapper from '../OwnerWidget/OwnerWidgetWrapper.component';
@@ -13,11 +14,14 @@ import TierCard from '../TierCard/TierCard';
 export interface GetInfoElementsProps {
   data: ExtraInfo;
   updateOwner?: (value: Table['owner']) => void;
-  updateTier?: (value: string) => void;
+  tier?: TagLabel;
+  currentTier?: string;
+  updateTier?: (value: string) => Promise<void>;
 }
 
 const EntitySummaryDetails = ({
   data,
+  tier,
   updateOwner,
   updateTier,
 }: GetInfoElementsProps) => {
@@ -67,8 +71,23 @@ const EntitySummaryDetails = ({
             <>
               No Tier
               <Popover
-                content={<TierCard visible updateTier={updateTier} />}
+                className="rounded-[4px]"
+                content={
+                  <TierCard
+                    currentTier={tier?.tagFQN}
+                    updateTier={updateTier}
+                  />
+                }
                 placement="leftBottom"
+                title={
+                  <p
+                    style={{
+                      paddingBottom: '8px',
+                      paddingTop: '10px',
+                    }}>
+                    Edit Tier
+                  </p>
+                }
                 trigger="click">
                 <span style={{ marginLeft: '5px' }}>
                   {updateTier ? (
@@ -200,10 +219,23 @@ const EntitySummaryDetails = ({
                         </Button>
                         <span>
                           <Popover
+                            className="rounded-[4px]"
                             content={
-                              <TierCard visible updateTier={updateTier} />
+                              <TierCard
+                                currentTier={tier?.tagFQN}
+                                updateTier={updateTier}
+                              />
                             }
                             placement="bottomRight"
+                            title={
+                              <p
+                                style={{
+                                  paddingBottom: '8px',
+                                  paddingTop: '10px',
+                                }}>
+                                Edit Tier
+                              </p>
+                            }
                             trigger="click">
                             <span style={{ marginLeft: '5px' }}>
                               {updateTier ? (
