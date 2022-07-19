@@ -27,16 +27,16 @@
       "description": "Optional team profile information.",
       "$ref": "../../type/profile.json"
     },
-    "parents" : {
-      "description" : "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
+    "parents": {
+      "description": "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
     },
-    "children" : {
-      "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+    "children": {
+      "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
@@ -70,6 +70,6 @@
       "default": true
     }
   },
-  "required": ["name"],
+  "required": ["name", "teamType"],
   "additionalProperties": false
 }
