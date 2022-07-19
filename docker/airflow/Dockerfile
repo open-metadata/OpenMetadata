@@ -7,7 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 USER airflow
 # Download openmetadata airflow plugins
-RUN curl -LJO https://github.com/open-metadata/OpenMetadata/releases/download/0.11.1-release/openmetadata-airflow-apis-plugins.tar.gz && \
+RUN curl -LJO https://github.com/open-metadata/OpenMetadata/releases/download/0.11.2-release/openmetadata-airflow-apis-plugins.tar.gz && \
     tar xzf openmetadata-airflow-apis-plugins.tar.gz && rm -rf openmetadata-airflow-apis-plugins.tar.gz
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
