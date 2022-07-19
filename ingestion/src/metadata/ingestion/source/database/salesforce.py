@@ -10,14 +10,15 @@
 #  limitations under the License.
 
 import traceback
-from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    Constraint,
-    TableType,
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Column, Constraint, TableType
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
@@ -25,29 +26,23 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import InvalidSourceException, SourceStatus
+from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.connections import get_connection, test_connection
-from metadata.utils.logger import ingestion_logger
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
     SQLSourceStatus,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,
-)
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.ingestion.models.ometa_tag_category import OMetaTagAndCategory
+from metadata.utils.connections import get_connection, test_connection
 from metadata.utils.filters import filter_by_table
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
@@ -113,7 +108,7 @@ class SalesforceSource(DatabaseServiceSource):
         """
         schema_name = self.service_connection.scheme.name
         yield schema_name
-    
+
     def yield_database_schema(
         self, schema_name: str
     ) -> Iterable[CreateDatabaseSchemaRequest]:
@@ -125,7 +120,7 @@ class SalesforceSource(DatabaseServiceSource):
             name=schema_name,
             database=EntityReference(id=self.context.database.id, type="database"),
         )
-    
+
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
         Handle table and views.
@@ -138,18 +133,22 @@ class SalesforceSource(DatabaseServiceSource):
         schema_name = self.context.database_schema.name.__root__
         try:
             if self.service_connection.sobjectName:
-                table_name=self.standardize_table_name(schema_name, self.service_connection.sobjectName)
+                table_name = self.standardize_table_name(
+                    schema_name, self.service_connection.sobjectName
+                )
                 yield table_name, TableType.Regular
             else:
                 for salesforce_object in self.client.describe()["sobjects"]:
-                    table_name=salesforce_object["name"]
-                    if filter_by_table(self.config.sourceConfig.config.tableFilterPattern, table_name):
+                    table_name = salesforce_object["name"]
+                    if filter_by_table(
+                        self.config.sourceConfig.config.tableFilterPattern, table_name
+                    ):
                         self.status.filter(
                             "{}".format(table_name),
                             "Table pattern not allowed",
                         )
                         continue
-                    table_name=self.standardize_table_name(schema_name, table_name)
+                    table_name = self.standardize_table_name(schema_name, table_name)
                     yield table_name, TableType.Regular
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -167,7 +166,7 @@ class SalesforceSource(DatabaseServiceSource):
         """
         table_name, table_type = table_name_and_type
         try:
-            
+
             table_constraints = None
             salesforce_objects = self.client.restful(
                 "sobjects/{}/describe/".format(table_name),
@@ -194,10 +193,10 @@ class SalesforceSource(DatabaseServiceSource):
             self.status.failures.append(
                 "{}.{}".format(self.config.serviceName, table_name)
             )
-    
+
     def get_columns(self, salesforce_fields):
         row_order = 1
-        columns=[]
+        columns = []
         for column in salesforce_fields:
             col_constraint = None
             if column["nillable"]:
