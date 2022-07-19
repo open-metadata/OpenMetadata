@@ -11,6 +11,7 @@
 """
 Base class for ingesting database services
 """
+import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Optional
@@ -273,7 +274,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_dashboard(self) -> Any:
         for dashboard in self.get_dashboards_list():
-            dashboard_details = self.get_dashboard_details(dashboard)
+
+            try:
+                dashboard_details = self.get_dashboard_details(dashboard)
+            except Exception as err:
+                logger.error(
+                    f"Cannot extract dashboard details from {dashboard} - {err}"
+                )
+                logger.debug(traceback.format_exc())
+                continue
+
             if filter_by_dashboard(
                 self.source_config.dashboardFilterPattern,
                 self.get_dashboard_name(dashboard_details),
