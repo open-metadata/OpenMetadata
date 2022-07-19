@@ -100,13 +100,18 @@ class TestSecretsManager(TestCase):
                 awsRegion="fake-region",
             ),
         )
-        expected_service = deepcopy(self.service)
-        expected_service.connection.config = self.database_connection
 
         with self.assertRaises(ValueError) as value_error:
             aws_manager.add_service_config_connection(self.service, self.service_type)
             self.assertEqual(
                 "[SecretString] not present in the response.", value_error.exception
+            )
+
+    def test_get_not_implemented_secret_manager(self):
+        with self.assertRaises(NotImplementedError) as not_implemented_error:
+            get_secrets_manager("any")
+            self.assertEqual(
+                "[any] is not implemented.", not_implemented_error.exception
             )
 
     @staticmethod

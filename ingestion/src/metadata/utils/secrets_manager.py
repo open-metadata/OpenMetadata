@@ -9,9 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from pydoc import locate
-from typing import Union
+from typing import Optional, Union
 
 import boto3
 from botocore.exceptions import ClientError
@@ -26,22 +26,10 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.singleton import Singleton
 
 logger = ingestion_logger()
 SECRET_MANAGER_AIRFLOW_CONF = "openmetadata_secrets_manager"
-
-
-class Singleton(ABCMeta):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-    @classmethod
-    def clear_all(cls):
-        Singleton._instances = {}
 
 
 class SecretsManager(metaclass=Singleton):
@@ -161,7 +149,8 @@ class AWSSecretsManager(SecretsManager):
 
 
 def get_secrets_manager(
-    secret_manager: SecretsManagerProvider, credentials: Union[AWSCredentials]
+    secret_manager: SecretsManagerProvider,
+    credentials: Optional[Union[AWSCredentials]] = None,
 ) -> SecretsManager:
     if secret_manager == SecretsManagerProvider.local:
         return LocalSecretsManager()
