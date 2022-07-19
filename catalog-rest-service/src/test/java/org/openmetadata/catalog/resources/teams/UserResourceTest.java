@@ -132,10 +132,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .createRequest("user-data-consumer", "", "", null)
                 .withRoles(List.of(DATA_CONSUMER_ROLE.getId())),
             ADMIN_AUTH_HEADERS);
-
-    TeamResourceTest teamResourceTest = new TeamResourceTest();
-    TEAM1 = teamResourceTest.createEntity(teamResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
-    TEAM_OWNER1 = TEAM1.getEntityReference();
   }
 
   @Test
@@ -872,7 +868,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedList = (List<EntityReference>) expected;
       List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferencesFieldChange(expectedList, actualList);
+      assertEntityReferences(expectedList, actualList);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
