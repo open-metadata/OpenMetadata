@@ -1,6 +1,7 @@
 import textwrap
 
 REDSHIFT_SQL_STATEMENT = """
+<<<<<<< Updated upstream
         SELECT DISTINCT ss.userid,
             ss.query query_type,
             sui.usename user_name,
@@ -21,6 +22,63 @@ REDSHIFT_SQL_STATEMENT = """
             AND sq.aborted = 0
         ORDER BY ss.endtime DESC;
     """
+=======
+  WITH
+  queries AS (
+    SELECT *
+      FROM pg_catalog.stl_query
+     WHERE userid > 1
+          -- Filter out all automated & cursor queries
+          AND querytxt NOT ILIKE 'fetch %%'
+          AND querytxt NOT ILIKE 'padb_fetch_sample: %%'
+          AND querytxt NOT ILIKE 'Undoing %% transactions on table %% with current xid%%'
+          AND aborted = 0
+          AND starttime >= '{start_time}'
+          AND starttime < '{end_time}'
+  ),
+  full_queries AS (
+    SELECT
+          query,
+          LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
+            WITHIN GROUP (ORDER BY sequence) AS query_text
+      FROM pg_catalog.stl_querytext
+      WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
+    GROUP BY query
+  ),
+  raw_scans AS (
+    -- We have one row per table per slice so we need to get rid of the dupes
+    SELECT distinct query, tbl
+      FROM pg_catalog.stl_scan
+  ),
+  scans AS (
+  	SELECT DISTINCT
+  		query,
+  		sti.database AS database_name,
+      sti.schema AS schema_name
+  	  FROM raw_scans AS s
+          INNER JOIN pg_catalog.svv_table_info AS sti
+            ON (s.tbl)::oid = sti.table_id
+  )
+  SELECT DISTINCT
+        q.userid,
+        s.query AS query_id,
+        RTRIM(u.usename) AS user_name,
+        fq.query_text,
+        s.database_name,
+        s.schema_name,
+        q.starttime AS start_time,
+        q.endtime AS end_time,
+        q.aborted AS aborted
+    FROM scans AS s
+        INNER JOIN queries AS q
+          ON s.query = q.query
+        INNER JOIN full_queries AS fq
+          ON s.query = fq.query
+        INNER JOIN pg_catalog.pg_user AS u
+          ON q.userid = u.usesysid
+    ORDER BY q.endtime DESC
+"""
+>>>>>>> Stashed changes
 
 REDSHIFT_GET_ALL_RELATION_INFO = """
         SELECT
