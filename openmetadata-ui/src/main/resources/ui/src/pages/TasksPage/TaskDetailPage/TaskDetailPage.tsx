@@ -641,50 +641,55 @@ const TaskDetailPage = () => {
                   task={taskDetail.task}
                 />
               )}
-              {hasEditAccess() && !isTaskClosed && (
-                <div
-                  className="tw-flex tw-justify-end"
-                  data-testid="task-cta-buttons">
+
+              <div
+                className="tw-flex tw-justify-end"
+                data-testid="task-cta-buttons">
+                {(hasEditAccess() || isCreator) && !isTaskClosed && (
                   <Button
                     className="ant-btn-link-custom"
                     type="link"
                     onClick={() => setModalVisible(true)}>
                     Close with comment
                   </Button>
+                )}
 
-                  {taskDetail.task?.suggestion ? (
-                    <Dropdown.Button
-                      className="ant-btn-primary-dropdown"
-                      icon={
-                        <FontAwesomeIcon
-                          className="tw-text-sm"
-                          icon={faChevronDown}
-                        />
-                      }
-                      overlay={
-                        <Menu
-                          selectable
-                          items={TASK_ACTION_LIST}
-                          selectedKeys={[taskAction.key]}
-                          onClick={(info) => onTaskActionChange(info.key)}
-                        />
-                      }
-                      trigger={['click']}
-                      type="primary"
-                      onClick={onTaskResolve}>
-                      {taskAction.label}
-                    </Dropdown.Button>
-                  ) : (
-                    <Button
-                      className="ant-btn-primary-custom"
-                      disabled={!suggestion}
-                      type="primary"
-                      onClick={onTaskResolve}>
-                      Add Description
-                    </Button>
-                  )}
-                </div>
-              )}
+                {hasEditAccess() && !isTaskClosed && (
+                  <Fragment>
+                    {taskDetail.task?.suggestion ? (
+                      <Dropdown.Button
+                        className="ant-btn-primary-dropdown"
+                        icon={
+                          <FontAwesomeIcon
+                            className="tw-text-sm"
+                            icon={faChevronDown}
+                          />
+                        }
+                        overlay={
+                          <Menu
+                            selectable
+                            items={TASK_ACTION_LIST}
+                            selectedKeys={[taskAction.key]}
+                            onClick={(info) => onTaskActionChange(info.key)}
+                          />
+                        }
+                        trigger={['click']}
+                        type="primary"
+                        onClick={onTaskResolve}>
+                        {taskAction.label}
+                      </Dropdown.Button>
+                    ) : (
+                      <Button
+                        className="ant-btn-primary-custom"
+                        disabled={!suggestion}
+                        type="primary"
+                        onClick={onTaskResolve}>
+                        Add Description
+                      </Button>
+                    )}
+                  </Fragment>
+                )}
+              </div>
 
               {isTaskClosed && <ClosedTask task={taskDetail.task} />}
             </Card>
