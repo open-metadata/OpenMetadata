@@ -35,7 +35,7 @@ interface Props {
 const TeamsSelectable = ({
   onSelectionChange,
   filterJoinable,
-  placeholder = 'Type to search for teams',
+  placeholder = 'Start typing the name of team...',
 }: Props) => {
   const [teamSearchText, setTeamSearchText] = useState<string>('');
 
