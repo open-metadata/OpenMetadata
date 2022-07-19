@@ -1687,30 +1687,91 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String condition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          condition = String.format("%s AND ue.isAdmin = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isAdmin IS NULL OR ue.isAdmin = FALSE ) ", condition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          condition = String.format("%s AND ue.isBot = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isBot IS NULL OR ue.isBot = FALSE ) ", condition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listCount(filter);
       }
-      return listCount(getTableName(), getNameColumn(), filter.getCondition("ue"), team, Relationship.HAS.ordinal());
+      return listCount(getTableName(), getNameColumn(), condition, team, Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String condition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          condition = String.format("%s AND ue.isAdmin = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isAdmin IS NULL OR ue.isAdmin = FALSE ) ", condition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          condition = String.format("%s AND ue.isBot = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isBot IS NULL OR ue.isBot = FALSE ) ", condition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listBefore(filter, limit, before);
       }
-      return listBefore(
-          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, before, Relationship.HAS.ordinal());
+      return listBefore(getTableName(), getNameColumn(), condition, team, limit, before, Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
       String team = filter.getQueryParam("team");
-      if (team == null) {
+      Boolean isAdmin = null;
+      Boolean isBot = null;
+      String isBotStr = filter.getQueryParam("isBot");
+      String isAdminStr = filter.getQueryParam("isAdmin");
+      String condition = filter.getCondition("ue");
+      if (isAdminStr != null) {
+        isAdmin = Boolean.parseBoolean(isAdminStr);
+        if (isAdmin) {
+          condition = String.format("%s AND ue.isAdmin = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isAdmin IS NULL OR ue.isAdmin = FALSE ) ", condition);
+        }
+      }
+      if (isBotStr != null) {
+        isBot = Boolean.parseBoolean(isBotStr);
+        if (isBot) {
+          condition = String.format("%s AND ue.isBot = TRUE ", condition);
+        } else {
+          condition = String.format("%s AND (ue.isBot IS NULL OR ue.isBot = FALSE ) ", condition);
+        }
+      }
+      if (team == null && isAdmin == null && isBot == null) {
         return EntityDAO.super.listAfter(filter, limit, after);
       }
-      return listAfter(
-          getTableName(), getNameColumn(), filter.getCondition("ue"), team, limit, after, Relationship.HAS.ordinal());
+      return listAfter(getTableName(), getNameColumn(), condition, team, limit, after, Relationship.HAS.ordinal());
     }
 
     @SqlQuery(
@@ -1720,7 +1781,7 @@ public interface CollectionDAO {
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
             + " <cond> "
-            + " AND te.name = :team "
+            + " AND (:team IS NULL OR te.name = :team) "
             + "GROUP BY ue.id) subquery")
     int listCount(
         @Define("table") String table,
@@ -1736,7 +1797,7 @@ public interface CollectionDAO {
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
             + " <cond> "
-            + "AND te.name = :team "
+            + "AND (:team IS NULL OR te.name = :team) "
             + "AND ue.<nameColumn> < :before "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> DESC "
@@ -1757,7 +1818,7 @@ public interface CollectionDAO {
             + "LEFT JOIN entity_relationship er on ue.id = er.toId "
             + "LEFT JOIN team_entity te on te.id = er.fromId and er.relation = :relation "
             + " <cond> "
-            + "AND te.name = :team "
+            + "AND (:team IS NULL OR te.name = :team) "
             + "AND ue.<nameColumn> > :after "
             + "GROUP BY ue.<nameColumn>, ue.json "
             + "ORDER BY ue.<nameColumn> "
