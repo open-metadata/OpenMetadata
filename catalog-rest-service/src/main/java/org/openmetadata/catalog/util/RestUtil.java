@@ -40,6 +40,8 @@ public final class RestUtil {
   public static final String ENTITY_DELETED = "entityDeleted";
   public static final String DELETED_USER_NAME = "DeletedUser";
   public static final String DELETED_USER_DISPLAY = "User was deleted";
+  public static final String DELETED_TEAM_NAME = "DeletedTeam";
+  public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
 
   public static final DateFormat DATE_TIME_FORMAT;

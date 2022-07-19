@@ -26,6 +26,8 @@ import static org.openmetadata.catalog.type.Relationship.REPLIED_TO;
 import static org.openmetadata.catalog.util.ChangeEventParser.getPlaintextDiff;
 import static org.openmetadata.catalog.util.EntityUtil.compareEntityReference;
 import static org.openmetadata.catalog.util.EntityUtil.populateEntityReferences;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_TEAM_DISPLAY;
+import static org.openmetadata.catalog.util.RestUtil.DELETED_TEAM_NAME;
 import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_DISPLAY;
 import static org.openmetadata.catalog.util.RestUtil.DELETED_USER_NAME;
 
@@ -895,8 +897,13 @@ public class FeedRepository {
         } catch (EntityNotFoundException exception) {
           // mark the not found user as deleted user since
           // user will not be found in case of permanent deletion of user or team
-          ref.setName(DELETED_USER_NAME);
-          ref.setDisplayName(DELETED_USER_DISPLAY);
+          if (ref.getType().equals(Entity.TEAM)) {
+            ref.setName(DELETED_TEAM_NAME);
+            ref.setDisplayName(DELETED_TEAM_DISPLAY);
+          } else {
+            ref.setName(DELETED_USER_NAME);
+            ref.setDisplayName(DELETED_USER_DISPLAY);
+          }
         } catch (IOException ioException) {
           throw new RuntimeException(ioException);
         }
