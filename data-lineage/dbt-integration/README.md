@@ -25,10 +25,10 @@ Metadata regarding the tables and views generated via DBT is also ingested and c
 
 ### Configure DBT via UI or CLI
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="add-dbt-while-ingesting-from-ui.md" %}
+[add-dbt-while-ingesting-from-ui.md](add-dbt-while-ingesting-from-ui.md)
 {% endcontent-ref %}
 
-{% content-ref url="broken-reference" %}
-[Broken link](broken-reference)
+{% content-ref url="add-dbt-while-ingesting-from-cli.md" %}
+[add-dbt-while-ingesting-from-cli.md](add-dbt-while-ingesting-from-cli.md)
 {% endcontent-ref %}
